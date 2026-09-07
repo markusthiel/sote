@@ -1,0 +1,493 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SOTE — Artboards 2: Wiederholung, Freigabe, Papierkorb</title>
+<link rel="stylesheet" href="artboards.css">
+</head>
+<body>
+<div class="sheet">
+
+<div class="masthead">
+  <div class="stamp">SOTE / Artboards 2 / 2026-09-07 / Grundlage: claude/konzept.md</div>
+  <h1>Wiederholung, Freigabe, Papierkorb</h1>
+  <p>Vier Blätter. Die drei Stellen, an denen ein Aufgabenwerkzeug gewöhnlich
+  unehrlich wird: eine Wiederholung, die man nicht zurücklesen kann, eine
+  Freigabe, die mehr hergibt als sie sagt, und ein Papierkorb, der Erledigtes
+  mit Gelöschtem verwechselt.</p>
+</div>
+
+<!-- 8 ─────────────────────────────────────────────────────── -->
+<section class="board">
+  <header><span class="no">08</span><h2>Wiederholungen</h2></header>
+  <p class="note">Die Art der Wiederholung ist die <b>erste</b> Wahl, keine
+  versteckte Option. Kalenderfest und erledigungsbezogen beantworten zwei
+  verschiedene Fragen — „wann ist es wieder dran" gegen „wie lange hält es" —
+  und sie zu vermischen ist der Grund, warum „jeden zweiten Dienstag" und
+  „drei Tage nach dem Abhaken" in anderen Werkzeugen im selben Feld landen.</p>
+  <p class="note"><b>Das Bedienelement wird durch seine Ausgabe geprüft.</b> Unter
+  jeder Einstellung steht ein Satz in normaler Sprache und darunter die nächsten
+  drei Termine, gerechnet. Eine Wiederholung, die man nicht zurücklesen kann, ist
+  eine, der man nicht traut — und genau daran scheitert Things bei „jeden zweiten
+  Dienstag": nicht am Rechnen, sondern daran, dass man nicht sieht, was
+  eingestellt wurde.</p>
+  <div class="pair">
+    <div class="frame">
+      <div class="card">
+        <div class="ch">Filter reinigen — Wiederholung</div>
+        <div class="cb">
+          <div class="seg"><div class="on">nach Kalender</div><div>nach Erledigung</div></div>
+          <div class="fld"><span class="fl">alle</span>
+            <span class="inp num">2 <span class="chev">▾</span></span>
+            <span class="inp">Wochen <span class="chev">▾</span></span></div>
+          <div class="fld"><span class="fl">am</span>
+            <span class="days"><span>Mo</span><span class="on">Di</span><span>Mi</span>
+              <span>Do</span><span>Fr</span><span>Sa</span><span>So</span></span></div>
+          <div class="fld"><span class="fl">um</span>
+            <span class="inp">08:00 <span class="chev">▾</span></span></div>
+          <div class="fld" style="margin-bottom:0"><span class="fl">endet</span>
+            <span class="inp">nie <span class="chev">▾</span></span></div>
+          <div class="says">
+            <div class="s1">Jeden zweiten Dienstag um 8 Uhr, ohne Ende.</div>
+            <div class="nx"><span>Di, 16. September, 08:00</span>
+              <span>Di, 30. September, 08:00</span>
+              <span>Di, 14. Oktober, 08:00</span></div>
+          </div>
+        </div>
+        <div class="cf"><span class="btn q">Wiederholung entfernen</span>
+          <span class="r"><span class="btn">Abbrechen</span>
+            <span class="btn pri">Übernehmen</span></span></div>
+      </div>
+    </div>
+    <div class="frame" data-theme="dark">
+      <div class="card">
+        <div class="ch">Filter reinigen — Wiederholung</div>
+        <div class="cb">
+          <div class="seg"><div>nach Kalender</div><div class="on">nach Erledigung</div></div>
+          <div class="fld"><span class="fl">wieder in</span>
+            <span class="inp num">3 <span class="chev">▾</span></span>
+            <span class="inp">Monaten <span class="chev">▾</span></span></div>
+          <div class="fld" style="margin-bottom:0"><span class="fl">gerechnet ab</span>
+            <span class="inp">dem Abhaken <span class="chev">▾</span></span></div>
+          <div class="says">
+            <div class="s1">Drei Monate nachdem du sie zuletzt abgehakt hast.</div>
+            <div class="nx"><span>Der nächste Termin entsteht beim Abhaken.</span>
+              <span>Zuletzt: 12. Juni — daraus wäre es der 12. September.</span></div>
+          </div>
+        </div>
+        <div class="cf"><span class="btn q">Wiederholung entfernen</span>
+          <span class="r"><span class="btn">Abbrechen</span>
+            <span class="btn pri">Übernehmen</span></span></div>
+      </div>
+    </div>
+  </div>
+  <div class="caps">
+    <div class="cap">kalenderfest — als RRULE gespeichert, weil CalDAV es ohnehin spricht</div>
+    <div class="cap">erledigungsbezogen — keine RRULE, eigene Felder</div>
+  </div>
+
+  <p class="note" style="margin-top:26px">Der erledigungsbezogene Fall
+  <b>zeigt keinen nächsten Termin, weil es keinen gibt.</b> Ein gerechnetes
+  Datum an dieser Stelle wäre eine Behauptung über eine Handlung, die noch nicht
+  stattgefunden hat. Stattdessen sagt die Karte, woraus er entstehen wird, und
+  nennt den letzten bekannten Stand.</p>
+
+  <p class="note" style="margin-top:22px">Und was das Abhaken tut: die erledigte
+  Instanz <b>bleibt als Beleg stehen</b>, die nächste erscheint. Kein Job weckt
+  sie — die Uhr geht vorbei, wie beim Zurückstellen in SONE (ADR-0075).</p>
+  <div class="frame">
+    <div class="main" style="min-height:230px">
+      <div class="body" style="padding-top:22px">
+        <div class="slab">vorher<span class="rule"></span></div>
+        <div class="task"><span class="box"></span>
+          <div class="tmid"><div class="ttl">Filter reinigen</div>
+            <div class="tmeta"><span class="when">heute, 08:00</span>
+              <span class="rep">alle 2 Wochen, Di</span></div></div>
+          <div class="tright"><span class="dots">⋮</span></div></div>
+        <div class="slab">nach dem Abhaken<span class="rule"></span></div>
+        <div class="task is-done">
+          <span class="box done"><svg width="11" height="11" viewBox="0 0 12 12"><path d="M2 6.5 4.7 9 10 3.2" fill="none" stroke="#faf8f4" stroke-width="1.8"/></svg></span>
+          <div class="tmid"><div class="ttl">Filter reinigen</div>
+            <div class="tmeta"><span class="when">heute, 09:14 erledigt</span></div></div></div>
+        <div class="task"><span class="box"></span>
+          <div class="tmid"><div class="ttl">Filter reinigen</div>
+            <div class="tmeta"><span class="when">Di, 16. Sept, 08:00</span>
+              <span class="rep">alle 2 Wochen, Di</span></div></div>
+          <div class="tright"><span class="dots">⋮</span></div></div>
+      </div>
+    </div>
+  </div>
+  <div class="cap">zwei Zeilen, nicht eine umdatierte — sonst gibt es keinen Beleg</div>
+</section>
+
+<!-- 9 ─────────────────────────────────────────────────────── -->
+<section class="board">
+  <header><span class="no">09</span><h2>Freigabe per Link</h2></header>
+  <p class="note">Zwei Reiter, weil es zwei verschiedene Dinge sind:
+  <b>Leute</b> sind Entscheidungen über Personen, ein <b>Link</b> ist eine
+  Fähigkeit, die frei herumliegt und von jemandem weitergegeben werden kann, der
+  nie etwas bekommen hat. Das ist SONEs Begründung für die Trennung (ADR-0088)
+  und sie gilt hier unverändert.</p>
+  <p class="note">Drei Regeln stehen im Bild und nicht nur im Konzept.
+  <b>Zurückziehen ja, umstufen nein</b> — ein Link, dessen Rechte man ändern
+  kann, ist ein zweiter Ort für Rechte, und so entstehen zwei Antworten auf eine
+  Frage. <b>Rechte werden nicht geerbt</b>: ein freigegebenes Projekt gibt keinen
+  Zugriff auf seine Unterprojekte, jedes braucht seine eigene Freigabe
+  (ADR-0110, und Todoist macht es ebenso). Und <b>ein Name wird verlangt</b>,
+  bevor ein Gast schreiben darf.</p>
+  <div class="pair">
+    <div class="frame">
+      <div class="pop">
+        <div class="tabs"><div>Leute <span class="n">3</span></div>
+          <div class="on">Link <span class="n">1</span></div></div>
+        <div class="linkbox">
+          <div class="u">https://sote.example.org/g/7Kq2-vT9m-4Rb</div>
+          <div class="o"><span class="fl">darf</span>
+            <span class="inp">bearbeiten <span class="chev">▾</span></span>
+            <span class="sm" style="margin-left:auto">nicht mehr änderbar</span></div>
+          <div class="o"><span class="fl">Name nötig</span><span class="sw"></span>
+            <span class="sm" style="margin-left:auto">bevor geschrieben wird</span></div>
+          <div class="o"><span class="fl">läuft ab</span>
+            <span class="inp">in 30 Tagen <span class="chev">▾</span></span></div>
+          <div class="o"><span class="fl">Unterprojekte</span>
+            <span class="sw off"></span>
+            <span class="sm" style="margin-left:auto">je Projekt einzeln</span></div>
+        </div>
+        <div class="warnrow"><div><b>Zurückziehen ja, umstufen nein.</b>
+          Was dieser Link darf, steht fest. Soll er weniger dürfen, wird er
+          zurückgezogen und ein neuer erzeugt.</div></div>
+        <div class="cf"><span class="btn q">Zurückziehen</span>
+          <span class="r"><span class="btn">Schließen</span>
+            <span class="btn pri">Link kopieren</span></span></div>
+      </div>
+    </div>
+    <div class="frame">
+      <div class="pop">
+        <div class="tabs"><div class="on">Leute <span class="n">3</span></div>
+          <div>Link <span class="n">1</span></div></div>
+        <div class="prow"><span class="who a">MT</span>
+          <span class="nm">Markus Thiel <span class="sm">du</span></span>
+          <span class="role">Eigentümer</span></div>
+        <div class="prow"><span class="who">AK</span>
+          <span class="nm">Anna Kern</span>
+          <span class="role">bearbeiten <span class="chev" style="font-size:9px">▾</span></span></div>
+        <div class="prow"><span class="who">LB</span>
+          <span class="nm">Lars Böhm <span class="sm">über die Gruppe Büro</span></span>
+          <span class="role">lesen <span class="chev" style="font-size:9px">▾</span></span></div>
+        <div class="prow"><span class="who" style="background:transparent;border:1px dashed var(--line-strong);color:var(--ink-350)">+</span>
+          <span class="nm" style="color:var(--ink-350)">Person oder Gruppe hinzufügen</span></div>
+        <div class="warnrow"><div>Freigaben <b>erweitern</b>, niemals senken.
+          Wer über eine Gruppe kommt, verliert nichts, wenn er einzeln
+          hinzugefügt wird.</div></div>
+        <div class="cf"><span class="r"><span class="btn">Schließen</span></span></div>
+      </div>
+    </div>
+  </div>
+  <div class="caps">
+    <div class="cap">der Link — das Einzige, was das Haus verlässt</div>
+    <div class="cap">Leute und Gruppen — Entscheidungen über Personen</div>
+  </div>
+
+  <p class="note" style="margin-top:26px"><b>Was der Gast sieht.</b> Keine
+  Schiene, kein Workspace, keine anderen Projekte — er hat ein Projekt bekommen
+  und sieht ein Projekt. Der Name wird einmal verlangt, und zwar aus einem
+  technischen Grund mit Geschichte: ein Gastschlüssel ist <b>keine uuid</b>, und
+  in SONE hat genau das dreimal eine ganze Projektionstransaktion mitgerissen
+  (ADR-0091, ADR-0092). Wer ohne Konto schreibt, muss in jeder Liste benennbar
+  sein, sonst wird er später in eine uuid-Spalte geschrieben.</p>
+  <div class="pair">
+    <div class="frame">
+      <div class="guest">
+        <div class="gtop">
+          <svg width="16" height="16" viewBox="0 0 100 100">
+            <rect x="12" y="16" width="9" height="9" fill="currentColor"/>
+            <rect x="28" y="16" width="60" height="9" fill="currentColor"/>
+            <rect x="28" y="37" width="9" height="9" fill="currentColor"/>
+            <rect x="44" y="37" width="44" height="9" fill="currentColor"/>
+            <rect x="44" y="58" width="9" height="9" fill="#2f7d6f"/>
+            <rect x="60" y="58" width="28" height="9" fill="#2f7d6f"/>
+            <rect x="28" y="79" width="9" height="9" fill="currentColor"/>
+            <rect x="44" y="79" width="44" height="9" fill="currentColor"/>
+          </svg>
+          <span class="nm">Umzug Büro</span>
+          <span class="rt">geteilt von Markus T. — du darfst bearbeiten</span>
+        </div>
+        <div class="gbody">
+          <h3>Umzug Büro</h3>
+          <div class="sub">6 offen — läuft ab am 7. Oktober</div>
+          <div class="nameask">
+            Sag einmal, wie du heißen sollst. Der Name steht dann an allem, was
+            du hier abhakst oder schreibst.
+            <div class="row"><span class="inp" style="flex:1">Vorname und Name</span>
+              <span class="btn pri">Weiter</span></div>
+          </div>
+          <div class="task"><span class="box"></span>
+            <div class="tmid"><div class="ttl">Kartons bestellen</div>
+              <div class="tmeta"><span class="when">Do, 10. Sept</span></div></div>
+            <div class="tright"><span class="who a">MT</span></div></div>
+          <div class="task"><span class="box p2"></span>
+            <div class="tmid"><div class="ttl">Netzwerkdosen zählen</div>
+              <div class="tmeta"><span class="due">fällig 12. Sept</span></div></div></div>
+          <div class="addline"><span class="plus">+</span><span>Aufgabe hinzufügen</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="frame" data-theme="dark">
+      <div class="guest">
+        <div class="gtop">
+          <svg width="16" height="16" viewBox="0 0 100 100">
+            <rect x="12" y="16" width="9" height="9" fill="currentColor"/>
+            <rect x="28" y="16" width="60" height="9" fill="currentColor"/>
+            <rect x="28" y="37" width="9" height="9" fill="currentColor"/>
+            <rect x="44" y="37" width="44" height="9" fill="currentColor"/>
+            <rect x="44" y="58" width="9" height="9" fill="#6fc0b0"/>
+            <rect x="60" y="58" width="28" height="9" fill="#6fc0b0"/>
+            <rect x="28" y="79" width="9" height="9" fill="currentColor"/>
+            <rect x="44" y="79" width="44" height="9" fill="currentColor"/>
+          </svg>
+          <span class="nm">Umzug Büro</span>
+          <span class="rt">als Lars B. — du darfst bearbeiten</span>
+        </div>
+        <div class="gbody">
+          <h3>Umzug Büro</h3>
+          <div class="sub">5 offen — läuft ab am 7. Oktober</div>
+          <div class="task is-done">
+            <span class="box done"><svg width="11" height="11" viewBox="0 0 12 12"><path d="M2 6.5 4.7 9 10 3.2" fill="none" stroke="#161615" stroke-width="1.8"/></svg></span>
+            <div class="tmid"><div class="ttl">Kartons bestellen</div>
+              <div class="tmeta"><span class="when">heute, 10:22 — Lars B.</span></div></div></div>
+          <div class="task"><span class="box p2"></span>
+            <div class="tmid"><div class="ttl">Netzwerkdosen zählen</div>
+              <div class="tmeta"><span class="due">fällig 12. Sept</span></div></div>
+            <div class="tright"><span class="who">LB</span></div></div>
+          <div class="addline"><span class="plus">+</span><span>Aufgabe hinzufügen</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="caps">
+    <div class="cap">vor dem Namen — lesen ja, schreiben nach der Frage</div>
+    <div class="cap">danach — der Name steht an jeder Handlung</div>
+  </div>
+</section>
+
+<!-- 10 ────────────────────────────────────────────────────── -->
+<section class="board">
+  <header><span class="no">10</span><h2>Der Freigaben-Modus</h2></header>
+  <p class="note">Ein Ort für die Frage <b>„was habe ich hinausgelassen"</b> —
+  über alle Projekte hinweg, neben dem Papierkorb und nicht in den Einstellungen
+  (ADR-0070). Drei Ansichten in dieser Reihenfolge und aus SONEs Gründen: erst
+  der Link, weil er als Einziges schon aus dem Haus ist; dann das, wofür man
+  geradesteht; dann das, wofür jemand anderes geradesteht. Die Zahlen kommen aus
+  der Liste, die der Bildschirm ohnehin hält, und <b>es gibt keine Null</b> —
+  eine Zahl über nichts ist Rauschen in einer ruhigen Zeile.</p>
+  <div class="frame">
+    <div class="app">
+      <nav class="rail">
+        <div class="slot">
+          <svg width="22" height="22" viewBox="0 0 100 100">
+            <rect x="12" y="16" width="9" height="9" fill="currentColor"/>
+            <rect x="28" y="16" width="60" height="9" fill="currentColor"/>
+            <rect x="28" y="37" width="9" height="9" fill="currentColor"/>
+            <rect x="44" y="37" width="44" height="9" fill="currentColor"/>
+            <rect x="44" y="58" width="9" height="9" fill="#2f7d6f"/>
+            <rect x="60" y="58" width="28" height="9" fill="#2f7d6f"/>
+            <rect x="28" y="79" width="9" height="9" fill="currentColor"/>
+            <rect x="44" y="79" width="44" height="9" fill="currentColor"/>
+          </svg>
+        </div>
+        <div class="slot"><svg width="19" height="19" viewBox="0 0 20 20" fill="none"
+          stroke="currentColor" stroke-width="1.6"><circle cx="8.5" cy="8.5" r="5.5"/>
+          <path d="M12.8 12.8 17 17"/></svg></div>
+        <div class="slot"><svg width="19" height="19" viewBox="0 0 20 20" fill="none"
+          stroke="currentColor" stroke-width="1.6"><rect x="2.5" y="2.5" width="6" height="6"/>
+          <rect x="11.5" y="2.5" width="6" height="6"/><rect x="2.5" y="11.5" width="6" height="6"/>
+          <rect x="11.5" y="11.5" width="6" height="6"/></svg></div>
+        <div class="slot"><svg width="19" height="19" viewBox="0 0 20 20" fill="none"
+          stroke="currentColor" stroke-width="1.6"><path d="M5 8.5a5 5 0 0 1 10 0v4l1.5 2h-13L5 12.5z"/>
+          <path d="M8 16.5h4"/></svg><span class="badge">3</span></div>
+        <div class="slot on"><svg width="19" height="19" viewBox="0 0 20 20" fill="none"
+          stroke="currentColor" stroke-width="1.6">
+          <path d="M8 12l4-4M7.5 6.5 9 5a3.5 3.5 0 0 1 5 5l-1.5 1.5M12.5 13.5 11 15a3.5 3.5 0 0 1-5-5L7.5 8.5"/>
+          </svg></div>
+        <div class="slot"><svg width="19" height="19" viewBox="0 0 20 20" fill="none"
+          stroke="currentColor" stroke-width="1.6"><path d="M3.5 5.5h13M8 5.5V3.5h4v2M5 5.5l1 12h8l1-12"/>
+          </svg></div>
+        <div class="spacer"></div>
+        <div class="slot"><span class="face">MT</span></div>
+      </nav>
+      <div class="panel">
+        <div class="panel-head">
+          <div class="ws"><span class="dot"></span><span class="nm">Thiel Tools</span>
+            <span class="chev">▾</span></div>
+        </div>
+        <div class="plist">
+          <div class="pitem on">Links <span class="n">2</span></div>
+          <div class="pitem">Von mir freigegeben <span class="n">4</span></div>
+          <div class="pitem">Für mich freigegeben <span class="n">3</span></div>
+        </div>
+      </div>
+      <div class="main">
+        <div class="mhead"><h3>Links</h3>
+          <div class="sub">Was dieses Haus verlassen hat — 2 lebende Links</div></div>
+        <div class="body">
+          <div class="task" style="align-items:center">
+            <div class="tmid"><div class="ttl">Umzug Büro</div>
+              <div class="tmeta"><span class="crumb">bearbeiten</span>
+                <span class="when">läuft ab 7. Okt</span>
+                <span class="rep">2 Gäste haben geschrieben</span></div></div>
+            <div class="tright"><span class="btn q">Zurückziehen</span></div>
+          </div>
+          <div class="task" style="align-items:center">
+            <div class="tmid"><div class="ttl">Steuer 2025 — Belege</div>
+              <div class="tmeta"><span class="crumb">lesen</span>
+                <span class="when">ohne Ablauf</span></div></div>
+            <div class="tright"><span class="btn q">Zurückziehen</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="cap">Links zuerst — und pro Zeile wird das Recht geprüft, nicht als Bedingung nachgebaut</div>
+</section>
+
+<!-- 11 ────────────────────────────────────────────────────── -->
+<section class="board">
+  <header><span class="no">11</span><h2>Der Papierkorb</h2></header>
+  <p class="note"><b>Erledigt ist nicht gelöscht.</b> Das ist die eine
+  Entscheidung, die dieses Blatt trägt, und sie wird in vielen Werkzeugen
+  verwischt: eine abgehakte Aufgabe ist ein Ergebnis und bleibt in ihrem Projekt,
+  eine gelöschte ist ein Irrtum und liegt hier. Der Papierkorb zeigt darum nichts
+  Abgehaktes, und Abhaken bringt nichts hierher.</p>
+  <p class="note">Suchfeld über dem Menü, Ansichten mit Zählern, Hineinschauen —
+  wie SONEs Papierkorb. Und derselbe Fall, der dort „Wiederherstellen nach…"
+  nötig gemacht hat: <b>eine gelöschte Aufgabe kann ein Projekt haben, das es
+  nicht mehr gibt.</b> Dann braucht das Wiederherstellen ein Ziel, sonst
+  entstünde eine Aufgabe, die nirgends liegt.</p>
+  <div class="frame">
+    <div class="app">
+      <nav class="rail">
+        <div class="slot">
+          <svg width="22" height="22" viewBox="0 0 100 100">
+            <rect x="12" y="16" width="9" height="9" fill="currentColor"/>
+            <rect x="28" y="16" width="60" height="9" fill="currentColor"/>
+            <rect x="28" y="37" width="9" height="9" fill="currentColor"/>
+            <rect x="44" y="37" width="44" height="9" fill="currentColor"/>
+            <rect x="44" y="58" width="9" height="9" fill="#2f7d6f"/>
+            <rect x="60" y="58" width="28" height="9" fill="#2f7d6f"/>
+            <rect x="28" y="79" width="9" height="9" fill="currentColor"/>
+            <rect x="44" y="79" width="44" height="9" fill="currentColor"/>
+          </svg>
+        </div>
+        <div class="slot"><svg width="19" height="19" viewBox="0 0 20 20" fill="none"
+          stroke="currentColor" stroke-width="1.6"><circle cx="8.5" cy="8.5" r="5.5"/>
+          <path d="M12.8 12.8 17 17"/></svg></div>
+        <div class="slot"><svg width="19" height="19" viewBox="0 0 20 20" fill="none"
+          stroke="currentColor" stroke-width="1.6"><rect x="2.5" y="2.5" width="6" height="6"/>
+          <rect x="11.5" y="2.5" width="6" height="6"/><rect x="2.5" y="11.5" width="6" height="6"/>
+          <rect x="11.5" y="11.5" width="6" height="6"/></svg></div>
+        <div class="slot"><svg width="19" height="19" viewBox="0 0 20 20" fill="none"
+          stroke="currentColor" stroke-width="1.6"><path d="M5 8.5a5 5 0 0 1 10 0v4l1.5 2h-13L5 12.5z"/>
+          <path d="M8 16.5h4"/></svg><span class="badge">3</span></div>
+        <div class="slot"><svg width="19" height="19" viewBox="0 0 20 20" fill="none"
+          stroke="currentColor" stroke-width="1.6">
+          <path d="M8 12l4-4M7.5 6.5 9 5a3.5 3.5 0 0 1 5 5l-1.5 1.5M12.5 13.5 11 15a3.5 3.5 0 0 1-5-5L7.5 8.5"/>
+          </svg></div>
+        <div class="slot on"><svg width="19" height="19" viewBox="0 0 20 20" fill="none"
+          stroke="currentColor" stroke-width="1.6"><path d="M3.5 5.5h13M8 5.5V3.5h4v2M5 5.5l1 12h8l1-12"/>
+          </svg></div>
+        <div class="spacer"></div>
+        <div class="slot"><span class="face">MT</span></div>
+      </nav>
+      <div class="panel">
+        <div class="panel-head">
+          <div class="ws"><span class="dot"></span><span class="nm">Thiel Tools</span>
+            <span class="chev">▾</span></div>
+        </div>
+        <div class="seek">
+          <svg width="14" height="14" viewBox="0 0 20 20" fill="none"
+            stroke="currentColor" stroke-width="1.8"><circle cx="8.5" cy="8.5" r="5.5"/>
+            <path d="M12.8 12.8 17 17"/></svg>
+          <span>Im Papierkorb suchen</span>
+        </div>
+        <div class="plist">
+          <div class="pitem on">Aufgaben <span class="n">12</span></div>
+          <div class="pitem">Projekte <span class="n">1</span></div>
+          <div class="pitem">Alles <span class="n">13</span></div>
+        </div>
+      </div>
+      <div class="main">
+        <div class="mhead"><h3>Papierkorb</h3>
+          <div class="sub">Gelöschtes verschwindet nach 30 Tagen — Erledigtes liegt hier nicht</div></div>
+        <div class="body">
+          <div class="task" style="align-items:flex-start">
+            <div class="tmid">
+              <div class="ttl">Angebot Netzwerktechnik einholen</div>
+              <div class="tmeta"><span class="when">gelöscht vor 2 Tagen — Anna K.</span>
+                <span class="crumb"><span class="sq" style="background:#6a675f"></span>Umzug Büro</span></div>
+              <div class="peek"><div class="pl">Inhalt</div>
+                Drei Angebote, Frist war der 15. Für Dosen im Erdgeschoss. Kontakt
+                steht in der Notiz von Lars.</div>
+              <div class="restore"><span class="btn">Wiederherstellen</span>
+                <span class="btn q">Endgültig löschen</span></div>
+            </div>
+          </div>
+          <div class="task" style="align-items:flex-start">
+            <div class="tmid">
+              <div class="ttl">Alten Router zurücksenden</div>
+              <div class="tmeta"><span class="when">gelöscht vor 9 Tagen — du</span>
+                <span class="gonep">Projekt „Anschluss" gibt es nicht mehr</span></div>
+              <div class="restore">
+                <span class="inp">Wiederherstellen nach… <span class="chev">▾</span></span>
+                <span class="btn q">Endgültig löschen</span></div>
+            </div>
+          </div>
+          <div class="task" style="align-items:flex-start">
+            <div class="tmid">
+              <div class="ttl">Kabelkanäle ausmessen</div>
+              <div class="tmeta"><span class="when">gelöscht vor 3 Wochen — Lars B.</span>
+                <span class="crumb"><span class="sq" style="background:#6a675f"></span>Umzug Büro</span>
+                <span class="rep">verschwindet in 9 Tagen</span></div>
+              <div class="restore"><span class="btn">Wiederherstellen</span>
+                <span class="btn q">Endgültig löschen</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="cap">zweite Zeile — das Ziel wird verlangt, weil das Projekt weg ist</div>
+</section>
+
+<!-- Offen ─────────────────────────────────────────────────── -->
+<section class="board">
+  <header><span class="no">—</span><h2>Was diese Blätter offen lassen</h2></header>
+  <div class="open">
+    <ol>
+      <li><b>Der Ablauf eines Links ist hier Pflichtangabe mit Vorschlag
+      „30 Tage" und der Möglichkeit „ohne Ablauf".</b> Ob „ohne Ablauf"
+      überhaupt angeboten wird, ist eine Sicherheitsentscheidung und keine
+      gestalterische — in Blatt 10 gibt es genau so einen Link, damit man sieht,
+      wie er sich in der Liste liest.</li>
+      <li><b>Wie viel ein Gast von anderen Gästen sieht.</b> Blatt 09 zeigt Lars
+      unter seinem Namen bei einer Aufgabe. Ob er auch Anna sieht, die über den
+      Workspace dabei ist, ist nicht entschieden.</li>
+      <li><b>Der Zähler „2 Gäste haben geschrieben"</b> in Blatt 10 beantwortet
+      eine Frage, die ich nicht geprüft habe. Nach ADR-0116 ist das die
+      gefährlichste Sorte Anzeige: sie ist konsistent zu irgendeiner Frage, und
+      welche das ist, muss vor dem Bau festliegen.</li>
+      <li><b>Dreißig Tage im Papierkorb</b> sind aus SONE übernommen, ohne
+      geprüft zu haben, ob dort dieselbe Zahl steht.</li>
+      <li><b>Der Löschweg für ein ganzes Projekt</b> ist in Blatt 11 nur als
+      Zähler vorhanden. Was mit den Aufgaben darin passiert und ob sie einzeln
+      wiederherstellbar bleiben, hat noch kein Bild.</li>
+      <li><b>Erinnerungen und CalDAV</b> haben weiterhin kein Blatt. Gehören in
+      Artboards 3, zusammen mit den Einstellungen und der Kopplung als
+      Einrichtungsvorgang.</li>
+    </ol>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

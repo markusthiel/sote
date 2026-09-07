@@ -14,8 +14,9 @@ Konzept → Artboards → ADRs → Bau.
 
 - [`claude/konzept.md`](claude/konzept.md) — die Festlegungen und die offenen
   Punkte
-- [`design/artboards.html`](design/artboards.html) — die Entwürfe, im Browser
-  zu öffnen
+- [`design/artboards.html`](design/artboards.html) — Schale, Zeile, Erfassung
+- [`design/artboards-2.html`](design/artboards-2.html) — Wiederholung, Freigabe,
+  Papierkorb
 
 ## Was SOTE werden soll
 

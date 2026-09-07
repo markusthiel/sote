@@ -156,8 +156,23 @@ ohnehin sprechen muss. Der erledigungsbezogene Fall ist keine RRULE und
 bekommt eigene Felder.
 
 Eine wiederkehrende Aufgabe erzeugt beim Abhaken die **nächste Instanz**; die
-erledigte bleibt als Beleg stehen. Kein Job weckt sie — die Uhr geht vorbei, wie
-beim Zurückstellen in ADR-0075.
+erledigte bleibt als Beleg stehen — zwei Zeilen, nicht eine umdatierte, sonst
+gibt es keinen Beleg. Kein Job weckt sie: die Uhr geht vorbei, wie beim
+Zurückstellen in ADR-0075.
+
+Drei Festlegungen zum Bedienelement (Artboards 2, Blatt 08):
+
+- **Die Art ist die erste Wahl**, keine versteckte Option. Die beiden
+  beantworten verschiedene Fragen, und sie im selben Feld zu führen ist der
+  Grund, warum sie in anderen Werkzeugen verwechselt werden.
+- **Geprüft wird durch die Ausgabe**: unter der Einstellung steht ein Satz in
+  normaler Sprache und darunter die nächsten drei Termine, gerechnet. Things
+  scheitert bei „jeden zweiten Dienstag" nicht am Rechnen, sondern daran, dass
+  man nicht zurücklesen kann, was eingestellt wurde.
+- **Der erledigungsbezogene Fall zeigt keinen nächsten Termin**, weil es keinen
+  gibt. Er nennt, woraus er entsteht, und den letzten bekannten Stand. Ein
+  gerechnetes Datum wäre eine Behauptung über eine Handlung, die noch nicht
+  stattgefunden hat.
 
 ---
 
@@ -285,6 +300,24 @@ Von Todoist übernommen, weil schlicht und richtig:
 - Zugewiesene werden benachrichtigt, per Glocke und per Mail.
 - Direkte Links auf Projekt, Abschnitt, Aufgabe und Kommentar.
 
+### Der Link (Artboards 2, Blatt 09 und 10)
+
+Leute und Link sind **zwei Reiter**, weil es zwei Dinge sind: Leute sind
+Entscheidungen über Personen, ein Link ist eine Fähigkeit, die frei herumliegt
+und von jemandem weitergegeben werden kann, der nie etwas bekommen hat
+(ADR-0088).
+
+- **Zurückziehen ja, umstufen nein.** Ein Link, dessen Rechte man ändern kann,
+  ist ein zweiter Ort für Rechte.
+- **Keine Vererbung auf Unterprojekte.** Jedes braucht seine eigene Freigabe.
+- **Ein Name wird verlangt, bevor ein Gast schreibt.** Lesen geht vorher. Der
+  Grund ist nicht Höflichkeit: ein Gastschlüssel ist keine uuid, und wer ohne
+  Konto schreibt, muss in jeder Liste benennbar sein.
+- Der Gast sieht **ein Projekt**, keine Schiene, keinen Workspace.
+
+Der Freigaben-Modus hat drei Ansichten in dieser Reihenfolge: Links, von mir,
+für mich. Zahlen aus der Liste, die der Bildschirm ohnehin hält, und keine Null.
+
 **Voraus vor Todoist:** Freigabe per Link mit Bearbeitung an Leute ohne Konto.
 Bei Todoist braucht Mitarbeit eine Einladung. SONEs Gastschlüssel (ADR-0046)
 können das schon — mit der bekannten Falle: ein `guest:`-Schlüssel ist keine
@@ -384,6 +417,22 @@ drei Tabellen im anderen System kennen muss, ist die Grenze falsch gezogen.
 
 ---
 
+## 8a. Der Papierkorb
+
+**Erledigt ist nicht gelöscht.** Eine abgehakte Aufgabe ist ein Ergebnis und
+bleibt in ihrem Projekt; eine gelöschte ist ein Irrtum und liegt im Papierkorb.
+Der Papierkorb zeigt darum nichts Abgehaktes, und Abhaken bringt nichts dorthin.
+In vielen Werkzeugen ist das verwischt, und dann ist die Frage „wo ist die
+Aufgabe von letzter Woche" nicht mehr beantwortbar.
+
+Aufbau wie SONEs Papierkorb: Suchfeld über dem Menü, Ansichten mit Zählern,
+Hineinschauen. Und derselbe Fall, der dort „Wiederherstellen nach…" nötig
+gemacht hat: **eine gelöschte Aufgabe kann ein Projekt haben, das es nicht mehr
+gibt** — dann wird ein Ziel verlangt, sonst entsteht eine Aufgabe, die nirgends
+liegt.
+
+---
+
 ## 9. Erinnerungen
 
 Vorhanden und übertragbar: der Notify-Rahmen für die Glocke (ADR-0093), das
@@ -417,6 +466,18 @@ damit eine native App. Im ersten Wurf ist Ort ein Feld, keine Erinnerung.
    umgekehrten Platzierung. Das ist zulässig, muss aber als Begründung
    aufgeschrieben werden und nicht als Aufräumen durchgehen.
 4. Eigentum von Projekten und Zuweisungen, wenn jemand geht.
+5. Ob ein Link **ohne Ablauf** überhaupt angeboten wird. Sicherheitsfrage, keine
+   gestalterische. Blatt 10 zeigt einen solchen Link, damit man sieht, wie er
+   sich in der Liste liest.
+6. Wie viel ein Gast von anderen Gästen sieht.
+7. Der Zähler „2 Gäste haben geschrieben" in Blatt 10 beantwortet eine Frage,
+   die noch nicht geprüft ist. Nach ADR-0116 ist das die gefährlichste Sorte
+   Anzeige — sie ist konsistent zu *irgendeiner* Frage, und welche das ist, muss
+   vor dem Bau feststehen.
+8. Die dreißig Tage im Papierkorb sind aus SONE übernommen, ohne nachgesehen zu
+   haben, ob dort dieselbe Zahl steht.
+9. Der Löschweg für ein ganzes Projekt: was mit den Aufgaben darin passiert und
+   ob sie einzeln wiederherstellbar bleiben.
 
 ### Entschieden am 2026-09-07: die Reihenfolge
 
