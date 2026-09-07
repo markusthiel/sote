@@ -14,15 +14,17 @@ echte Datenbank.
 
 ```
 pnpm install
-pnpm -r typecheck
-pnpm --filter @sote/core test                      # 46, ohne Datenbank
-pnpm --filter @sote/web test                       # 16, Wächter über Tokens und Leiste
-SOTE_TEST_DATABASE_URL=postgres://… \
-  pnpm --filter @sote/server test                  # 32, gegen Postgres
-node scripts/check-migrations.mjs
-
+SOTE_TEST_DATABASE_URL=postgres://… pnpm check     # Wächter, Typprüfung, 217 Tests
 pnpm dev                                           # Oberfläche auf :5173
 ```
+
+`pnpm check` ist genau das, was die CI fährt — ein Befehl, damit die beiden
+Listen von Prüfungen nicht auseinanderlaufen können.
+
+**`@sote/core` muss vor allem anderen gebaut sein**, weil es mit `types` und
+`main` auf `dist` zeigt. Die Skripte tun das selbst (`build:core` läuft vor
+Typprüfung und Tests) — wer `tsc` oder `tsx` direkt aufruft, muss daran
+denken.
 
 Die Testdatenbank muss mit `--locale=C` angelegt sein. Sonst sortiert eine
 sprachabhängige Collation die Sortierschlüssel um und vertauscht Zeilen.

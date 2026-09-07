@@ -752,6 +752,13 @@ Beim Bauen entschieden, weil es ohne Entscheidung keinen Code gibt:
   diesem Server ein Konto hat. Per Test gehalten.
 - **Sitzungen liegen in der Datenbank**, nicht in einem signierten Keks: eine
   Abmeldung, die nur der Browser kennt, ist keine.
+- **`pnpm check` ist genau das, was die CI fährt.** Erst standen die Prüfungen
+  einzeln in der Workflow-Datei, und `pnpm -r typecheck` scheiterte dort — in
+  einem frischen Klon gibt es kein `dist`, und `@sote/core` zeigt mit `types`
+  und `main` darauf. Lokal fiel es nicht auf, weil `dist` vom letzten Bau dalag.
+  **Die Bauordnung gehört ins Skript und nicht in die CI-Datei**, sonst gibt es
+  zwei Listen von Prüfungen, und man merkt es an der Stelle, an der sie gleich
+  sein sollten.
 - **Eine gelaufene Migration wird nicht bearbeitet.** Der Läufer merkt sich den
   sha256 und wirft, wenn eine Datei sich seit dem Lauf geändert hat.
 - **Eine erledigungsbezogene Wiederholung liegt vor ihrem ersten Abhaken unter

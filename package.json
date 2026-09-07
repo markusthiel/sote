@@ -8,11 +8,12 @@
     "node": ">=22.0.0"
   },
   "scripts": {
-    "build": "pnpm --filter @sote/core build && pnpm --filter @sote/server build && pnpm --filter @sote/web build",
-    "typecheck": "pnpm -r typecheck",
-    "test": "pnpm -r test",
-    "check": "node scripts/check-migrations.mjs && pnpm -r typecheck && pnpm -r test",
-    "dev": "pnpm --filter @sote/web dev"
+    "build:core": "pnpm --filter @sote/core build",
+    "build": "pnpm build:core && pnpm --filter @sote/server build && pnpm --filter @sote/web build",
+    "typecheck": "pnpm build:core && pnpm -r typecheck",
+    "test": "pnpm build:core && pnpm -r test",
+    "dev": "pnpm --filter @sote/web dev",
+    "check": "node scripts/check-migrations.mjs && pnpm typecheck && pnpm test"
   },
   "devDependencies": {
     "tsx": "^4.23.13",
