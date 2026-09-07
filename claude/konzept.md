@@ -1207,6 +1207,130 @@ eine Entscheidung ist und nicht eine Lücke:
 
 ---
 
+## 10d. Ordner statt Projekte — die Grundform, neu geschnitten
+
+**Status: vorgeschlagen, nicht gebaut.** Aufgeschrieben vor dem Bau, weil bei
+einer Änderung an der Grundform eine halbe Stunde Nachdenken billiger ist als
+die Migration danach.
+
+### Der Anlass
+
+Gemeldet, beim Durchsehen von SONEs Seitenleiste: *„andererseits frage ich mich,
+wieso wir nicht auch mit Ordnern arbeiten anstatt Projekte. Dann könnte man das
+ganze komplett übernehmen. Seiten wären dann die eigentlichen Projekte bzw.
+Aufgabenlisten."*
+
+### Was heute falsch ist, unabhängig von SONE
+
+**Ein Projekt ist zwei Dinge gleichzeitig:** ein Behälter (es hat
+Unterprojekte) und eine Liste (es hält Aufgaben). Die Vermischung kostet an
+mehreren Stellen, und jede davon steht schon im Code:
+
+- Das Zeilenmenü bietet „Unterprojekt anlegen" **und** die Zeile ist ein Ziel
+  für Aufgaben — zwei Bedeutungen an einem Gegenstand.
+- Die Projektansicht muss `parent_id IS NULL` filtern, damit Teilaufgaben nicht
+  doppelt erscheinen.
+- `#name` in der Schnellerfassung meint ein Projekt, das auch ein reiner
+  Behälter sein kann. Eine Aufgabe in einem Behälter ist ein Zustand, den
+  niemand gemeint hat.
+
+**Todoist macht es so, Things nicht.** Dort sind Bereiche Behälter und Projekte
+Listen. Der Maßstab dieses Produkts ist „Todoist bei der Erfassung, Things beim
+Gefühl" — und beim Gefühl gewinnt die Trennung.
+
+SONE hat dieselbe Trennung, und der Kommentar an `pages.kind` sagt sie in fünf
+Wörtern: *„Folders organise, pages hold writing."*
+
+### Die neue Form
+
+Drei Ebenen, und jede tut genau eine Sache:
+
+| | tut | verschachtelt | hält |
+|---|---|---|---|
+| **Ordner** | ordnen | ja, beliebig tief | Ordner und Listen |
+| **Liste** | halten | nein | Aufgaben |
+| **Aufgabe** | die Sache | eine Ebene (Teilaufgabe) | — |
+
+**Eine Tabelle, wie in SONE.** `projects` bekommt eine Spalte `kind IN
+('folder', 'list')` statt einer zweiten Tabelle. Ein Baum, ein
+Sortierschlüsselraum, ein Papierkorb — und der bestehende Baumcode bleibt
+weitgehend, wie er ist. Zwei Tabellen wären zwei Sortierungen, die man beim
+Verschieben zwischen ihnen aufeinander abbilden müsste.
+
+**Eine Liste verschachtelt nicht.** Das ist die ganze Entscheidung. Wer eine
+Liste in eine Liste stecken will, will einen Ordner.
+
+### Was daraus folgt, und was ich entschieden hätte
+
+1. **`#name` meint eine Liste.** Ein Ordner ist kein Ziel für Aufgaben. Die
+   vier Meldungen der Schnellerfassung bekommen eine fünfte: „das ist ein
+   Ordner, keine Liste" — unbekannt und mehrdeutig reichen dann nicht mehr, weil
+   *gefunden, aber falsche Art* ein eigener Fall ist.
+
+2. **Aufgaben dürfen ohne Liste sein.** Das ist der Posteingang, und den gibt es
+   in der Schiene schon. Der Alternative — jede Aufgabe braucht eine Liste — steht
+   entgegen, dass die Schnellerfassung ihren Wert daraus zieht, dass man nichts
+   entscheiden muss, um etwas festzuhalten.
+
+3. **Die Zeit-Ansichten bleiben, wie sie sind.** Heute, Demnächst und Irgendwann
+   schneiden quer durch alles und zeigen zu jeder Aufgabe ihre Liste. Sie kennen
+   Ordner nicht — ein Ordner hat keine Aufgaben.
+
+4. **Name eindeutig im Geschwisterkreis, über beide Arten hinweg.** Ein Ordner
+   „Haus" und eine Liste „Haus" nebeneinander sind zwei Zeilen mit demselben
+   Namen an derselben Stelle. Der bestehende Unique-Index (Migration 0004)
+   deckt das schon ab, sobald beide in derselben Tabelle stehen.
+
+5. **Der Papierkorb muss zwei Ebenen tief greifen.** Heute prüft `ALIVE`, ob das
+   Projekt der Aufgabe im Korb liegt. Künftig kann der **Ordner über der Liste**
+   im Korb liegen. Das ist die technisch heikelste Stelle der Umstellung, und
+   sie ist keine Zeile: `NOT EXISTS (Projekt im Korb)` wird zu einer Prüfung
+   entlang des Pfades.
+
+6. **Zeichen und Farbe haben beide Arten**, in derselben Form (`{icon,
+   iconColor}`). Ein Ordner ohne Zeichen ist ein Ordnersymbol, eine Liste ohne
+   Zeichen ein Listensymbol — die Vorgabe unterscheidet die Arten, ohne dass
+   jemand etwas wählen muss. Das ist SONEs Regel für Ordner und Seiten.
+
+### Die Migration, und warum sie eine Entscheidung enthält
+
+Jedes bestehende Projekt wird zu genau einem von beiden. Drei Fälle sind
+eindeutig, einer nicht:
+
+- **Nur Aufgaben, keine Kinder** → Liste.
+- **Nur Kinder, keine Aufgaben** → Ordner.
+- **Weder noch** (leer) → Liste. Ein leeres Blatt ist häufiger eine gerade
+  angelegte Liste als ein Ordner auf Vorrat.
+- **Beides — Aufgaben UND Kinder** → **wird aufgeteilt**: der Ordner behält
+  Namen, Zeichen und Platz, und darunter entsteht eine Liste mit demselben
+  Namen, in die die Aufgaben umziehen.
+
+Der letzte Fall ist der, der eine Entscheidung enthält, und ich schreibe die
+Alternative dazu: man könnte die Aufgaben auch in den Posteingang schieben. Das
+wäre datenerhaltend und trotzdem falsch — sie hatten einen Ort, und der Ort war
+gemeint. Eine Liste gleichen Namens ist die Übersetzung, die am wenigsten
+behauptet.
+
+### Was ich dabei nicht verspreche
+
+- **Verschieben zwischen den Arten** (eine Liste zu einem Ordner machen) ist
+  nicht vorgesehen. Wer das will, legt einen Ordner an und zieht die Liste
+  hinein. Eine Umwandlung, die Aufgaben mitnimmt, hätte dieselbe Frage wie der
+  vierte Migrationsfall — nur ohne die Ruhe, sie einmal zu beantworten.
+- **Rollen und Rechte je Ordner** kommen nicht mit. Heute gilt alles pro
+  Arbeitsbereich, und das bleibt so, bis es einen Grund gibt.
+
+### Offen, und zwar für Markus
+
+1. Der vierte Migrationsfall: Aufteilen (mein Vorschlag) oder Aufgaben in den
+   Posteingang?
+2. Heißt es in der Oberfläche „Liste" oder weiter „Projekt"? *Projekt* ist das
+   Wort, das Leute aus Todoist mitbringen; *Liste* ist genauer. Ich neige zu
+   **Projekt** für die Liste und **Ordner** für den Behälter — dann ändert sich
+   für niemanden ein Wort, und die neue Ebene heißt, wie sie in SONE heißt.
+3. Dürfen Ordner ganz oben liegen wie Listen, oder muss eine Liste immer in
+   einem Ordner sitzen? Ich neige zu **beides frei** — wie SONE.
+
 ## 11. Was aus SONE mitkommt, ohne neu entschieden zu werden
 
 - Tokens dreischichtig, warme Neutralrampe, Radien 2/2/4, Archivo +
