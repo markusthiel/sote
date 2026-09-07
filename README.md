@@ -8,9 +8,16 @@ Aufgaben verwalten. Auf deinem Server.
 
 ## Stand
 
-**Nichts davon ist gebaut.** Dieses Repository enthält bislang das
-Konzeptpapier und die Gestaltungsentwürfe. Reihenfolge des Vorgehens:
-Konzept → Artboards → ADRs → Bau.
+Konzept und Gestaltung stehen, das Gerippe hat angefangen. **Es läuft noch
+nichts** — es gibt keinen Server und keine Oberfläche. Was da ist, ist der Kern
+mit den reinen Funktionen und dem Schema.
+
+```
+pnpm install
+pnpm -r test          # 46 Tests
+pnpm -r typecheck
+node scripts/check-migrations.mjs
+```
 
 - [`claude/konzept.md`](claude/konzept.md) — die Festlegungen und die offenen
   Punkte
@@ -19,6 +26,10 @@ Konzept → Artboards → ADRs → Bau.
   Papierkorb
 - [`design/artboards-3.html`](design/artboards-3.html) — Erinnerungen, CalDAV,
   Einstellungen, Kopplung
+- [`packages/core`](packages/core) — Schnellerfassung, Wiederholungen,
+  Sortierung. Rein und getestet.
+- [`packages/server/migrations/0001_init.sql`](packages/server/migrations/0001_init.sql)
+  — das Schema
 
 ## Was SOTE werden soll
 
