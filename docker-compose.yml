@@ -1,15 +1,77 @@
 # SOTE — zum Deployen.
 #
-# Zwei Dienste, nichts weiter: die Datenbank und der Server. Die Oberfläche wird
-# vom Server mit ausgeliefert, sobald es eine gibt.
+# Zwei Dienste, nichts weiter: die Datenbank und der Server. Die Oberfläche
+# liefert der Server mit aus, im selben Ursprung — damit der Sitzungskeks ohne
+# CORS auskommt.
+#
+# Die Form ist an SONEs Compose-Datei angeglichen, damit beide auf demselben
+# Rechner nicht zwei verschiedene Sprachen sprechen: `POSTGRES_PASSWORD` für die
+# Datenbank, `SOTE_*` für den Server, die Datenbank-URL hier zusammengesetzt und
+# nicht in `.env`, und `SOTE_PORT` als Host-Port.
 
 services:
+  server:
+    # Ein gebautes Abbild aus der Registry, nicht ein Bau auf dem Zielrechner:
+    # ein Deployment, das baut, braucht dort eine Werkzeugkette und scheitert zu
+    # einem Zeitpunkt, an dem niemand hinsieht.
+    #
+    # **Vorgabe ist `:main`, nicht `:latest`.** `:latest` wird erst für ein
+    # Nicht-Vorab-Tag veröffentlicht; solange es keines gibt, gäbe eine Vorgabe
+    # darauf beim Pullen einen 404 — und das liest sich wie ein kaputtes
+    # Deployment und nicht wie ein unveröffentlichtes Projekt. Dieselbe
+    # Erfahrung wie in SONE (ADR-0013). Ab dem ersten Release steht hier
+    # `:latest`.
+    #
+    # `:main` ändert sich mit jedem Push auf main. Wer das deployt, nimmt das in
+    # Kauf; für einen Stand, der nicht unter einem weggeht, setzt man SOTE_IMAGE
+    # auf eine Version.
+    #
+    # Aus dem Quellstand bauen statt ziehen:
+    #   docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
+    image: ${SOTE_IMAGE:-ghcr.io/markusthiel/sote:main}
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      # Hier zusammengesetzt und nicht in `.env`: eine URL, die das Kennwort
+      # enthält, wäre eine zweite Stelle, an der es steht — und die beiden
+      # laufen beim ersten Ändern auseinander.
+      SOTE_DATABASE_URL: postgres://sote:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@db:5432/sote
+
+      # Jede Einstellung, die der Server liest, steht hier namentlich.
+      #
+      # SONEs Lehre, und sie hat dort vierzehn Variablen betroffen: **Compose
+      # gibt die Umgebung des Rechners nicht weiter.** Was in `.env` steht und
+      # hier nicht genannt ist, erreicht den Container nie — der Betreiber füllt
+      # etwas aus, es wirkt nicht, und nichts sagt warum. Also lieber eine Zeile
+      # zu viel als eine Einstellung, die stumm ins Leere geht.
+      SOTE_SESSION_DAYS: ${SOTE_SESSION_DAYS:-30}
+      # Minuten ohne Hinsehen, bevor die Erinnerungsmail geht. `0` heißt „sofort
+      # mailen", nicht „nie".
+      SOTE_REMINDER_MAIL_AFTER_MINUTES: ${SOTE_REMINDER_MAIL_AFTER_MINUTES:-10}
+    ports:
+      # Host-Port links, der feste Port des Containers rechts.
+      #
+      # 3001, weil SONE 3000 nimmt und beide auf demselben Rechner laufen
+      # sollen. Gebunden wird an alle Schnittstellen, wie bei SONE — davor
+      # gehört ein Reverse Proxy mit TLS, weil der Sitzungskeks sonst im
+      # Klartext reist. Wer den Port nur lokal will, schreibt
+      # `127.0.0.1:3001:8080`.
+      - "${SOTE_PORT:-3001}:8080"
+    healthcheck:
+      test: ["CMD", "node", "docker/healthcheck.mjs"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+
   db:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
       POSTGRES_USER: sote
-      POSTGRES_PASSWORD: ${SOTE_DB_PASSWORD:?SOTE_DB_PASSWORD fehlt}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
       POSTGRES_DB: sote
       # Deterministische Collation. Sortierschlüssel sind Fractional Indices und
       # werden lexikographisch verglichen — eine sprachabhängige Collation
@@ -21,52 +83,12 @@ services:
       # Dump-and-Restore in eine neue.
       POSTGRES_INITDB_ARGS: "--locale=C --encoding=UTF8"
     volumes:
-      - db-data:/var/lib/postgresql/data
+      - sote_db:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U sote -d sote"]
       interval: 5s
       timeout: 5s
       retries: 20
 
-  server:
-    # Ein gebautes Abbild aus der Registry, nicht ein Bau auf dem Zielrechner:
-    # ein Deployment, das baut, braucht dort eine Werkzeugkette und scheitert
-    # zu einem Zeitpunkt, an dem niemand hinsieht.
-    #
-    # **Vorgabe ist `:main`, nicht `:latest`.** `:latest` wird erst fuer ein
-    # Nicht-Vorab-Tag veroeffentlicht; solange es keines gibt, gaebe eine
-    # Vorgabe darauf beim Pullen einen 404 -- und das liest sich wie ein
-    # kaputtes Deployment und nicht wie ein unveroeffentlichtes Projekt.
-    # Dieselbe Erfahrung wie in SONE (ADR-0013). Ab dem ersten Release steht
-    # hier `:latest`.
-    #
-    # `:main` aendert sich mit jedem Push auf main. Wer das deployt, nimmt das
-    # in Kauf; fuer einen Stand, der nicht unter einem weggeht, setzt man
-    # SOTE_IMAGE auf eine Version.
-    #
-    # Aus dem Quellstand bauen statt ziehen:
-    #   docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
-    image: ${SOTE_IMAGE:-ghcr.io/markusthiel/sote:main}
-    restart: unless-stopped
-    depends_on:
-      db:
-        condition: service_healthy
-    environment:
-      SOTE_DATABASE_URL: postgres://sote:${SOTE_DB_PASSWORD:?SOTE_DB_PASSWORD fehlt}@db:5432/sote
-      SOTE_PORT: 8080
-      SOTE_SESSION_DAYS: ${SOTE_SESSION_DAYS:-30}
-      SOTE_REMINDER_MAIL_AFTER_MINUTES: ${SOTE_REMINDER_MAIL_AFTER_MINUTES:-10}
-    ports:
-      - "${SOTE_BIND:-127.0.0.1:8080}:8080"
-    healthcheck:
-      test:
-        - CMD
-        - node
-        - -e
-        - "fetch('http://127.0.0.1:8080/api/health').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"
-      interval: 10s
-      timeout: 5s
-      retries: 6
-
 volumes:
-  db-data:
+  sote_db:

@@ -40,6 +40,10 @@ COPY --from=build /app/packages/core/dist packages/core/dist
 COPY --from=build /app/packages/server/dist packages/server/dist
 COPY --from=build /app/packages/web/dist packages/web/dist
 COPY packages/server/migrations packages/server/migrations
+# Der Healthcheck aus compose ruft diese Datei im Container auf. Ohne sie
+# scheitert er, Docker startet den Container neu, und der Grund steht nirgends
+# außer in einer Zeile „Cannot find module".
+COPY docker/healthcheck.mjs docker/healthcheck.mjs
 
 # Nicht als root. Der Workflow misst das nach dem Bauen, weil eine Zeile im
 # Dockerfile noch keine Messung ist.

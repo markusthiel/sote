@@ -30,7 +30,7 @@ sprachabhängige Collation die Sortierschlüssel um und vertauscht Zeilen.
 ### Deployen
 
 ```
-cp .env.example .env      # SOTE_DB_PASSWORD ausfüllen
+cp .env.example .env      # POSTGRES_PASSWORD ausfüllen
 docker compose up -d
 ```
 
@@ -53,8 +53,9 @@ Projekt.
 
 Der Server migriert beim Start selbst und liefert die gebaute Oberfläche mit
 aus — ein Ursprung für beides, damit der Sitzungskeks ohne CORS auskommt. Er
-bindet nur an localhost; davor gehört ein Reverse Proxy mit TLS, weil der Keks
-sonst im Klartext reist.
+hört auf `SOTE_PORT`, Vorgabe 3001, weil SONE 3000 nimmt. Gebunden wird an alle
+Schnittstellen, wie bei SONE; davor gehört ein Reverse Proxy mit TLS, weil der
+Keks sonst im Klartext reist.
 
 Das erste Konto legt ein Skript an — eine Einladung gibt es noch nicht:
 
