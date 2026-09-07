@@ -10,9 +10,13 @@ RUN corepack enable
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml* tsconfig.base.json ./
 COPY packages/core/package.json packages/core/
 COPY packages/server/package.json packages/server/
+COPY packages/web/package.json packages/web/
 RUN pnpm install --frozen-lockfile || pnpm install
 COPY packages ./packages
-RUN pnpm -r build
+# Reihenfolge: core zuerst, weil Server und Oberfläche daraus lesen.
+RUN pnpm --filter @sote/core build \
+ && pnpm --filter @sote/server build \
+ && pnpm --filter @sote/web build
 
 FROM node:22-alpine
 WORKDIR /app
@@ -24,6 +28,7 @@ COPY packages/server/package.json packages/server/
 RUN pnpm install --prod --frozen-lockfile || pnpm install --prod
 COPY --from=build /app/packages/core/dist packages/core/dist
 COPY --from=build /app/packages/server/dist packages/server/dist
+COPY --from=build /app/packages/web/dist packages/web/dist
 COPY packages/server/migrations packages/server/migrations
 
 # Nicht als root.

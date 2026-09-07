@@ -8,10 +8,11 @@
     "node": ">=22.0.0"
   },
   "scripts": {
-    "build": "pnpm -r build",
+    "build": "pnpm --filter @sote/core build && pnpm --filter @sote/server build && pnpm --filter @sote/web build",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",
-    "check": "node scripts/check-migrations.mjs && pnpm -r typecheck && pnpm -r test"
+    "check": "node scripts/check-migrations.mjs && pnpm -r typecheck && pnpm -r test",
+    "dev": "pnpm --filter @sote/web dev"
   },
   "devDependencies": {
     "tsx": "^4.23.13",
@@ -20,6 +21,12 @@
   "dependencies": {
     "@types/node": "^26.5.0",
     "@types/pg": "^8.23.1",
-    "pg": "^8.23.0"
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.7",
+    "@vitejs/plugin-react": "^6.1.1",
+    "pg": "^8.23.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "vite": "^8.2.2"
   }
 }

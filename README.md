@@ -8,17 +8,20 @@ Aufgaben verwalten. Auf deinem Server.
 
 ## Stand
 
-Konzept und Gestaltung stehen, das Gerippe hat angefangen. **Es läuft noch
-nichts** — es gibt keinen Server und keine Oberfläche. Was da ist, ist der Kern
-mit den reinen Funktionen und dem Schema.
+Konzept und Gestaltung stehen. Der Kern, der Server und die Heute-Ansicht
+laufen; alles andere ist noch nicht gebaut. **94 Tests**, davon 26 gegen eine
+echte Datenbank.
 
 ```
 pnpm install
 pnpm -r typecheck
-pnpm --filter @sote/core test                      # 46 Tests, ohne Datenbank
+pnpm --filter @sote/core test                      # 46, ohne Datenbank
+pnpm --filter @sote/web test                       # 16, Wächter über Tokens und Leiste
 SOTE_TEST_DATABASE_URL=postgres://… \
-  pnpm --filter @sote/server test                  # 25 Tests, gegen Postgres
+  pnpm --filter @sote/server test                  # 32, gegen Postgres
 node scripts/check-migrations.mjs
+
+pnpm dev                                           # Oberfläche auf :5173
 ```
 
 Die Testdatenbank muss mit `--locale=C` angelegt sein. Sonst sortiert eine
@@ -31,9 +34,13 @@ cp .env.example .env      # SOTE_DB_PASSWORD ausfüllen
 docker compose up -d
 ```
 
-Der Server migriert beim Start selbst. Er bindet nur an localhost; davor gehört
-ein Reverse Proxy mit TLS, weil der Sitzungskeks sonst im Klartext reist. Eine
-Oberfläche gibt es noch nicht — bislang ist es eine API.
+Der Server migriert beim Start selbst und liefert die gebaute Oberfläche mit
+aus — ein Ursprung für beides, damit der Sitzungskeks ohne CORS auskommt. Er
+bindet nur an localhost; davor gehört ein Reverse Proxy mit TLS, weil der Keks
+sonst im Klartext reist.
+
+Ein erstes Konto legt man derzeit von Hand an; eine Einladung gibt es noch
+nicht.
 
 - [`claude/konzept.md`](claude/konzept.md) — die Festlegungen und die offenen
   Punkte
@@ -47,6 +54,8 @@ Oberfläche gibt es noch nicht — bislang ist es eine API.
 - [`packages/server/migrations`](packages/server/migrations) — das Schema
 - [`packages/server/src/tasks.ts`](packages/server/src/tasks.ts) — was Abhaken
   bedeutet, und die Heute-Ansicht
+- [`packages/web/src/modes.tsx`](packages/web/src/modes.tsx) — die eine
+  Modusliste, aus der Schiene und Fußleiste gezeichnet werden
 
 ## Was SOTE werden soll
 

@@ -240,3 +240,14 @@ test('abmelden macht den Keks wertlos', async () => {
   const res = await call('/api/today');
   assert.equal(res.status, 401);
 });
+
+/* ── Die Oberfläche ausliefern ─────────────────────────────────────────── */
+
+test('ohne gebaute Oberfläche antwortet ein Nicht-API-Pfad mit einem Grund', async () => {
+  // Diese Instanz im Test hat keinen webRoot. Sie soll das sagen und nicht
+  // einen leeren 404 auf jeden Pfad geben.
+  const res = await call('/');
+  assert.equal(res.status, 404);
+  const body = (await res.json()) as { error: { code: string } };
+  assert.equal(body.error.code, 'no_web');
+});

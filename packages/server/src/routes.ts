@@ -15,6 +15,7 @@ import { signIn, signOut, userOfToken } from './auth.js';
 import { queryOne, queryRows } from './db.js';
 import type { Config } from './env.js';
 import { cookie, fail, json, readJson } from './http/respond.js';
+import { makeStatic } from './http/static.js';
 import {
   complete,
   createFromLine,
@@ -52,6 +53,8 @@ interface Ctx {
   readonly pool: Pool;
   readonly config: Config;
   readonly now: () => Date;
+  /** Wurzel der gebauten Oberfläche. Fehlt sie, ist es nur eine API. */
+  readonly webRoot?: string | undefined;
 }
 
 /** Der Arbeitsbereich, in dem diese Person Mitglied ist. */
@@ -80,6 +83,16 @@ async function memberWorkspace(
   return first?.workspace_id ?? null;
 }
 
+/** Der Auslieferer wird pro Wurzel einmal gebaut, nicht pro Anfrage. */
+const servers = new Map<string, ReturnType<typeof makeStatic>>();
+function serveFrom(root: string) {
+  const found = servers.get(root);
+  if (found !== undefined) return found;
+  const made = makeStatic(root);
+  servers.set(root, made);
+  return made;
+}
+
 export function makeServer(ctx: Ctx): Server {
   return createServer((req, res) => {
     handle(ctx, req, res).catch((e: unknown) => {
@@ -98,6 +111,16 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
   const path = url.pathname;
   const method = req.method ?? 'GET';
   const now = ctx.now();
+
+  if (!path.startsWith('/api/')) {
+    if (ctx.webRoot === undefined) {
+      fail(res, 404, 'no_web', 'diese Instanz liefert keine Oberfläche aus');
+      return;
+    }
+    const served = await serveFrom(ctx.webRoot)(path, res);
+    if (!served) fail(res, 404, 'no_file', `${path} gibt es nicht`);
+    return;
+  }
 
   if (path === '/api/health') {
     json(res, 200, { ok: true });

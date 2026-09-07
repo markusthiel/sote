@@ -1,0 +1,133 @@
+/**
+ * SOTE — die Schnellerfassung.
+ *
+ * Ein Feld. Enter speichert, **das Feld bleibt offen** für die nächste Zeile.
+ * Escape leert es; ein leeres Feld verlässt es.
+ *
+ * Die Chips zeigen, was der Parser **verstanden** hat, und sie kommen aus
+ * `parseQuickAdd` in `@sote/core` — derselben Funktion, die der Server
+ * benutzt. Wenn die Oberfläche sie nachbaute, würden Anzeige und Ergebnis beim
+ * ersten Sonderfall auseinanderlaufen. Gelesen wird beim Tippen, also braucht
+ * es dafür keinen Server: das ist der Unterschied zwischen einem Feld, das
+ * sofort antwortet, und einem, das auf eine Runde wartet.
+ */
+
+import { parseQuickAdd, describe as describeRecurrence } from '@sote/core';
+import { useMemo, useState } from 'react';
+
+import { whenLabel } from '../dates.js';
+
+const PRIORITY_NAMES = ['', 'Dringend', 'Wichtig', 'Normal', 'Später'] as const;
+
+export function QuickAdd({
+  now,
+  onSubmit,
+  busy,
+  unknownProject,
+}: {
+  now: Date;
+  onSubmit: (line: string) => void;
+  busy: boolean;
+  unknownProject: string | null;
+}) {
+  const [line, setLine] = useState('');
+
+  // Rein und ohne Server: das Parsen ist eine Funktion, kein Aufruf.
+  const parsed = useMemo(
+    () => (line.trim() === '' ? undefined : parseQuickAdd(line, { now })),
+    [line, now],
+  );
+
+  const chips: { label: string; value: string; unknown?: boolean }[] = [];
+  if (parsed !== undefined) {
+    if (parsed.planned !== undefined) {
+      chips.push({
+        label: 'geplant',
+        value: whenLabel(
+          parsed.planned,
+          parsed.planned.getHours() === 0 && parsed.planned.getMinutes() === 0,
+          now,
+        ),
+      });
+    }
+    if (parsed.due !== undefined) {
+      chips.push({ label: 'frist', value: whenLabel(parsed.due, true, now) });
+    }
+    if (parsed.recurrence !== undefined) {
+      chips.push({
+        label: 'wiederholt',
+        value: describeRecurrence(parsed.recurrence).replace(/\.$/, ''),
+      });
+    }
+    if (parsed.project !== undefined) {
+      chips.push({
+        label: 'projekt',
+        value: parsed.project,
+        unknown: unknownProject === parsed.project,
+      });
+    }
+    for (const label of parsed.labels) chips.push({ label: 'schlagwort', value: label });
+    for (const who of parsed.assignees) chips.push({ label: 'zugewiesen', value: who });
+    if (parsed.priority !== undefined) {
+      chips.push({ label: 'priorität', value: PRIORITY_NAMES[parsed.priority]! });
+    }
+  }
+
+  function submit() {
+    const value = line.trim();
+    if (value === '' || busy) return;
+    onSubmit(value);
+    // Offen bleiben. Wer eine Aufgabe notiert, notiert oft die nächste.
+    setLine('');
+  }
+
+  return (
+    <div className="quick">
+      <div className="quick-field">
+        <span aria-hidden="true" style={{ color: 'var(--text-faint)' }}>
+          +
+        </span>
+        <input
+          value={line}
+          onChange={(e) => setLine(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              submit();
+            } else if (e.key === 'Escape') {
+              setLine('');
+            }
+          }}
+          placeholder="Aufgabe hinzufügen — „morgen 9 Uhr #haus !!“"
+          aria-label="Aufgabe hinzufügen"
+          enterKeyHint="done"
+        />
+      </div>
+
+      {chips.length > 0 ? (
+        <div className="chips">
+          {chips.map((chip) => (
+            <span
+              key={`${chip.label}:${chip.value}`}
+              className="chip"
+              data-unknown={chip.unknown === true}
+            >
+              <span className="lbl">{chip.label}</span>
+              {chip.value}
+            </span>
+          ))}
+        </div>
+      ) : null}
+
+      {parsed !== undefined ? (
+        <div className="quick-foot">
+          <span>Enter — anlegen</span>
+          <span>Esc — verwerfen</span>
+          <span style={{ marginLeft: 'auto' }}>
+            {parsed.title === '' ? 'noch kein Titel' : `Titel: „${parsed.title}“`}
+          </span>
+        </div>
+      ) : null}
+    </div>
+  );
+}

@@ -1,0 +1,785 @@
+/*
+ * SOTE — ein Stylesheet.
+ *
+ * Drei Schichten wie in SONE (ADR-0028): Primitive → semantisch → `--sote-*`.
+ * Hell und Dunkel sind zwei **gleichrangige, vollständige** Listen; ein Token,
+ * das nur in einer steht, ist ein Token, das in der anderen `unset` ist. Ein
+ * Test hält die Parität (`test/tokens.test.ts`).
+ *
+ * DIE COLOR-MIX-FALLE (SONE, PR #2). `transparent` ist `rgb(0 0 0 / 0)` und
+ * nicht „nichts": `color-mix(in srgb, transparent 16%, #faf8f4)` ergibt 0,84
+ * Alpha. In SONE stand genau das als Fallback in vierzehn Flächen und machte
+ * die ganze Oberfläche leicht durchsichtig — als Spalte unauffällig, im Drawer
+ * über der Seite eindeutig. **Regel: der Fallback eines Tint-Mixes ist immer
+ * die eigene Basisfarbe der Fläche.** Eine Farbe mit sich selbst gemischt ist
+ * sie selbst. Der Test erzwingt das.
+ *
+ * Schriften werden selbst ausgeliefert, sobald die Dateien da sind. Kein Fetch
+ * nach außen — in SONE hält ein Test das fest, und hier steht bis dahin ein
+ * Systemstapel.
+ */
+
+:root {
+  /* ── Primitive: warme Neutralrampe. Ein reines Grau liest sich neben
+     Geschriebenem klinisch (SONEs Begründung, bewusst übernommen). ── */
+  --ink-900: #161615;
+  --ink-800: #26241f;
+  --ink-700: #34322d;
+  --ink-600: #4a4740;
+  --ink-500: #6a675f;
+  --ink-400: #857f74;
+  --ink-350: #9a968c;
+  --ink-300: #b0aa9e;
+  --ink-200: #c9c4b8;
+  --ink-100: #e4e0d6;
+  --ink-50: #f0ede5;
+  --paper: #faf8f4;
+  --paper-raised: #fffefb;
+
+  --accent-700: #1f584e;
+  --accent-500: #2f7d6f;
+  --accent-300: #6fc0b0;
+  --accent-100: #d3ebe5;
+
+  --danger-500: #b4442f;
+  --danger-300: #d9705c;
+  --warning-500: #a8762b;
+  --warning-300: #c9a05a;
+
+  /* ── Semantisch ── */
+  --page: var(--paper);
+  --surface: #f7f5f0;
+  --raised: var(--paper-raised);
+  --sunken: var(--ink-50);
+  --line: var(--ink-100);
+  --line-strong: var(--ink-200);
+  --text: var(--ink-900);
+  --text-muted: var(--ink-500);
+  --text-faint: var(--ink-350);
+  --accent: var(--accent-500);
+  --accent-line: var(--accent-500);
+  --accent-on: var(--page);
+  --danger: var(--danger-500);
+  --warning: var(--warning-500);
+
+  /* ── Aliasse, Maße, Bewegung ── */
+  --sote-radius-sm: 2px;
+  --sote-radius-md: 2px;
+  --sote-radius-lg: 4px;
+  --sote-rail: 56px;
+  --sote-panel: 272px;
+  --sote-bar: 60px;
+  --sote-tap: 44px;
+  --sote-read: 46rem;
+  --sote-shadow-sm: 0 1px 2px rgb(22 22 21 / 6%);
+  --sote-shadow-md: 0 1px 2px rgb(22 22 21 / 6%), 0 4px 12px rgb(22 22 21 / 8%);
+  --sote-shadow-lg: 0 2px 4px rgb(22 22 21 / 8%), 0 12px 32px rgb(22 22 21 / 12%);
+  --sote-heading-weight: 300;
+  --sote-sans: Archivo, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --sote-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --page: #161615;
+  --surface: #1e1d1b;
+  --raised: #262522;
+  --sunken: #121211;
+  --line: #302e2a;
+  --line-strong: #403d38;
+  --text: #f7f5f0;
+  --text-muted: var(--ink-350);
+  --text-faint: var(--ink-400);
+  --accent: var(--accent-300);
+  --accent-line: var(--accent-300);
+  --accent-on: #161615;
+  --danger: var(--danger-300);
+  --warning: var(--warning-300);
+  --sote-shadow-sm: 0 1px 2px rgb(0 0 0 / 40%);
+  --sote-shadow-md: 0 1px 2px rgb(0 0 0 / 40%), 0 4px 12px rgb(0 0 0 / 50%);
+  --sote-shadow-lg: 0 2px 4px rgb(0 0 0 / 50%), 0 12px 32px rgb(0 0 0 / 60%);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+}
+
+body {
+  background: var(--page);
+  color: var(--text);
+  font-family: var(--sote-sans);
+  font-size: 15px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  scrollbar-width: thin;
+}
+
+/* Ein Fokusring ist keine Dekoration, und er wird gemessen: 3:1 für die
+   Begrenzung eines Bedienelements (SONE, ADR-0137). */
+:focus-visible {
+  outline: 2px solid var(--accent-line);
+  outline-offset: 2px;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+
+input {
+  font: inherit;
+  color: inherit;
+  /* Mindestens 16px, sonst zoomt iOS beim Fokus. */
+  font-size: max(1rem, 16px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ── Die Hülle. Jede Spalte scrollt für sich, das Fenster nie.
+   `min-block-size: 0` steht ausdrücklich an jedem Grid-Kind: die
+   automatische Mindesthöhe eines Grid-Items ist nur dann null, wenn sein
+   Overflow nicht `visible` ist, und `.rail` braucht `visible`, damit das
+   Kontomenü aus der 56px-Spalte darf (SONE, ADR-0144). ── */
+
+.app {
+  display: grid;
+  grid-template-columns: var(--sote-rail) var(--sote-panel) 1fr;
+  height: 100%;
+  overflow: hidden;
+}
+
+.rail,
+.panel,
+.main {
+  min-block-size: 0;
+}
+
+.rail {
+  background: var(--surface);
+  border-right: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 10px 0;
+  gap: 2px;
+  overflow: visible;
+}
+
+.rail-slot {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--sote-radius-md);
+  display: grid;
+  place-items: center;
+  color: var(--text-muted);
+  position: relative;
+}
+
+.rail-slot:hover {
+  background: var(--sunken);
+}
+
+.rail-slot[aria-current="page"] {
+  background: var(--sunken);
+  color: var(--text);
+}
+
+.rail-slot[aria-current="page"]::before {
+  content: "";
+  position: absolute;
+  left: -10px;
+  top: 9px;
+  bottom: 9px;
+  width: 2px;
+  background: var(--accent);
+}
+
+.rail-spacer {
+  flex: 1;
+}
+
+.face {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--accent-500);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  display: grid;
+  place-items: center;
+}
+
+.badge {
+  position: absolute;
+  top: 4px;
+  right: 2px;
+  min-width: 15px;
+  height: 15px;
+  background: var(--accent);
+  color: var(--accent-on);
+  border-radius: 8px;
+  font-family: var(--sote-mono);
+  font-size: 9.5px;
+  line-height: 15px;
+  text-align: center;
+  padding: 0 3px;
+}
+
+.panel {
+  background: var(--surface);
+  border-right: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.panel-head {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.ws {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 6px 8px;
+  border-radius: var(--sote-radius-md);
+  background: var(--sunken);
+  width: 100%;
+  text-align: left;
+}
+
+.ws-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+  background: var(--accent);
+  flex: none;
+}
+
+.ws-name {
+  font-size: 14px;
+  font-weight: 500;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Das Feld über dem Baum ist der Eingang zur Suche, nicht ein Knopf, der
+   einen Bildschirm mit einem Feld öffnet (SONE, `claude/suche-als-ort.md`). */
+.seek {
+  margin: 10px 12px 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--sote-radius-md);
+  padding: 6px 9px;
+  background: var(--page);
+  color: var(--text-faint);
+}
+
+.seek input {
+  border: 0;
+  background: none;
+  outline: none;
+  flex: 1;
+  min-width: 0;
+  font-size: 13.5px;
+}
+
+.panel-list {
+  padding: 8px 8px 12px;
+  overflow: auto;
+  min-block-size: 0;
+}
+
+.group-label {
+  font-family: var(--sote-mono);
+  font-size: 10.5px;
+  color: var(--text-faint);
+  padding: 12px 8px 5px;
+  letter-spacing: 0.03em;
+}
+
+.p-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 5px 8px;
+  border-radius: var(--sote-radius-md);
+  width: 100%;
+  text-align: left;
+  font-size: 14px;
+  min-height: 30px;
+}
+
+.p-item:hover {
+  background: var(--sunken);
+}
+
+.p-item[aria-current="true"] {
+  background: var(--sunken);
+  font-weight: 500;
+}
+
+.p-item .n {
+  margin-left: auto;
+  font-family: var(--sote-mono);
+  font-size: 11.5px;
+  color: var(--text-faint);
+}
+
+.p-sq {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  flex: none;
+  background: var(--ink-400);
+}
+
+.main {
+  overflow: auto;
+  background: var(--page);
+}
+
+.main-head {
+  padding: 26px 32px 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.main-head h1 {
+  font-weight: var(--sote-heading-weight);
+  font-size: 27px;
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+
+.main-head .sub {
+  font-family: var(--sote-mono);
+  font-size: 11.5px;
+  color: var(--text-muted);
+  margin-top: 5px;
+}
+
+.body {
+  padding: 6px 32px 40px;
+  max-width: var(--sote-read);
+}
+
+.section-label {
+  font-family: var(--sote-mono);
+  font-size: 10.5px;
+  color: var(--text-faint);
+  padding: 20px 0 7px;
+  letter-spacing: 0.03em;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.section-label.late {
+  color: var(--danger);
+}
+
+.section-label .rule {
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+
+/* ── Die Zeile. Vier Dinge und nicht mehr. ── */
+
+.task {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.task-box {
+  width: 17px;
+  height: 17px;
+  border: 1.5px solid var(--ink-350);
+  border-radius: var(--sote-radius-sm);
+  flex: none;
+  margin-top: 3px;
+  display: grid;
+  place-items: center;
+  background: var(--page);
+}
+
+/* Die Priorität sitzt IM Kästchen: sie sagt, wie dringend dieses Abhaken
+   ist, also gehört sie an das Ding, das man abhakt (Blatt 03). */
+.task-box[data-priority="1"] {
+  border-color: var(--danger);
+}
+
+.task-box[data-priority="2"] {
+  border-color: var(--warning);
+}
+
+.task-box[data-done="true"] {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.task-box svg {
+  opacity: 0;
+}
+
+.task-box[data-done="true"] svg,
+.task-box:hover svg {
+  opacity: 1;
+}
+
+.task-box:hover:not([data-done="true"]) svg {
+  opacity: 0.35;
+}
+
+.task-mid {
+  flex: 1;
+  min-width: 0;
+}
+
+.task-title {
+  font-size: 14.5px;
+}
+
+.task[data-done="true"] .task-title {
+  color: var(--text-muted);
+  text-decoration: line-through;
+  text-decoration-color: var(--line-strong);
+}
+
+.task-meta {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-top: 3px;
+  flex-wrap: wrap;
+}
+
+/* Geplant steht schlicht, die Frist in einer Haarlinie. Ohne diese
+   Unterscheidung erzwingt die Oberfläche die Lüge, dass jede Aufgabe an
+   ihrem Fälligkeitstag begonnen wird (Blatt 03). */
+.when {
+  font-family: var(--sote-mono);
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+
+.when.late {
+  color: var(--danger);
+}
+
+.due {
+  font-family: var(--sote-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--sote-radius-sm);
+  padding: 0 5px;
+}
+
+.due.late {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+.rep,
+.crumb {
+  font-family: var(--sote-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* Eine Zeile, die noch nicht beim Server war, sagt es — sichtbar, aber
+   nicht laut. Abhaken ist optimistisch (Blatt 06). */
+.task[data-pending="true"] {
+  opacity: 0.55;
+}
+
+.task-error {
+  font-family: var(--sote-mono);
+  font-size: 11px;
+  color: var(--danger);
+  margin-top: 3px;
+}
+
+/* ── Die Schnellerfassung. Ein Feld, Enter speichert, das Feld bleibt
+   offen. ── */
+
+.quick {
+  border: 1px solid var(--line-strong);
+  border-radius: var(--sote-radius-lg);
+  background: var(--raised);
+  margin: 18px 0 4px;
+  overflow: hidden;
+}
+
+.quick:focus-within {
+  border-color: var(--accent-line);
+}
+
+.quick-field {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 13px;
+}
+
+.quick-field input {
+  border: 0;
+  background: none;
+  outline: none;
+  flex: 1;
+  min-width: 0;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 0 13px 11px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--sote-mono);
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: var(--sote-radius-sm);
+  background: var(--sunken);
+  color: var(--text);
+  border: 1px solid var(--line);
+}
+
+.chip .lbl {
+  color: var(--text-faint);
+}
+
+.chip[data-unknown="true"] {
+  border-color: var(--warning);
+  color: var(--warning);
+}
+
+.quick-foot {
+  border-top: 1px solid var(--line);
+  padding: 8px 13px;
+  display: flex;
+  gap: 14px;
+  font-family: var(--sote-mono);
+  font-size: 10.5px;
+  color: var(--text-faint);
+  background: var(--surface);
+}
+
+.add-line {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 11px 0;
+  color: var(--text-faint);
+  font-size: 14px;
+  width: 100%;
+  text-align: left;
+}
+
+/* Ein leerer Bildschirm ist eine Einladung, keine Meldung. */
+.empty {
+  padding: 34px 0;
+  color: var(--text-muted);
+  max-width: 40ch;
+}
+
+.empty strong {
+  color: var(--text);
+  font-weight: 500;
+  display: block;
+  margin-bottom: 5px;
+}
+
+/* ── Anmelden ── */
+
+.signin {
+  height: 100%;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.signin-card {
+  width: 340px;
+  max-width: 100%;
+}
+
+.signin-card h1 {
+  font-weight: var(--sote-heading-weight);
+  font-size: 26px;
+  letter-spacing: -0.02em;
+  margin: 18px 0 3px;
+}
+
+.signin-card .claim {
+  color: var(--text-muted);
+  font-size: 13.5px;
+  margin: 0 0 22px;
+}
+
+.field {
+  display: block;
+  margin-bottom: 12px;
+}
+
+.field span {
+  display: block;
+  font-family: var(--sote-mono);
+  font-size: 10.5px;
+  color: var(--text-faint);
+  margin-bottom: 4px;
+  letter-spacing: 0.02em;
+}
+
+.field input {
+  width: 100%;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--sote-radius-md);
+  background: var(--page);
+  padding: 8px 10px;
+}
+
+.btn {
+  border: 1px solid var(--line-strong);
+  border-radius: var(--sote-radius-md);
+  padding: 7px 14px;
+  background: var(--page);
+  min-height: var(--sote-tap);
+}
+
+.btn.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-on);
+  font-weight: 500;
+  width: 100%;
+}
+
+.note-error {
+  color: var(--danger);
+  font-size: 13px;
+  margin: 10px 0 0;
+}
+
+/* ── Unter 800 px wird die Seitenleiste ein Drawer und die Schiene eine
+   Fußleiste. Umgeschaltet per Stylesheet und nicht per JS-Media-Query, sonst
+   gibt es zwei Antworten auf „welche Breite ist gerade". ── */
+
+.footbar {
+  display: none;
+}
+
+@media (max-width: 799px) {
+  .app {
+    grid-template-columns: 1fr;
+  }
+
+  .rail {
+    display: none;
+  }
+
+  .panel {
+    position: fixed;
+    inset: 0 auto 0 0;
+    width: min(300px, 85vw);
+    z-index: 20;
+    transform: translateX(-100%);
+    transition: transform 160ms ease;
+    padding-bottom: var(--sote-bar);
+  }
+
+  .panel[data-open="true"] {
+    transform: none;
+    box-shadow: var(--sote-shadow-lg);
+  }
+
+  .scrim {
+    position: fixed;
+    inset: 0;
+    background: rgb(22 22 21 / 40%);
+    z-index: 15;
+  }
+
+  .footbar {
+    display: grid;
+    position: fixed;
+    inset: auto 0 0 0;
+    grid-auto-flow: column;
+    grid-auto-columns: 1fr;
+    align-items: center;
+    height: var(--sote-bar);
+    padding-bottom: env(safe-area-inset-bottom);
+    background: var(--surface);
+    border-top: 1px solid var(--line);
+    z-index: 25;
+  }
+
+  .foot-slot {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    color: var(--text-muted);
+    position: relative;
+    padding: 6px 0;
+  }
+
+  .foot-slot[aria-current="page"] {
+    color: var(--text);
+  }
+
+  .foot-slot .t {
+    font-family: var(--sote-mono);
+    font-size: 8.5px;
+  }
+
+  .main-head,
+  .body {
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+
+  .body {
+    padding-bottom: calc(var(--sote-bar) + 24px);
+  }
+}
