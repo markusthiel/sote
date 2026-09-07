@@ -384,8 +384,23 @@ damit eine native App. Im ersten Wurf ist Ort ein Feld, keine Erinnerung.
 2. Zuweisung in der Schnellerfassung oder nur im Anfasser-Menü?
 3. Sieben Einträge in der Fußleiste — tragen oder begründet zusammenlegen?
 4. Eigentum von Projekten und Zuweisungen, wenn jemand geht.
-5. Reihenfolge: erst SOTE allein bis zur Heute-Ansicht, dann die Kopplung — oder
-   die Kopplung früh als Beweis, dass die Grenze hält?
+
+### Entschieden am 2026-09-07: die Reihenfolge
+
+**SOTE ist in erster Linie eine eigenständige Aufgaben-App.** Die Verbindung zu
+SONE ist optional, aber sinnvoll.
+
+Damit ist die offene Frage nach der Reihenfolge beantwortet: erst SOTE allein
+bis zur Heute-Ansicht, dann die Kopplung. Der Prüfstein aus Abschnitt 1 gilt als
+Abnahmekriterium — braucht die Heute-Ansicht die Kopplung, um gut zu sein, ist
+es kein eigenständiges Produkt.
+
+Praktische Folge für den Entwurf: **jede Stelle, an der SONE vorkommt, muss
+einen definierten Zustand für „nicht verbunden" haben** — und der ist nicht
+„ausgegraut", sondern „gar nicht da". Der Eintrag *Neue Aufgabe (SOTE)* im
+`/`-Menü existiert nur bei bestehender Kopplung, das Herkunftsfeld einer Aufgabe
+erscheint nur, wenn es eine Herkunft gibt, und die Einstellungen zeigen die
+Kopplung als etwas, das man einrichten kann, nicht als etwas, das fehlt.
 
 ---
 

@@ -1,0 +1,1015 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SOTE — Artboards 1</title>
+<style>
+/* ─────────────────────────────────────────────────────────────
+   Tokens. Exakt aus SONE übernommen, wo die Werte bekannt sind:
+   --accent-500 #2f7d6f, --accent-300 #6fc0b0, --danger #b4442f,
+   --ink-500 #6a675f, Flächen #f7f5f0 / #faf8f4, Tinte #161615,
+   Radien 2/2/4, Überschriftengewicht 300, Schiene 56, Panel 272.
+   Die Zwischenstufen der warmen Neutralrampe sind hier genähert
+   und beim Bau aus styles.css zu übernehmen, nicht von hier.
+   Schrift: Archivo + JetBrains Mono werden in SOTE selbst
+   ausgeliefert; diese Datei holt nichts von außen und nimmt
+   Systemschriften als Stellvertreter.
+   ───────────────────────────────────────────────────────────── */
+:root {
+  --ink-900:#161615; --ink-700:#34322d; --ink-500:#6a675f;
+  --ink-350:#9a968c; --ink-200:#c9c4b8; --ink-100:#e4e0d6; --ink-50:#f0ede5;
+  --accent-500:#2f7d6f; --accent-300:#6fc0b0;
+  --danger:#b4442f; --warning:#a8762b;
+
+  --page:#faf8f4; --surface:#f7f5f0; --raised:#fffefb; --sunken:#f0ede5;
+  --line:var(--ink-100); --line-strong:var(--ink-200);
+  --text:var(--ink-900); --text-muted:var(--ink-500);
+  --accent:var(--accent-500); --accent-line:var(--accent-500);
+
+  --r-sm:2px; --r-md:2px; --r-lg:4px;
+  --rail:56px; --panel:272px; --tap:44px;
+  --sans:"Archivo",-apple-system,"Segoe UI",Roboto,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;
+  --shadow-md:0 1px 2px rgba(22,22,21,.06),0 4px 12px rgba(22,22,21,.08);
+  --shadow-lg:0 2px 4px rgba(22,22,21,.08),0 12px 32px rgba(22,22,21,.12);
+}
+[data-theme="dark"] {
+  --page:#161615; --surface:#1e1d1b; --raised:#262522; --sunken:#121211;
+  --line:#302e2a; --line-strong:#403d38;
+  --text:#f7f5f0; --text-muted:#9a968c;
+  --accent:var(--accent-300); --accent-line:var(--accent-300);
+  --danger:#d9705c; --warning:#c9a05a;
+  --shadow-md:0 1px 2px rgba(0,0,0,.4),0 4px 12px rgba(0,0,0,.5);
+  --shadow-lg:0 2px 4px rgba(0,0,0,.5),0 12px 32px rgba(0,0,0,.6);
+}
+
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;background:#e8e5dd;color:var(--ink-900);font-family:var(--sans);
+  font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased}
+
+/* Rahmenwerk der Blattsammlung ───────────────────────────── */
+.sheet{max-width:1180px;margin:0 auto;padding:56px 24px 96px}
+.masthead{border-bottom:1px solid var(--ink-200);padding-bottom:28px;margin-bottom:12px}
+.masthead h1{font-weight:300;letter-spacing:-.02em;font-size:38px;margin:0 0 6px}
+.masthead p{margin:0;color:var(--ink-500);max-width:62ch}
+.masthead .stamp{font-family:var(--mono);font-size:11.5px;color:var(--ink-500);
+  margin-bottom:18px;letter-spacing:.02em}
+
+.board{margin-top:56px}
+.board > header{display:flex;gap:14px;align-items:baseline;margin-bottom:6px}
+.board > header .no{font-family:var(--mono);font-size:12px;color:var(--ink-350);
+  padding-top:5px;min-width:22px}
+.board > header h2{font-weight:400;font-size:21px;letter-spacing:-.01em;margin:0}
+.note{margin:0 0 20px 36px;max-width:74ch;color:var(--ink-700);font-size:14.5px}
+.note b{font-weight:600}
+.note code{font-family:var(--mono);font-size:12.5px;background:#f0ede5;
+  padding:1px 4px;border-radius:2px}
+.frame{margin-left:36px;background:var(--page);border:1px solid var(--ink-200);
+  border-radius:var(--r-lg);overflow:hidden;color:var(--text);font-family:var(--sans)}
+.pair{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-left:36px}
+.pair .frame{margin-left:0}
+.cap{font-family:var(--mono);font-size:11px;color:var(--ink-500);
+  margin:7px 0 0 36px;letter-spacing:.02em}
+.pair + .caps{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-left:36px}
+.pair + .caps .cap{margin-left:0}
+@media (max-width:860px){.pair,.pair + .caps{grid-template-columns:1fr}}
+
+/* Anwendungs-Hülle ───────────────────────────────────────── */
+.app{display:grid;grid-template-columns:var(--rail) var(--panel) 1fr;
+  min-height:520px;background:var(--page)}
+.app.with-detail{grid-template-columns:var(--rail) var(--panel) 1fr 320px}
+
+.rail{background:var(--surface);border-right:1px solid var(--line);
+  display:flex;flex-direction:column;align-items:center;padding:10px 0;gap:2px}
+.rail .slot{width:40px;height:40px;border-radius:var(--r-md);display:grid;
+  place-items:center;color:var(--ink-500);position:relative}
+.rail .slot.on{background:var(--sunken);color:var(--text)}
+.rail .slot.on::before{content:"";position:absolute;left:-10px;top:9px;bottom:9px;
+  width:2px;background:var(--accent)}
+.rail .spacer{flex:1}
+.rail .badge{position:absolute;top:4px;right:2px;min-width:15px;height:15px;
+  background:var(--accent);color:var(--page);border-radius:8px;font-family:var(--mono);
+  font-size:9.5px;line-height:15px;text-align:center;padding:0 3px}
+[data-theme="dark"] .rail .badge{color:#161615}
+.face{width:26px;height:26px;border-radius:50%;background:var(--accent-500);
+  color:#fff;font-size:11px;font-weight:600;display:grid;place-items:center;
+  font-family:var(--sans)}
+
+.panel{background:var(--surface);border-right:1px solid var(--line);
+  display:flex;flex-direction:column;min-width:0}
+.panel-head{padding:10px 12px;border-bottom:1px solid var(--line)}
+.ws{display:flex;align-items:center;gap:9px;padding:6px 8px;border-radius:var(--r-md);
+  background:var(--sunken);cursor:default}
+.ws .dot{width:9px;height:9px;border-radius:2px;background:var(--accent);flex:none}
+.ws .nm{font-size:14px;font-weight:500;flex:1;overflow:hidden;text-overflow:ellipsis;
+  white-space:nowrap}
+.ws .chev{color:var(--ink-350);font-size:10px}
+.seek{margin:10px 12px 4px;display:flex;align-items:center;gap:8px;
+  border:1px solid var(--line-strong);border-radius:var(--r-md);padding:6px 9px;
+  color:var(--ink-350);font-size:13.5px;background:var(--page)}
+.plist{padding:8px 8px 12px;overflow:auto}
+.glabel{font-family:var(--mono);font-size:10.5px;color:var(--ink-350);
+  padding:12px 8px 5px;letter-spacing:.03em}
+.pitem{display:flex;align-items:center;gap:9px;padding:5px 8px;border-radius:var(--r-md);
+  font-size:14px;color:var(--text)}
+.pitem.on{background:var(--sunken);font-weight:500}
+.pitem .n{margin-left:auto;font-family:var(--mono);font-size:11.5px;color:var(--ink-350)}
+.pitem .sq{width:8px;height:8px;border-radius:2px;flex:none}
+.pitem.sub{padding-left:26px}
+.pitem .tw{color:var(--ink-350);font-size:10px;width:9px;flex:none}
+
+.main{overflow:auto;min-width:0;background:var(--page)}
+.mhead{padding:26px 32px 14px;border-bottom:1px solid var(--line)}
+.mhead h3{font-weight:300;font-size:27px;letter-spacing:-.02em;margin:0}
+.mhead .sub{font-family:var(--mono);font-size:11.5px;color:var(--text-muted);margin-top:5px}
+.body{padding:6px 32px 28px;max-width:46rem}
+
+/* Aufgabenzeile ──────────────────────────────────────────── */
+.slab{font-family:var(--mono);font-size:10.5px;color:var(--ink-350);
+  padding:20px 0 7px;letter-spacing:.03em;display:flex;gap:8px;align-items:center}
+.slab.warn{color:var(--danger)}
+.slab .rule{flex:1;height:1px;background:var(--line)}
+.task{display:flex;align-items:flex-start;gap:11px;padding:9px 0;
+  border-bottom:1px solid var(--line);position:relative}
+.task .grip{position:absolute;left:-19px;top:12px;color:var(--ink-200);
+  font-size:12px;line-height:1;letter-spacing:-1px}
+.box{width:17px;height:17px;border:1.5px solid var(--ink-350);border-radius:var(--r-sm);
+  flex:none;margin-top:3px;display:grid;place-items:center;background:var(--page)}
+.box.p1{border-color:var(--danger)}
+.box.p2{border-color:var(--warning)}
+.box.done{background:var(--accent);border-color:var(--accent)}
+.box.done svg{display:block}
+.box svg{display:none}
+.tmid{flex:1;min-width:0}
+.ttl{font-size:14.5px}
+.task.is-done .ttl{color:var(--text-muted);text-decoration:line-through;
+  text-decoration-color:var(--ink-200)}
+.tmeta{display:flex;align-items:center;gap:9px;margin-top:3px;flex-wrap:wrap}
+.when{font-family:var(--mono);font-size:11.5px;color:var(--text-muted)}
+.when.late{color:var(--danger)}
+.due{font-family:var(--mono);font-size:11px;color:var(--text-muted);
+  border:1px solid var(--line-strong);border-radius:var(--r-sm);padding:0 5px}
+.due.late{color:var(--danger);border-color:var(--danger)}
+.rep{font-family:var(--mono);font-size:11px;color:var(--text-muted)}
+.crumb{font-family:var(--mono);font-size:11px;color:var(--text-muted);
+  display:inline-flex;align-items:center;gap:5px}
+.crumb .sq{width:7px;height:7px;border-radius:2px}
+.tright{display:flex;align-items:center;gap:7px;margin-top:2px;flex:none}
+.who{width:21px;height:21px;border-radius:50%;font-size:9.5px;font-weight:600;
+  display:grid;place-items:center;background:var(--ink-200);color:var(--ink-700)}
+.who.a{background:var(--accent-500);color:#fff}
+.dots{color:var(--ink-350);font-size:14px;line-height:1;padding:0 2px}
+.subn{font-family:var(--mono);font-size:10.5px;color:var(--ink-350)}
+.addline{display:flex;align-items:center;gap:11px;padding:11px 0;color:var(--ink-350);
+  font-size:14px}
+.addline .plus{width:17px;height:17px;display:grid;place-items:center;
+  color:var(--ink-350);font-size:15px}
+
+/* Menü / Popups ──────────────────────────────────────────── */
+.menu{position:absolute;background:var(--raised);border:1px solid var(--line-strong);
+  border-radius:var(--r-lg);box-shadow:var(--shadow-lg);padding:5px;min-width:210px;z-index:5}
+.mi{display:flex;align-items:center;gap:10px;padding:6px 9px;border-radius:var(--r-md);
+  font-size:13.5px}
+.mi .k{margin-left:auto;font-family:var(--mono);font-size:10.5px;color:var(--ink-350)}
+.mi.on{background:var(--sunken)}
+.mi.sep{border-top:1px solid var(--line);margin:5px -5px 0;padding-top:11px;
+  border-radius:0}
+.mi .swatch{width:11px;height:11px;border-radius:2px}
+.mi.dgr{color:var(--danger)}
+
+/* Schnellerfassung ───────────────────────────────────────── */
+.qa{background:var(--raised);border:1px solid var(--line-strong);
+  border-radius:var(--r-lg);box-shadow:var(--shadow-lg);width:560px;max-width:100%;
+  margin:44px auto;overflow:hidden}
+.qa .field{padding:15px 17px;font-size:16px;display:flex;align-items:center;gap:2px}
+.qa .caret{width:1.5px;height:19px;background:var(--accent);
+  animation:blink 1.1s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+@media (prefers-reduced-motion:reduce){.qa .caret{animation:none}}
+.qa .chips{display:flex;flex-wrap:wrap;gap:6px;padding:0 17px 13px}
+.chip{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);
+  font-size:11px;padding:3px 8px;border-radius:var(--r-sm);
+  background:var(--sunken);color:var(--text);border:1px solid var(--line)}
+.chip .lbl{color:var(--ink-350)}
+.chip .sq{width:7px;height:7px;border-radius:2px}
+.qa .foot{border-top:1px solid var(--line);padding:9px 17px;display:flex;
+  align-items:center;gap:16px;font-family:var(--mono);font-size:10.5px;
+  color:var(--ink-350);background:var(--surface)}
+.qa .foot .r{margin-left:auto}
+.read{color:var(--accent)}
+
+/* Detailspalte ───────────────────────────────────────────── */
+.detail{background:var(--surface);border-left:1px solid var(--line);
+  display:flex;flex-direction:column;overflow:auto}
+.detail .dh{padding:18px 18px 12px;border-bottom:1px solid var(--line)}
+.detail .dh .t{font-size:16px;font-weight:500}
+.frow{display:flex;align-items:center;gap:10px;padding:9px 18px;
+  border-bottom:1px solid var(--line);font-size:13.5px}
+.frow .fl{font-family:var(--mono);font-size:10.5px;color:var(--ink-350);
+  width:74px;flex:none;letter-spacing:.02em}
+.frow .fv{color:var(--text)}
+.frow .fv.empty{color:var(--ink-350)}
+.origin{margin:14px 18px;border:1px solid var(--line-strong);border-left:2px solid var(--accent);
+  border-radius:var(--r-sm);padding:9px 11px;background:var(--page)}
+.origin .ol{font-family:var(--mono);font-size:10px;color:var(--ink-350)}
+.origin .ot{font-size:13px;margin-top:3px}
+.thread{padding:14px 18px}
+.cmt{display:flex;gap:9px;padding:8px 0}
+.cmt .bd{font-size:13px}
+.cmt .mt{font-family:var(--mono);font-size:10px;color:var(--ink-350);margin-bottom:2px}
+
+/* Einbettung in SONE ─────────────────────────────────────── */
+.doc{padding:34px 40px 40px;max-width:46rem;background:var(--page)}
+.doc h4{font-weight:300;font-size:29px;letter-spacing:-.02em;margin:0 0 3px}
+.doc .dmeta{font-family:var(--mono);font-size:11px;color:var(--text-muted);
+  margin-bottom:22px}
+.doc p{margin:0 0 15px;color:var(--text)}
+.embed{border:1px solid var(--line-strong);border-radius:var(--r-lg);
+  background:var(--surface);margin:20px 0}
+.embed .eh{display:flex;align-items:center;gap:9px;padding:8px 12px;
+  border-bottom:1px solid var(--line)}
+.embed .eh .nm{font-size:13.5px;font-weight:500}
+.embed .eh .src{font-family:var(--mono);font-size:10.5px;color:var(--ink-350);
+  margin-left:auto;display:inline-flex;align-items:center;gap:5px}
+.embed .eb{padding:2px 12px 8px}
+.embed .task{border-bottom:1px solid var(--line);padding:7px 0}
+.embed .task:last-child{border-bottom:0}
+.stale{display:flex;align-items:center;gap:8px;padding:7px 12px;
+  border-top:1px solid var(--line);background:var(--sunken);
+  font-family:var(--mono);font-size:10.5px;color:var(--warning)}
+.gone{display:flex;align-items:center;gap:8px;padding:7px 12px;
+  border-top:1px solid var(--line);background:var(--sunken);
+  font-family:var(--mono);font-size:10.5px;color:var(--danger)}
+.slash{border:1px solid var(--line-strong);border-radius:var(--r-lg);
+  background:var(--raised);box-shadow:var(--shadow-md);padding:5px;width:290px;
+  margin:6px 0 0}
+
+/* Signet ─────────────────────────────────────────────────── */
+.marks{display:flex;flex-wrap:wrap;gap:34px;padding:30px 32px;align-items:flex-end}
+.mk{text-align:center}
+.mk .lb{font-family:var(--mono);font-size:10.5px;color:var(--text-muted);margin-top:10px}
+.sizes{display:flex;align-items:flex-end;gap:14px;justify-content:center}
+
+/* Mobil ──────────────────────────────────────────────────── */
+.phone{width:390px;max-width:100%;margin:0 auto;background:var(--page);
+  display:flex;flex-direction:column;min-height:600px;position:relative}
+.phone .ph{padding:16px 18px 10px}
+.phone .ph h3{font-weight:300;font-size:25px;letter-spacing:-.02em;margin:0}
+.phone .pb{padding:0 18px 84px;flex:1}
+.bar{position:absolute;left:0;right:0;bottom:0;height:60px;background:var(--surface);
+  border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(7,1fr);
+  align-items:center}
+.bar .b{display:flex;flex-direction:column;align-items:center;gap:3px;
+  color:var(--ink-500);position:relative}
+.bar .b.on{color:var(--text)}
+.bar .b .t{font-family:var(--mono);font-size:8.5px;letter-spacing:0}
+.bar .b .badge{position:absolute;top:-2px;right:8px}
+.fab{position:absolute;right:18px;bottom:76px;width:48px;height:48px;
+  border-radius:var(--r-lg);background:var(--accent);color:var(--page);
+  display:grid;place-items:center;box-shadow:var(--shadow-lg);font-size:22px}
+[data-theme="dark"] .fab{color:#161615}
+.open{margin-left:36px;max-width:74ch;color:var(--ink-700);font-size:14.5px}
+.open ol{padding-left:20px;margin:8px 0 0}
+.open li{margin-bottom:7px}
+svg{flex:none}
+</style>
+</head>
+<body>
+<div class="sheet">
+
+<div class="masthead">
+  <div class="stamp">SOTE / Artboards 1 / 2026-09-07 / Grundlage: claude/konzept.md</div>
+  <h1>Die Schale, die Zeile, die Erfassung</h1>
+  <p>Sieben Blätter. Jedes hält eine Entscheidung fest, keine Sammlung von
+  Möglichkeiten. Die Regeln der Hülle sind aus SONE übernommen und nicht neu
+  gedacht — was hier zu entscheiden ist, ist die Zeile, die Erfassung und die
+  Stelle, an der beide Systeme sich berühren.</p>
+</div>
+
+<!-- 1 ─────────────────────────────────────────────────────── -->
+<section class="board">
+  <header><span class="no">01</span><h2>Das Signet</h2></header>
+  <p class="note">Dieselbe Glyphe wie SONE — der eingerückte Balkenstapel, vier
+  Balken, Tuschekasten 12–88 waagerecht und 16–88 senkrecht — in anderem
+  Zustand. <b>Zwei Fassungen zur Wahl.</b> A streicht den Akzentbalken durch,
+  B ersetzt ihn durch ein Häkchen derselben Strichstärke.
+  <b>Mein Rat ist B</b>, und zwar aus einem Größengrund: bei 16 px ist ein
+  Strich innerhalb eines 9 Einheiten hohen Balkens nicht mehr zu sehen, ein
+  Häkchen schon. A liest sich bei 96 px besser und verschwindet im Favicon.</p>
+  <div class="pair">
+    <div class="frame"><div class="marks">
+      <div class="mk">
+        <svg width="96" height="96" viewBox="0 0 100 100">
+          <rect x="12" y="16" width="76" height="9" fill="#161615"/>
+          <rect x="28" y="37" width="60" height="9" fill="#161615"/>
+          <rect x="44" y="58" width="44" height="9" fill="#2f7d6f"/>
+          <rect x="28" y="79" width="60" height="9" fill="#161615"/>
+        </svg>
+        <div class="lb">SONE</div>
+      </div>
+      <div class="mk">
+        <svg width="96" height="96" viewBox="0 0 100 100">
+          <rect x="12" y="16" width="76" height="9" fill="#161615"/>
+          <rect x="28" y="37" width="60" height="9" fill="#161615"/>
+          <rect x="44" y="58" width="44" height="9" fill="#2f7d6f"/>
+          <rect x="40" y="59.5" width="52" height="4" fill="#faf8f4"/>
+          <rect x="28" y="79" width="60" height="9" fill="#161615"/>
+        </svg>
+        <div class="lb">SOTE A</div>
+      </div>
+      <div class="mk">
+        <svg width="96" height="96" viewBox="0 0 100 100">
+          <rect x="12" y="16" width="76" height="9" fill="#161615"/>
+          <rect x="28" y="37" width="60" height="9" fill="#161615"/>
+          <path d="M44 62.5 L53 71 L70 54" fill="none" stroke="#2f7d6f"
+                stroke-width="9" stroke-linecap="square" stroke-linejoin="miter"/>
+          <rect x="28" y="79" width="60" height="9" fill="#161615"/>
+        </svg>
+        <div class="lb">SOTE B</div>
+      </div>
+    </div></div>
+    <div class="frame" data-theme="dark"><div class="marks">
+      <div class="mk">
+        <div class="sizes">
+          <svg width="48" height="48" viewBox="0 0 100 100">
+            <rect x="12" y="16" width="76" height="9" fill="#f7f5f0"/>
+            <rect x="28" y="37" width="60" height="9" fill="#f7f5f0"/>
+            <path d="M44 62.5 L53 71 L70 54" fill="none" stroke="#6fc0b0"
+                  stroke-width="9" stroke-linecap="square"/>
+            <rect x="28" y="79" width="60" height="9" fill="#f7f5f0"/>
+          </svg>
+          <svg width="32" height="32" viewBox="0 0 100 100">
+            <rect x="12" y="16" width="76" height="9" fill="#f7f5f0"/>
+            <rect x="28" y="37" width="60" height="9" fill="#f7f5f0"/>
+            <path d="M44 62.5 L53 71 L70 54" fill="none" stroke="#6fc0b0"
+                  stroke-width="9" stroke-linecap="square"/>
+            <rect x="28" y="79" width="60" height="9" fill="#f7f5f0"/>
+          </svg>
+          <svg width="16" height="16" viewBox="0 0 100 100">
+            <rect x="10" y="20" width="80" height="14" fill="#f7f5f0"/>
+            <path d="M40 60 L52 72 L74 50" fill="none" stroke="#6fc0b0"
+                  stroke-width="14" stroke-linecap="square"/>
+          </svg>
+        </div>
+        <div class="lb">B in 48 / 32 / 16 — bei 16 dreibalkig</div>
+      </div>
+    </div></div>
+  </div>
+  <div class="caps">
+    <div class="cap">hell — Akzent #2f7d6f</div>
+    <div class="cap">dunkel — Akzent #6fc0b0</div>
+  </div>
+</section>
+
+<!-- 2 ─────────────────────────────────────────────────────── -->
+<section class="board">
+  <header><span class="no">02</span><h2>Die Schale und die Modusmenge</h2></header>
+  <p class="note">ADR-0069 unverändert: Spalte 1 wählt den Modus, Spalte 2
+  navigiert, Spalte 3 zeigt. <b>Heute ist ein Menüeintrag, kein Modus</b> —
+  sieben Symbole in der Schiene, dieselben sieben in der Fußleiste, keiner darf
+  aus einer der beiden fallen (ADR-0072). Das Suchfeld sitzt über dem Baum und
+  ist der Eingang; das Symbol in der Schiene ist der Weg zurück zu einer Suche.
+  Die Zahlen kommen aus der Liste, die der Bildschirm ohnehin hält — und es gibt
+  <b>keine Null</b>.</p>
+  <div class="frame">
+    <div class="app">
+      <!-- Schiene -->
+      <nav class="rail">
+        <div class="slot on" title="Aufgaben">
+          <svg width="22" height="22" viewBox="0 0 100 100">
+            <rect x="12" y="16" width="76" height="9" fill="currentColor"/>
+            <rect x="28" y="37" width="60" height="9" fill="currentColor"/>
+            <path d="M44 62.5 L53 71 L70 54" fill="none" stroke="#2f7d6f"
+                  stroke-width="9" stroke-linecap="square"/>
+            <rect x="28" y="79" width="60" height="9" fill="currentColor"/>
+          </svg>
+        </div>
+        <div class="slot" title="Suche">
+          <svg width="19" height="19" viewBox="0 0 20 20" fill="none"
+               stroke="currentColor" stroke-width="1.6">
+            <circle cx="8.5" cy="8.5" r="5.5"/><path d="M12.8 12.8 17 17"/>
+          </svg>
+        </div>
+        <div class="slot" title="Workspaces">
+          <svg width="19" height="19" viewBox="0 0 20 20" fill="none"
+               stroke="currentColor" stroke-width="1.6">
+            <rect x="2.5" y="2.5" width="6" height="6"/><rect x="11.5" y="2.5" width="6" height="6"/>
+            <rect x="2.5" y="11.5" width="6" height="6"/><rect x="11.5" y="11.5" width="6" height="6"/>
+          </svg>
+        </div>
+        <div class="slot" title="Posteingang">
+          <svg width="19" height="19" viewBox="0 0 20 20" fill="none"
+               stroke="currentColor" stroke-width="1.6">
+            <path d="M5 8.5a5 5 0 0 1 10 0v4l1.5 2h-13L5 12.5z"/><path d="M8 16.5h4"/>
+          </svg>
+          <span class="badge">3</span>
+        </div>
+        <div class="slot" title="Papierkorb">
+          <svg width="19" height="19" viewBox="0 0 20 20" fill="none"
+               stroke="currentColor" stroke-width="1.6">
+            <path d="M3.5 5.5h13M8 5.5V3.5h4v2M5 5.5l1 12h8l1-12"/>
+          </svg>
+        </div>
+        <div class="slot" title="Freigaben">
+          <svg width="19" height="19" viewBox="0 0 20 20" fill="none"
+               stroke="currentColor" stroke-width="1.6">
+            <path d="M8 12l4-4M7.5 6.5 9 5a3.5 3.5 0 0 1 5 5l-1.5 1.5M12.5 13.5 11 15a3.5 3.5 0 0 1-5-5L7.5 8.5"/>
+          </svg>
+        </div>
+        <div class="spacer"></div>
+        <div class="slot"><span class="face">MT</span></div>
+      </nav>
+
+      <!-- Panel -->
+      <div class="panel">
+        <div class="panel-head">
+          <div class="ws"><span class="dot"></span><span class="nm">Thiel Tools</span>
+            <span class="chev">▾</span></div>
+        </div>
+        <div class="seek">
+          <svg width="14" height="14" viewBox="0 0 20 20" fill="none"
+               stroke="currentColor" stroke-width="1.8">
+            <circle cx="8.5" cy="8.5" r="5.5"/><path d="M12.8 12.8 17 17"/>
+          </svg>
+          <span>Aufgaben durchsuchen</span>
+        </div>
+        <div class="plist">
+          <div class="pitem on">Heute <span class="n">7</span></div>
+          <div class="pitem">Demnächst <span class="n">12</span></div>
+          <div class="pitem">Irgendwann</div>
+          <div class="glabel">Projekte</div>
+          <div class="pitem"><span class="tw">▾</span><span class="sq" style="background:#2f7d6f"></span>
+            SONE <span class="n">9</span></div>
+          <div class="pitem sub"><span class="sq" style="background:#6a675f"></span>
+            Release 0.12 <span class="n">4</span></div>
+          <div class="pitem sub"><span class="sq" style="background:#6a675f"></span>
+            Mobil <span class="n">5</span></div>
+          <div class="pitem"><span class="tw">▸</span><span class="sq" style="background:#a8762b"></span>
+            Haus <span class="n">6</span></div>
+          <div class="pitem"><span class="tw"></span><span class="sq" style="background:#b4442f"></span>
+            Steuer 2025 <span class="n">2</span></div>
+          <div class="glabel">Schlagwörter</div>
+          <div class="pitem">unterwegs <span class="n">3</span></div>
+          <div class="pitem">warten auf <span class="n">2</span></div>
+        </div>
+      </div>
+
+      <!-- Inhalt -->
+      <div class="main">
+        <div class="mhead">
+          <h3>Heute</h3>
+          <div class="sub">Montag, 7. September — 7 Aufgaben, 2 überfällig</div>
+        </div>
+        <div class="body">
+          <div class="slab warn">Überfällig<span class="rule"></span></div>
+          <div class="task">
+            <span class="box p1"><svg width="11" height="11" viewBox="0 0 12 12"><path d="M2 6.5 4.7 9 10 3.2" fill="none" stroke="#faf8f4" stroke-width="1.8"/></svg></span>
+            <div class="tmid">
+              <div class="ttl">Steuerbescheid einreichen</div>
+              <div class="tmeta"><span class="when late">Fr, 4. Sept</span>
+                <span class="due late">fällig 5. Sept</span>
+                <span class="crumb"><span class="sq" style="background:#b4442f"></span>Steuer 2025</span></div>
+            </div>
+            <div class="tright"><span class="who a">MT</span><span class="dots">⋮</span></div>
+          </div>
+          <div class="task">
+            <span class="box"><svg width="11" height="11" viewBox="0 0 12 12"><path d="M2 6.5 4.7 9 10 3.2" fill="none" stroke="#faf8f4" stroke-width="1.8"/></svg></span>
+            <div class="tmid">
+              <div class="ttl">Fußleiste auf dem iPad gegenprüfen</div>
+              <div class="tmeta"><span class="when late">Sa, 5. Sept</span>
+                <span class="crumb"><span class="sq" style="background:#6a675f"></span>SONE / Mobil</span></div>
+            </div>
+            <div class="tright"><span class="dots">⋮</span></div>
+          </div>
+
+          <div class="slab">Heute<span class="rule"></span></div>
+          <div class="task">
+            <span class="box p2"><svg width="11" height="11" viewBox="0 0 12 12"><path d="M2 6.5 4.7 9 10 3.2" fill="none" stroke="#faf8f4" stroke-width="1.8"/></svg></span>
+            <div class="tmid">
+              <div class="ttl">Kopplung SONE ↔ SOTE: Rechteaussage entwerfen</div>
+              <div class="tmeta"><span class="when">09:30</span>
+                <span class="crumb"><span class="sq" style="background:#2f7d6f"></span>SONE</span>
+                <span class="subn">2 von 5</span></div>
+            </div>
+            <div class="tright"><span class="dots">⋮</span></div>
+          </div>
+          <div class="task">
+            <span class="box"><svg width="11" height="11" viewBox="0 0 12 12"><path d="M2 6.5 4.7 9 10 3.2" fill="none" stroke="#faf8f4" stroke-width="1.8"/></svg></span>
+            <div class="tmid">
+              <div class="ttl">Pfand wegbringen</div>
+              <div class="tmeta"><span class="rep">jeden Samstag</span>
+                <span class="crumb"><span class="sq" style="background:#a8762b"></span>Haus</span></div>
+            </div>
+            <div class="tright"><span class="who">AK</span><span class="dots">⋮</span></div>
+          </div>
+          <div class="task is-done">
+            <span class="box done"><svg width="11" height="11" viewBox="0 0 12 12"><path d="M2 6.5 4.7 9 10 3.2" fill="none" stroke="#faf8f4" stroke-width="1.8"/></svg></span>
+            <div class="tmid">
+              <div class="ttl">Namen entscheiden</div>
+              <div class="tmeta"><span class="when">heute, 11:04</span></div>
+            </div>
+            <div class="tright"><span class="dots">⋮</span></div>
+          </div>
+          <div class="addline"><span class="plus">+</span><span>Aufgabe hinzufügen</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="cap">1200 px, hell — Schiene 56, Panel 272, Lesespalte 46rem</div>
+</section>
+
+<!-- 3 ─────────────────────────────────────────────────────── -->
+<section class="board">
+  <header><span class="no">03</span><h2>Die Zeile und ihr Anfasser-Menü</h2></header>
+  <p class="note">Die Zeile trägt vier Dinge und nicht mehr: Kästchen, Titel,
+  eine Zeile Beiwerk, rechts wer zuständig ist. <b>Geplant und fällig sind
+  optisch verschieden</b> — der geplante Zeitpunkt steht schlicht, die Frist in
+  einer Haarlinie. Ohne diese Unterscheidung erzwingt die Oberfläche die Lüge,
+  dass jede Aufgabe an ihrem Fälligkeitstag begonnen wird. Die Priorität sitzt
+  <b>im Kästchen</b> und nicht als eigenes Zeichen daneben: sie sagt, wie dringend
+  dieses Abhaken ist, also gehört sie an das Ding, das man abhakt. Der Anfasser
+  links erscheint erst beim Zeigen, weil eine Reihe ruhender Zeilen keine
+  Griffleiste braucht.</p>
+  <div class="frame">
+    <div class="main" style="min-height:430px">
+      <div class="body" style="padding-top:26px;position:relative">
+        <div class="task">
+          <span class="grip">⠿</span>
+          <span class="box p1"><svg width="11" height="11" viewBox="0 0 12 12"><path d="M2 6.5 4.7 9 10 3.2" fill="none" stroke="#faf8f4" stroke-width="1.8"/></svg></span>
+          <div class="tmid">
+            <div class="ttl">Artboards 2 zeichnen: Wiederholungen und Freigabe</div>
+            <div class="tmeta"><span class="when">morgen, 09:00</span>
+              <span class="due">fällig 12. Sept</span>
+              <span class="crumb"><span class="sq" style="background:#2f7d6f"></span>SONE</span>
+              <span class="subn">2 von 5</span></div>
+          </div>
+          <div class="tright"><span class="who a">MT</span><span class="dots">⋮</span></div>
+          <div class="menu" style="right:0;top:34px">
+            <div class="mi">Geplant<span class="k">morgen 09:00</span></div>
+            <div class="mi">Frist<span class="k">12. Sept</span></div>
+            <div class="mi">Wiederholen<span class="k">nein</span></div>
+            <div class="mi sep"><span class="swatch" style="background:#b4442f"></span>
+              Dringend<span class="k">1</span></div>
+            <div class="mi on"><span class="swatch" style="background:#a8762b"></span>
+              Wichtig<span class="k">2</span></div>
+            <div class="mi"><span class="swatch" style="background:#2f7d6f"></span>
+              Normal<span class="k">3</span></div>
+            <div class="mi"><span class="swatch" style="background:#c9c4b8"></span>
+              Später<span class="k">4</span></div>
+            <div class="mi sep">Zuweisen<span class="k">a</span></div>
+            <div class="mi">Verschieben<span class="k">v</span></div>
+            <div class="mi">Teilaufgabe anlegen</div>
+            <div class="mi sep dgr">In den Papierkorb</div>
+          </div>
+        </div>
+        <div class="task">
+          <span class="box"><svg width="11" height="11" viewBox="0 0 12 12"><path d="M2 6.5 4.7 9 10 3.2" fill="none" stroke="#faf8f4" stroke-width="1.8"/></svg></span>
+          <div class="tmid">
+            <div class="ttl">Rechnung Hosting prüfen</div>
+            <div class="tmeta"><span class="rep">am 1. jedes Monats</span></div>
+          </div>
+          <div class="tright"><span class="dots">⋮</span></div>
+        </div>
+        <div class="task">
+          <span class="box"><svg width="11" height="11" viewBox="0 0 12 12"><path d="M2 6.5 4.7 9 10 3.2" fill="none" stroke="#faf8f4" stroke-width="1.8"/></svg></span>
+          <div class="tmid">
+            <div class="ttl">Filter reinigen</div>
+            <div class="tmeta"><span class="rep">3 Tage nach dem Abhaken</span>
+              <span class="crumb"><span class="sq" style="background:#a8762b"></span>Haus</span></div>
+          </div>
+          <div class="tright"><span class="who">AK</span><span class="dots">⋮</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="cap">Anfasser-Menü offen — Tastenkürzel rechts, weil man sie hier lernt</div>
+</section>
+
+<!-- 4 ─────────────────────────────────────────────────────── -->
+<section class="board">
+  <header><span class="no">04</span><h2>Die Schnellerfassung</h2></header>
+  <p class="note">Die Kernfähigkeit. Ein Feld, Enter speichert, <b>das Feld
+  bleibt offen</b> für die nächste Zeile. Gelesen wird beim Tippen, und der
+  Bildschirm zeichnet Chips für das, was er <b>verstanden</b> hat — dieselbe
+  Lösung wie bei SONEs Suche, damit das Vokabular im Nachhinein auffindbar wird
+  statt vorher in einer Dokumentation zu stehen. Erkannte Teile stehen im Feld
+  in der Akzentfarbe; was nicht erkannt wurde, bleibt Titel. Das Parsen ist eine
+  reine Funktion in <code>core</code> und hat seine Tests, bevor es diese
+  Oberfläche gibt.</p>
+  <div class="pair">
+    <div class="frame">
+      <div class="qa">
+        <div class="field"><span>Filter reinigen <span class="read">jeden zweiten Dienstag 8 Uhr</span>
+          <span class="read">#haus</span> <span class="read">!!</span></span><span class="caret"></span></div>
+        <div class="chips">
+          <span class="chip"><span class="lbl">geplant</span>Di, 16. Sept, 08:00</span>
+          <span class="chip"><span class="lbl">wiederholt</span>alle 2 Wochen, Di</span>
+          <span class="chip"><span class="sq" style="background:#a8762b"></span>Haus</span>
+          <span class="chip"><span class="lbl">priorität</span>Wichtig</span>
+        </div>
+        <div class="foot"><span>Enter — anlegen</span><span>Esc — verwerfen</span>
+          <span class="r">Titel: „Filter reinigen"</span></div>
+      </div>
+    </div>
+    <div class="frame" data-theme="dark">
+      <div class="qa">
+        <div class="field"><span>Rückruf Steuerberater <span class="read">Donnerstag</span>
+          bis <span class="read">Freitag</span> <span class="read">+anna</span></span><span class="caret"></span></div>
+        <div class="chips">
+          <span class="chip"><span class="lbl">geplant</span>Do, 10. Sept</span>
+          <span class="chip"><span class="lbl">frist</span>Fr, 11. Sept</span>
+          <span class="chip"><span class="lbl">zugewiesen</span>Anna K.</span>
+        </div>
+        <div class="foot"><span>Enter — anlegen</span><span>Esc — verwerfen</span>
+          <span class="r">Titel: „Rückruf Steuerberater"</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="caps">
+    <div class="cap">„jeden zweiten Dienstag" — der Fall, an dem Things scheitert</div>
+    <div class="cap">„Donnerstag bis Freitag" — geplant und Frist in einer Zeile</div>
+  </div>
+</section>
+
+<!-- 5 ─────────────────────────────────────────────────────── -->
+<section class="board">
+  <header><span class="no">05</span><h2>Eine Aufgabe im Detail</h2></header>
+  <p class="note">Die vierte Spalte, ab 1100 px eine Spalte und darunter ein
+  Drawer — wie SONEs rechtes Panel. Kommentare und Anhänge liegen <b>in der
+  Aufgabe</b>, damit Diskussion und Material im Zusammenhang bleiben.
+  <b>Das Herkunftsfeld erscheint nur, wenn es eine Herkunft gibt</b>, und ist
+  eine gespeicherte URL mit Titel, damit der Rückweg auch funktioniert, wenn
+  SONE nicht erreichbar ist. Ohne Kopplung ist dieser Block gar nicht da — nicht
+  ausgegraut.</p>
+  <div class="frame">
+    <div class="app with-detail" style="min-height:470px">
+      <nav class="rail">
+        <div class="slot on">
+          <svg width="22" height="22" viewBox="0 0 100 100">
+            <rect x="12" y="16" width="76" height="9" fill="currentColor"/>
+            <rect x="28" y="37" width="60" height="9" fill="currentColor"/>
+            <path d="M44 62.5 L53 71 L70 54" fill="none" stroke="#2f7d6f"
+                  stroke-width="9" stroke-linecap="square"/>
+            <rect x="28" y="79" width="60" height="9" fill="currentColor"/>
+          </svg>
+        </div>
+        <div class="spacer"></div>
+        <div class="slot"><span class="face">MT</span></div>
+      </nav>
+      <div class="panel">
+        <div class="panel-head">
+          <div class="ws"><span class="dot"></span><span class="nm">Thiel Tools</span>
+            <span class="chev">▾</span></div>
+        </div>
+        <div class="plist">
+          <div class="pitem">Heute <span class="n">7</span></div>
+          <div class="pitem">Demnächst <span class="n">12</span></div>
+          <div class="pitem">Irgendwann</div>
+          <div class="glabel">Projekte</div>
+          <div class="pitem on"><span class="tw">▾</span>
+            <span class="sq" style="background:#2f7d6f"></span>SONE <span class="n">9</span></div>
+          <div class="pitem sub"><span class="sq" style="background:#6a675f"></span>
+            Release 0.12 <span class="n">4</span></div>
+        </div>
+      </div>
+      <div class="main">
+        <div class="mhead"><h3>SONE</h3>
+          <div class="sub">9 offen — 3 Leute — gekoppelt mit dem Workspace „SONE"</div></div>
+        <div class="body">
+          <div class="task">
+            <span class="box p2"><svg width="11" height="11" viewBox="0 0 12 12"><path d="M2 6.5 4.7 9 10 3.2" fill="none" stroke="#faf8f4" stroke-width="1.8"/></svg></span>
+            <div class="tmid"><div class="ttl">Kopplung: Rechteaussage entwerfen</div>
+              <div class="tmeta"><span class="when">heute, 09:30</span>
+                <span class="subn">2 von 5</span></div></div>
+            <div class="tright"><span class="who a">MT</span></div>
+          </div>
+          <div class="task">
+            <span class="box"><svg width="11" height="11" viewBox="0 0 12 12"><path d="M2 6.5 4.7 9 10 3.2" fill="none" stroke="#faf8f4" stroke-width="1.8"/></svg></span>
+            <div class="tmid"><div class="ttl">CalDAV: VTODO lesen und schreiben</div>
+              <div class="tmeta"><span class="due">fällig 30. Sept</span></div></div>
+            <div class="tright"><span class="who">AK</span></div>
+          </div>
+          <div class="addline"><span class="plus">+</span><span>Aufgabe hinzufügen</span></div>
+        </div>
+      </div>
+      <aside class="detail">
+        <div class="dh"><div class="t">Kopplung: Rechteaussage entwerfen</div></div>
+        <div class="frow"><span class="fl">projekt</span>
+          <span class="fv"><span class="crumb"><span class="sq" style="background:#2f7d6f"></span>SONE</span></span></div>
+        <div class="frow"><span class="fl">geplant</span><span class="fv">heute, 09:30</span></div>
+        <div class="frow"><span class="fl">frist</span><span class="fv">12. September</span></div>
+        <div class="frow"><span class="fl">wiederholt</span><span class="fv empty">nein</span></div>
+        <div class="frow"><span class="fl">priorität</span>
+          <span class="fv"><span class="swatch" style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#a8762b"></span>
+          Wichtig</span></div>
+        <div class="frow"><span class="fl">zuständig</span><span class="fv">Markus T.</span></div>
+        <div class="frow"><span class="fl">schlagwort</span><span class="fv">entwurf</span></div>
+        <div class="origin">
+          <div class="ol">entstanden in SONE</div>
+          <div class="ot">Konzept: SOTE-Kopplung</div>
+        </div>
+        <div class="thread">
+          <div class="glabel" style="padding:0 0 4px">Gespräch</div>
+          <div class="cmt"><span class="who">AK</span>
+            <div><div class="mt">Anna K. — vor 2 Stunden</div>
+              <div class="bd">Die Aussage muss auch den Fall abdecken, dass jemand
+              nur das Projekt verwaltet und nicht den Workspace.</div></div></div>
+          <div class="cmt"><span class="who a">MT</span>
+            <div><div class="mt">Markus T. — vor 40 Minuten</div>
+              <div class="bd">Ja. Dann darf er die Kopplung nicht setzen, nur sehen.</div></div></div>
+        </div>
+      </aside>
+    </div>
+  </div>
+  <div class="cap">1520 px — vierte Spalte 320 px</div>
+</section>
+
+<!-- 6 ─────────────────────────────────────────────────────── -->
+<section class="board">
+  <header><span class="no">06</span><h2>Die SOTE-Liste in einer SONE-Seite</h2></header>
+  <p class="note">Der Punkt, an dem beide Systeme sich berühren, und der einzige,
+  der beide Rechteverwaltungen betrifft. <b>Der Anker ist der Block</b>: die erste
+  Aufgabe legt das Projekt an, jede weitere im selben Block landet darin. Der
+  Block hält die Id und eine Anzeigekopie, damit die Seite lädt, wenn SOTE nicht
+  da ist — die Kopie ist nie bearbeitbar und <b>sagt, dass sie eine Kopie ist</b>.
+  Abhaken ist optimistisch; alles im Anfasser-Menü nicht.
+  <b>SONE löscht in SOTE nie etwas</b>, also gibt es hier keinen Weg, der drüben
+  etwas wegnimmt.</p>
+  <div class="frame">
+    <div class="doc">
+      <h4>Konzept: SOTE-Kopplung</h4>
+      <div class="dmeta">Thiel Tools / SONE / Konzepte — geändert vor 12 Minuten</div>
+      <p>Die Kopplung ist eine Rechteaussage und keine ID-Zuordnung. Sie wird
+      einmal von jemandem gesetzt, der beide Seiten verwalten darf, und ist
+      umkehrbar. Was daraus zu bauen ist:</p>
+
+      <div class="embed">
+        <div class="eh">
+          <svg width="15" height="15" viewBox="0 0 100 100">
+            <rect x="12" y="16" width="76" height="9" fill="currentColor"/>
+            <rect x="28" y="37" width="60" height="9" fill="currentColor"/>
+            <path d="M44 62.5 L53 71 L70 54" fill="none" stroke="#2f7d6f"
+                  stroke-width="9" stroke-linecap="square"/>
+            <rect x="28" y="79" width="60" height="9" fill="currentColor"/>
+          </svg>
+          <span class="nm">Kopplung — Schritte</span>
+          <span class="src">4 offen — in SOTE öffnen</span>
+        </div>
+        <div class="eb">
+          <div class="task">
+            <span class="grip">⠿</span>
+            <span class="box p2"><svg width="11" height="11" viewBox="0 0 12 12"><path d="M2 6.5 4.7 9 10 3.2" fill="none" stroke="#faf8f4" stroke-width="1.8"/></svg></span>
+            <div class="tmid"><div class="ttl">Rechteaussage entwerfen</div>
+              <div class="tmeta"><span class="when">heute, 09:30</span>
+                <span class="due">fällig 12. Sept</span></div></div>
+            <div class="tright"><span class="who a">MT</span><span class="dots">⋮</span></div>
+          </div>
+          <div class="task">
+            <span class="box"><svg width="11" height="11" viewBox="0 0 12 12"><path d="M2 6.5 4.7 9 10 3.2" fill="none" stroke="#faf8f4" stroke-width="1.8"/></svg></span>
+            <div class="tmid"><div class="ttl">Webhook: idempotent, mit Wiederholung</div>
+              <div class="tmeta"><span class="when empty" style="color:#9a968c">kein Datum</span></div></div>
+            <div class="tright"><span class="who">AK</span><span class="dots">⋮</span></div>
+          </div>
+          <div class="task is-done">
+            <span class="box done"><svg width="11" height="11" viewBox="0 0 12 12"><path d="M2 6.5 4.7 9 10 3.2" fill="none" stroke="#faf8f4" stroke-width="1.8"/></svg></span>
+            <div class="tmid"><div class="ttl">Namen entscheiden</div></div>
+            <div class="tright"><span class="dots">⋮</span></div>
+          </div>
+          <div class="addline"><span class="plus">+</span><span>Aufgabe hinzufügen</span></div>
+        </div>
+      </div>
+
+      <p>Offen bleibt, ob die Zuweisung schon in der Erfassungszeile möglich sein
+      soll.</p>
+    </div>
+  </div>
+  <div class="cap">der Regelfall — SOTE erreichbar, Werte frisch</div>
+
+  <p class="note" style="margin-top:26px">Und die zwei Zustände, die ein
+  Entwurf benennen muss, weil sie sonst als stilles Verschwinden gebaut werden:</p>
+  <div class="pair">
+    <div class="frame"><div class="doc" style="padding:22px 24px">
+      <div class="embed" style="margin:0">
+        <div class="eh">
+          <svg width="15" height="15" viewBox="0 0 100 100">
+            <rect x="12" y="16" width="76" height="9" fill="currentColor"/>
+            <rect x="28" y="37" width="60" height="9" fill="currentColor"/>
+            <path d="M44 62.5 L53 71 L70 54" fill="none" stroke="#2f7d6f"
+                  stroke-width="9" stroke-linecap="square"/>
+            <rect x="28" y="79" width="60" height="9" fill="currentColor"/>
+          </svg>
+          <span class="nm">Kopplung — Schritte</span>
+          <span class="src">Kopie</span>
+        </div>
+        <div class="eb">
+          <div class="task"><span class="box"></span>
+            <div class="tmid"><div class="ttl" style="color:#6a675f">Rechteaussage entwerfen</div>
+              <div class="tmeta"><span class="when">heute, 09:30</span></div></div></div>
+          <div class="task"><span class="box"></span>
+            <div class="tmid"><div class="ttl" style="color:#6a675f">Webhook: idempotent</div></div></div>
+        </div>
+        <div class="stale">SOTE nicht erreichbar — Stand von heute, 08:12. Nicht bearbeitbar.</div>
+      </div>
+    </div></div>
+    <div class="frame"><div class="doc" style="padding:22px 24px">
+      <div class="embed" style="margin:0">
+        <div class="eh">
+          <svg width="15" height="15" viewBox="0 0 100 100" style="opacity:.45">
+            <rect x="12" y="16" width="76" height="9" fill="currentColor"/>
+            <rect x="28" y="37" width="60" height="9" fill="currentColor"/>
+            <path d="M44 62.5 L53 71 L70 54" fill="none" stroke="currentColor"
+                  stroke-width="9" stroke-linecap="square"/>
+            <rect x="28" y="79" width="60" height="9" fill="currentColor"/>
+          </svg>
+          <span class="nm" style="color:#6a675f">Kopplung — Schritte</span>
+        </div>
+        <div class="eb">
+          <div class="task"><span class="box"></span>
+            <div class="tmid"><div class="ttl" style="color:#9a968c">Rechteaussage entwerfen</div></div></div>
+          <div class="task"><span class="box"></span>
+            <div class="tmid"><div class="ttl" style="color:#9a968c">Webhook: idempotent</div></div></div>
+        </div>
+        <div class="gone">In SOTE gelöscht. Der letzte bekannte Stand bleibt als Text stehen.</div>
+      </div>
+    </div></div>
+  </div>
+  <div class="caps">
+    <div class="cap">unerreichbar — Anzeigekopie mit Zeitpunkt</div>
+    <div class="cap">drüben gelöscht — kein stilles Verschwinden</div>
+  </div>
+
+  <p class="note" style="margin-top:26px">Der Eintrag im <code>/</code>-Menü
+  existiert nur bei bestehender Kopplung <b>und</b> bestehender persönlicher
+  Verbindung. Fehlt eines von beiden, ist er nicht da:</p>
+  <div class="frame" style="padding:22px 24px">
+    <div class="slash">
+      <div class="mi">Überschrift 2</div>
+      <div class="mi">Aufzählung</div>
+      <div class="mi">Tabelle</div>
+      <div class="mi on">
+        <svg width="14" height="14" viewBox="0 0 100 100">
+          <rect x="12" y="16" width="76" height="9" fill="currentColor"/>
+          <rect x="28" y="37" width="60" height="9" fill="currentColor"/>
+          <path d="M44 62.5 L53 71 L70 54" fill="none" stroke="#2f7d6f"
+                stroke-width="9" stroke-linecap="square"/>
+          <rect x="28" y="79" width="60" height="9" fill="currentColor"/>
+        </svg>
+        Neue Aufgabe<span class="k">SOTE</span></div>
+      <div class="mi">
+        <svg width="14" height="14" viewBox="0 0 100 100">
+          <rect x="12" y="16" width="76" height="9" fill="currentColor"/>
+          <rect x="28" y="37" width="60" height="9" fill="currentColor"/>
+          <path d="M44 62.5 L53 71 L70 54" fill="none" stroke="#2f7d6f"
+                stroke-width="9" stroke-linecap="square"/>
+          <rect x="28" y="79" width="60" height="9" fill="currentColor"/>
+        </svg>
+        Bestehende Liste einbinden<span class="k">SOTE</span></div>
+    </div>
+  </div>
+  <div class="cap">zwei Einträge, ein Zustand — beide Wege enden im gleichen Block</div>
+</section>
+
+<!-- 7 ─────────────────────────────────────────────────────── -->
+<section class="board">
+  <header><span class="no">07</span><h2>Mobil</h2></header>
+  <p class="note">Dieselbe Modusmenge quer, wie ADR-0074 es verlangt: kein Modus
+  darf aus einer der beiden Zeichnungen fallen, sonst ist er auf dem Telefon
+  unerreichbar. <b>Sieben Einträge sind hier der offene Punkt</b> — die
+  Beschriftungen sind an der Grenze, und ich habe sie absichtlich nicht gekürzt,
+  damit man sieht, wo sie liegt. Der Knopf für die Erfassung sitzt über der
+  Leiste und nicht darin: er ist eine Handlung, und die Leiste enthält Orte.
+  Ziele 44 px, Eingabefelder mindestens 16 px gegen den iOS-Zoom.</p>
+  <div class="pair">
+    <div class="frame"><div class="phone">
+      <div class="ph"><h3>Heute</h3>
+        <div class="sub" style="font-family:var(--mono);font-size:11px;color:var(--text-muted);margin-top:4px">
+          Mo, 7. Sept — 7 Aufgaben, 2 überfällig</div></div>
+      <div class="pb">
+        <div class="slab warn">Überfällig<span class="rule"></span></div>
+        <div class="task"><span class="box p1"></span>
+          <div class="tmid"><div class="ttl">Steuerbescheid einreichen</div>
+            <div class="tmeta"><span class="when late">Fr, 4. Sept</span>
+              <span class="crumb"><span class="sq" style="background:#b4442f"></span>Steuer</span></div></div></div>
+        <div class="task"><span class="box"></span>
+          <div class="tmid"><div class="ttl">Fußleiste auf dem iPad gegenprüfen</div>
+            <div class="tmeta"><span class="when late">Sa, 5. Sept</span></div></div></div>
+        <div class="slab">Heute<span class="rule"></span></div>
+        <div class="task"><span class="box p2"></span>
+          <div class="tmid"><div class="ttl">Kopplung: Rechteaussage entwerfen</div>
+            <div class="tmeta"><span class="when">09:30</span>
+              <span class="crumb"><span class="sq" style="background:#2f7d6f"></span>SONE</span></div></div></div>
+        <div class="task"><span class="box"></span>
+          <div class="tmid"><div class="ttl">Pfand wegbringen</div>
+            <div class="tmeta"><span class="rep">jeden Samstag</span></div></div>
+          <div class="tright"><span class="who">AK</span></div></div>
+      </div>
+      <div class="fab">+</div>
+      <div class="bar">
+        <div class="b on">
+          <svg width="19" height="19" viewBox="0 0 100 100">
+            <rect x="12" y="16" width="76" height="9" fill="currentColor"/>
+            <rect x="28" y="37" width="60" height="9" fill="currentColor"/>
+            <path d="M44 62.5 L53 71 L70 54" fill="none" stroke="#2f7d6f"
+                  stroke-width="9" stroke-linecap="square"/>
+            <rect x="28" y="79" width="60" height="9" fill="currentColor"/>
+          </svg><span class="t">Aufgaben</span></div>
+        <div class="b"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"
+            stroke="currentColor" stroke-width="1.6"><circle cx="8.5" cy="8.5" r="5.5"/>
+            <path d="M12.8 12.8 17 17"/></svg><span class="t">Suche</span></div>
+        <div class="b"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"
+            stroke="currentColor" stroke-width="1.6"><rect x="2.5" y="2.5" width="6" height="6"/>
+            <rect x="11.5" y="2.5" width="6" height="6"/><rect x="2.5" y="11.5" width="6" height="6"/>
+            <rect x="11.5" y="11.5" width="6" height="6"/></svg><span class="t">Räume</span></div>
+        <div class="b"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"
+            stroke="currentColor" stroke-width="1.6"><path d="M5 8.5a5 5 0 0 1 10 0v4l1.5 2h-13L5 12.5z"/>
+            <path d="M8 16.5h4"/></svg><span class="t">Eingang</span>
+            <span class="badge">3</span></div>
+        <div class="b"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"
+            stroke="currentColor" stroke-width="1.6"><path d="M3.5 5.5h13M8 5.5V3.5h4v2M5 5.5l1 12h8l1-12"/>
+            </svg><span class="t">Korb</span></div>
+        <div class="b"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"
+            stroke="currentColor" stroke-width="1.6">
+            <path d="M8 12l4-4M7.5 6.5 9 5a3.5 3.5 0 0 1 5 5l-1.5 1.5M12.5 13.5 11 15a3.5 3.5 0 0 1-5-5L7.5 8.5"/>
+            </svg><span class="t">Freigaben</span></div>
+        <div class="b"><span class="face" style="width:22px;height:22px;font-size:9px">MT</span>
+          <span class="t">Du</span></div>
+      </div>
+    </div></div>
+    <div class="frame" data-theme="dark"><div class="phone">
+      <div class="ph"><h3>Kopplung — Schritte</h3>
+        <div class="sub" style="font-family:var(--mono);font-size:11px;color:var(--text-muted);margin-top:4px">
+          4 offen — gekoppelt mit SONE</div></div>
+      <div class="pb">
+        <div class="task"><span class="box p2"></span>
+          <div class="tmid"><div class="ttl">Rechteaussage entwerfen</div>
+            <div class="tmeta"><span class="when">heute, 09:30</span>
+              <span class="due">fällig 12. Sept</span></div></div>
+          <div class="tright"><span class="who a">MT</span></div></div>
+        <div class="task"><span class="box"></span>
+          <div class="tmid"><div class="ttl">Webhook: idempotent, mit Wiederholung</div></div>
+          <div class="tright"><span class="who">AK</span></div></div>
+        <div class="task is-done"><span class="box done"><svg width="11" height="11" viewBox="0 0 12 12"><path d="M2 6.5 4.7 9 10 3.2" fill="none" stroke="#161615" stroke-width="1.8"/></svg></span>
+          <div class="tmid"><div class="ttl">Namen entscheiden</div></div></div>
+        <div class="addline"><span class="plus">+</span><span>Aufgabe hinzufügen</span></div>
+      </div>
+      <div class="bar">
+        <div class="b on">
+          <svg width="19" height="19" viewBox="0 0 100 100">
+            <rect x="12" y="16" width="76" height="9" fill="currentColor"/>
+            <rect x="28" y="37" width="60" height="9" fill="currentColor"/>
+            <path d="M44 62.5 L53 71 L70 54" fill="none" stroke="#6fc0b0"
+                  stroke-width="9" stroke-linecap="square"/>
+            <rect x="28" y="79" width="60" height="9" fill="currentColor"/>
+          </svg><span class="t">Aufgaben</span></div>
+        <div class="b"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"
+            stroke="currentColor" stroke-width="1.6"><circle cx="8.5" cy="8.5" r="5.5"/>
+            <path d="M12.8 12.8 17 17"/></svg><span class="t">Suche</span></div>
+        <div class="b"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"
+            stroke="currentColor" stroke-width="1.6"><rect x="2.5" y="2.5" width="6" height="6"/>
+            <rect x="11.5" y="2.5" width="6" height="6"/><rect x="2.5" y="11.5" width="6" height="6"/>
+            <rect x="11.5" y="11.5" width="6" height="6"/></svg><span class="t">Räume</span></div>
+        <div class="b"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"
+            stroke="currentColor" stroke-width="1.6"><path d="M5 8.5a5 5 0 0 1 10 0v4l1.5 2h-13L5 12.5z"/>
+            <path d="M8 16.5h4"/></svg><span class="t">Eingang</span></div>
+        <div class="b"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"
+            stroke="currentColor" stroke-width="1.6"><path d="M3.5 5.5h13M8 5.5V3.5h4v2M5 5.5l1 12h8l1-12"/>
+            </svg><span class="t">Korb</span></div>
+        <div class="b"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"
+            stroke="currentColor" stroke-width="1.6">
+            <path d="M8 12l4-4M7.5 6.5 9 5a3.5 3.5 0 0 1 5 5l-1.5 1.5M12.5 13.5 11 15a3.5 3.5 0 0 1-5-5L7.5 8.5"/>
+            </svg><span class="t">Freigaben</span></div>
+        <div class="b"><span class="face" style="width:22px;height:22px;font-size:9px">MT</span>
+          <span class="t">Du</span></div>
+      </div>
+    </div></div>
+  </div>
+  <div class="caps">
+    <div class="cap">390 px, hell — Heute</div>
+    <div class="cap">390 px, dunkel — ein Projekt</div>
+  </div>
+</section>
+
+<!-- Offen ─────────────────────────────────────────────────── -->
+<section class="board">
+  <header><span class="no">—</span><h2>Was diese Blätter offen lassen</h2></header>
+  <div class="open">
+    <ol>
+      <li><b>Signet A oder B.</b> Mein Rat ist B, aus dem Größengrund auf Blatt 01.</li>
+      <li><b>Sieben Einträge in der Fußleiste.</b> Auf Blatt 07 absichtlich
+      ungekürzt gezeigt. „Räume" für Workspaces und „Eingang" für Posteingang
+      sind Notlösungen, die ich nicht mag.</li>
+      <li><b>Die Zuweisung in der Erfassungszeile.</b> Auf Blatt 04 als
+      <code>+anna</code> gezeigt, aber nicht entschieden.</li>
+      <li><b>Status.</b> Alle Blätter zeigen offen und erledigt. Ob es mehr
+      braucht, ist offen — und wenn ja, wo es in der Zeile steht.</li>
+      <li><b>Wiederholungen und Freigabe per Link</b> haben noch kein Blatt.
+      Gehören in Artboards 2.</li>
+      <li><b>Der Papierkorb</b> ist in der Schiene, aber nicht gezeichnet.</li>
+    </ol>
+  </div>
+</section>
+
+</div>
+</body>
+</html>
