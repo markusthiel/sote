@@ -15,6 +15,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { api, ApiError, type Me, type Project } from './api.js';
 import { FootBar } from './components/FootBar.js';
 import { IconRail } from './components/IconRail.js';
+import { ProjectTree } from './components/ProjectTree.js';
 import { modeOf, type ModeId } from './modes.js';
 import { modeOfRoute, parseRoute, pathOf, type Route } from './route.js';
 import { SignIn } from './screens/SignIn.js';
@@ -43,6 +44,8 @@ export function App() {
   const [workspace, setWorkspace] = useState<string | undefined>(undefined);
   const [drawer, setDrawer] = useState(false);
   const [openTask, setOpenTask] = useState<string | null>(null);
+  const [panelBusy, setPanelBusy] = useState(false);
+  const [panelError, setPanelError] = useState<string | undefined>(undefined);
   const [now] = useState(() => new Date());
 
   const loadMe = useCallback(async () => {
@@ -97,6 +100,30 @@ export function App() {
   useEffect(() => {
     void loadPanel();
   }, [loadPanel]);
+
+  /**
+   * Ein Schreibzugriff aus dem Panel.
+   *
+   * Nicht optimistisch: ein Projekt, das angelegt aussieht und dessen Name
+   * schon belegt war, wäre eine Zeile, die beim nächsten Laden verschwindet.
+   * Der Grund kommt vom Server (`name_taken`) und wird gezeigt, nicht in
+   * „ging nicht" übersetzt.
+   */
+  const panelWrite = useCallback(
+    async (body: () => Promise<unknown>) => {
+      setPanelBusy(true);
+      setPanelError(undefined);
+      try {
+        await body();
+        await loadPanel();
+      } catch (e) {
+        setPanelError(e instanceof ApiError ? e.message : 'Ging nicht.');
+      } finally {
+        setPanelBusy(false);
+      }
+    },
+    [loadPanel],
+  );
 
   if (me === undefined) return <div className="signin" aria-busy="true" />;
   if (me === null) return <SignIn onDone={() => void loadMe()} />;
@@ -169,29 +196,25 @@ export function App() {
             </button>
           ))}
 
-          <div className="group-label">Projekte</div>
-          {projects.length === 0 ? (
-            <div className="p-item" style={{ color: 'var(--text-faint)' }}>
-              noch keine
-            </div>
-          ) : (
-            projects.map((p) => (
-              <button
-                key={p.id}
-                className="p-item"
-                aria-current={route.kind === 'project' && route.projectId === p.id}
-                onClick={() => go({ kind: 'project', projectId: p.id })}
-              >
-                <span
-                  className="p-sq"
-                  aria-hidden="true"
-                  {...(p.color === null ? {} : { style: { background: p.color } })}
-                />
-                {p.name}
-                {p.open === null ? null : <span className="n">{p.open}</span>}
-              </button>
-            ))
-          )}
+          <ProjectTree
+            projects={projects}
+            activeId={route.kind === 'project' ? route.projectId : null}
+            busy={panelBusy}
+            onOpen={(id) => go({ kind: 'project', projectId: id })}
+            onCreate={(name, parentId) =>
+              void panelWrite(() => api.createProject({ name, parentId }, workspace))
+            }
+            onRename={(id, name) =>
+              void panelWrite(() => api.patchProject(id, { name }, workspace))
+            }
+            onColor={(id, color) =>
+              void panelWrite(() => api.patchProject(id, { color }, workspace))
+            }
+            onTrash={(id) => void panelWrite(() => api.trash('projects', id, workspace))}
+          />
+          {panelError !== undefined ? (
+            <p className="panel-error">{panelError}</p>
+          ) : null}
         </div>
       </div>
 

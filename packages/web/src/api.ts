@@ -70,6 +70,8 @@ export interface Project {
   parentId: string | null;
   name: string;
   color: string | null;
+  /** Tiefe im Baum, vom Server gerechnet. */
+  depth?: number;
   /** `null` und nicht 0 — eine Zahl über nichts ist Rauschen. */
   open: number | null;
 }
@@ -162,10 +164,28 @@ export const api = {
     call<{ projects: Project[] }>(
       `/api/projects${workspace === undefined ? '' : `?workspace=${workspace}`}`,
     ),
+  createProject: (
+    body: { name: string; parentId?: string | null; color?: string | null },
+    workspace?: string,
+  ) =>
+    call<{ project: Project }>(
+      `/api/projects${workspace === undefined ? '' : `?workspace=${workspace}`}`,
+      { method: 'POST', body: JSON.stringify(body) },
+    ),
+  patchProject: (
+    id: string,
+    body: { name?: string; color?: string | null; parentId?: string | null },
+    workspace?: string,
+  ) =>
+    call<{ project: Project }>(
+      `/api/projects/${id}${workspace === undefined ? '' : `?workspace=${workspace}`}`,
+      { method: 'PATCH', body: JSON.stringify(body) },
+    ),
   createTask: (line: string, workspace?: string) =>
     call<{
       task: Task;
       unknownProject: string | null;
+      ambiguousProject: string | null;
       unknownAssignees: string[];
       ambiguousAssignees: string[];
     }>(`/api/tasks${workspace === undefined ? '' : `?workspace=${workspace}`}`, {

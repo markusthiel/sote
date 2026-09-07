@@ -96,10 +96,22 @@ export function TaskList({
     setUnknownProject(null);
     try {
       const out = await api.createTask(line, workspace);
+      // Vier verschiedene Nachrichten, und keine davon ist „ging nicht":
+      // unbekannt und mehrdeutig sind zwei Fälle, und für Projekt und Person
+      // je einer.
       if (out.unknownProject !== null) {
         setUnknownProject(out.unknownProject);
         setNotice(
           `Das Projekt „${out.unknownProject}“ gibt es hier nicht — die Aufgabe liegt ohne Projekt.`,
+        );
+      } else if (out.ambiguousProject !== null) {
+        setUnknownProject(out.ambiguousProject);
+        setNotice(
+          `„${out.ambiguousProject}“ gibt es mehr als einmal — die Aufgabe liegt ohne Projekt. Zieh sie ins richtige.`,
+        );
+      } else if (out.ambiguousAssignees.length > 0) {
+        setNotice(
+          `${out.ambiguousAssignees.join(', ')} passt auf mehrere Leute — die Aufgabe ist niemandem zugewiesen.`,
         );
       } else if (out.unknownAssignees.length > 0) {
         setNotice(

@@ -686,6 +686,36 @@ Beim Bauen entschieden, weil es ohne Entscheidung keinen Code gibt:
   „nicht angefasst", `null` heißt „leeren". Geprüft wird die Anwesenheit des
   Schlüssels und nicht die Wahrheit des Werts — sonst nimmt ein Menü beim Setzen
   eines Datums die Priorität mit.
+- **Ein Projektname ist in seinem Geschwisterkreis eindeutig** (Migration
+  0004, partieller Unique-Index über `(workspace_id, parent_id, lower(name))`
+  mit `NULLS NOT DISTINCT`, nur für lebende Projekte). Grund ist `#name` in der
+  Schnellerfassung: zwei Projekte gleichen Namens an derselben Stelle würden
+  sie zum Raten zwingen.
+- **Aber derselbe Name unter verschiedenen Eltern ist erlaubt** — „Kabel" unter
+  „Haus" und unter „Büro" sind zwei verschiedene Dinge. Dass `#kabel` dann
+  mehrdeutig ist, **meldet die Erfassung** (`ambiguousProject`); der Index kann
+  es nicht entscheiden, weil beide Namen berechtigt sind. Vier verschiedene
+  Nachrichten also: unbekanntes Projekt, mehrdeutiges Projekt, unbekannte
+  Person, mehrdeutige Person — und keine davon heißt „ging nicht".
+- **Ein Projekt kann nicht sein eigener Nachfahre werden.** Geprüft mit einer
+  rekursiven Abfrage vor dem Umhängen. Ohne diese Prüfung wären das Projekt
+  und alles darunter aus dem Baum verschwunden, aber noch in der Datenbank —
+  und keine Abfrage über den Baum würde je enden.
+- **Umhängen gibt einen neuen Sortierschlüssel**: neuer Geschwisterkreis, neuer
+  Schlüsselraum, und der alte Schlüssel könnte dort belegt sein.
+- **Projektfarben sind eine Liste, kein Farbwähler.** Freie Werte erzeugen
+  Projekte, die sich vom Akzent nicht unterscheiden lassen, und niemand sieht
+  beim Wählen, dass das passiert ist. Serverseitig auf `#rrggbb` geprüft, damit
+  kein beliebiger String ins Stylesheet gelangt.
+- **Die Projektliste kommt in Baumreihenfolge und trägt ihre Tiefe.** Die erste
+  Fassung sortierte global nach Sortierschlüssel, also standen Unterprojekte
+  vor ihren Eltern; die Oberfläche lag trotzdem richtig, weil ein globaler Sort
+  die Reihenfolge innerhalb jedes Geschwisterkreises erhält. Eine Liste, deren
+  Reihenfolge nur zufällig brauchbar ist, lädt den nächsten Aufrufer zum Fehler
+  ein.
+- **Umbenennen passiert in der Zeile**, nicht in einem Dialog: ein Dialog wäre
+  ein zweiter Ort für denselben Namen, und man müsste ihn schließen, um zu
+  sehen, was man getippt hat.
 - **Eine Teilaufgabe erbt Projekt und Arbeitsbereich vom Elternteil**, nicht
   aus der Anfrage: eine Teilaufgabe in einem anderen Projekt als ihre Aufgabe
   wäre in zwei Listen zu Hause, und „wo gehört das hin" hätte zwei Antworten.

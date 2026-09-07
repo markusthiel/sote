@@ -14,6 +14,7 @@ import type { Pool } from 'pg';
 import { signIn, signOut, userOfToken } from './auth.js';
 import { addChild, addComment, detail } from './detail.js';
 import { queryOne, queryRows } from './db.js';
+import { create as createProject, NameTaken, update as updateProject } from './projects.js';
 import type { Config } from './env.js';
 import { cookie, fail, json, readJson } from './http/respond.js';
 import { makeStatic } from './http/static.js';
@@ -138,6 +139,10 @@ export function makeServer(ctx: Ctx): Server {
         // Eine eigene Sorte Ablehnung: die Oberfläche soll nach einem Ziel
         // fragen und nicht „ging nicht" anzeigen.
         fail(res, 409, 'needs_target', e.message);
+        return;
+      }
+      if (e instanceof NameTaken) {
+        fail(res, 409, 'name_taken', e.message);
         return;
       }
       if (e instanceof OutOfOrder) {
@@ -285,23 +290,44 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
   }
 
   if (path === '/api/projects' && method === 'GET') {
+    /*
+     * Tiefensuche, nicht global nach Sortierschlüssel.
+     *
+     * Die erste Fassung sortierte über alle Ebenen hinweg, also standen
+     * Unterprojekte vor ihren Eltern. Die Oberfläche baut den Baum selbst und
+     * lag damit richtig — ein globaler Sort erhält die Reihenfolge innerhalb
+     * jedes Geschwisterkreises —, aber eine Liste, deren Reihenfolge nur
+     * zufällig brauchbar ist, lädt den nächsten Aufrufer zum Fehler ein. Jetzt
+     * kommt sie in Baumreihenfolge und trägt ihre Tiefe mit.
+     */
     const rows = await queryRows<{
       id: string;
       parent_id: string | null;
       name: string;
       color: string | null;
+      depth: number;
       open: string;
     }>(
       ctx.pool,
-      `SELECT p.id, p.parent_id, p.name, p.color,
+      `WITH RECURSIVE walk AS (
+         SELECT p.id, p.parent_id, p.name, p.color, p.sort_key,
+                0 AS depth, ARRAY[p.sort_key] AS path
+           FROM projects p
+          WHERE p.workspace_id = $1 AND p.parent_id IS NULL AND p.trashed_at IS NULL
+         UNION ALL
+         SELECT c.id, c.parent_id, c.name, c.color, c.sort_key,
+                w.depth + 1, w.path || c.sort_key
+           FROM projects c JOIN walk w ON c.parent_id = w.id
+          WHERE c.workspace_id = $1 AND c.trashed_at IS NULL
+       )
+       SELECT w.id, w.parent_id, w.name, w.color, w.depth,
               count(t.id) FILTER (
                 WHERE t.completed_at IS NULL AND t.trashed_at IS NULL
               ) AS open
-         FROM projects p
-         LEFT JOIN tasks t ON t.project_id = p.id
-        WHERE p.workspace_id = $1 AND p.trashed_at IS NULL
-        GROUP BY p.id
-        ORDER BY p.sort_key`,
+         FROM walk w
+         LEFT JOIN tasks t ON t.project_id = w.id
+        GROUP BY w.id, w.parent_id, w.name, w.color, w.depth, w.path
+        ORDER BY w.path`,
       [workspaceId],
     );
     json(res, 200, {
@@ -310,11 +336,43 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
         parentId: r.parent_id,
         name: r.name,
         color: r.color,
+        depth: r.depth,
         // Keine Null: eine Zahl über nichts ist Rauschen in einer ruhigen
         // Zeile (SONE, ADR-0092).
         open: Number(r.open) === 0 ? null : Number(r.open),
       })),
     });
+    return;
+  }
+
+  if (path === '/api/projects' && method === 'POST') {
+    const body = (await readJson(req)) as Record<string, unknown>;
+    const row = await createProject(ctx.pool, workspaceId, {
+      name: typeof body?.['name'] === 'string' ? body['name'] : '',
+      ...('parentId' in (body ?? {})
+        ? { parentId: body['parentId'] === null ? null : String(body['parentId']) }
+        : {}),
+      ...('color' in (body ?? {})
+        ? { color: body['color'] === null ? null : String(body['color']) }
+        : {}),
+    });
+    json(res, 201, { project: { ...row, open: null } });
+    return;
+  }
+
+  const oneProject = /^\/api\/projects\/([0-9a-f-]{36})$/.exec(path);
+  if (oneProject && method === 'PATCH') {
+    const body = (await readJson(req)) as Record<string, unknown>;
+    const row = await updateProject(ctx.pool, oneProject[1]!, workspaceId, {
+      ...('name' in (body ?? {}) ? { name: String(body['name']) } : {}),
+      ...('color' in (body ?? {})
+        ? { color: body['color'] === null ? null : String(body['color']) }
+        : {}),
+      ...('parentId' in (body ?? {})
+        ? { parentId: body['parentId'] === null ? null : String(body['parentId']) }
+        : {}),
+    });
+    json(res, 200, { project: { ...row, open: null } });
     return;
   }
 
@@ -337,6 +395,7 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
       // Gemeldet, nicht erfunden: die Oberfläche kann sagen „Projekt
       // steuer2025 gibt es nicht — anlegen?"
       unknownProject: out.unknownProject ?? null,
+      ambiguousProject: out.ambiguousProject ?? null,
       unknownAssignees: out.unknownAssignees,
       ambiguousAssignees: out.ambiguousAssignees,
     });

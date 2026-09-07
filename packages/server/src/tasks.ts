@@ -150,6 +150,15 @@ export interface Created {
   readonly task: TaskRow;
   /** Ein `#name`, den es im Arbeitsbereich nicht gibt. Wird gemeldet, nicht angelegt. */
   readonly unknownProject: string | undefined;
+  /**
+   * Ein `#name`, auf den mehrere passen.
+   *
+   * „Kabel" darf es unter „Haus" und unter „Büro" geben — das sind zwei
+   * verschiedene Dinge, und der Index in Migration 0004 lässt sie zu Recht
+   * beide zu. Also entscheidet hier niemand: dieselbe Regel wie bei
+   * `ambiguousAssignees`.
+   */
+  readonly ambiguousProject: string | undefined;
   readonly unknownAssignees: readonly string[];
   /**
    * Ein `+name`, auf den **mehrere** passen.
@@ -176,16 +185,18 @@ export async function createFromLine(pool: Pool, input: CreateFromLine): Promise
   return retryOnOrderClash(() => withTransaction(pool, async (client) => {
     let projectId = input.projectId ?? null;
     let unknownProject: string | undefined;
+    let ambiguousProject: string | undefined;
     if (q.project !== undefined) {
-      const found = await queryOne<{ id: string }>(
+      const found = await queryRows<{ id: string }>(
         client,
         `SELECT id FROM projects
           WHERE workspace_id = $1 AND lower(name) = lower($2) AND trashed_at IS NULL
-          LIMIT 1`,
+          LIMIT 2`,
         [input.workspaceId, q.project],
       );
-      if (found) projectId = found.id;
-      else unknownProject = q.project;
+      if (found.length === 1) projectId = found[0]!.id;
+      else if (found.length === 0) unknownProject = q.project;
+      else ambiguousProject = q.project;
     }
 
     const rec = q.recurrence;
@@ -269,7 +280,7 @@ export async function createFromLine(pool: Pool, input: CreateFromLine): Promise
       }
     }
 
-    return { task: row, unknownProject, unknownAssignees, ambiguousAssignees };
+    return { task: row, unknownProject, ambiguousProject, unknownAssignees, ambiguousAssignees };
   }));
 }
 
