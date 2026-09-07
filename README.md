@@ -17,6 +17,8 @@ Konzept → Artboards → ADRs → Bau.
 - [`design/artboards.html`](design/artboards.html) — Schale, Zeile, Erfassung
 - [`design/artboards-2.html`](design/artboards-2.html) — Wiederholung, Freigabe,
   Papierkorb
+- [`design/artboards-3.html`](design/artboards-3.html) — Erinnerungen, CalDAV,
+  Einstellungen, Kopplung
 
 ## Was SOTE werden soll
 
@@ -36,6 +38,8 @@ Konkret heißt das:
   Kein Speichern-Knopf, kein Ladebalken.
 - **Wiederholungen, die stimmen.** Kalenderfest („jeden zweiten Dienstag") und
   erledigungsbezogen („drei Tage nachdem ich es zuletzt gemacht habe").
+- **Auf dem Telefon ohne eigene App.** SOTE spricht CalDAV, also holen Apple
+  Erinnerungen und Tasks.org die Aufgaben ab und wecken dich.
 
 ## Was SOTE nicht werden soll
 

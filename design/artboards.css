@@ -374,3 +374,96 @@ svg{flex:none}
 .restore{display:flex;align-items:center;gap:9px;margin-top:10px}
 .gonep{font-family:var(--mono);font-size:10.5px;color:var(--warning);
   display:inline-flex;align-items:center;gap:6px}
+
+/* ─────────────────────────────────────────────────────────────
+   Zusätze für Artboards 3 — Erinnerungen, CalDAV, Einstellungen,
+   Kopplung
+   ───────────────────────────────────────────────────────────── */
+
+/* Benachrichtigungszeile ─────────────────────────────────── */
+.bell{display:flex;gap:11px;align-items:flex-start;padding:11px 14px;
+  border-bottom:1px solid var(--line)}
+.bell:last-child{border-bottom:0}
+.bell .ic{width:22px;height:22px;display:grid;place-items:center;
+  color:var(--text-muted);flex:none;margin-top:1px}
+.bell .bb{flex:1;min-width:0}
+.bell .t1{font-size:13.5px}
+.bell .t2{font-family:var(--mono);font-size:10.5px;color:var(--ink-350);margin-top:3px}
+.bell.unread{background:var(--sunken)}
+.bell.unread .t1{font-weight:500}
+.bell .act{display:flex;gap:7px;margin-top:8px}
+.mail{border:1px solid var(--line-strong);border-radius:var(--r-lg);
+  background:var(--raised);overflow:hidden;margin:0}
+.mail .mh{padding:11px 15px;border-bottom:1px solid var(--line);
+  font-family:var(--mono);font-size:10.5px;color:var(--ink-350);line-height:1.7}
+.mail .mh b{color:var(--text);font-weight:600;font-family:var(--sans);font-size:13px}
+.mail .mb{padding:15px}
+.mail .mb .s{font-size:15px;font-weight:500;margin-bottom:9px}
+
+/* Feldabbildung ──────────────────────────────────────────── */
+.map{width:100%;border-collapse:collapse;font-size:13px}
+.map th{text-align:left;font-family:var(--mono);font-size:10px;
+  color:var(--ink-350);font-weight:400;padding:9px 12px;
+  border-bottom:1px solid var(--line-strong);letter-spacing:.03em}
+.map td{padding:8px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+.map tr:last-child td{border-bottom:0}
+.map .cd{font-family:var(--mono);font-size:11.5px}
+.map .ok{color:var(--accent-500)}
+[data-theme="dark"] .map .ok{color:var(--accent-300)}
+.map .part{color:var(--warning)}
+.map .no{color:var(--danger)}
+.map .why{color:var(--text-muted);font-size:12.5px}
+
+/* Einstellungen ──────────────────────────────────────────── */
+.settings{display:grid;grid-template-columns:236px 1fr;min-height:480px;
+  background:var(--page)}
+.snav{background:var(--surface);border-right:1px solid var(--line);padding:14px 10px}
+.snav .g{font-family:var(--mono);font-size:10px;color:var(--ink-350);
+  padding:13px 9px 5px;letter-spacing:.03em}
+.snav .g:first-child{padding-top:2px}
+.snav .si{display:flex;align-items:center;gap:9px;padding:6px 9px;
+  border-radius:var(--r-md);font-size:13.5px}
+.snav .si.on{background:var(--sunken);font-weight:500}
+.snav .si .w{margin-left:auto;width:7px;height:7px;border-radius:50%;
+  background:var(--warning)}
+.sbody{padding:26px 30px;max-width:44rem;overflow:auto}
+.sbody h3{font-weight:300;font-size:25px;letter-spacing:-.02em;margin:0 0 4px}
+.sbody .lead{color:var(--text-muted);font-size:13.5px;margin:0 0 20px;max-width:56ch}
+.sc{border:1px solid var(--line);border-radius:var(--r-lg);background:var(--surface);
+  margin-bottom:16px;overflow:hidden}
+.sc > .h{padding:11px 15px;border-bottom:1px solid var(--line);font-size:13.5px;
+  font-weight:500}
+.sr{display:flex;align-items:center;gap:13px;padding:11px 15px;
+  border-bottom:1px solid var(--line)}
+.sr:last-child{border-bottom:0}
+.sr .lt{flex:1;min-width:0}
+.sr .lt .n{font-size:13.5px}
+.sr .lt .d{font-size:12.5px;color:var(--text-muted);margin-top:2px}
+.sr .rt{flex:none}
+
+/* Zustände der Kopplung ──────────────────────────────────── */
+.state{border:1px solid var(--line-strong);border-radius:var(--r-lg);
+  background:var(--surface);overflow:hidden;margin-bottom:16px}
+.state .sh{display:flex;align-items:center;gap:10px;padding:12px 15px;
+  border-bottom:1px solid var(--line)}
+.state .sh .n{font-size:13.5px;font-weight:500}
+.state .sh .tag{margin-left:auto;font-family:var(--mono);font-size:10px;
+  padding:2px 7px;border-radius:var(--r-sm);border:1px solid var(--line-strong);
+  color:var(--text-muted)}
+.state .sh .tag.ok{color:var(--accent-500);border-color:var(--accent-500)}
+[data-theme="dark"] .state .sh .tag.ok{color:var(--accent-300);border-color:var(--accent-300)}
+.state .sh .tag.half{color:var(--warning);border-color:var(--warning)}
+.state .sb{padding:13px 15px;font-size:13px;color:var(--text-muted)}
+.state .sb p{margin:0 0 10px;color:var(--text-muted)}
+.state .sb p:last-child{margin-bottom:0}
+.consent{border:1px solid var(--line-strong);border-left:2px solid var(--accent);
+  border-radius:var(--r-sm);background:var(--page);padding:12px 14px;margin:13px 0}
+.consent .cx{display:flex;gap:11px;align-items:flex-start;font-size:13.5px;
+  color:var(--text)}
+.cbx{width:16px;height:16px;border:1.5px solid var(--ink-350);border-radius:var(--r-sm);
+  flex:none;margin-top:2px;display:grid;place-items:center;background:var(--page)}
+.cbx.on{background:var(--accent);border-color:var(--accent)}
+.pathrow{display:flex;align-items:center;gap:9px;flex-wrap:wrap;
+  font-family:var(--mono);font-size:11.5px;color:var(--text-muted);
+  padding:9px 15px;border-bottom:1px solid var(--line);background:var(--page)}
+.pathrow .a{color:var(--text)}

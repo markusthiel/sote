@@ -439,6 +439,45 @@ Vorhanden und übertragbar: der Notify-Rahmen für die Glocke (ADR-0093), das
 Mail-Relay samt Antwort per Mail (ADR-0060, ADR-0078), die Job-Queue für
 Digests (ADR-0081).
 
+**Eine Uhrzeit ist eine Erinnerung.** Diese Regel ersetzt einen Schalter: wer
+„morgen 9 Uhr" tippt, will um 9 Uhr etwas hören; wer „morgen" tippt, will die
+Aufgabe morgen in der Liste sehen. Ohne sie muss jede Aufgabe zweimal
+eingestellt werden, und das ist der Grund, warum Erinnerungen in den meisten
+Werkzeugen eine Funktion sind, die niemand pflegt.
+
+**Und hier ist die erste Stelle, die einen Wecker braucht.** Zurückstellen kommt
+ohne Job aus, weil nichts weckt (ADR-0075) — eine Erinnerung ist das Gegenteil
+und muss zu einem Zeitpunkt etwas tun. Deshalb kommt die Job-Queue von Anfang an
+mit und nicht später.
+
+Die Zeile im Posteingang trägt **Handlungen**, nicht nur eine Meldung: abhaken,
+in drei Stunden, morgen früh — dieselben drei Zeiten wie beim Zurückstellen. Eine
+Benachrichtigung, die man nur wegklicken kann, erzeugt eine zweite Aufgabe: sich
+an sie zu erinnern. Die Mail geht erst, wenn niemand hinsieht; ein Wecker, der
+gleichzeitig klingelt und schreibt, ist zweimal dieselbe Nachricht.
+
+### CalDAV: SOTE ist die Wahrheit, CalDAV ist ein Fenster
+
+Daraus folgt die eine Regel, die diesen Weg sicher macht: **ein Schreibzugriff
+von außen berührt nur die Felder, die er selbst tragen kann.** Was ein fremder
+Client nicht ausdrücken kann, darf er nicht löschen können — sonst nimmt eine
+Apple-Erinnerung, die von Wiederholung nach Erledigung nichts weiß, beim ersten
+Abhaken die Wiederholung mit. Das ist dieselbe Regel wie „eine Wahrheit pro
+Feld", nur von der anderen Seite.
+
+Die vollständige Feldabbildung samt der vier Verluste steht in
+`design/artboards-3.html`, Blatt 13. Vier Zeilen mit Verlust: Priorität (vier
+Stufen auf drei), Teilaufgaben (Norm ja, Clients unterschiedlich), Wiederholung
+nach Erledigung (kein Gegenstück — hakt ein fremder Client ab, rechnet SOTE die
+nächste), Zuweisung und Kommentare (werden nicht geschrieben, damit nichts
+behauptet wird).
+
+Dass VTODO `DTSTART` **und** `DUE` von Haus aus kennt, ist der Grund, aus dem
+die Trennung von geplant und Frist hier keinen Preis hat.
+
+Zugang pro Gerät mit eigenem Kennwort, nicht dem Anmeldekennwort: es wird in
+einer fremden App gespeichert und ist dort auslesbar. Einzeln zurückziehbar.
+
 **CalDAV (VTODO) ist der Hebel für Mobil.** Wer VTODO spricht, wird von Apple
 Erinnerungen, Tasks.org und anderen bedient — mobile Benachrichtigungen ohne
 eigene App und ohne APNs/FCM. Das ist vor der eigenen Mobil-App zu bauen, nicht
@@ -449,6 +488,32 @@ Unterschied zu einer nativen App vor allem Latenz ist und nicht der Rahmen.
 
 **Offen:** Ort. Als Metadatum trivial, als Auslöser braucht es Geofencing und
 damit eine native App. Im ersten Wurf ist Ort ein Feld, keine Erinnerung.
+
+---
+
+## 9a. Einstellungen und die Kopplung als Vorgang
+
+**Einstellungen sind du, Verwaltung ist der Server** (ADR-0072). Zwei getrennte
+Bereiche, beide ohne Symbol in der Schiene, beide am Kontomenü. Der
+Arbeitsbereich liegt dazwischen, weil er weder das eine noch das andere ist.
+Eigener Vollbildbereich, Liste links und Abschnitt rechts, auf dem Telefon zwei
+Ansichten hintereinander. Karten mit Zeilen, jede Zeile ein Ding mit einer
+Erklärung darunter.
+
+**Die Kopplung ist ein Satz, den jemand liest und bestätigt** — kein Häkchen an
+einem Feld namens „SONE-Integration":
+
+> Wer den Workspace **X** lesen darf, darf die Aufgaben des Projekts **Y**
+> lesen. Wer dort schreiben darf, darf sie abhaken und ändern.
+
+Sie wird nicht aus den Rollen abgeleitet, sondern hier erklärt, und ist jederzeit
+aufhebbar. **Aufheben nimmt in SONE nichts weg**, es hört nur auf, Aufgaben zu
+zeigen.
+
+Drei Zustände, und jeder sagt, was fehlt: nicht eingerichtet · Workspace
+gekoppelt, ich noch nicht verbunden · verbunden. Beide müssen stehen, bevor in
+SONE ein Menüeintrag erscheint — ein Workspace kann gekoppelt sein, während die
+Hälfte des Teams noch keine Verbindung hat.
 
 ---
 
@@ -478,6 +543,18 @@ damit eine native App. Im ersten Wurf ist Ort ein Feld, keine Erinnerung.
    haben, ob dort dieselbe Zahl steht.
 9. Der Löschweg für ein ganzes Projekt: was mit den Aufgaben darin passiert und
    ob sie einzeln wiederherstellbar bleiben.
+10. Die Frist, nach der die Erinnerungsmail geht (im Blatt zehn Minuten, aus dem
+    Bauch). Gehört zu den Einstellungen, die nach ADR-0111 über
+    `check-env-numbers` abzusichern sind, sonst erreicht die Zahl den Container
+    nie.
+11. Vier Prioritätsstufen auf drei abbilden, oder draußen nur drei anbieten und
+    den Preis innen zahlen.
+12. Welches Recht auf SONE-Seite eine Kopplung setzen darf — `people.manage`,
+    `roles.manage` oder Seitenstufe `admin`.
+13. Ein Workspace zu **mehreren** Projekten. Alle Blätter zeigen eins zu eins;
+    der Blockanker erlaubt technisch mehr.
+14. Was beim Trennen mit den Anzeigekopien in SONE passiert: als „nicht mehr
+    gekoppelt" markiert, oder als reiner Text weiterleben?
 
 ### Entschieden am 2026-09-07: die Reihenfolge
 

@@ -1,0 +1,404 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SOTE — Artboards 3: Erinnerungen, CalDAV, Einstellungen, Kopplung</title>
+<link rel="stylesheet" href="artboards.css">
+</head>
+<body>
+<div class="sheet">
+
+<div class="masthead">
+  <div class="stamp">SOTE / Artboards 3 / 2026-09-07 / Grundlage: claude/konzept.md</div>
+  <h1>Erinnern, ausliefern, einrichten</h1>
+  <p>Vier Blätter über das, was SOTE mit der Außenwelt zu tun hat: eine
+  Erinnerung, die wirklich weckt, ein CalDAV-Fenster mit ehrlich benannten
+  Verlusten, die Einstellungen, und die Kopplung an SONE als Vorgang statt als
+  Schalter.</p>
+</div>
+
+<!-- 12 ────────────────────────────────────────────────────── -->
+<section class="board">
+  <header><span class="no">12</span><h2>Erinnerungen</h2></header>
+  <p class="note"><b>Eine Uhrzeit ist eine Erinnerung.</b> Das ist die Regel, und
+  sie ersetzt einen Schalter: wer „morgen 9 Uhr" tippt, will um 9 Uhr etwas
+  hören; wer „morgen" tippt, will die Aufgabe morgen in der Liste sehen. Ohne
+  diese Regel muss jede Aufgabe zweimal eingestellt werden, und genau das macht
+  Erinnerungen in den meisten Werkzeugen zu einer Funktion, die niemand pflegt.</p>
+  <p class="note"><b>Und hier ist die erste Stelle, die einen Wecker braucht.</b>
+  SONEs Zurückstellen kommt ohne Job aus, weil nichts weckt — die Uhr geht
+  vorbei und die Zeile ist wieder da (ADR-0075). Eine Erinnerung ist das
+  Gegenteil: sie muss zu einem Zeitpunkt etwas tun. Das ist keine Kleinigkeit am
+  Rand, sondern der Grund, warum die Job-Queue aus ADR-0081 von Anfang an
+  mitkommt und nicht später.</p>
+  <div class="pair">
+    <div class="frame">
+      <div class="card">
+        <div class="ch">Netzwerkdosen zählen — Erinnerung</div>
+        <div class="cb">
+          <div class="fld"><span class="fl">geplant</span>
+            <span class="inp">Do, 10. Sept, 09:00 <span class="chev">▾</span></span></div>
+          <div class="seg"><div class="on">zur Zeit</div><div>vorher</div><div>eigene Zeit</div></div>
+          <div class="fld" style="margin-bottom:0"><span class="fl">wohin</span>
+            <span class="inp">Glocke und Mail <span class="chev">▾</span></span></div>
+          <div class="says">
+            <div class="s1">Donnerstag um 9 Uhr, an dich.</div>
+            <div class="nx"><span>Glocke sofort — Mail, wenn du 10 Minuten
+              nicht hinsiehst</span>
+              <span>In Apple Erinnerungen als Wecker um 09:00</span></div>
+          </div>
+        </div>
+        <div class="cf"><span class="btn q">Erinnerung entfernen</span>
+          <span class="r"><span class="btn">Abbrechen</span>
+            <span class="btn pri">Übernehmen</span></span></div>
+      </div>
+    </div>
+    <div class="frame" data-theme="dark">
+      <div class="card" style="margin-top:34px">
+        <div class="ch">Posteingang</div>
+        <div class="bell unread">
+          <span class="ic"><svg width="17" height="17" viewBox="0 0 20 20" fill="none"
+            stroke="currentColor" stroke-width="1.6"><circle cx="10" cy="10" r="7"/>
+            <path d="M10 6v4l2.5 2"/></svg></span>
+          <div class="bb"><div class="t1">Netzwerkdosen zählen</div>
+            <div class="t2">jetzt fällig — Umzug Büro</div>
+            <div class="act"><span class="btn">Abhaken</span>
+              <span class="btn q">In 3 Stunden</span>
+              <span class="btn q">Morgen früh</span></div></div>
+        </div>
+        <div class="bell">
+          <span class="ic"><svg width="17" height="17" viewBox="0 0 20 20" fill="none"
+            stroke="currentColor" stroke-width="1.6"><path d="M4 7h12v9H4z"/>
+            <path d="M4 7l6 5 6-5"/></svg></span>
+          <div class="bb"><div class="t1">Anna K. hat dir „Kartons bestellen" zugewiesen</div>
+            <div class="t2">vor 2 Stunden — Umzug Büro</div></div>
+        </div>
+        <div class="bell">
+          <span class="ic"><svg width="17" height="17" viewBox="0 0 20 20" fill="none"
+            stroke="currentColor" stroke-width="1.6"><path d="M4 5h12v11H4z"/>
+            <path d="M7 9h6M7 12h4"/></svg></span>
+          <div class="bb"><div class="t1">Lars B. hat bei „Kabelkanäle ausmessen" geschrieben</div>
+            <div class="t2">gestern — über einen Freigabelink</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="caps">
+    <div class="cap">die Einstellung — drei Zeitpunkte, ein Weg</div>
+    <div class="cap">der Posteingang — was zu tun ist und was andere getan haben</div>
+  </div>
+
+  <p class="note" style="margin-top:26px">Die Zeile im Posteingang trägt
+  <b>Handlungen, nicht nur eine Meldung</b>: abhaken, in drei Stunden, morgen
+  früh. Dieselben drei Zeiten wie SONEs Zurückstellen, aus demselben Grund —
+  eine Benachrichtigung, die man nur wegklicken kann, erzeugt eine zweite
+  Aufgabe: sich an sie zu erinnern.</p>
+  <p class="note">Die Mail geht erst, wenn niemand hinsieht. Ein Wecker, der
+  gleichzeitig klingelt und schreibt, ist zweimal dieselbe Nachricht.</p>
+  <div class="frame" style="padding:24px">
+    <div class="mail">
+      <div class="mh"><b>Jetzt fällig: Netzwerkdosen zählen</b><br>
+        SOTE &lt;sote@example.org&gt; an markus@example.org</div>
+      <div class="mb">
+        <div class="s">Netzwerkdosen zählen</div>
+        <div style="font-size:13.5px;color:var(--text-muted);margin-bottom:13px">
+          Geplant war heute, 9 Uhr. Frist ist der 12. September.
+          Projekt: Umzug Büro.</div>
+        <div style="display:flex;gap:8px"><span class="btn pri">Abhaken</span>
+          <span class="btn">Morgen früh</span>
+          <span class="btn">In SOTE öffnen</span></div>
+        <div style="font-family:var(--mono);font-size:10.5px;color:var(--ink-350);margin-top:14px">
+          Antworten auf diese Mail wird ein Kommentar an der Aufgabe.</div>
+      </div>
+    </div>
+  </div>
+  <div class="cap">der Mailweg aus ADR-0060 und ADR-0078, samt Antwort per Mail</div>
+</section>
+
+<!-- 13 ────────────────────────────────────────────────────── -->
+<section class="board">
+  <header><span class="no">13</span><h2>CalDAV — das Fenster nach draußen</h2></header>
+  <p class="note">Der Hebel für Mobil: wer VTODO spricht, wird von Apple
+  Erinnerungen, Tasks.org und anderen bedient, und die mobile Benachrichtigung
+  kommt ohne eigene App und ohne Push-Dienst. Ein Projekt ist eine Sammlung,
+  eine Aufgabe ist ein VTODO.</p>
+  <p class="note"><b>SOTE bleibt die Wahrheit, CalDAV ist ein Fenster.</b> Daraus
+  folgt die eine Regel, die diesen Weg sicher macht: <b>ein Schreibzugriff von
+  außen berührt nur die Felder, die er selbst tragen kann.</b> Was ein fremder
+  Client nicht ausdrücken kann, darf er nicht löschen können. Sonst nimmt eine
+  Apple-Erinnerung, die von Wiederholung nach Erledigung nichts weiß, beim ersten
+  Abhaken die Wiederholung mit.</p>
+  <div class="frame">
+    <table class="map">
+      <thead><tr><th>in SOTE</th><th>in VTODO</th><th>überlebt</th>
+        <th>was verloren geht</th></tr></thead>
+      <tbody>
+        <tr><td>Titel</td><td class="cd">SUMMARY</td><td class="ok">ja</td><td class="why"></td></tr>
+        <tr><td>Notiz</td><td class="cd">DESCRIPTION</td><td class="ok">ja</td><td class="why"></td></tr>
+        <tr><td>geplant</td><td class="cd">DTSTART</td><td class="ok">ja</td>
+          <td class="why">VTODO kennt beide Zeitpunkte von Haus aus — das ist der
+          Grund, aus dem die Trennung hier keinen Preis hat</td></tr>
+        <tr><td>Frist</td><td class="cd">DUE</td><td class="ok">ja</td><td class="why"></td></tr>
+        <tr><td>Status</td><td class="cd">STATUS, COMPLETED</td><td class="ok">ja</td><td class="why"></td></tr>
+        <tr><td>Erinnerung</td><td class="cd">VALARM</td><td class="ok">ja</td>
+          <td class="why">genau das ist der Zweck des ganzen Wegs</td></tr>
+        <tr><td>Schlagwörter</td><td class="cd">CATEGORIES</td><td class="ok">ja</td><td class="why"></td></tr>
+        <tr><td>Herkunft in SONE</td><td class="cd">URL</td><td class="ok">ja</td>
+          <td class="why">Apple Erinnerungen zeigt sie als Link</td></tr>
+        <tr><td>Priorität, vier Stufen</td><td class="cd">PRIORITY 1–9</td>
+          <td class="part">teilweise</td>
+          <td class="why">Apple kennt drei Stufen und eine Leere. Vier auf drei
+          abzubilden verliert eine Unterscheidung — hin und zurück gerechnet ist
+          „Wichtig" hinterher vielleicht „Normal"</td></tr>
+        <tr><td>Teilaufgaben</td><td class="cd">RELATED-TO</td>
+          <td class="part">teilweise</td>
+          <td class="why">steht in der Norm, wird von Clients unterschiedlich
+          umgesetzt. Verschachtelung über zwei Ebenen ist nicht zu erwarten</td></tr>
+        <tr><td>Wiederholung nach Kalender</td><td class="cd">RRULE</td>
+          <td class="ok">ja</td>
+          <td class="why">deshalb wird sie als RRULE gespeichert und nicht in
+          eigenen Feldern</td></tr>
+        <tr><td>Wiederholung nach Erledigung</td><td class="cd">—</td>
+          <td class="no">nein</td>
+          <td class="why">hat kein Gegenstück. Draußen erscheint sie als einzelne
+          Aufgabe; hakt ein fremder Client sie ab, rechnet <b>SOTE</b> die nächste
+          und legt sie an</td></tr>
+        <tr><td>Zuweisung</td><td class="cd">ATTENDEE</td><td class="no">nein</td>
+          <td class="why">in der Norm vorhanden, von den verbreiteten Clients
+          nicht angezeigt. Wird nicht geschrieben, damit nichts behauptet wird</td></tr>
+        <tr><td>Kommentare</td><td class="cd">—</td><td class="no">nein</td>
+          <td class="why">ein Gespräch ist keine Eigenschaft eines Termins</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="cap">vier Zeilen mit Verlust, alle vier benannt statt entdeckt</div>
+
+  <p class="note" style="margin-top:26px">In den Einstellungen ist das eine Zeile
+  pro Person mit einer Adresse und einem eigenen Kennwort — nicht dem
+  Anmeldekennwort, weil es in einer fremden App gespeichert wird und dort
+  jederzeit auslesbar ist.</p>
+  <div class="frame">
+    <div class="sbody" style="max-width:none">
+      <div class="sc">
+        <div class="h">CalDAV</div>
+        <div class="pathrow"><span>Adresse</span>
+          <span class="a">https://sote.example.org/dav/markus/</span></div>
+        <div class="sr"><div class="lt"><div class="n">Gerätekennwort</div>
+          <div class="d">Eigenes Kennwort für diesen Zugang. Wird einmal gezeigt
+          und ist einzeln zurückziehbar.</div></div>
+          <div class="rt"><span class="btn">Kennwort erzeugen</span></div></div>
+        <div class="sr"><div class="lt"><div class="n">iPhone von Markus</div>
+          <div class="d">Letzter Abruf vor 4 Minuten — 3 Projekte</div></div>
+          <div class="rt"><span class="btn q">Zurückziehen</span></div></div>
+        <div class="sr"><div class="lt"><div class="n">Welche Projekte</div>
+          <div class="d">Jedes Projekt ist draußen eine eigene Liste.</div></div>
+          <div class="rt"><span class="inp">3 ausgewählt <span class="chev">▾</span></span></div></div>
+        <div class="sr"><div class="lt"><div class="n">Fremde Schreibzugriffe</div>
+          <div class="d">Ein Client ändert nur, was er ausdrücken kann. Alles
+          andere bleibt, wie es hier steht.</div></div>
+          <div class="rt"><span class="sw"></span></div></div>
+      </div>
+    </div>
+  </div>
+  <div class="cap">der letzte Schalter ist absichtlich einer, den man nicht ausschalten will</div>
+</section>
+
+<!-- 14 ────────────────────────────────────────────────────── -->
+<section class="board">
+  <header><span class="no">14</span><h2>Die Einstellungen</h2></header>
+  <p class="note">Eigener Vollbildbereich mit Liste links und Abschnitt rechts;
+  auf dem Telefon sind das zwei Ansichten hintereinander. Karten mit Zeilen, jede
+  Zeile ein Ding mit einer Erklärung darunter — dasselbe Muster wie in SONE.</p>
+  <p class="note"><b>Einstellungen sind du, Verwaltung ist der Server</b>
+  (ADR-0072). Zwei getrennte Bereiche, beide ohne Symbol in der Schiene, beide am
+  Kontomenü. Die eine Gruppe heißt <code>Nur für dich</code>, die andere
+  <code>Für alle auf diesem Server</code> — und der Arbeitsbereich liegt
+  dazwischen, weil er weder das eine noch das andere ist.</p>
+  <div class="frame">
+    <div class="settings">
+      <nav class="snav">
+        <div class="g">Nur für dich</div>
+        <div class="si">Konto</div>
+        <div class="si">Darstellung</div>
+        <div class="si">Erinnerungen</div>
+        <div class="si on">Verbindungen <span class="w"></span></div>
+        <div class="g">Dieser Arbeitsbereich</div>
+        <div class="si">Allgemein</div>
+        <div class="si">Leute</div>
+        <div class="si">Rollen</div>
+        <div class="si">Projekte</div>
+        <div class="g">Für alle auf diesem Server</div>
+        <div class="si">Einladungen</div>
+        <div class="si">Anmeldung</div>
+        <div class="si">Sicherung</div>
+      </nav>
+      <div class="sbody">
+        <h3>Verbindungen</h3>
+        <p class="lead">Wohin SOTE hinausreicht und wer hereinschauen darf. Jede
+        Verbindung ist einzeln zurückziehbar.</p>
+        <div class="sc">
+          <div class="h">SONE</div>
+          <div class="sr"><div class="lt"><div class="n">sone.example.org</div>
+            <div class="d">Verbunden als Markus Thiel — 1 gekoppelter Workspace</div></div>
+            <div class="rt"><span class="btn q">Trennen</span></div></div>
+          <div class="sr"><div class="lt"><div class="n">Aufgaben in Seiten anlegen</div>
+            <div class="d">Zeigt in SONE die Einträge „Neue Aufgabe" und
+            „Bestehende Liste einbinden".</div></div>
+            <div class="rt"><span class="sw"></span></div></div>
+        </div>
+        <div class="sc">
+          <div class="h">CalDAV</div>
+          <div class="sr"><div class="lt"><div class="n">iPhone von Markus</div>
+            <div class="d">Letzter Abruf vor 4 Minuten</div></div>
+            <div class="rt"><span class="btn q">Zurückziehen</span></div></div>
+          <div class="sr"><div class="lt"><div class="n">Neues Gerät</div>
+            <div class="d">Erzeugt ein eigenes Kennwort für genau dieses Gerät.</div></div>
+            <div class="rt"><span class="btn">Kennwort erzeugen</span></div></div>
+        </div>
+        <div class="sc">
+          <div class="h">Anmeldung über einen Anbieter</div>
+          <div class="sr"><div class="lt"><div class="n">Kein Anbieter eingerichtet</div>
+            <div class="d">Wenn SOTE und SONE gegen denselben Anbieter sprechen,
+            ist die Zuordnung der Konten geschenkt und niemand muss einen Token
+            von Hand einsetzen.</div></div>
+            <div class="rt"><span class="btn">Einrichten</span></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="cap">der Punkt an „Verbindungen" heißt: hier wartet etwas, nicht: hier ist etwas kaputt</div>
+</section>
+
+<!-- 15 ────────────────────────────────────────────────────── -->
+<section class="board">
+  <header><span class="no">15</span><h2>Die Kopplung als Vorgang</h2></header>
+  <p class="note">Die Kopplung hat <b>zwei Zustände</b>, und beide müssen stehen,
+  bevor in SONE ein Menüeintrag erscheint: der Workspace ist gekoppelt, und
+  <b>ich persönlich</b> bin verbunden. Das ist keine Umständlichkeit, sondern die
+  Folge davon, dass es zwei Kontosysteme sind. Ein Workspace kann gekoppelt sein,
+  während die Hälfte des Teams noch keine Verbindung hat.</p>
+  <div class="pair">
+    <div class="frame"><div class="sbody" style="max-width:none">
+      <div class="state">
+        <div class="sh">
+          <svg width="16" height="16" viewBox="0 0 100 100" style="opacity:.4">
+            <rect x="12" y="16" width="76" height="9" fill="currentColor"/>
+            <rect x="28" y="37" width="60" height="9" fill="currentColor"/>
+            <rect x="44" y="58" width="44" height="9" fill="currentColor"/>
+            <rect x="28" y="79" width="60" height="9" fill="currentColor"/>
+          </svg>
+          <span class="n">SONE</span><span class="tag">nicht eingerichtet</span></div>
+        <div class="sb">
+          <p>SOTE läuft ohne SONE vollständig. Wer beides betreibt, kann eine
+          Aufgabenliste in einer Seite führen und von der Aufgabe zurück zu ihrer
+          Herkunft gehen.</p>
+          <span class="btn pri">Verbindung einrichten</span></div>
+      </div>
+      <div class="state">
+        <div class="sh">
+          <svg width="16" height="16" viewBox="0 0 100 100">
+            <rect x="12" y="16" width="76" height="9" fill="currentColor"/>
+            <rect x="28" y="37" width="60" height="9" fill="currentColor"/>
+            <rect x="44" y="58" width="44" height="9" fill="#2f7d6f"/>
+            <rect x="28" y="79" width="60" height="9" fill="currentColor"/>
+          </svg>
+          <span class="n">SONE</span><span class="tag half">Workspace gekoppelt</span></div>
+        <div class="pathrow"><span>Workspace</span><span class="a">SONE</span>
+          <span>—</span><span>Projekt</span><span class="a">SONE</span></div>
+        <div class="sb">
+          <p>Die Kopplung steht. <b>Du selbst bist noch nicht verbunden</b>, also
+          erscheinen in SONE für dich keine Aufgaben-Einträge im
+          <code>/</code>-Menü.</p>
+          <span class="btn pri">Mich verbinden</span></div>
+      </div>
+      <div class="state">
+        <div class="sh">
+          <svg width="16" height="16" viewBox="0 0 100 100">
+            <rect x="12" y="16" width="76" height="9" fill="currentColor"/>
+            <rect x="28" y="37" width="60" height="9" fill="currentColor"/>
+            <rect x="44" y="58" width="44" height="9" fill="#2f7d6f"/>
+            <rect x="28" y="79" width="60" height="9" fill="currentColor"/>
+          </svg>
+          <span class="n">SONE</span><span class="tag ok">verbunden</span></div>
+        <div class="pathrow"><span>Workspace</span><span class="a">SONE</span>
+          <span>—</span><span>Projekt</span><span class="a">SONE</span>
+          <span>—</span><span>als</span><span class="a">Markus Thiel</span></div>
+        <div class="sb">
+          <p>4 Aufgaben zeigen auf eine Seite. 1 Liste steht in einer Seite.</p>
+          <span class="btn q">Kopplung aufheben</span></div>
+      </div>
+    </div></div>
+    <div class="frame" data-theme="dark"><div class="sbody" style="max-width:none">
+      <div class="card" style="margin:0;width:auto">
+        <div class="ch">Workspace koppeln</div>
+        <div class="cb">
+          <div class="fld"><span class="fl">Instanz</span>
+            <span class="inp" style="flex:1">sone.example.org</span></div>
+          <div class="fld"><span class="fl">Workspace</span>
+            <span class="inp" style="flex:1">SONE <span class="chev">▾</span></span></div>
+          <div class="fld"><span class="fl">Projekt</span>
+            <span class="inp" style="flex:1">SONE <span class="chev">▾</span></span></div>
+          <div class="consent">
+            <div class="cx"><span class="cbx on"><svg width="10" height="10" viewBox="0 0 12 12"><path d="M2 6.5 4.7 9 10 3.2" fill="none" stroke="#161615" stroke-width="1.9"/></svg></span>
+              <span>Wer den Workspace <b>SONE</b> lesen darf, darf die Aufgaben
+              des Projekts <b>SONE</b> lesen. Wer dort schreiben darf, darf sie
+              abhaken und ändern.</span></div>
+          </div>
+          <div style="font-size:12.5px;color:var(--text-muted)">
+            Diese Aussage ist die Kopplung. Sie wird nicht aus den Rollen
+            abgeleitet, sondern hier erklärt — und sie ist jederzeit aufhebbar.
+            Aufheben nimmt in SONE nichts weg, es hört nur auf, Aufgaben zu
+            zeigen.</div>
+        </div>
+        <div class="cf"><span class="r"><span class="btn">Abbrechen</span>
+          <span class="btn pri">Koppeln</span></span></div>
+      </div>
+    </div></div>
+  </div>
+  <div class="caps">
+    <div class="cap">drei Zustände, und jeder sagt, was fehlt</div>
+    <div class="cap">der Vorgang — ein Satz, den man bestätigt</div>
+  </div>
+
+  <p class="note" style="margin-top:26px">Der Haken ist der Kern dieses Blattes.
+  Die Kopplung ist eine <b>Rechteaussage in einem Satz</b>, den jemand liest und
+  bestätigt, kein Häkchen an einem Feld namens „SONE-Integration". Wer sie setzt,
+  muss beide Seiten verwalten dürfen; wer nur das Projekt verwaltet, sieht den
+  Satz und kann ihn nicht bestätigen.</p>
+</section>
+
+<!-- Offen ─────────────────────────────────────────────────── -->
+<section class="board">
+  <header><span class="no">—</span><h2>Was diese Blätter offen lassen</h2></header>
+  <div class="open">
+    <ol>
+      <li><b>Die zehn Minuten, nach denen die Mail geht</b>, sind eine Zahl aus
+      dem Bauch. Sie gehört zu den Einstellungen, die nach ADR-0111 mit
+      <code>check-env-numbers</code> abgesichert werden müssen, sonst erreicht
+      sie den Container nie.</li>
+      <li><b>Die Abbildung von vier Prioritätsstufen auf drei</b> ist als Verlust
+      benannt, aber nicht entschieden. Möglich wäre auch, draußen nur drei
+      anzubieten und die vierte als „ohne" zu führen — dann stimmt der Rückweg,
+      und der Preis liegt innen statt außen.</li>
+      <li><b>Wer eine Kopplung setzen darf</b>, steht als Satz im Blatt („beide
+      Seiten verwalten"), aber die Rechte auf SONE-Seite sind
+      <code>people.manage</code>, <code>roles.manage</code> und Seitenstufe —
+      welches davon genau, ist zu klären.</li>
+      <li><b>Ein Workspace zu mehreren Projekten.</b> Alle Blätter zeigen eins zu
+      eins. Ob eine SONE-Seite in einem anderen Projekt eine Liste führen darf als
+      die Kopplung nennt, ist nicht entschieden — der Blockanker erlaubt es
+      technisch.</li>
+      <li><b>Was beim Trennen mit den Anzeigekopien passiert.</b> Blatt 15 sagt,
+      Aufheben nimmt nichts weg. Ob die Kopien dann als „nicht mehr gekoppelt"
+      oder als reiner Text weiterleben, hat noch kein Bild.</li>
+      <li><b>Verwaltung</b> ist in der Liste, aber nicht gezeichnet. Und die
+      Darstellung mit Themes pro Arbeitsbereich ist der Punkt, an dem sich
+      entscheidet, wie viel vom Gestaltungssystem aus SONE wirklich mitkommt.</li>
+    </ol>
+  </div>
+</section>
+
+</div>
+</body>
+</html>
