@@ -39,8 +39,18 @@ aus — ein Ursprung für beides, damit der Sitzungskeks ohne CORS auskommt. Er
 bindet nur an localhost; davor gehört ein Reverse Proxy mit TLS, weil der Keks
 sonst im Klartext reist.
 
-Ein erstes Konto legt man derzeit von Hand an; eine Einladung gibt es noch
-nicht.
+Das erste Konto legt ein Skript an — eine Einladung gibt es noch nicht:
+
+```
+docker compose exec server \
+  env SOTE_NEW_PASSWORD='…' \
+  node packages/server/dist/scripts/createAccount.js \
+  du@example.org "Dein Name" "Mein Arbeitsbereich"
+```
+
+Das Kennwort kommt aus der Umgebung und nicht aus einem Argument:
+Kommandozeilen landen in der Shell-Geschichte und in `ps`. Ein bestehendes
+Konto wird nicht stillschweigend überschrieben.
 
 - [`claude/konzept.md`](claude/konzept.md) — die Festlegungen und die offenen
   Punkte
