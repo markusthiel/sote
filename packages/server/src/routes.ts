@@ -8,7 +8,7 @@
 
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 
-import { describe as describeRecurrence } from '@sote/core';
+import { describe as describeRecurrence, isZone } from '@sote/core';
 import type { Pool } from 'pg';
 
 import { signIn, signOut, userOfToken } from './auth.js';
@@ -183,6 +183,21 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
   const method = req.method ?? 'GET';
   const now = ctx.now();
 
+  /*
+   * Die Zeitzone der Person, aus der Anfrage.
+   *
+   * Der Container steht auf UTC, und das ist richtig — eine Instanz, die für
+   * Leute in drei Zeitzonen läuft, kann keine eigene haben. Die Zone kommt
+   * darum vom Browser, der sie kennt (`Intl…resolvedOptions().timeZone`), und
+   * wird **geprüft statt geglaubt**: was die Laufzeit nicht als Zone erkennt,
+   * ist ein Tippfehler und wird zu UTC.
+   *
+   * Ohne Angabe bleibt es UTC — genau das Verhalten von vorher, also ändert
+   * sich für einen alten Aufrufer nichts.
+   */
+  const askedZone = url.searchParams.get('tz');
+  const zone = askedZone !== null && isZone(askedZone) ? askedZone : 'UTC';
+
   if (!path.startsWith('/api/')) {
     if (ctx.webRoot === undefined) {
       fail(res, 404, 'no_web', 'diese Instanz liefert keine Oberfläche aus');
@@ -318,7 +333,7 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
 
   if (path === '/api/today' && method === 'GET') {
     const rows = await list(ctx.pool, 'today', workspaceId, now);
-    const sections = splitOverdue(rows, now);
+    const sections = splitOverdue(rows, now, zone);
     json(res, 200, {
       overdue: sections.overdue.map(taskView),
       today: sections.rest.map(taskView),
@@ -338,8 +353,8 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
       fail(res, 400, 'no_project', 'diese Ansicht braucht ein Projekt');
       return;
     }
-    const rows = await list(ctx.pool, view, workspaceId, now, projectId);
-    const sections = view === 'today' ? splitOverdue(rows, now) : undefined;
+    const rows = await list(ctx.pool, view, workspaceId, now, projectId, zone);
+    const sections = view === 'today' ? splitOverdue(rows, now, zone) : undefined;
     json(res, 200, {
       view,
       // Nur Heute trennt überfällig ab: in Demnächst wäre der Abschnitt leer,
@@ -353,7 +368,7 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
 
   if (path === '/api/search' && method === 'GET') {
     const raw = url.searchParams.get('q') ?? '';
-    const out = await search(ctx.pool, workspaceId, raw, now);
+    const out = await search(ctx.pool, workspaceId, raw, now, 100, zone);
     json(res, 200, {
       q: raw,
       // Die gelesene Abfrage kommt mit zurück, damit die Oberfläche ihre Chips
@@ -367,7 +382,7 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
   }
 
   if (path === '/api/counts' && method === 'GET') {
-    json(res, 200, await counts(ctx.pool, workspaceId, now));
+    json(res, 200, await counts(ctx.pool, workspaceId, now, zone));
     return;
   }
 
@@ -466,6 +481,7 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
       return;
     }
     const out = await createFromLine(ctx.pool, {
+      zone,
       workspaceId,
       userId,
       line,

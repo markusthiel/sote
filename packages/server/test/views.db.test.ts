@@ -347,3 +347,32 @@ test('ein Projekt nimmt nach einem weggeworfenen Eintrag weiter Aufgaben an', as
   const third = await add(workspaceId, 'drei');
   assert.ok(third.task.sort_key > second.task.sort_key);
 });
+
+/* ── Die Zeitzone ────────────────────────────────────────────────────────── */
+
+test('der Tag ist der der Person, nicht der von UTC', () => {
+  // Gemeldet: „morgen 9 Uhr" wurde 11 Uhr. Der zweite Teil desselben Fehlers
+  // ist stiller: um 00:30 in Berlin ist es in UTC noch gestern, und eine
+  // Ansicht „Heute", die in UTC rechnet, zeigt dann den falschen Tag.
+  const at = new Date('2026-09-08T22:30:00Z'); // 00:30 am 9. in Berlin
+  const utc = boundsOf(at);
+  const berlin = boundsOf(at, 'Europe/Berlin');
+  assert.equal(utc.startOfDay.toISOString(), '2026-09-08T00:00:00.000Z');
+  assert.equal(berlin.startOfDay.toISOString(), '2026-09-08T22:00:00.000Z');
+  assert.notEqual(utc.startOfDay.getTime(), berlin.startOfDay.getTime());
+});
+
+test('ohne Zone bleibt es UTC — ein alter Aufrufer merkt nichts', () => {
+  const at = new Date('2026-09-07T23:30:00Z');
+  assert.deepEqual(boundsOf(at), boundsOf(at, 'UTC'));
+});
+
+test('an den Umstellungstagen ist der Tag nicht 24 Stunden lang', () => {
+  // Deshalb werden Anfang und Ende getrennt gerechnet und nicht eines aus dem
+  // anderen: 23 Stunden im Frühjahr, 25 im Herbst.
+  const h = 3_600_000;
+  const spring = boundsOf(new Date('2026-03-29T10:00:00Z'), 'Europe/Berlin');
+  const autumn = boundsOf(new Date('2026-10-25T10:00:00Z'), 'Europe/Berlin');
+  assert.equal(Math.round((spring.endOfDay.getTime() - spring.startOfDay.getTime()) / h), 23);
+  assert.equal(Math.round((autumn.endOfDay.getTime() - autumn.startOfDay.getTime()) / h), 25);
+});

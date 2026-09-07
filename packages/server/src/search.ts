@@ -69,6 +69,7 @@ export async function search(
   raw: string,
   now: Date,
   limit = 100,
+  zone?: string,
 ): Promise<SearchResult> {
   const query = parseTaskQuery(raw);
   const where: string[] = ['t.workspace_id = $1', 't.trashed_at IS NULL'];
@@ -134,7 +135,7 @@ export async function search(
   }
 
   if (query.due !== undefined) {
-    const bounds = boundsOf(now);
+    const bounds = boundsOf(now, zone);
     if (query.due === 'today') {
       add((n) => `t.due_at <= $${n}`, bounds.endOfDay);
     } else if (query.due === 'overdue') {

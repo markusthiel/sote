@@ -95,7 +95,11 @@ export function TaskList({
     setNotice(undefined);
     setUnknownProject(null);
     try {
-      const out = await api.createTask(line, workspace);
+      // Der Bildschirm gibt seine Herkunft mit: wer in einem Projekt tippt,
+      // meint dieses Projekt. Vorher ging die Zeile ohne Projekt hinaus und
+      // die Aufgabe landete in Heute oder Irgendwann — angelegt, aber nicht
+      // dort, wo man stand.
+      const out = await api.createTask(line, workspace, projectId);
       // Vier verschiedene Nachrichten, und keine davon ist „ging nicht":
       // unbekannt und mehrdeutig sind zwei Fälle, und für Projekt und Person
       // je einer.

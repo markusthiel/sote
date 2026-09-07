@@ -806,6 +806,43 @@ Beim Bauen entschieden, weil es ohne Entscheidung keinen Code gibt:
   „heute heute" (Angabe und Datum waren dasselbe Wort) und „Mi, 14. Okto" —
   Monatskürzel aus `slice(0, 4)`, was bei sieben von zwölf Monaten kein
   deutsches Kürzel trifft. Kürzel sind jetzt eine geprüfte Liste.
+- **Eine Wanduhrzeit ohne Zeitzone ist keine Angabe.** Gemeldet: „morgen 9 Uhr"
+  eingetippt, „morgen, 11:00" angezeigt. Der Parser läuft auf dem Server, der
+  Container steht auf UTC, also baute er 09:00 UTC.
+  - `views.ts` benannte den Grund selbst — „die Zeitzone gehört dem Browser" —
+    aber der Browser schickte einen **Zeitpunkt** mit, keine **Zeitzone**. Ein
+    Zeitpunkt sagt nicht, in welchem Tag jemand steht.
+  - Die Zone kommt jetzt aus dem Browser und hängt an **jeder** Anfrage, an
+    **einer** Stelle gelesen. Zwei Antworten auf „welche Zone" laufen beim
+    ersten Gebrauch auseinander (dieselbe Regel wie bei der Suchabfrage in der
+    URL).
+  - **Geprüft statt geglaubt:** was die Laufzeit nicht als Zone erkennt, ist ein
+    Tippfehler und wird zu UTC. Ohne Angabe bleibt alles UTC — ein alter
+    Aufrufer merkt nichts.
+  - **Die Uhr wird verschoben, nicht der Parser umgeschrieben.** Der rechnet
+    durchgehend mit `getUTC*`; `now` geht als Wanduhrablesung hinein, jedes
+    Ergebnis wird zurückgeschoben. Ein verschobenes `Date` ist kein Zeitpunkt,
+    sondern eine Ablesung — daher `toWallClock`/`fromWallClock` und nicht
+    `plus`/`minus`.
+  - **Ein Tag ist nicht immer 24 Stunden lang.** An den Umstellungstagen 23 und
+    25, also werden Anfang und Ende getrennt gerechnet und nicht eines aus dem
+    anderen.
+  - Zwei Randfälle, entschieden statt übersehen: die Stunde, die es nach der
+    Umstellung nach vorn nicht gibt, **rutscht nach vorn**; die, die es doppelt
+    gibt, nimmt das **frühere** Vorkommen — bei einer Erinnerung ist zu früh
+    besser als zu spät. Mein erster Wurf tat hier das Gegenteil dessen, was
+    zwanzig Zeilen weiter oben als Entscheidung stand; der Test fand den
+    Widerspruch. Jetzt werden **beide** möglichen Versätze abgeklopft statt
+    einmal geraten — zwölf Stunden vor und nach der gesuchten Zeit liegt
+    garantiert je eine Seite jeder Umstellung.
+  - Offen: eine Einstellung pro Person. Wer verreist, will die Zone zu Hause
+    behalten, und für nächtliche Erinnerungen ist sie zwingend, weil dann kein
+    Browser mitschickt.
+- **Der Bildschirm gibt seine Herkunft mit.** Wer in einem Projekt tippt, meint
+  dieses Projekt. Der Server wog das schon richtig ab — Herkunft als Vorgabe,
+  `#projekt` gewinnt darüber — aber die Oberfläche schickte die Herkunft nicht
+  mit, und die Aufgabe landete in Heute oder Irgendwann. Angelegt, aber nicht
+  dort, wo man stand.
 - **`pnpm check` ist genau das, was die CI fährt.** Erst standen die Prüfungen
   einzeln in der Workflow-Datei, und `pnpm -r typecheck` scheiterte dort — in
   einem frischen Klon gibt es kein `dist`, und `@sote/core` zeigt mit `types`

@@ -142,6 +142,8 @@ export interface CreateFromLine {
   readonly userId: string;
   readonly line: string;
   readonly now: Date;
+  /** Die Zone, in der „9 Uhr" gemeint ist. Fehlt sie: UTC, wie vorher. */
+  readonly zone?: string;
   /** Projekt, in dem die Zeile getippt wurde. `#name` schlägt es. */
   readonly projectId?: string | null;
 }
@@ -180,7 +182,10 @@ export interface Created {
  * das stillschweigend verschwindet, verliert, was jemand gemeint hat.
  */
 export async function createFromLine(pool: Pool, input: CreateFromLine): Promise<Created> {
-  const q = parseQuickAdd(input.line, { now: input.now });
+  const q = parseQuickAdd(input.line, {
+    now: input.now,
+    ...(input.zone === undefined ? {} : { zone: input.zone }),
+  });
 
   return retryOnOrderClash(() => withTransaction(pool, async (client) => {
     let projectId = input.projectId ?? null;

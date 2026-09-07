@@ -28,6 +28,7 @@
  * Unbekanntem stehen bleibt, ist eine, die man nicht benutzt.
  */
 
+import { fromWallClock, toWallClock } from '../time/zone.js';
 import type { Recurrence, Unit } from './recurrence.js';
 
 /** 1 = dringend … 4 = später. Vier innen, drei nach draußen (Blatt 13). */
@@ -66,6 +67,15 @@ export interface QuickAddOptions {
   readonly now: Date;
   /** Vorgabe für „9 Uhr" ohne Minuten ist voll; hier nur die Stunde ohne Zeit. */
   readonly defaultHour?: number;
+  /**
+   * Die Zeitzone, in der „9 Uhr" gemeint ist.
+   *
+   * Fehlt sie, wird in UTC gerechnet — wie bisher. Das ist die Vorgabe für
+   * Tests, die selbst UTC annehmen, und für nichts sonst: **jeder Aufruf aus
+   * einer Route gibt eine Zone mit**, sonst baut der Server 09:00 UTC und der
+   * Browser in Berlin liest 11:00. Genau das war der gemeldete Fehler.
+   */
+  readonly zone?: string;
 }
 
 const WEEKDAY_WORDS: Record<string, number> = {
@@ -150,7 +160,34 @@ function nextWeekday(now: Date, weekday: number): Date {
   return addDays(today, shift === 0 ? 7 : shift);
 }
 
+/**
+ * Eine Zeile lesen, in der Zeitzone der Person.
+ *
+ * Der Parser darunter rechnet durchgehend mit `getUTC*`. Statt vierzig Stellen
+ * umzuschreiben, wird **die Uhr verschoben**: `now` geht als Wanduhrablesung
+ * hinein, und jedes Datum, das herauskommt, wird zurückgeschoben. Ein
+ * verschobenes `Date` ist kein Zeitpunkt, sondern eine Ablesung — daher die
+ * Namen `toWallClock`/`fromWallClock` und nicht `plus`/`minus`.
+ */
 export function parseQuickAdd(input: string, options: QuickAddOptions): QuickAdd {
+  const zone = options.zone;
+  if (zone !== undefined && zone !== 'UTC') {
+    const inWall = parseInUtc(input, {
+      ...options,
+      now: toWallClock(zone, options.now),
+    });
+    return {
+      ...inWall,
+      ...(inWall.planned === undefined
+        ? {}
+        : { planned: fromWallClock(zone, inWall.planned) }),
+      ...(inWall.due === undefined ? {} : { due: fromWallClock(zone, inWall.due) }),
+    };
+  }
+  return parseInUtc(input, options);
+}
+
+function parseInUtc(input: string, options: QuickAddOptions): QuickAdd {
   const r = new Reader(input);
   const now = options.now;
 

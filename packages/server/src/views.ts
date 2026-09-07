@@ -19,6 +19,7 @@
  * - **Ein Projekt** — alles darin, ungeachtet der Zeit.
  */
 
+import { endOfDayIn, startOfDayIn } from '@sote/core';
 import type { Pool } from 'pg';
 
 import { queryRows, type PoolClient } from './db.js';
@@ -58,21 +59,30 @@ export interface Bounds {
 /**
  * Der Tag, in dem `now` liegt.
  *
- * Gerechnet in UTC, weil der Server keine Zeitzone hat. Die Zeitzone gehört dem
- * Browser: er weiß, in welchem Tag jemand steht, und der Server weiß es nicht
- * (dieselbe Aufteilung wie beim Zurückstellen in SONE, ADR-0075). Solange die
- * Oberfläche `now` mitschickt, ist das hier richtig; sobald ein Job nachts
- * Erinnerungen verschickt, braucht er die Zeitzone der Person und nicht diese
- * Funktion.
+ * Hier stand: „gerechnet in UTC, weil der Server keine Zeitzone hat. Die
+ * Zeitzone gehört dem Browser." Der Gedanke war richtig, die Umsetzung nicht —
+ * der Browser schickte einen **Zeitpunkt** mit, keine **Zeitzone**, und ein
+ * Zeitpunkt sagt nicht, in welchem Tag jemand steht. Um 00:30 in Berlin ist es
+ * in UTC noch gestern, und „Heute" zeigte dann den falschen Tag.
+ *
+ * Jetzt kommt die Zone mit. Ohne sie wird weiter in UTC gerechnet — für Tests,
+ * die das annehmen, und für nichts sonst.
+ *
+ * Ein Tag ist damit nicht mehr immer 24 Stunden lang: an den beiden
+ * Umstellungstagen sind es 23 und 25. Deshalb werden Anfang und Ende getrennt
+ * ausgerechnet und nicht eines aus dem anderen.
  */
-export function boundsOf(now: Date): Bounds {
-  const y = now.getUTCFullYear();
-  const m = now.getUTCMonth();
-  const d = now.getUTCDate();
-  return {
-    startOfDay: new Date(Date.UTC(y, m, d)),
-    endOfDay: new Date(Date.UTC(y, m, d, 23, 59, 59, 999)),
-  };
+export function boundsOf(now: Date, zone?: string): Bounds {
+  if (zone === undefined || zone === 'UTC') {
+    const y = now.getUTCFullYear();
+    const m = now.getUTCMonth();
+    const d = now.getUTCDate();
+    return {
+      startOfDay: new Date(Date.UTC(y, m, d)),
+      endOfDay: new Date(Date.UTC(y, m, d, 23, 59, 59, 999)),
+    };
+  }
+  return { startOfDay: startOfDayIn(zone, now), endOfDay: endOfDayIn(zone, now) };
 }
 
 interface Where {
@@ -136,8 +146,9 @@ export async function list(
   workspaceId: string,
   now: Date,
   projectId: string | null = null,
+  zone?: string,
 ): Promise<TaskRow[]> {
-  const bounds = boundsOf(now);
+  const bounds = boundsOf(now, zone);
   const where = whereFor(view, workspaceId, bounds, projectId);
   return queryRows<TaskRow>(
     q,
@@ -156,8 +167,9 @@ export async function counts(
   q: Pool | PoolClient,
   workspaceId: string,
   now: Date,
+  zone?: string,
 ): Promise<{ today: number; upcoming: number; someday: number; overdue: number }> {
-  const bounds = boundsOf(now);
+  const bounds = boundsOf(now, zone);
   const rows = await queryRows<{
     today: string;
     upcoming: string;
@@ -187,8 +199,9 @@ export async function counts(
 export function splitOverdue(
   rows: readonly TaskRow[],
   now: Date,
+  zone?: string,
 ): { overdue: TaskRow[]; rest: TaskRow[] } {
-  const { startOfDay } = boundsOf(now);
+  const { startOfDay } = boundsOf(now, zone);
   const overdue: TaskRow[] = [];
   const rest: TaskRow[] = [];
   for (const row of rows) {

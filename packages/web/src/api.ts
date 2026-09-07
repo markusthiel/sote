@@ -18,10 +18,47 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * Die Zeitzone dieses Browsers.
+ *
+ * An **einer** Stelle gelesen und an **jede** Anfrage gehängt, statt sie
+ * dreizehn Aufrufen einzeln mitzugeben. Der Grund ist derselbe wie bei der
+ * Suchabfrage in der URL: zwei Antworten auf „welche Zone" laufen beim ersten
+ * Gebrauch auseinander.
+ *
+ * Der Server rechnet ohne sie in UTC, und genau das war der gemeldete Fehler:
+ * „morgen 9 Uhr" eingetippt, „morgen, 11:00" angezeigt. Eine Wanduhrzeit ohne
+ * Zone ist keine Angabe.
+ *
+ * Später eine Einstellung: wer verreist, will vielleicht die Zone zu Hause
+ * behalten. Bis dahin ist der Browser die beste Auskunft, die es gibt — und
+ * eine falsch geratene Zone ist besser als keine.
+ */
+function zoneOfBrowser(): string {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+  } catch {
+    return 'UTC';
+  }
+}
+
+const TZ = zoneOfBrowser();
+
+/**
+ * Hängt `tz` an, ohne über ein vorhandenes `?` zu stolpern.
+ *
+ * Die Aufrufe unten bauen ihre Pfade teils mit und teils ohne Abfrageteil, und
+ * ein `?tz=` hinter einem `?workspace=` ist eine zweite Abfrage und keine
+ * zweite Angabe.
+ */
+function withZone(path: string): string {
+  return `${path}${path.includes('?') ? '&' : '?'}tz=${encodeURIComponent(TZ)}`;
+}
+
 async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
   let res: Response;
   try {
-    res = await fetch(path, {
+    res = await fetch(withZone(path), {
       ...init,
       headers: { 'content-type': 'application/json', ...(init.headers ?? {}) },
     });
@@ -205,7 +242,14 @@ export const api = {
       `/api/projects/${id}${workspace === undefined ? '' : `?workspace=${workspace}`}`,
       { method: 'PATCH', body: JSON.stringify(body) },
     ),
-  createTask: (line: string, workspace?: string) =>
+  /**
+   * Eine Aufgabe aus einer Zeile.
+   *
+   * `projectId` ist die **Herkunft des Bildschirms**, nicht eine Angabe aus der
+   * Zeile: wer in einem Projekt tippt, meint dieses Projekt. Ein `#projekt` in
+   * der Zeile gewinnt trotzdem — das ist eine Ansage, das hier nur ein Ort.
+   */
+  createTask: (line: string, workspace?: string, projectId?: string) =>
     call<{
       task: Task;
       unknownProject: string | null;
@@ -214,7 +258,10 @@ export const api = {
       ambiguousAssignees: string[];
     }>(`/api/tasks${workspace === undefined ? '' : `?workspace=${workspace}`}`, {
       method: 'POST',
-      body: JSON.stringify({ line }),
+      body: JSON.stringify({
+        line,
+        ...(projectId === undefined ? {} : { projectId }),
+      }),
     }),
   trash: (kind: 'tasks' | 'projects', id: string, workspace?: string) =>
     call<{ ok: true }>(

@@ -179,3 +179,49 @@ test('eine leere Zeile ergibt einen leeren Titel und keinen Fehler', () => {
   assert.equal(q.title, '');
   assert.deepEqual(q.read, []);
 });
+
+/* ── Die Zeitzone ────────────────────────────────────────────────────────── */
+
+test('„morgen 9 Uhr" ist 9 Uhr bei der Person, nicht 9 Uhr UTC', () => {
+  // Der gemeldete Fehler, wörtlich: eingetippt „morgen 9 Uhr", angezeigt
+  // „morgen, 11:00". Der Parser läuft auf dem Server, der Container steht auf
+  // UTC — also baute er 09:00Z, und das liest sich in Berlin als 11:00.
+  const now = new Date('2026-09-07T12:00:00Z');
+  const berlin = parseQuickAdd('Termin beim Amt morgen 9 Uhr', {
+    now,
+    zone: 'Europe/Berlin',
+  });
+  assert.equal(berlin.planned?.toISOString(), '2026-09-08T07:00:00.000Z');
+
+  // Ohne Zone weiter UTC, damit ein alter Aufrufer nichts merkt.
+  const utc = parseQuickAdd('Termin beim Amt morgen 9 Uhr', { now });
+  assert.equal(utc.planned?.toISOString(), '2026-09-08T09:00:00.000Z');
+});
+
+test('derselbe Satz ergibt in drei Zonen drei Zeitpunkte und dieselbe Uhrzeit', () => {
+  const now = new Date('2026-09-07T12:00:00Z');
+  const each = ['Europe/Berlin', 'Pacific/Auckland', 'America/Los_Angeles'].map(
+    (zone) => parseQuickAdd('Probe morgen 9 Uhr', { now, zone }).planned!.toISOString(),
+  );
+  assert.deepEqual(each, [
+    '2026-09-08T07:00:00.000Z',
+    '2026-09-08T21:00:00.000Z',
+    '2026-09-08T16:00:00.000Z',
+  ]);
+});
+
+test('„heute" ist der Tag der Person — auch wenn UTC schon weiter ist', () => {
+  // 00:30 am 8. in Berlin, aber noch der 7. in UTC. „heute" muss der 8. sein.
+  const now = new Date('2026-09-07T22:30:00Z');
+  const q = parseQuickAdd('Müll rausbringen heute', { now, zone: 'Europe/Berlin' });
+  // Mitternacht des 8. in Berlin = 22:00Z am 7.
+  assert.equal(q.planned?.toISOString(), '2026-09-07T22:00:00.000Z');
+});
+
+test('ein Datum über die Sommerzeitgrenze meint die Uhrzeit dort, nicht hier', () => {
+  // Im Januar getippt, im Juli gemeint: 9 Uhr Sommerzeit ist 07:00Z, nicht
+  // 08:00Z. Dafür klopft fromWallClock beide Versätze ab.
+  const now = new Date('2026-01-15T12:00:00Z');
+  const q = parseQuickAdd('Sommerfest 1.7. 9 Uhr', { now, zone: 'Europe/Berlin' });
+  assert.equal(q.planned?.toISOString(), '2026-07-01T07:00:00.000Z');
+});
