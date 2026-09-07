@@ -45,12 +45,19 @@ der Spalte, in der die Zeile darüber ihre Linie beginnt. Die Linien messen
 60 / 44 / 28 / 44 — SONEs Rampe um einen Schritt versetzt, als Folge des
 Abstands und nicht als eigene Wahl.
 
-**Offen:** bei 16 px trägt der Abstand nicht mehr. SONE geht dort auf drei
-Balken; mit Punkten wäre die dritte Zeile so breit wie ihr eigener Punkt.
-Vorschlag ist **zweizeilig für Favicon und Installations-Icons**. Und: Punkt 9 /
-Abstand 7 gegen Punkt 8 / Abstand 6 — die zweite Fassung wiegt etwas mehr, weil
-C insgesamt rund ein Fünftel Fläche gegenüber SONE verliert. Beides am
-Bildschirm zu entscheiden, beides in `design/artboards.html` gezeichnet.
+**Entschieden: Punkt 9, Abstand 7. Und das Favicon bleibt dreibalkig**, wie bei
+SONE — keine zweizeilige Sonderfassung.
+
+Daraus folgt eine Rechnung: in SONEs dreibalkigem Raster (Linien 80 / 58 / 36)
+wäre die dritte Linie mit Punkten nur 14 Einheiten lang, genau so breit wie ihr
+eigener Punkt. **Also wird das Raster für diese Größe neu ausbalanciert statt
+die Zeilenzahl zu ändern:** Punkt 13, Abstand 11, Einrückungsschritt 16 statt 22,
+Linien 56 / 40 / 24. Bei 48 px wieder vierzeilig, wie in SONE.
+
+Der Abstand misst bei 16 px 1,76 Pixel, und das entscheidet das Rendering des
+Browsers und nicht die Geometrie. **Der einzige gültige Test ist eine Tab-Leiste
+mit beiden Anwendungen.** Läuft es dort zu, ist der Ausweg Punkt 11 bei
+Abstand 13 — nicht eine zweite Zeile.
 
 ### Der Maßstab
 
@@ -587,10 +594,7 @@ und braucht beim Bau keine zweite Runde.
 
 ## 10a. Was offen bleibt
 
-1. **Das Signet in Zahlen:** Punkt 9 / Abstand 7 gegen Punkt 8 / Abstand 6, und
-   ob Favicon und Installations-Icons zweizeilig werden. Am Bildschirm zu
-   entscheiden, gezeichnet in `design/artboards.html`, Blatt 01.
-2. **Die Benachrichtigungen ins Profil — zurückgestellt, nicht verworfen.** Es
+1. **Die Benachrichtigungen ins Profil — zurückgestellt, nicht verworfen.** Es
    ist eine Änderung an **beiden** Produkten und braucht in SONE ein ADR, das
    ADR-0092 begründet umdreht: das Abzeichen liegt dort ausdrücklich auf der
    Glocke, weil es nicht auf einem Bedienelement sitzen darf, das ein Menü
