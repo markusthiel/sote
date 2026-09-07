@@ -8,19 +8,22 @@
  */
 
 import { MODES, type ModeId } from '../modes.js';
+import { AccountMenu } from './AccountMenu.js';
 
 export function FootBar({
   active,
   onPick,
   inboxCount,
-  initials,
-  onAccount,
+  displayName,
+  email,
+  onSignOut,
 }: {
   active: ModeId;
   onPick: (id: ModeId) => void;
   inboxCount: number;
-  initials: string;
-  onAccount: () => void;
+  displayName: string;
+  email: string;
+  onSignOut: () => void;
 }) {
   return (
     <nav className="footbar" aria-label="Bereiche">
@@ -38,12 +41,15 @@ export function FootBar({
           ) : null}
         </button>
       ))}
-      <button className="foot-slot" onClick={onAccount} aria-label="Du">
-        <span className="face" aria-hidden="true">
-          {initials}
-        </span>
-        <span className="t">Du</span>
-      </button>
+      {/* „Du" als Wort unter dem Gesicht: hier hat jeder Eintrag eine
+          Beschriftung, und ein unbeschriftetes Gesicht daneben liest sich als
+          Versehen (SONEs ADR-0074). */}
+      <AccountMenu
+        displayName={displayName}
+        label="Du"
+        email={email}
+        onSignOut={onSignOut}
+      />
     </nav>
   );
 }

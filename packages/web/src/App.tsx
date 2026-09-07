@@ -25,14 +25,6 @@ import { Detail } from './screens/Detail.js';
 import { Search } from './screens/Search.js';
 import { Trash } from './screens/Trash.js';
 
-const initialsOf = (name: string) =>
-  name
-    .split(/\s+/)
-    .filter((p) => p !== '')
-    .slice(0, 2)
-    .map((p) => p[0]!.toUpperCase())
-    .join('') || '?';
-
 export function App() {
   const [me, setMe] = useState<Me | null | undefined>(undefined);
   const [needsSetup, setNeedsSetup] = useState(false);
@@ -150,7 +142,25 @@ export function App() {
     );
   }
 
-  const initials = initialsOf(me.displayName);
+  /*
+   * Abmelden.
+   *
+   * Bis hierher hing der Konto-Knopf an `() => void 0` — er sah aus wie ein
+   * Bedienelement und war keines, und `api.signOut` stand in der Datei und
+   * wurde von nirgendwo gerufen. Eine Anmeldung ohne Abmeldung ist kein halbes
+   * Merkmal, sondern ein geöffneter Rechner in einem Büro.
+   *
+   * Ob der Server die Sitzung wirklich verworfen hat, spielt für den nächsten
+   * Schritt keine Rolle: `loadMe()` fragt danach, und ohne Sitzung ist die
+   * Antwort 401 und der Anmeldebildschirm da. Ein Fehler beim Verwerfen darf
+   * nicht dazu führen, dass man angemeldet bleibt, obwohl man es nicht will.
+   */
+  const signOut = () => {
+    void api
+      .signOut()
+      .catch(() => undefined)
+      .then(() => loadMe());
+  };
   const wsName = me.workspaces.find((w) => w.id === workspace)?.name ?? 'Kein Workspace';
 
   return (
@@ -159,8 +169,9 @@ export function App() {
         active={modeOfRoute(route) as ModeId}
         onPick={(id) => go(id === 'tasks' ? { kind: 'today' } : { kind: 'mode', mode: id })}
         inboxCount={0}
-        initials={initials}
-        onAccount={() => void 0}
+        displayName={me.displayName}
+        email={me.email}
+        onSignOut={signOut}
       />
 
       {drawer ? <div className="scrim" onClick={() => setDrawer(false)} /> : null}
@@ -320,8 +331,9 @@ export function App() {
         active={modeOfRoute(route) as ModeId}
         onPick={(id) => go(id === 'tasks' ? { kind: 'today' } : { kind: 'mode', mode: id })}
         inboxCount={0}
-        initials={initials}
-        onAccount={() => void 0}
+        displayName={me.displayName}
+        email={me.email}
+        onSignOut={signOut}
       />
     </div>
   );

@@ -69,10 +69,25 @@ test('das Abzeichen hängt am Modus und steht in beiden Zeichnungen', () => {
 test('das Konto ist kein Modus', () => {
   // Ein Modus ist ein Ort, an dem man bleibt. Das Konto gehört zu dir und
   // steht abgesetzt (ADR-0072).
+  //
+  // Geprüft wird jetzt auf `AccountMenu` und nicht mehr auf einen Prop-Namen:
+  // die alte Fassung suchte `onAccount`, und der Knopf dahinter hing an einer
+  // leeren Funktion. Ein Test, der einen Namen prüft, sagt nichts darüber, ob
+  // es die Sache gibt — er war grün, während man sich nicht abmelden konnte.
   assert.equal(ids.includes('account' as never), false);
   for (const file of DRAWINGS) {
-    assert.match(read(file), /onAccount/, `${file} hat keinen abgesetzten Kontoknopf`);
+    assert.match(read(file), /<AccountMenu/, `${file} hat kein abgesetztes Kontomenü`);
   }
+});
+
+test('beide Zeichnungen melden wirklich ab', () => {
+  // Die Lehre aus dem, was der vorige Test durchgehen ließ: das Menü muss ein
+  // Abmelden bekommen, und die Anwendung muss es mit `api.signOut` verbinden.
+  for (const file of DRAWINGS) {
+    assert.match(read(file), /onSignOut=\{onSignOut\}/, `${file} reicht das Abmelden nicht durch`);
+  }
+  assert.match(read('components/AccountMenu.tsx'), /Abmelden/);
+  assert.match(read('App.tsx'), /api\s*\n?\s*\.signOut\(\)/, 'App ruft api.signOut nicht');
 });
 
 test('jeder Eintrag der Schiene hat eine Beschriftung für Vorleseprogramme', () => {

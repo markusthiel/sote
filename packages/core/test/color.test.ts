@@ -33,21 +33,21 @@ test('ein Hex-Wert ist er selbst', () => {
 test('alles andere ist undefined — die Zeile wird ohne Farbe gezeichnet', () => {
   // Kein Fehler: eine Farbe, die eine neuere Fassung kennt und diese nicht,
   // soll die Zeile nicht unbrauchbar machen.
-  for (const bad of ['blue', 'rebeccapurple', '#abc', '#12345', 'var(--x)', '', null, 42, {}]) {
+  for (const bad of ['blau', 'rebeccapurple', '#abc', '#12345', 'var(--x)', '', null, 42, {}]) {
     assert.equal(colorValue(bad), undefined, JSON.stringify(bad));
   }
 });
 
 test('gelesen wird das eine oder das andere, sonst null', () => {
-  assert.equal(readColor('blau'), 'blau');
+  assert.equal(readColor('blue'), 'blue');
   assert.equal(readColor('#2B6398'), '#2b6398', 'Hex wird kleingeschrieben');
-  assert.equal(readColor('türkis'), null);
+  assert.equal(readColor('blau'), null, 'die deutschen Namen sind weg');
   assert.equal(readColor(undefined), null);
 });
 
-test('die Prüfungen sind eng — „blue" ist kein Palettenname', () => {
-  assert.equal(isPaletteName('blau'), true);
-  assert.equal(isPaletteName('blue'), false);
+test('die Prüfungen sind eng — „blau" ist kein Palettenname', () => {
+  assert.equal(isPaletteName('blue'), true);
+  assert.equal(isPaletteName('blau'), false, 'ein Vokabular, und es ist SONEs');
   assert.equal(isCustomColor('#abcdef'), true);
   assert.equal(isCustomColor('#abcde'), false);
   assert.equal(isCustomColor('abcdef'), false);
@@ -61,9 +61,9 @@ test('acht Namen, alle verschieden', () => {
 /* ── Das Zeichen ──────────────────────────────────────────────────────────── */
 
 test('ein Zeichen ist Name und Farbe, und beides darf fehlen', () => {
-  assert.deepEqual(readIcon({ icon: 'home', iconColor: 'blau' }), {
+  assert.deepEqual(readIcon({ icon: 'home', iconColor: 'blue' }), {
     icon: 'home',
-    iconColor: 'blau',
+    iconColor: 'blue',
   });
   assert.deepEqual(readIcon({ icon: 'home' }), { icon: 'home' });
   assert.deepEqual(readIcon({ iconColor: '#2b6398' }), { iconColor: '#2b6398' });
@@ -74,7 +74,7 @@ test('ein Zeichen ohne Inhalt ist kein Zeichen', () => {
   // jemand etwas gewählt hat.
   assert.equal(readIcon({}), null);
   assert.equal(readIcon({ icon: '   ' }), null);
-  assert.equal(readIcon({ icon: '', iconColor: 'türkis' }), null);
+  assert.equal(readIcon({ icon: '', iconColor: 'tuerkis' }), null);
   assert.equal(readIcon(null), null);
   assert.equal(readIcon('home'), null);
 });

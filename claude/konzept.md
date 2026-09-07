@@ -904,6 +904,39 @@ Beim Bauen entschieden, weil es ohne Entscheidung keinen Code gibt:
   Markup und waren nicht zu sehen. `flex: 1` macht den Rahmen so hoch wie die
   Leiste. Offen bleibt „Zeile ganz unten in einer langen Liste": dann müsste
   der Zettel nach oben klappen.
+- **Der Rahmen ist SONEs Rahmen.** Auf Wunsch: „Eigentlich der ganze Rahmen,
+  damit die beiden Tools auch möglichst gleich aussehen."
+  - `components/icons.tsx` ist **kopiert, nicht nachgezeichnet** — 72 Zeichen,
+    24er Gitter, Strichbreite 1,5, `currentColor`. Ein nachgezeichneter Satz
+    wäre ein zweiter Satz, der beim ersten neuen Zeichen auseinanderläuft; ein
+    kopierter ist derselbe. SOTEs eigene 20er-Pfade mit Strichbreite 1,6 sind
+    weg: „mixing a filled icon into a line set is visible immediately even to
+    someone who could not say why" — zwei Gitter mischen sich ebenso sichtbar,
+    nur subtiler.
+  - **Zwei Sätze, zwei Zwecke:** `icons.tsx` ist der **Rahmen** (Schiene,
+    Menüs, Knöpfe), Lucide ist die **Wahl der Person** (Projektzeichen). SONE
+    trennt das genauso.
+  - **Ein Vokabular für Farben.** Die acht Namen heißen jetzt wie in SONE
+    (`grey`, `red`, …), nicht deutsch. Der Name ist ein gespeicherter Wert, und
+    zwei Systeme, die dasselbe Blau meinen und es verschieden schreiben, können
+    ihre Farben nicht vergleichen — spätestens wenn eine Aufgabe auf eine
+    SONE-Seite zeigt. Migration 0007 hat das Gespeicherte umgeschrieben.
+  - Die **hellen Werte sind SONEs**, Ziffer für Ziffer, und `grey` folgt wie
+    dort der Textfarbe. Die **dunklen sind eigene** — der eine Punkt, an dem
+    SOTE von SONEs Stylesheet abweicht, aber nicht von SONEs Entscheidung:
+    ADR-0028 verlangt dort einen Wert pro Thema, SONEs `styles.css` hat nur
+    einen `:root`-Satz. Der Widerspruch ist gemeldet; bis er dort aufgelöst
+    ist, hält SOTE sich an den Record.
+- **Ein Knopf, der nichts tut, ist schlimmer als kein Knopf.** Der Kontoknopf
+  hing an `() => void 0`; `api.signOut` stand in der Datei und wurde von
+  nirgendwo gerufen. **Abmelden ging überhaupt nicht** — keine halbe Funktion,
+  sondern ein geöffneter Rechner in einem Büro. Und der Test dazu war grün: er
+  suchte den Prop-Namen `onAccount` und sagte damit nichts darüber, ob es die
+  Sache gibt.
+- **Abwesend statt anwesend und verweigernd.** Im Kontomenü steht noch **keine**
+  Einstellungszeile, weil es den Bildschirm nicht gibt. Ein Eintrag, der „gibt
+  es nicht" antwortet, bringt Leute dazu, dem Menü zu misstrauen (SONEs
+  ADR-0027). Sie kommt, wenn sie hinführt.
 - **`pnpm check` ist genau das, was die CI fährt.** Erst standen die Prüfungen
   einzeln in der Workflow-Datei, und `pnpm -r typecheck` scheiterte dort — in
   einem frischen Klon gibt es kein `dist`, und `@sote/core` zeigt mit `types`

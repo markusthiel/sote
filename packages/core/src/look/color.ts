@@ -32,14 +32,26 @@
  * beide Listen vollständig.
  */
 
+/**
+ * Dieselben acht Namen wie in SONE, in derselben Schreibweise.
+ *
+ * Englisch und nicht deutsch, obwohl die Oberfläche deutsch ist: der Name ist
+ * ein **gespeicherter Wert**, und zwei Systeme, die dasselbe Blau meinen und
+ * es verschieden schreiben, können ihre Farben nicht miteinander vergleichen —
+ * spätestens wenn eine Aufgabe auf eine SONE-Seite zeigt. Ein Vokabular.
+ *
+ * Umbenennen wäre entsprechend eine Migration und kein Umbau (SONEs eigener
+ * Satz dazu, über die Zeichennamen: „renaming one is a migration, not a
+ * refactor"). Migration 0007 hat die deutschen Namen einmal umgeschrieben.
+ */
 export const PALETTE = [
-  'grau',
-  'rot',
+  'grey',
+  'red',
   'orange',
-  'gelb',
-  'gruen',
-  'blau',
-  'lila',
+  'yellow',
+  'green',
+  'blue',
+  'purple',
   'pink',
 ] as const;
 

@@ -10,10 +10,20 @@
  * Das Konto ist **kein** Modus: es ist keine Handlung an einem Ort, sondern
  * gehört zu dir. Es steht abgesetzt und wird von beiden Zeichnungen getrennt
  * behandelt.
+ *
+ * ## Die Zeichen sind SONEs
+ *
+ * Hier standen eigene Pfade auf einem 20er Gitter mit Strichbreite 1,6, neben
+ * SONEs 24er Gitter mit 1,5. Das ist genau das, was SONEs eigener Kommentar
+ * über Zeichensätze sagt: „mixing a filled icon into a line set is visible
+ * immediately even to someone who could not say why" — und zwei Sätze mit
+ * verschiedenem Gitter mischen sich ebenso sichtbar, nur subtiler.
+ *
+ * Jetzt kommt jedes Zeichen aus der kopierten `icons.tsx`. Das Signet bleibt
+ * SOTEs eigenes: es ist die Marke und nicht Möblierung.
  */
 
-import type { ReactNode } from 'react';
-
+import { BellIcon, SearchIcon, ShareIcon, TrashIcon, WorkspacesIcon } from './components/icons.js';
 import { SoteMark } from './components/Logo.js';
 
 export type ModeId = 'tasks' | 'search' | 'workspaces' | 'inbox' | 'shares' | 'trash';
@@ -21,16 +31,17 @@ export type ModeId = 'tasks' | 'search' | 'workspaces' | 'inbox' | 'shares' | 't
 export interface Mode {
   readonly id: ModeId;
   readonly label: string;
-  readonly icon: ReactNode;
+  readonly icon: import('react').ReactNode;
 }
 
-const stroke = {
-  fill: 'none',
-  stroke: 'currentColor',
-  strokeWidth: 1.6,
-  strokeLinecap: 'round' as const,
-  strokeLinejoin: 'round' as const,
-};
+/**
+ * Die Größe, in der der Rahmen seine Zeichen trägt.
+ *
+ * Eine Zahl an einer Stelle: sechs Mal `size={19}` sind sechs Gelegenheiten,
+ * eines davon zu vergessen — und ein Zeichen, das einen Punkt größer ist als
+ * seine Nachbarn, sieht wie ein Fehler aus, den niemand benennen kann.
+ */
+const SIZE = 19;
 
 export const MODES: readonly Mode[] = [
   {
@@ -41,54 +52,27 @@ export const MODES: readonly Mode[] = [
   {
     id: 'search',
     label: 'Suchen',
-    icon: (
-      <svg width="19" height="19" viewBox="0 0 20 20" {...stroke}>
-        <circle cx="8.5" cy="8.5" r="5.5" />
-        <path d="M12.8 12.8 17 17" />
-      </svg>
-    ),
+    icon: <SearchIcon size={SIZE} />,
   },
   {
     id: 'workspaces',
     label: 'Workspaces',
-    icon: (
-      <svg width="19" height="19" viewBox="0 0 20 20" {...stroke}>
-        <rect x="2.5" y="2.5" width="6" height="6" />
-        <rect x="11.5" y="2.5" width="6" height="6" />
-        <rect x="2.5" y="11.5" width="6" height="6" />
-        <rect x="11.5" y="11.5" width="6" height="6" />
-      </svg>
-    ),
+    icon: <WorkspacesIcon size={SIZE} />,
   },
   {
     id: 'inbox',
     label: 'Posteingang',
-    icon: (
-      <svg width="19" height="19" viewBox="0 0 20 20" {...stroke}>
-        <path d="M5 8.5a5 5 0 0 1 10 0v4l1.5 2h-13L5 12.5z" />
-        <path d="M8 16.5h4" />
-      </svg>
-    ),
+    icon: <BellIcon size={SIZE} />,
   },
   {
     id: 'shares',
     label: 'Freigaben',
-    icon: (
-      <svg width="19" height="19" viewBox="0 0 20 20" {...stroke}>
-        <path d="M8 12l4-4" />
-        <path d="M7.5 6.5 9 5a3.5 3.5 0 0 1 5 5l-1.5 1.5" />
-        <path d="M12.5 13.5 11 15a3.5 3.5 0 0 1-5-5L7.5 8.5" />
-      </svg>
-    ),
+    icon: <ShareIcon size={SIZE} />,
   },
   {
     id: 'trash',
     label: 'Papierkorb',
-    icon: (
-      <svg width="19" height="19" viewBox="0 0 20 20" {...stroke}>
-        <path d="M3.5 5.5h13M8 5.5V3.5h4v2M5 5.5l1 12h8l1-12" />
-      </svg>
-    ),
+    icon: <TrashIcon size={SIZE} />,
   },
 ];
 

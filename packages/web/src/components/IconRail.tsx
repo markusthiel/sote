@@ -7,19 +7,22 @@
  */
 
 import { MODES, type ModeId } from '../modes.js';
+import { AccountMenu } from './AccountMenu.js';
 
 export function IconRail({
   active,
   onPick,
   inboxCount,
-  initials,
-  onAccount,
+  displayName,
+  email,
+  onSignOut,
 }: {
   active: ModeId;
   onPick: (id: ModeId) => void;
   inboxCount: number;
-  initials: string;
-  onAccount: () => void;
+  displayName: string;
+  email: string;
+  onSignOut: () => void;
 }) {
   return (
     <nav className="rail" aria-label="Bereiche">
@@ -39,11 +42,9 @@ export function IconRail({
         </button>
       ))}
       <span className="rail-spacer" />
-      <button className="rail-slot" aria-label="Du" onClick={onAccount}>
-        <span className="face" aria-hidden="true">
-          {initials}
-        </span>
-      </button>
+      {/* Kein Wort unter dem Gesicht: in einer Spalte ist Platz, und der Name
+          steht im Menü. Die Fußleiste gibt „Du" mit — siehe AccountMenu. */}
+      <AccountMenu displayName={displayName} email={email} onSignOut={onSignOut} />
     </nav>
   );
 }
