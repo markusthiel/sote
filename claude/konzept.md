@@ -426,7 +426,9 @@ In vielen Werkzeugen ist das verwischt, und dann ist die Frage „wo ist die
 Aufgabe von letzter Woche" nicht mehr beantwortbar.
 
 Aufbau wie SONEs Papierkorb: Suchfeld über dem Menü, Ansichten mit Zählern,
-Hineinschauen. Und derselbe Fall, der dort „Wiederherstellen nach…" nötig
+Hineinschauen. **Und ohne automatisches Leeren** — SONE hat keines, und eine
+Frist, die von selbst löscht, ist eine Löschung, die niemand angeordnet hat. Die
+Zeile zeigt darum das Alter, nicht eine Restzeit. Und derselbe Fall, der dort „Wiederherstellen nach…" nötig
 gemacht hat: **eine gelöschte Aufgabe kann ein Projekt haben, das es nicht mehr
 gibt** — dann wird ein Ziel verlangt, sonst entsteht eine Aufgabe, die nirgends
 liegt.
@@ -539,8 +541,12 @@ Hälfte des Teams noch keine Verbindung hat.
    die noch nicht geprüft ist. Nach ADR-0116 ist das die gefährlichste Sorte
    Anzeige — sie ist konsistent zu *irgendeiner* Frage, und welche das ist, muss
    vor dem Bau feststehen.
-8. Die dreißig Tage im Papierkorb sind aus SONE übernommen, ohne nachgesehen zu
-   haben, ob dort dieselbe Zahl steht.
+8. Ob der Papierkorb **automatisch** geleert wird. Nachgesehen im SONE-Repo:
+   dort **nie**. `SONE_WORKSPACE_RETENTION_DAYS` (Vorgabe 30) gilt für gelöschte
+   *Workspaces* in `purgeDeletedWorkspaces`; eine Seite mit `archived_at` wird
+   von keiner Wartungsaufgabe angefasst und liegt, bis jemand sie von Hand
+   entfernt. Die „dreißig Tage" in Blatt 11 waren also eine erfundene Frist und
+   sind korrigiert. Zu entscheiden bleibt, ob SOTE es anders machen soll.
 9. Der Löschweg für ein ganzes Projekt: was mit den Aufgaben darin passiert und
    ob sie einzeln wiederherstellbar bleiben.
 10. Die Frist, nach der die Erinnerungsmail geht (im Blatt zehn Minuten, aus dem

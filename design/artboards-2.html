@@ -418,7 +418,7 @@
       </div>
       <div class="main">
         <div class="mhead"><h3>Papierkorb</h3>
-          <div class="sub">Gelöschtes verschwindet nach 30 Tagen — Erledigtes liegt hier nicht</div></div>
+          <div class="sub">Bleibt liegen, bis jemand leert — Erledigtes liegt hier nicht</div></div>
         <div class="body">
           <div class="task" style="align-items:flex-start">
             <div class="tmid">
@@ -447,7 +447,7 @@
               <div class="ttl">Kabelkanäle ausmessen</div>
               <div class="tmeta"><span class="when">gelöscht vor 3 Wochen — Lars B.</span>
                 <span class="crumb"><span class="sq" style="background:#6a675f"></span>Umzug Büro</span>
-                <span class="rep">verschwindet in 9 Tagen</span></div>
+                <span class="rep">liegt hier seit 3 Wochen</span></div>
               <div class="restore"><span class="btn">Wiederherstellen</span>
                 <span class="btn q">Endgültig löschen</span></div>
             </div>
@@ -476,8 +476,12 @@
       eine Frage, die ich nicht geprüft habe. Nach ADR-0116 ist das die
       gefährlichste Sorte Anzeige: sie ist konsistent zu irgendeiner Frage, und
       welche das ist, muss vor dem Bau festliegen.</li>
-      <li><b>Dreißig Tage im Papierkorb</b> sind aus SONE übernommen, ohne
-      geprüft zu haben, ob dort dieselbe Zahl steht.</li>
+      <li><b>Ob überhaupt automatisch geleert wird.</b> Nachgesehen: SONE
+      leert den Papierkorb <b>nie</b> von selbst — die dreißig Tage in
+      <code>SONE_WORKSPACE_RETENTION_DAYS</code> betreffen gelöschte
+      <i>Workspaces</i>, nicht archivierte Seiten. Meine erste Fassung dieses
+      Blattes behauptete eine Frist, die es nicht gibt. Jetzt zeigt die Zeile das
+      Alter statt einer Restzeit.</li>
       <li><b>Der Löschweg für ein ganzes Projekt</b> ist in Blatt 11 nur als
       Zähler vorhanden. Was mit den Aufgaben darin passiert und ob sie einzeln
       wiederherstellbar bleiben, hat noch kein Bild.</li>
