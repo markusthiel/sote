@@ -761,6 +761,15 @@ Beim Bauen entschieden, weil es ohne Entscheidung keinen Code gibt:
   sein sollten.
 - **Eine gelaufene Migration wird nicht bearbeitet.** Der Läufer merkt sich den
   sha256 und wirft, wenn eine Datei sich seit dem Lauf geändert hat.
+- **Migrationen laufen einer nach dem anderen, über einen Advisory Lock.**
+  Gefunden in der CI: `pnpm -r test` fährt die Testdateien parallel, jede ruft
+  `migrate` auf, und mehrere führten 0001 gleichzeitig aus — Postgres antwortet
+  mit `duplicate key value violates unique constraint
+  "pg_type_typname_nsp_index"`, weil `CREATE TYPE` und `CREATE EXTENSION IF NOT
+  EXISTS` gegen Nebenläufigkeit nicht sicher sind: `IF NOT EXISTS` prüft vorher
+  und schreibt danach. **Und es ist kein Testproblem — zwei Container, die
+  gleichzeitig starten, migrieren gleichzeitig.** Der Lock gehört darum in den
+  Läufer und nicht in ein Testskript.
 - **Eine erledigungsbezogene Wiederholung liegt vor ihrem ersten Abhaken unter
   „Irgendwann".** Damit ist der offene Punkt von vorhin beantwortet: sie ist
   nicht unsichtbar, sondern ungeplant — sonst könnte niemand sie abhaken, und

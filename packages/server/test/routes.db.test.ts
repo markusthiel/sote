@@ -250,3 +250,53 @@ test('ohne gebaute Oberfläche antwortet ein Nicht-API-Pfad mit einem Grund', as
   const body = (await res.json()) as { error: { code: string } };
   assert.equal(body.error.code, 'no_web');
 });
+
+test('vier gleichzeitige Migrationsläufe stören sich nicht', async () => {
+  // Gefunden in der CI und nicht hier: `pnpm -r test` fährt die Testdateien
+  // parallel, jede ruft `migrate` auf, und mehrere führten 0001 gleichzeitig
+  // aus. Postgres antwortet dann mit `duplicate key value violates unique
+  // constraint "pg_type_typname_nsp_index"` — `CREATE TYPE` und
+  // `CREATE EXTENSION IF NOT EXISTS` sind gegen Nebenläufigkeit nicht sicher.
+  //
+  // Lokal fiel es nie auf, weil die Testdatenbank vom letzten Lauf schon
+  // migriert war und alle vier nur das Migrationsbuch lasen. Der Test stellt
+  // darum eine **eigene, leere** Datenbank her.
+  //
+  // Und es ist kein Testproblem: zwei Container, die gleichzeitig starten,
+  // migrieren gleichzeitig.
+  const admin = makePool(URL_);
+  const name = `sote_race_${process.pid}`;
+  try {
+    await admin.query(`DROP DATABASE IF EXISTS ${name}`);
+    await admin.query(`CREATE DATABASE ${name}`);
+  } catch {
+    // Ohne das Recht, Datenbanken anzulegen, ist hier nichts zu prüfen — dann
+    // schweigt der Test statt einen Fehlschlag zu behaupten, der keiner ist.
+    await admin.end();
+    return;
+  }
+
+  const fresh = URL_.replace(/\/[^/]+$/, `/${name}`);
+  const pools = [makePool(fresh), makePool(fresh), makePool(fresh), makePool(fresh)];
+  try {
+    const results = await Promise.allSettled(pools.map((p) => migrate(p)));
+    const rejected = results.filter((r) => r.status === 'rejected');
+    assert.deepEqual(
+      rejected.map((r) => String((r as PromiseRejectedResult).reason).slice(0, 90)),
+      [],
+      'kein Lauf darf scheitern',
+    );
+    const ran = results
+      .filter((r): r is PromiseFulfilledResult<string[]> => r.status === 'fulfilled')
+      .map((r) => r.value.length);
+    assert.equal(
+      ran.filter((n) => n > 0).length,
+      1,
+      'genau einer migriert, die anderen sehen das Buch und überspringen',
+    );
+  } finally {
+    await Promise.all(pools.map((p) => p.end()));
+    await admin.query(`DROP DATABASE IF EXISTS ${name}`);
+    await admin.end();
+  }
+});

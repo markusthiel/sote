@@ -4,7 +4,27 @@
  * Reihenfolge nach Dateiname, eine Zeile pro gelaufener Datei, und **jede in
  * ihrer eigenen Transaktion**: eine halb gelaufene Migration ist schlimmer als
  * eine, die gar nicht gelaufen ist.
+ *
+ * **Und einer nach dem anderen, über einen Advisory Lock.** Gefunden in der CI,
+ * nicht hier: `pnpm -r test` fährt die Testdateien **parallel**, jede ruft
+ * `migrate` auf, und mehrere führten 0001 gleichzeitig aus. Postgres antwortet
+ * dann mit `duplicate key value violates unique constraint
+ * "pg_type_typname_nsp_index"` — `CREATE TYPE` und `CREATE EXTENSION IF NOT
+ * EXISTS` sind gegen Nebenläufigkeit nicht sicher, und `IF NOT EXISTS` prüft
+ * vorher und schreibt danach.
+ *
+ * Lokal fiel es nie auf, weil ich die Dateien einzeln gefahren habe. Und es ist
+ * nicht bloß ein Testproblem: **zwei Container, die gleichzeitig starten,
+ * migrieren gleichzeitig.** Der Lock gehört also hierhin und nicht in ein
+ * Testskript.
+ *
+ * Der Schlüssel ist eine willkürliche, aber feste Zahl. Sitzungsweit und nicht
+ * transaktionsweit, weil jede Migration ihre eigene Transaktion hat und der
+ * Lock über alle halten muss.
  */
+
+/** Willkürlich, aber fest: „SOTE" als Zahl. */
+const MIGRATION_LOCK = 0x50a7e_001;
 
 import { createHash } from 'node:crypto';
 import { readdirSync, readFileSync } from 'node:fs';
@@ -20,6 +40,22 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const MIGRATIONS = join(HERE, '..', 'migrations');
 
 export async function migrate(pool: Pool, dir = MIGRATIONS): Promise<string[]> {
+  // Eine eigene Verbindung für den Lock: er ist sitzungsweit, also muss dieselbe
+  // Verbindung ihn halten, bis alles durch ist. Aus dem Pool geholte Clients
+  // für die einzelnen Transaktionen können beliebige andere sein.
+  const gate = await pool.connect();
+  try {
+    await gate.query('SELECT pg_advisory_lock($1)', [MIGRATION_LOCK]);
+    return await run(pool, dir);
+  } finally {
+    // Auch bei einem Fehlschlag: ein gehaltener Lock lässt jeden weiteren Start
+    // stumm warten, und das sieht aus wie ein hängender Server.
+    await gate.query('SELECT pg_advisory_unlock($1)', [MIGRATION_LOCK]);
+    gate.release();
+  }
+}
+
+async function run(pool: Pool, dir: string): Promise<string[]> {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS schema_migrations (
       name      text PRIMARY KEY,
