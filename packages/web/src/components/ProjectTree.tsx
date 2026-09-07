@@ -16,12 +16,12 @@
  * values" in SONEs Gestaltungs-Records.
  */
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { colorValue, PALETTE } from '@sote/core';
 
 import type { Project } from '../api.js';
-import { ICON_NAMES, ProjectMark } from './ProjectMark.js';
+import { iconsFor, IconPreview, ProjectMark } from './ProjectMark.js';
 
 /**
  * Die acht Namen aus der Palette, plus „ohne".
@@ -77,7 +77,16 @@ export function ProjectTree({
    * Einstellung, und die kommt mit den Einstellungen.
    */
   const [closed, setClosed] = useState<ReadonlySet<string>>(new Set());
+  const [find, setFind] = useState('');
+
+  /* Ohne Suchbegriff ein Anfang, mit Suchbegriff der ganze Satz — `iconsFor`
+     erklärt, warum das nicht dasselbe ist wie eine Auswahl. */
+  const shown = useMemo(() => iconsFor(find), [find]);
   const box = useRef<HTMLDivElement>(null);
+
+  // Ein neues Menü beginnt ohne Suchbegriff: der vom letzten Projekt ist eine
+  // Einschränkung, die niemand gesetzt hat.
+  useEffect(() => setFind(''), [menu]);
 
   useEffect(() => {
     if (menu === null) return;
@@ -212,9 +221,29 @@ export function ProjectTree({
               Unterprojekt anlegen
             </button>
             <div className="menu-label sep">Zeichen</div>
+            {/*
+              Ein Suchfeld statt einer Auswahl.
+
+              Vorher standen hier zwölf selbst gezeichnete Pfade — gemeldet:
+              „Auch die Icons stimmen nicht." Sie stimmten nicht, und zwölf
+              sind ohnehin eine Auswahl, die jemand einmal getroffen hat.
+              SONEs Begründung: mit einem Filter gibt es keinen Grund, für
+              irgendwen zu wählen — man kann den ganzen Satz durchsuchen.
+            */}
+            <input
+              className="mark-find"
+              value={find}
+              /* Die Namen kommen aus Lucide und sind englisch. Ein Beispiel
+                 auf Deutsch stand hier zuerst („haus") und fand nichts — ein
+                 Platzhalter, der eine Eingabe vorschlägt, die ins Leere läuft,
+                 ist schlimmer als keiner. */
+              placeholder="Zeichen suchen — home, cart, star"
+              aria-label="Zeichen suchen"
+              onChange={(e) => setFind(e.target.value)}
+            />
             <div className="swatches marks">
               {/* „ohne" zuerst: es ist die eine Wahl, die kein Bild hat und
-                  sonst zwischen zwölf Bildern verschwindet. */}
+                  sonst zwischen tausend Bildern verschwindet. */}
               <button
                 className="mark-btn"
                 aria-label="ohne Zeichen"
@@ -227,11 +256,12 @@ export function ProjectTree({
               >
                 <span aria-hidden="true">–</span>
               </button>
-              {ICON_NAMES.map((n) => (
+              {shown.map((n) => (
                 <button
                   key={n}
                   className="mark-btn"
                   aria-label={n}
+                  title={n}
                   aria-current={p.icon?.icon === n}
                   disabled={busy}
                   onClick={() => {
@@ -246,10 +276,13 @@ export function ProjectTree({
                     });
                   }}
                 >
-                  <ProjectMark icon={n} name={n} color={undefined} />
+                  <IconPreview name={n} />
                 </button>
               ))}
             </div>
+            {shown.length === 0 ? (
+              <p className="fpop-none">Kein Zeichen mit diesem Namen.</p>
+            ) : null}
             <div className="menu-label sep">Farbe</div>
             <div className="swatches">
               {COLORS.map((c) => (

@@ -859,10 +859,31 @@ Beim Bauen entschieden, weil es ohne Entscheidung keinen Code gibt:
     eine Sache lernt. In **einer** Spalte, weil das Zeichen **eine** Wahl ist:
     zwei Spalten lassen den halben Zustand zu, in dem eine Farbe ohne Zeichen
     gespeichert ist und niemand weiß, ob das Absicht war.
-  - Zwölf Zeichen, **selbst gezeichnet**: SOTE holt keine Datei von außen, und
-    ein Satz mit tausend Einträgen im Bündel für zwölf davon ist Ladezeit für
-    nichts. Was die Liste nicht kennt, wird der **Anfangsbuchstabe** — wie
-    SONEs `WorkspaceMark`.
+  - **Der ganze Lucide-Satz, abgeleitet statt gelistet** — wie SONE. Meine
+    erste Fassung hatte zwölf selbst gezeichnete Pfade; sie stimmten nicht
+    (Aktentasche und Einkaufstasche waren bei 14 px nicht zu unterscheiden),
+    und zwölf sind ohnehin eine Auswahl, die jemand einmal getroffen hat.
+    SONEs Satz dazu: mit einem Filter im Wähler gibt es keinen Grund, für
+    irgendwen zu wählen.
+    - Die Umwandlung ist **in beide Richtungen verlustbehaftet**, also
+      entscheidet der **Rundgang**: ein Feld im Gitter, das als Vorgabe
+      gezeichnet wird, ist von einer echten Wahl nicht zu unterscheiden.
+    - Ein Lucide-Zeichen ist ein **`forwardRef`-Bauteil, also ein Objekt und
+      keine Funktion**. Eine Prüfung auf `typeof === 'function'` verwarf in SONE
+      jedes einzelne — fünfzig Zeichen im Wähler, alle als dasselbe Blatt
+      Papier, und das Wählen änderte nichts Sichtbares.
+    - Kostet: 253 KB → 1,26 MB. SONEs Hauptbündel liegt bei 2 MB, also dieselbe
+      Größenordnung. Der Satz liegt in einem **eigenen Brocken**, weil er sich
+      fast nie ändert und der Rest bei jedem Commit.
+    - **Die eine Stelle, an der ich SONE nicht genau abschreibe:** ohne
+      Suchbegriff steht ein kurzer Anfang im Gitter und nicht der Satzanfang.
+      Alphabetisch sortiert zeigt der nämlich hundertzwanzig Mal `align-…` und
+      `alarm-…` — wer den Wähler öffnet, sieht eine Wand aus
+      Ausrichtungssymbolen. Die Entscheidung bleibt unangetastet: sobald etwas
+      getippt wird, gilt wieder der ganze Satz.
+    - Was nicht auflöst, wird der **Anfangsbuchstabe** — wie SONEs
+      `WorkspaceMark`. Ein Name, der nicht mehr auflöst, kostet ein Projekt sein
+      Zeichen und nie seinen Platz im Baum.
   - **Der Name des Zeichens wird nicht geprüft**, nur begrenzt. Welche Zeichen
     es gibt, weiß die Oberfläche; eine Liste im Kern wäre eine zweite Wahrheit.
   - Beim Zuklappen wird die **Ausnahme** gemerkt, nicht der Normalfall: ein

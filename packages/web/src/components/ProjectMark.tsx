@@ -1,55 +1,120 @@
 /**
- * SOTE — die Zeichen, die ein Projekt tragen kann.
+ * SOTE — das Zeichen eines Projekts.
  *
- * Ein **geschlossener Satz**, wie die Farben eine Liste sind und kein Wähler.
- * Die Begründung ist dieselbe wie in SONEs Gestaltungs-Records („Steps, not
- * values"): freie Zeichen erzeugen Zeilen, die sich nicht unterscheiden lassen,
- * und niemand sieht beim Wählen, dass das passiert ist. Zwölf Zeichen deckt,
- * was Leute wirklich meinen — Wohnung, Arbeit, Einkauf, Auto, Reise, Geld,
- * Lernen, Gesundheit, Werkzeug, Garten, Menschen, Wichtiges.
+ * Abgesehen von SONE (`EntryIconView.tsx`), und zwar samt Begründung: **der
+ * ganze Lucide-Satz, abgeleitet statt gelistet.** Meine erste Fassung hatte
+ * zwölf selbst gezeichnete Pfade; gemeldet: „Auch die Icons stimmen nicht."
+ * Sie stimmten wirklich nicht — Aktentasche und Einkaufstasche waren bei 14 px
+ * nicht zu unterscheiden, und zwölf Zeichen sind eine Auswahl, die jemand
+ * einmal getroffen hat.
  *
- * Selbst gezeichnet und nicht aus einer Bibliothek: SOTE holt keine Datei von
- * außen (dieselbe Regel wie bei den Schriften, mit einem Test dahinter), und
- * ein Zeichensatz mit tausend Einträgen im Bündel für zwölf davon ist eine
- * Ladezeit für nichts.
+ * SONEs Satz dazu, wörtlich lehrreich: eine handgepflegte Liste war „fünfzig
+ * Namen, die jemand einmal gewählt hat, und mit einem Filter im Wähler gibt es
+ * keinen Grund, für irgendwen zu wählen: sie können den ganzen Satz
+ * durchsuchen."
  *
- * **Der Name wird nicht geprüft** — nicht hier und nicht im Kern. Was diese
- * Liste nicht kennt, wird als Anfangsbuchstabe gezeichnet, genau wie SONEs
- * `WorkspaceMark`. Eine Fassung, die ein neues Zeichen noch nicht hat, zeigt
- * dann ein „H" statt zu zerbrechen.
+ * ## Die beiden Fallen, die SONE schon hatte
  *
- * Alle Pfade sind auf einem 24er Gitter gezeichnet, ohne Füllung, mit
- * `currentColor` — damit die Farbe von außen kommt und ein Zeichen in Hell und
- * Dunkel dasselbe Zeichen ist.
+ * **Die Umwandlung ist in beide Richtungen verlustbehaftet.** `AArrowDown` und
+ * `ArrowDownAZ` haben Großbuchstaben, die eine einzelne Trennregel nicht
+ * wiederherstellt, und zwei Exporte können auf denselben Namen fallen. Statt
+ * immer klügerer Regeln entscheidet **der Rundgang**: ein Feld im Gitter, das
+ * als Vorgabe gezeichnet wird, ist von einer echten Wahl nicht zu
+ * unterscheiden — genau der Fehlschlag, der zu vermeiden ist.
+ *
+ * **Ein Lucide-Zeichen ist ein `forwardRef`-Bauteil, also ein Objekt und keine
+ * Funktion.** Eine Prüfung auf `typeof === 'function'` verwarf in SONE jedes
+ * einzelne, also fielen alle auf die Vorgabe zurück: fünfzig verschiedene
+ * Zeichen im Wähler, alle als dasselbe Blatt Papier gezeichnet, und das Wählen
+ * änderte nichts Sichtbares.
  */
 
-const PATHS: Record<string, string> = {
-  wohnung: 'M3 10.5 12 4l9 6.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z',
-  arbeit: 'M3 8h18v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1zM9 8V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3',
-  einkauf: 'M4 7h16l-1.3 12a1 1 0 0 1-1 .9H6.3a1 1 0 0 1-1-.9zM8.5 7a3.5 3.5 0 0 1 7 0',
-  auto: 'M4 16v-3.2L6 8h12l2 4.8V16zM3 16h18M7 16v2M17 16v2',
-  reise: 'M2 13.5 22 6l-4 8-5.5 1L10 20l-2-4z',
-  geld: 'M12 3v18M8.5 7.5h5a2.5 2.5 0 0 1 0 5h-3a2.5 2.5 0 0 0 0 5h5',
-  lernen: 'M3 7.5 12 4l9 3.5L12 11zM6 9.5V16c0 1.7 2.7 3 6 3s6-1.3 6-3V9.5',
-  gesundheit: 'M12 20s-7-4.4-7-9.2A3.9 3.9 0 0 1 12 8a3.9 3.9 0 0 1 7 2.8C19 15.6 12 20 12 20z',
-  werkzeug: 'M14.5 3.5a4 4 0 0 0 5 5L21 7v3l-9 9-3-3 9-9zM7 14l3 3-4 4-3-3z',
-  garten: 'M12 21V9M12 9a5 5 0 0 1-5-5 5 5 0 0 1 5 5zM12 9a5 5 0 0 0 5-5 5 5 0 0 0-5 5z',
-  menschen: 'M9 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6M16 5.5a3.5 3.5 0 0 1 0 6.9M18 14.5c2.1.7 3.5 2.6 3.5 5.5',
-  wichtig: 'M12 3.5l2.6 5.6 6 .8-4.4 4.2 1.1 6-5.3-3-5.3 3 1.1-6L4 9.9l6-.8z',
-};
+import { colorValue } from '@sote/core';
+import * as lucide from 'lucide-react';
 
-/** Die Namen, in der Reihenfolge, in der sie im Wähler stehen. */
-export const ICON_NAMES = Object.keys(PATHS);
+/** Trennt bei `aB` und bei `ABc`, damit eine Abkürzung nicht das nächste Wort schluckt. */
+function kebab(key: string): string {
+  return key
+    .replace(/([a-z0-9])([A-Z])/g, '$1-$2')
+    .replace(/([A-Z]+)([A-Z][a-z])/g, '$1-$2')
+    .toLowerCase();
+}
+
+/** `wallet-cards` wird als `WalletCards` exportiert. */
+function componentFor(name: string): lucide.LucideIcon | null {
+  const exported = name
+    .split('-')
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join('');
+  const found = (lucide as unknown as Record<string, unknown>)[exported];
+  // Objekt ODER Funktion — siehe oben.
+  const usable = typeof found === 'function' || (typeof found === 'object' && found !== null);
+  return usable ? (found as lucide.LucideIcon) : null;
+}
+
+/**
+ * Jeder Name, den der Satz hergibt, in der Schreibweise, die gespeichert wird.
+ *
+ * Aliasse und die `*Icon`-Doppel, die Lucide mitliefert, fallen weg — sonst
+ * steht dieselbe Zeichnung dreimal unter drei Namen im Gitter.
+ */
+export const ICON_NAMES: string[] = [
+  ...new Set(
+    Object.keys(lucide)
+      .filter((key) => /^[A-Z]/.test(key) && !key.endsWith('Icon') && !key.startsWith('Lucide'))
+      .map(kebab)
+      .filter((name) => /^[a-z][a-z0-9-]*$/.test(name)),
+  ),
+]
+  .filter((name) => componentFor(name) !== null)
+  .sort();
+
+/**
+ * Was ohne Suchbegriff im Gitter steht.
+ *
+ * **Die eine Stelle, an der ich SONE nicht genau abschreibe**, und der Grund
+ * steht im Bild: der Satz ist alphabetisch, also zeigt ein ungefiltertes
+ * Gitter hundertzwanzig Mal `align-…`, `a-arrow-…` und `alarm-…`. Wer den
+ * Wähler öffnet, sieht dann eine Wand aus Ausrichtungssymbolen und schließt
+ * ihn wieder.
+ *
+ * SONEs Entscheidung bleibt unangetastet: **der ganze Satz ist durchsuchbar**,
+ * und niemand wählt für jemanden aus. Diese Liste ist keine Auswahl, sondern
+ * ein Anfang — sobald ein Zeichen getippt wird, gilt wieder der ganze Satz.
+ */
+const SUGGESTED = [
+  'house', 'briefcase', 'shopping-cart', 'car', 'plane', 'wallet',
+  'graduation-cap', 'heart-pulse', 'wrench', 'sprout', 'users', 'star',
+  'book-open', 'calendar', 'camera', 'code', 'coffee', 'dumbbell',
+  'file-text', 'gift', 'globe', 'hammer', 'key', 'lightbulb',
+  'map-pin', 'music', 'package', 'phone', 'palette', 'shield',
+].filter((name) => componentFor(name) !== null);
+
+/**
+ * Die Zeichen für das Gitter: entweder der Anfang oder der gefilterte Satz.
+ *
+ * Der Deckel ist nicht Vorsicht: über tausend Knöpfe in einem Klappzettel sind
+ * eine Sekunde Zeichnen für eine Liste, die niemand durchsieht. Wer weiter
+ * unten sucht, tippt weiter.
+ */
+export function iconsFor(query: string): string[] {
+  const needle = query.trim().toLowerCase();
+  if (needle === '') return SUGGESTED;
+  return ICON_NAMES.filter((n) => n.includes(needle)).slice(0, 120);
+}
 
 export const hasIcon = (name: string | undefined): boolean =>
-  name !== undefined && name in PATHS;
+  name !== undefined && componentFor(name) !== null;
 
 /**
  * Ein Zeichen, oder der Anfangsbuchstabe.
  *
- * `aria-hidden`, immer: das Zeichen sagt nichts, was der Name nicht schon
- * sagt, und eine Vorleseansage „Stern, Haus" ist eine Ansage zu viel. Die
- * Zeile selbst trägt die Beschriftung.
+ * `aria-hidden`, immer: das Zeichen sagt nichts, was der Name nicht schon sagt,
+ * und eine Vorleseansage „Haus, Haus" ist eine Ansage zu viel. Die Zeile trägt
+ * die Beschriftung.
+ *
+ * Ein Name, der nicht mehr auflöst, kostet ein Projekt sein Zeichen und nie
+ * seinen Platz im Baum — dieselbe Regel wie in SONE.
  */
 export function ProjectMark({
   icon,
@@ -58,31 +123,35 @@ export function ProjectMark({
 }: {
   icon: string | undefined;
   name: string;
+  /** Schon durch `colorValue` gegangen, oder `undefined`. */
   color: string | undefined;
 }) {
-  const path = icon === undefined ? undefined : PATHS[icon];
+  const Chosen = icon === undefined ? null : componentFor(icon);
   return (
     <span
       className="p-mark"
       aria-hidden="true"
       {...(color === undefined ? {} : { style: { color } })}
     >
-      {path === undefined ? (
-        // Wie SONEs WorkspaceMark: was die Liste nicht kennt, wird der
-        // Anfangsbuchstabe. Kein Fragezeichen für einen Namen, der eins hat.
+      {Chosen === null ? (
         (name.trim().charAt(0).toUpperCase() || '?')
       ) : (
-        <svg viewBox="0 0 24 24" width="14" height="14" focusable="false">
-          <path
-            d={path}
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.6"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
+        <Chosen
+          // Passt zu den Zeichen daneben statt zu Lucides eigener Vorgabe,
+          // damit ein gewähltes Zeichen nicht schwerer wirkt als die Zeile.
+          size={15}
+          strokeWidth={1.75}
+        />
       )}
     </span>
   );
 }
+
+/** Das Zeichen im Wähler — dieselbe Zeichnung, ohne Farbe und ohne Rückfall. */
+export function IconPreview({ name }: { name: string }) {
+  const Chosen = componentFor(name);
+  return Chosen === null ? null : <Chosen size={15} strokeWidth={1.75} aria-hidden="true" />;
+}
+
+/** Was `colorValue` daraus macht — hier gebündelt, damit die Zeile es nicht importiert. */
+export const markColor = (value: unknown): string | undefined => colorValue(value);

@@ -1716,12 +1716,29 @@ select.target {
   white-space: nowrap;
 }
 
-/* Der Zeichenwähler: ein Gitter, damit zwölf Zeichen nicht zu einer Spalte
-   werden, die das Menü doppelt so hoch macht wie den Rest. */
+/* Der Zeichenwähler: ein Gitter mit eigenem Rollbereich.
+   Der Satz hat über tausend Zeichen; ohne Deckel und ohne Rollen wäre der
+   Klappzettel höher als das Fenster. */
 .swatches.marks {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   gap: 2px;
+  max-height: 132px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.mark-find {
+  width: 100%;
+  min-height: 30px;
+  margin: 2px 0 5px;
+  padding: 4px 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--sote-radius-md);
+  background: var(--page);
+  color: var(--text);
+  font: inherit;
+  font-size: 12.5px;
 }
 
 .mark-btn {
