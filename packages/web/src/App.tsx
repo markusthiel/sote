@@ -19,6 +19,7 @@ import { useSidebarWidth } from './hooks/useSidebarWidth.js';
 import { FootBar } from './components/FootBar.js';
 import { IconRail } from './components/IconRail.js';
 import { ProjectTree } from './components/ProjectTree.js';
+import { TopBar } from './components/TopBar.js';
 import { modeOf, type ModeId } from './modes.js';
 import { modeOfRoute, parseRoute, pathOf, type Route } from './route.js';
 import { Setup } from './screens/Setup.js';
@@ -26,7 +27,7 @@ import { SignIn } from './screens/SignIn.js';
 import { TaskList } from './screens/TaskList.js';
 import { Detail } from './screens/Detail.js';
 import { Search } from './screens/Search.js';
-import { Settings } from './screens/Settings.js';
+import { Settings, SETTING_SECTIONS } from './screens/Settings.js';
 import { Trash } from './screens/Trash.js';
 
 export function App() {
@@ -221,10 +222,8 @@ export function App() {
         inboxCount={0}
         displayName={me.displayName}
         email={me.email}
-        onSettings={() => go({ kind: 'settings' })}
+        onSettings={() => go({ kind: 'settings', section: 'du' })}
         onSignOut={signOut}
-        sidebarVisible={sidebar.visible}
-        onToggleSidebar={sidebar.toggle}
       />
 
       {sidebar.visible && !sidebar.isColumn ? (
@@ -284,6 +283,35 @@ export function App() {
         </div>
 
         <div className="panel-list">
+          {/*
+            Die Einstellungen füllen die SEITENLEISTE, nicht den Inhalt.
+            Gemeldet: „Einstellungsseiten haben ihre eigene Seitenleiste, sind
+            also komplett eigenständig und nicht einfach eine Seite im
+            Content-Bereich." SONE hat dafür seine eigene Hülle wieder
+            abgeschafft — sobald die Schiene immer da ist, braucht es keinen
+            zweiten Rahmen: der Weg zurück ist das Signet, das Konto steht
+            unten, und die Bereiche sind Gruppen in einer Liste.
+          */}
+          {route.kind === 'settings' ? (
+            <>
+              <div className="group-label">Einstellungen</div>
+              {SETTING_SECTIONS.map((entry) => (
+                <button
+                  key={entry.id}
+                  className="p-item set-nav"
+                  aria-current={route.section === entry.id}
+                  aria-label={`${entry.label} — ${entry.hint}`}
+                  onClick={() => go({ kind: 'settings', section: entry.id })}
+                >
+                  <span className="p-name">{entry.label}</span>
+                  <span className="set-nav-hint">{entry.hint}</span>
+                </button>
+              ))}
+            </>
+          ) : null}
+
+          {route.kind === 'settings' ? null : (
+          <>
           {/* Die Zahlen kommen aus derselben Abfrage wie die Listen. Keine
               Null: eine Zahl über nichts ist Rauschen in einer ruhigen Zeile. */}
           {(
@@ -340,16 +368,26 @@ export function App() {
           {panelError !== undefined ? (
             <p className="panel-error">{panelError}</p>
           ) : null}
+          </>
+          )}
         </div>
       </div>
 
       <main className="main">
+        {/* Die Umschalter sitzen INNERHALB der Seite und nicht in der Leiste,
+            die sie ausblenden — sonst verschwindet der Knopf mit ihr. */}
+        <TopBar
+          sidebarVisible={sidebar.visible}
+          onToggleSidebar={sidebar.toggle}
+          detailOpen={openTask !== null}
+          onToggleDetail={openTask === null ? undefined : () => setOpenTask(null)}
+        />
         {route.kind === 'settings' ? (
           <Settings
+            section={route.section}
             workspaceName={wsName}
             displayName={me.displayName}
             email={me.email}
-            onClose={() => go({ kind: 'today' })}
           />
         ) : route.kind !== 'mode' && route.kind !== 'search' ? (
           <TaskList
@@ -411,7 +449,7 @@ export function App() {
         inboxCount={0}
         displayName={me.displayName}
         email={me.email}
-        onSettings={() => go({ kind: 'settings' })}
+        onSettings={() => go({ kind: 'settings', section: 'du' })}
         onSignOut={signOut}
       />
     </div>

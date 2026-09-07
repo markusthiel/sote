@@ -32,7 +32,7 @@ export type Route =
    * Also eine Adresse: man kann sie verlinken, zurückgehen führt zurück, und
    * ein Neuladen bleibt dort. Ein Dialog kann das alles nicht (SONEs ADR-0027).
    */
-  | { readonly kind: 'settings' };
+  | { readonly kind: 'settings'; readonly section: string };
 
 /** Die Ansichten, wie der Server sie nennt. */
 export function viewOf(route: Route): 'today' | 'upcoming' | 'someday' | 'project' {
@@ -81,7 +81,10 @@ export function parseRoute(pathname: string, queryString = ''): Route {
     case 'papierkorb':
       return { kind: 'mode', mode: 'trash' };
     case 'einstellungen':
-      return { kind: 'settings' };
+      // Ohne Abschnitt der erste. Ein Bildschirm, der auf eine leere Auswahl
+      // zeigt, ist ein Bildschirm, den man erst bedienen muss, um etwas zu
+      // sehen.
+      return { kind: 'settings', section: parts[1] ?? 'du' };
     default:
       // Ein unbekannter Pfad ist Heute und nicht ein Fehlerbildschirm: wer
       // einen alten Link öffnet, will nicht wissen, dass er alt ist.
@@ -102,7 +105,7 @@ export function pathOf(route: Route): string {
     case 'search':
       return route.q === '' ? '/suche' : `/suche?q=${encodeURIComponent(route.q)}`;
     case 'settings':
-      return '/einstellungen';
+      return `/einstellungen/${route.section}`;
     case 'mode':
       return `/${MODE_PATHS[route.mode] ?? ''}`;
   }

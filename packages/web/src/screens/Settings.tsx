@@ -33,6 +33,25 @@ import { useEffect, useState } from 'react';
 import { api, ApiError, type SettingsAnswer } from '../api.js';
 import { applyScheme } from '../appearance.js';
 
+/**
+ * Die Abschnitte, und wessen Einstellungen sie sind.
+ *
+ * Auf Modulebene, weil die **Seitenleiste** sie braucht, bevor der Bildschirm
+ * etwas zeichnet — dieselbe Aufteilung wie in SONE, wo die Einstellungen keine
+ * eigene Hülle mehr sind, sondern das Panel füllen: „the way back is the mark,
+ * the account is at the foot of the rail". Eine Hülle über allem war ein
+ * zweiter Rahmen für dieselbe Anwendung.
+ *
+ * Die Überschrift jedes Abschnitts sagt, **wessen** Einstellung das ist. Das
+ * ist SONEs Grenze zwischen den Bereichen — „whose settings these are rather
+ * than who may change them".
+ */
+export const SETTING_SECTIONS = [
+  { id: 'du', label: 'Du', hint: 'Reist mit dir' },
+  { id: 'workspace', label: 'Dieser Workspace', hint: 'Für alle Mitglieder' },
+  { id: 'instanz', label: 'Diese Instanz', hint: 'Für alle auf diesem Server' },
+] as const;
+
 const SCHEME_LABELS: Record<Scheme, string> = {
   system: 'Wie das Gerät',
   light: 'Hell',
@@ -63,15 +82,15 @@ function zoneChoices(): string[] {
 }
 
 export function Settings({
+  section,
   workspaceName,
   displayName,
   email,
-  onClose,
 }: {
+  section: string;
   workspaceName: string;
   displayName: string;
   email: string;
-  onClose: () => void;
 }) {
   const [data, setData] = useState<SettingsAnswer | undefined>(undefined);
   const [notice, setNotice] = useState<string | undefined>(undefined);
@@ -181,68 +200,73 @@ export function Settings({
 
   return (
     <div className="settings">
-      <div className="settings-head">
-        <h1>Einstellungen</h1>
-        <button type="button" className="btn" onClick={onClose}>
-          Fertig
-        </button>
-      </div>
+      {/*
+        Kein „Fertig"-Knopf mehr.
+        Er stand hier, weil der Bildschirm sich wie ein Dialog anfühlte. Tut er
+        nicht mehr: die Seitenleiste trägt die Abschnitte, die Schiene steht
+        daneben, und der Weg zurück ist derselbe wie überall — ein Klick auf
+        Aufgaben. Ein zusätzlicher Ausgang wäre ein zweiter Weg für dieselbe
+        Sache (SONEs ADR-0032).
+      */}
+
+      {section === 'du' ? (
+        <section className="set-card">
+          <h2>Du</h2>
+          <p className="muted">
+            {displayName} — {email}. Diese Einstellungen reisen mit dir; wer hier
+            dunkel wählt, bekommt am Telefon auch dunkel.
+          </p>
+          {schemeRow('user', data.levels.user.scheme, 'Wie der Arbeitsbereich')}
+          <div className="set-row">
+            <span className="set-label">Zeitzone</span>
+            <div className="set-value">
+              <select
+                aria-label="Deine Zeitzone"
+                disabled={busy}
+                value={data.levels.user.zone ?? ''}
+                onChange={(e) =>
+                  void save('user', { zone: e.target.value === '' ? null : e.target.value })
+                }
+              >
+                <option value="">Wie der Browser sagt</option>
+                {zoneChoices().map((z) => (
+                  <option key={z} value={z}>
+                    {z}
+                  </option>
+                ))}
+              </select>
+              <p className="muted small">
+                Der Browser weiß, wo du gerade bist, und hat beim Tippen Vorrang.
+                Diese Angabe gilt für alles, was ohne Browser passiert — später
+                etwa nächtliche Erinnerungen.
+              </p>
+            </div>
+          </div>
+        </section>
+      ) : null}
+
+      {section === 'workspace' ? (
+        <section className="set-card">
+          <h2>{workspaceName}</h2>
+          <p className="muted">
+            Gilt für alle Mitglieder, solange sie selbst nichts anderes gewählt
+            haben.
+          </p>
+          {schemeRow('workspace', data.levels.workspace.scheme, 'Wie die Instanz')}
+        </section>
+      ) : null}
+
+      {section === 'instanz' ? (
+        <section className="set-card">
+          <h2>Diese Instanz</h2>
+          <p className="muted">
+            Die Vorgabe für alle Arbeitsbereiche, die nichts eigenes sagen.
+          </p>
+          {schemeRow('instance', data.levels.instance.scheme, null)}
+        </section>
+      ) : null}
 
       {notice === undefined ? null : <p className="note-error">{notice}</p>}
-
-      {/* ── Du ── */}
-      <section className="set-card">
-        <h2>Du</h2>
-        <p className="muted">
-          {displayName} — {email}. Diese Einstellungen reisen mit dir; wer hier
-          dunkel wählt, bekommt am Telefon auch dunkel.
-        </p>
-        {schemeRow('user', data.levels.user.scheme, 'Wie der Arbeitsbereich')}
-        <div className="set-row">
-          <span className="set-label">Zeitzone</span>
-          <div className="set-value">
-            <select
-              aria-label="Deine Zeitzone"
-              disabled={busy}
-              value={data.levels.user.zone ?? ''}
-              onChange={(e) =>
-                void save('user', { zone: e.target.value === '' ? null : e.target.value })
-              }
-            >
-              <option value="">Wie der Browser sagt</option>
-              {zoneChoices().map((z) => (
-                <option key={z} value={z}>
-                  {z}
-                </option>
-              ))}
-            </select>
-            <p className="muted small">
-              Der Browser weiß, wo du gerade bist, und hat beim Tippen Vorrang.
-              Diese Angabe gilt für alles, was ohne Browser passiert — später
-              etwa nächtliche Erinnerungen.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* ── Der Arbeitsbereich ── */}
-      <section className="set-card">
-        <h2>{workspaceName}</h2>
-        <p className="muted">
-          Gilt für alle Mitglieder, solange sie selbst nichts anderes gewählt
-          haben.
-        </p>
-        {schemeRow('workspace', data.levels.workspace.scheme, 'Wie die Instanz')}
-      </section>
-
-      {/* ── Die Instanz ── */}
-      <section className="set-card">
-        <h2>Diese Instanz</h2>
-        <p className="muted">
-          Die Vorgabe für alle Arbeitsbereiche, die nichts eigenes sagen.
-        </p>
-        {schemeRow('instance', data.levels.instance.scheme, null)}
-      </section>
 
       <p className="muted small">
         Gerade gilt: <strong>{SCHEME_LABELS[data.effective.scheme]}</strong>

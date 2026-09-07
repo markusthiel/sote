@@ -236,10 +236,21 @@ input {
   overflow: hidden;
 }
 
-/* Ausgeblendet heißt: keine Spalte, nicht eine leere Spalte. Eine Spalte mit
-   Breite 0 lässt Ränder und Schatten stehen, und die sieht man. */
+/*
+ * Ausgeblendet heißt: **eine Spalte weniger**, nicht eine Spalte mit Breite 0.
+ *
+ * Eine 0-Spalte lässt Rand und Schatten stehen, und die sieht man. Meine erste
+ * Fassung setzte darum `display: none` auf die Leiste UND ließ die Vorlage bei
+ * drei Spalten — das nimmt die Leiste aus dem Raster, der Hauptbereich rutscht
+ * in die zweite Spalte, und die ist null Pixel breit. Die Seite war leer, und
+ * der Knopf zum Wiedereinblenden war 17 px schmal und nicht mehr zu treffen.
+ *
+ * Gefunden, weil ein Klick im Browser ins Leere ging: `elementFromPoint` traf
+ * `div.app` statt des Knopfs, und `main` war 0 px breit. Beides sieht man in
+ * keinem Test, der nur auf Sichtbarkeit prüft — der Knopf WAR sichtbar.
+ */
 .app[data-sidebar="false"] {
-  grid-template-columns: var(--sote-rail) 0 1fr;
+  grid-template-columns: var(--sote-rail) 1fr;
 }
 
 .app[data-sidebar="false"] .panel {
@@ -1144,6 +1155,13 @@ select.target {
   grid-template-columns: var(--sote-rail) var(--sote-panel) 1fr 340px;
 }
 
+/* Beide zusammen: ohne Leiste, mit Detailspalte. Die Kombination fehlte, und
+   dann galt die dreispaltige Vorlage von oben — der Hauptbereich wäre wieder
+   in die falsche Spalte gerutscht. */
+.app[data-detail="true"][data-sidebar="false"] {
+  grid-template-columns: var(--sote-rail) 1fr 340px;
+}
+
 .detail {
   background: var(--surface);
   border-left: 1px solid var(--line);
@@ -2037,4 +2055,64 @@ select.target {
 
 .small {
   font-size: 12px;
+}
+
+/* ── Die Zeile über dem Inhalt ─────────────────────────────────────────────
+   Die Umschalter sitzen INNERHALB der Seite und nicht in der Leiste, die sie
+   ausblenden — sonst verschwindet der Knopf mit ihr. Jeder auf der Seite, auf
+   der seine Leiste liegt, damit die Richtung stimmt, in die man denkt. */
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  min-height: 40px;
+  flex: none;
+}
+
+.topbar-gap {
+  flex: 1;
+}
+
+.topbar-knob {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: var(--sote-radius-md);
+  background: none;
+  color: var(--text-faint);
+  cursor: pointer;
+}
+
+.topbar-knob:hover {
+  background: var(--sunken);
+  color: var(--text);
+}
+
+.topbar-knob[aria-pressed='true'] {
+  color: var(--text-muted);
+}
+
+/* Die Abschnitte der Einstellungen in der Seitenleiste — kein zweiter Rahmen
+   über der Anwendung, sondern dieselbe Leiste mit anderem Inhalt. */
+.set-nav {
+  flex-direction: column;
+  align-items: flex-start !important;
+  gap: 1px;
+  height: auto;
+  padding-block: 7px;
+}
+
+.set-nav-hint {
+  font-family: var(--sote-mono);
+  font-size: 10px;
+  color: var(--text-faint);
+}
+
+.settings {
+  padding-top: 8px;
 }
