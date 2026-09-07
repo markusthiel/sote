@@ -148,9 +148,9 @@
           <td class="why">Apple Erinnerungen zeigt sie als Link</td></tr>
         <tr><td>Priorität, vier Stufen</td><td class="cd">PRIORITY 1–9</td>
           <td class="part">teilweise</td>
-          <td class="why">Apple kennt drei Stufen und eine Leere. Vier auf drei
-          abzubilden verliert eine Unterscheidung — hin und zurück gerechnet ist
-          „Wichtig" hinterher vielleicht „Normal"</td></tr>
+          <td class="why"><b>Entschieden:</b> vier Stufen innen, drei außen. Die
+          vierte fährt als „ohne Priorität" hinaus statt als eigene Zahl, dann
+          stimmt der Rückweg und der Preis liegt innen</td></tr>
         <tr><td>Teilaufgaben</td><td class="cd">RELATED-TO</td>
           <td class="part">teilweise</td>
           <td class="why">steht in der Norm, wird von Clients unterschiedlich
@@ -307,7 +307,9 @@
         <div class="pathrow"><span>Workspace</span><span class="a">SONE</span>
           <span>—</span><span>Projekt</span><span class="a">SONE</span></div>
         <div class="sb">
-          <p>Die Kopplung steht. <b>Du selbst bist noch nicht verbunden</b>, also
+          <p>Ein Workspace, ein Projekt — mehr geht nicht, sonst wäre die
+          Rechteaussage nicht mehr wahr. Die Kopplung steht.
+          <b>Du selbst bist noch nicht verbunden</b>, also
           erscheinen in SONE für dich keine Aufgaben-Einträge im
           <code>/</code>-Menü.</p>
           <span class="btn pri">Mich verbinden</span></div>
@@ -348,8 +350,8 @@
           <div style="font-size:12.5px;color:var(--text-muted)">
             Diese Aussage ist die Kopplung. Sie wird nicht aus den Rollen
             abgeleitet, sondern hier erklärt — und sie ist jederzeit aufhebbar.
-            Aufheben nimmt in SONE nichts weg, es hört nur auf, Aufgaben zu
-            zeigen.</div>
+            Aufheben nimmt in SONE nichts weg: die Liste im Dokument wird
+            reiner Text, mit einer Zeile darunter, woher sie kam.</div>
         </div>
         <div class="cf"><span class="r"><span class="btn">Abbrechen</span>
           <span class="btn pri">Koppeln</span></span></div>
@@ -373,25 +375,17 @@
   <header><span class="no">—</span><h2>Was diese Blätter offen lassen</h2></header>
   <div class="open">
     <ol>
-      <li><b>Die zehn Minuten, nach denen die Mail geht</b>, sind eine Zahl aus
-      dem Bauch. Sie gehört zu den Einstellungen, die nach ADR-0111 mit
-      <code>check-env-numbers</code> abgesichert werden müssen, sonst erreicht
-      sie den Container nie.</li>
-      <li><b>Die Abbildung von vier Prioritätsstufen auf drei</b> ist als Verlust
-      benannt, aber nicht entschieden. Möglich wäre auch, draußen nur drei
-      anzubieten und die vierte als „ohne" zu führen — dann stimmt der Rückweg,
-      und der Preis liegt innen statt außen.</li>
-      <li><b>Wer eine Kopplung setzen darf</b>, steht als Satz im Blatt („beide
-      Seiten verwalten"), aber die Rechte auf SONE-Seite sind
-      <code>people.manage</code>, <code>roles.manage</code> und Seitenstufe —
-      welches davon genau, ist zu klären.</li>
-      <li><b>Ein Workspace zu mehreren Projekten.</b> Alle Blätter zeigen eins zu
-      eins. Ob eine SONE-Seite in einem anderen Projekt eine Liste führen darf als
-      die Kopplung nennt, ist nicht entschieden — der Blockanker erlaubt es
-      technisch.</li>
-      <li><b>Was beim Trennen mit den Anzeigekopien passiert.</b> Blatt 15 sagt,
-      Aufheben nimmt nichts weg. Ob die Kopien dann als „nicht mehr gekoppelt"
-      oder als reiner Text weiterleben, hat noch kein Bild.</li>
+      <li><b>Entschieden:</b> zehn Minuten bis zur Erinnerungsmail, als
+      Einstellung mit <code>check-env-numbers</code> abgesichert.
+      <code>0</code> heißt „sofort mailen", nicht „nie".</li>
+      <li><b>Entschieden:</b> vier Prioritätsstufen innen, drei außen — die
+      vierte als „ohne Priorität".</li>
+      <li><b>Entschieden:</b> <code>people.manage</code> darf koppeln. Die
+      Kopplung ist eine Aussage über den Zugriff von Personen; Seitenstufe
+      <code>admin</code> handelt über Dokumente.</li>
+      <li><b>Entschieden:</b> ein Workspace zu genau einem Projekt.</li>
+      <li><b>Entschieden:</b> Trennen hinterlässt reinen Text, keinen
+      Dauerzustand „nicht mehr gekoppelt".</li>
       <li><b>Verwaltung</b> ist in der Liste, aber nicht gezeichnet. Und die
       Darstellung mit Themes pro Arbeitsbereich ist der Punkt, an dem sich
       entscheidet, wie viel vom Gestaltungssystem aus SONE wirklich mitkommt.</li>

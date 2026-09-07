@@ -149,7 +149,8 @@
           <div class="o"><span class="fl">Name nötig</span><span class="sw"></span>
             <span class="sm" style="margin-left:auto">bevor geschrieben wird</span></div>
           <div class="o"><span class="fl">läuft ab</span>
-            <span class="inp">in 30 Tagen <span class="chev">▾</span></span></div>
+            <span class="inp">in 30 Tagen <span class="chev">▾</span></span>
+            <span class="sm" style="margin-left:auto">höchstens ein Jahr</span></div>
           <div class="o"><span class="fl">Unterprojekte</span>
             <span class="sw off"></span>
             <span class="sm" style="margin-left:auto">je Projekt einzeln</span></div>
@@ -335,13 +336,13 @@
             <div class="tmid"><div class="ttl">Umzug Büro</div>
               <div class="tmeta"><span class="crumb">bearbeiten</span>
                 <span class="when">läuft ab 7. Okt</span>
-                <span class="rep">2 Gäste haben geschrieben</span></div></div>
+                <span class="rep">zuletzt geschrieben vor 2 Stunden</span></div></div>
             <div class="tright"><span class="btn q">Zurückziehen</span></div>
           </div>
           <div class="task" style="align-items:center">
             <div class="tmid"><div class="ttl">Steuer 2025 — Belege</div>
               <div class="tmeta"><span class="crumb">lesen</span>
-                <span class="when">ohne Ablauf</span></div></div>
+                <span class="when">läuft ab 20. Sept</span></div></div>
             <div class="tright"><span class="btn q">Zurückziehen</span></div>
           </div>
         </div>
@@ -464,27 +465,21 @@
   <header><span class="no">—</span><h2>Was diese Blätter offen lassen</h2></header>
   <div class="open">
     <ol>
-      <li><b>Der Ablauf eines Links ist hier Pflichtangabe mit Vorschlag
-      „30 Tage" und der Möglichkeit „ohne Ablauf".</b> Ob „ohne Ablauf"
-      überhaupt angeboten wird, ist eine Sicherheitsentscheidung und keine
-      gestalterische — in Blatt 10 gibt es genau so einen Link, damit man sieht,
-      wie er sich in der Liste liest.</li>
-      <li><b>Wie viel ein Gast von anderen Gästen sieht.</b> Blatt 09 zeigt Lars
-      unter seinem Namen bei einer Aufgabe. Ob er auch Anna sieht, die über den
-      Workspace dabei ist, ist nicht entschieden.</li>
-      <li><b>Der Zähler „2 Gäste haben geschrieben"</b> in Blatt 10 beantwortet
-      eine Frage, die ich nicht geprüft habe. Nach ADR-0116 ist das die
-      gefährlichste Sorte Anzeige: sie ist konsistent zu irgendeiner Frage, und
-      welche das ist, muss vor dem Bau festliegen.</li>
-      <li><b>Ob überhaupt automatisch geleert wird.</b> Nachgesehen: SONE
-      leert den Papierkorb <b>nie</b> von selbst — die dreißig Tage in
-      <code>SONE_WORKSPACE_RETENTION_DAYS</code> betreffen gelöschte
-      <i>Workspaces</i>, nicht archivierte Seiten. Meine erste Fassung dieses
-      Blattes behauptete eine Frist, die es nicht gibt. Jetzt zeigt die Zeile das
-      Alter statt einer Restzeit.</li>
-      <li><b>Der Löschweg für ein ganzes Projekt</b> ist in Blatt 11 nur als
-      Zähler vorhanden. Was mit den Aufgaben darin passiert und ob sie einzeln
-      wiederherstellbar bleiben, hat noch kein Bild.</li>
+      <li><b>Entschieden:</b> „ohne Ablauf" wird nicht angeboten. Vorgabe 30
+      Tage, Höchstwert ein Jahr — dieselbe Grenze wie beim Zurückstellen in
+      ADR-0075 und aus demselben Grund.</li>
+      <li><b>Entschieden:</b> ein Gast sieht Namen, keine Personen. An jeder
+      Handlung steht, wer sie getan hat, auch bei anderen Gästen; eine
+      Mitgliederliste gibt es nicht.</li>
+      <li><b>Gestrichen:</b> der Zähler „2 Gäste haben geschrieben". Er
+      beantwortete keine benennbare Frage. Jetzt steht dort, wann zuletzt jemand
+      über den Link geschrieben hat — das beantwortet „lebt der noch".</li>
+      <li><b>Entschieden:</b> kein automatisches Leeren. SONE hat keines, und
+      eine Frist, die von selbst löscht, ist eine Löschung, die niemand
+      angeordnet hat.</li>
+      <li><b>Entschieden:</b> ein Projekt löschen nimmt seine Aufgaben mit, als
+      ein Eintrag unter „Projekte". Einzeln wiederherstellbar sind sie dann
+      nicht — sie bräuchten ein Ziel, das es nicht gibt.</li>
       <li><b>Erinnerungen und CalDAV</b> haben weiterhin kein Blatt. Gehören in
       Artboards 3, zusammen mit den Einstellungen und der Kopplung als
       Einrichtungsvorgang.</li>

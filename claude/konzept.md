@@ -122,7 +122,7 @@ begonnen wird.
 | geplant | Zeitpunkt, an dem sie auftauchen soll |
 | Frist | Zeitpunkt, an dem sie fällig ist |
 | Priorität | vier Stufen, wie Todoist. Keine Zahl ohne Bedeutung. |
-| Status | offen/erledigt als Grundfall. **Offen:** ob mehr nötig ist. |
+| Status | offen/erledigt. Binär, siehe Abschnitt 10. |
 | Projekt | ein Baum, siehe unten |
 | Zuweisung | Mitglied oder Gastschlüssel |
 | Wiederholung | Regel, siehe unten |
@@ -197,8 +197,9 @@ mit `buildTaskQuery` als Gegenstück (wie `buildSearchQuery` in SONE). Deutsch
 und Englisch. „Steuerbescheid morgen 9 Uhr #finanzen !!" ist der Testfall, der
 in der Suite steht, bevor die Oberfläche existiert.
 
-**Offen:** ob die Zuweisung im selben Feld steht (`+markus`, wie bei Todoist)
-oder nur im Anfasser-Menü.
+Die Zuweisung steht **im selben Feld** (`+markus`, wie bei Todoist) und nicht
+nur im Anfasser-Menü — sie war der einzige Grund, nach dem Anlegen noch etwas
+anfassen zu müssen.
 
 ---
 
@@ -519,48 +520,84 @@ Hälfte des Teams noch keine Verbindung hat.
 
 ---
 
-## 10. Offene Entscheidungen
+## 10. Beschlossen am 2026-09-07
 
-1. Status — binär oder mehr?
-2. Zuweisung in der Schnellerfassung oder nur im Anfasser-Menü?
-3. Die Benachrichtigungen ins Profil, in **beiden** Werkzeugen? Dann sind es
-   sechs Einträge statt sieben. Das ist eine gemeinsame Entscheidung über beide
-   Produkte und keine über SOTE allein — und sie **dreht ADR-0092 um**, das das
-   Abzeichen ausdrücklich vom Profilbild auf die Glocke gelegt hat. Die
-   Begründung dort war, dass ein Abzeichen nicht auf einem Bedienelement sitzen
-   darf, das ein Menü öffnet, in dem die Benachrichtigungen nicht liegen. Wenn
-   sie ins Profil wandern, liegen sie darin, und dieselbe Regel führt zur
-   umgekehrten Platzierung. Das ist zulässig, muss aber als Begründung
-   aufgeschrieben werden und nicht als Aufräumen durchgehen.
-4. Eigentum von Projekten und Zuweisungen, wenn jemand geht.
-5. Ob ein Link **ohne Ablauf** überhaupt angeboten wird. Sicherheitsfrage, keine
-   gestalterische. Blatt 10 zeigt einen solchen Link, damit man sieht, wie er
-   sich in der Liste liest.
-6. Wie viel ein Gast von anderen Gästen sieht.
-7. Der Zähler „2 Gäste haben geschrieben" in Blatt 10 beantwortet eine Frage,
-   die noch nicht geprüft ist. Nach ADR-0116 ist das die gefährlichste Sorte
-   Anzeige — sie ist konsistent zu *irgendeiner* Frage, und welche das ist, muss
-   vor dem Bau feststehen.
-8. Ob der Papierkorb **automatisch** geleert wird. Nachgesehen im SONE-Repo:
-   dort **nie**. `SONE_WORKSPACE_RETENTION_DAYS` (Vorgabe 30) gilt für gelöschte
-   *Workspaces* in `purgeDeletedWorkspaces`; eine Seite mit `archived_at` wird
-   von keiner Wartungsaufgabe angefasst und liegt, bis jemand sie von Hand
-   entfernt. Die „dreißig Tage" in Blatt 11 waren also eine erfundene Frist und
-   sind korrigiert. Zu entscheiden bleibt, ob SOTE es anders machen soll.
-9. Der Löschweg für ein ganzes Projekt: was mit den Aufgaben darin passiert und
-   ob sie einzeln wiederherstellbar bleiben.
-10. Die Frist, nach der die Erinnerungsmail geht (im Blatt zehn Minuten, aus dem
-    Bauch). Gehört zu den Einstellungen, die nach ADR-0111 über
-    `check-env-numbers` abzusichern sind, sonst erreicht die Zahl den Container
-    nie.
-11. Vier Prioritätsstufen auf drei abbilden, oder draußen nur drei anbieten und
-    den Preis innen zahlen.
-12. Welches Recht auf SONE-Seite eine Kopplung setzen darf — `people.manage`,
-    `roles.manage` oder Seitenstufe `admin`.
-13. Ein Workspace zu **mehreren** Projekten. Alle Blätter zeigen eins zu eins;
-    der Blockanker erlaubt technisch mehr.
-14. Was beim Trennen mit den Anzeigekopien in SONE passiert: als „nicht mehr
-    gekoppelt" markiert, oder als reiner Text weiterleben?
+Die Liste der offenen Punkte ist durchgegangen. Was hier steht, ist entschieden
+und braucht beim Bau keine zweite Runde.
+
+**Datenmodell**
+
+- **Status ist binär.** Offen und erledigt, nichts dazwischen. „In Arbeit" ist
+  der Anfang von Projektmanagement, und ein dritter Wert braucht sofort eine
+  Spalte, in der man ihn sieht. Zwischenstände sind Teilaufgaben.
+- **Priorität: vier Stufen innen, drei außen.** Die vierte heißt über CalDAV
+  „ohne Priorität" statt einer eigenen Zahl. Dann stimmt der Rückweg, und der
+  Preis liegt innen, wo wir ihn kennen, statt in einem fremden Client.
+- **Projekte gehören dem Arbeitsbereich, nicht der Person.** Wer geht, hinterlässt
+  seine Zuweisungen **leer**; die Aufgaben erscheinen unter „ohne Zuständigen".
+  Umhängen wäre eine Entscheidung, die die Software an unserer Stelle trifft.
+- **Ein Projekt löschen** nimmt seine Aufgaben mit, als **ein** Eintrag im
+  Papierkorb unter „Projekte". Wiederherstellen holt beides. Einzelne Aufgaben
+  daraus sind nicht einzeln wiederherstellbar — sie bräuchten ein Ziel, das es
+  nicht gibt.
+- **Kein automatisches Leeren des Papierkorbs.** SONE hat keines (nachgesehen:
+  `SONE_WORKSPACE_RETENTION_DAYS` gilt für gelöschte Workspaces, `archived_at`
+  fasst niemand an), und eine Frist, die von selbst löscht, ist eine Löschung,
+  die niemand angeordnet hat. Die Zeile zeigt das Alter, nicht eine Restzeit.
+
+**Erfassung**
+
+- **Die Zuweisung steht in der Erfassungszeile**, als `+name`. Sie war der
+  einzige Grund, nach dem Anlegen noch etwas anfassen zu müssen, und das
+  widerspricht dem Zweck des einen Feldes.
+
+**Freigabe und Gäste**
+
+- **„Ohne Ablauf" wird nicht angeboten.** Vorgabe 30 Tage, Höchstwert ein Jahr —
+  dieselbe Grenze wie beim Zurückstellen in ADR-0075 und aus demselben Grund:
+  eine Fähigkeit, die frei herumliegt, soll nicht unbegrenzt herumliegen. Wer
+  länger braucht, verlängert.
+- **Ein Gast sieht Namen, keine Personen.** An jeder Handlung steht, wer sie
+  getan hat, auch bei anderen Gästen. Keine Mitgliederliste, keine Profile.
+  „Wer hat das abgehakt" ist die Frage; „wer hat hier Zugriff" nicht.
+- **Der Zähler „2 Gäste haben geschrieben" ist gestrichen.** Er beantwortete
+  keine benennbare Frage, und nach ADR-0116 ist genau das der Fall, der später
+  als „inkonsistent" gemeldet wird. Stattdessen steht dort, **wann zuletzt
+  jemand über diesen Link geschrieben hat** — das beantwortet „lebt der noch",
+  also die Frage, aus der man auf diesen Bildschirm kommt.
+
+**Kopplung**
+
+- **`people.manage` darf koppeln.** Die Kopplung sagt, wer Aufgaben lesen darf,
+  ist also eine Aussage über den Zugriff von Personen. Seitenstufe `admin` wäre
+  falsch: sie handelt über Dokumente, nicht über Leute.
+- **Eins zu eins.** Ein gekoppelter Workspace, ein Projekt. Der Blockanker
+  erlaubt technisch mehr, aber sobald eine Seite in ein Projekt schreiben kann,
+  das die Kopplung nicht nennt, ist die Rechteaussage nicht mehr wahr. Wer zwei
+  Projekte braucht, koppelt einen zweiten Workspace.
+- **Trennen hinterlässt reinen Text.** Die Anzeigekopie verliert Id und
+  Kästchen und wird eine gewöhnliche Liste im Dokument, mit einer Zeile darunter,
+  woher sie kam. „Nicht mehr gekoppelt" als Dauerzustand wäre ein Block, der auf
+  ewig auf etwas zeigt, das ihn nicht mehr kennt.
+
+**Zahlen**
+
+- **Zehn Minuten bis zur Erinnerungsmail**, als Einstellung mit
+  `check-env-numbers` abgesichert. `0` heißt „sofort mailen", nicht „nie".
+
+## 10a. Was offen bleibt
+
+1. **Das Signet in Zahlen:** Punkt 9 / Abstand 7 gegen Punkt 8 / Abstand 6, und
+   ob Favicon und Installations-Icons zweizeilig werden. Am Bildschirm zu
+   entscheiden, gezeichnet in `design/artboards.html`, Blatt 01.
+2. **Die Benachrichtigungen ins Profil — zurückgestellt, nicht verworfen.** Es
+   ist eine Änderung an **beiden** Produkten und braucht in SONE ein ADR, das
+   ADR-0092 begründet umdreht: das Abzeichen liegt dort ausdrücklich auf der
+   Glocke, weil es nicht auf einem Bedienelement sitzen darf, das ein Menü
+   öffnet, in dem die Benachrichtigungen nicht liegen. Wandern sie ins Profil,
+   liegen sie darin, und dieselbe Regel führt zur umgekehrten Platzierung. Für
+   SOTE allein zu entscheiden hieße, von der gemeinsamen Leiste abzuweichen —
+   der teuerste denkbare Grund dafür.
 
 ### Entschieden am 2026-09-07: die Reihenfolge
 
