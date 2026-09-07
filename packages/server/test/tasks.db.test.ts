@@ -16,7 +16,8 @@ import type { Pool } from 'pg';
 
 import { makePool, queryOne } from '../src/db.js';
 import { migrate } from '../src/migrate.js';
-import { complete, createFromLine, recurrenceOf, today } from '../src/tasks.js';
+import { complete, createFromLine, recurrenceOf } from '../src/tasks.js';
+import { list, splitOverdue } from '../src/views.js';
 
 const URL_ =
   process.env['SOTE_TEST_DATABASE_URL'] ??
@@ -287,21 +288,21 @@ test('Heute trennt überfällig von heute und liest beide Zeitfelder', async () 
     now: NOW,
   });
 
-  const sections = await today(pool, workspaceId, NOW);
+  const sections = splitOverdue(await list(pool, 'today', workspaceId, NOW), NOW);
   assert.deepEqual(
     sections.overdue.map((t) => t.title),
     ['Steuerbescheid einreichen'],
   );
   assert.deepEqual(
-    [...sections.today.map((t) => t.title)].sort(),
+    [...sections.rest.map((t) => t.title)].sort(),
     ['Angebot einholen', 'Kopplung entwerfen'],
   );
 
   // Abgehakt heißt weg aus Heute — aber nicht aus der Datenbank.
   await complete(pool, heute.task.id, userId, NOW);
-  const after_ = await today(pool, workspaceId, NOW);
+  const after_ = await list(pool, 'today', workspaceId, NOW);
   assert.equal(
-    after_.today.some((t) => t.title === 'Kopplung entwerfen'),
+    after_.some((t) => t.title === 'Kopplung entwerfen'),
     false,
   );
 });
@@ -315,8 +316,7 @@ test('eine Aufgabe im Papierkorb erscheint nicht in Heute', async () => {
     now: NOW,
   });
   await pool.query('UPDATE tasks SET trashed_at = now() WHERE id = $1', [t.task.id]);
-  const sections = await today(pool, workspaceId, NOW);
-  assert.equal(sections.overdue.length + sections.today.length, 0);
+  assert.equal((await list(pool, 'today', workspaceId, NOW)).length, 0);
 });
 
 /* ── Die Sortierschlüssel, gegen die echte Collation ───────────────────── */

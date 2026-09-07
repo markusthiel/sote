@@ -69,12 +69,42 @@ export function recurrenceOf(row: TaskRow): Recurrence | undefined {
   return undefined;
 }
 
-const SELECT = `
-  SELECT id, workspace_id, project_id, parent_id, title, note,
-         planned_at, planned_all_day, due_at, due_all_day, priority,
-         completed_at, recur_rrule, recur_dtstart, recur_after_n,
-         recur_after_unit, sort_key
-    FROM tasks`;
+/** Die Spaltenliste einmal. Viermal abgeschrieben ist viermal Gelegenheit. */
+/**
+ * Bei einer Schlüsselkollision denselben Vorgang wiederholen.
+ *
+ * `generateKeyBetween` ist deterministisch: zwei Transaktionen mit denselben
+ * Nachbarn rechnen denselben Schlüssel. Der Unique-Index aus Migration 0003
+ * lässt nur eine davon durch, und die andere bekommt `23505`. Wiederholt wird
+ * der **ganze** Vorgang und nicht nur die Rechnung — die Transaktion ist
+ * abgebrochen, und beim zweiten Lesen ist der Gewinner ein Nachbar, also fällt
+ * der Schlüssel dazwischen und die Sache endet.
+ *
+ * Begrenzt, weil eine unbegrenzte Wiederholung aus einem seltenen Wettlauf eine
+ * Endlosschleife macht, sobald die Ursache eine andere ist.
+ */
+const ORDER_CLASH = '23505';
+const ORDER_INDEX = 'tasks_sibling_order';
+
+async function retryOnOrderClash<T>(body: () => Promise<T>, attempts = 5): Promise<T> {
+  for (let i = 1; ; i += 1) {
+    try {
+      return await body();
+    } catch (e) {
+      const err = e as { code?: string; constraint?: string };
+      const clash = err.code === ORDER_CLASH && err.constraint === ORDER_INDEX;
+      if (!clash || i >= attempts) throw e;
+    }
+  }
+}
+
+const RETURNING = `
+  id, workspace_id, project_id, parent_id, title, note,
+  planned_at, planned_all_day, due_at, due_all_day, priority,
+  completed_at, recur_rrule, recur_dtstart, recur_after_n,
+  recur_after_unit, sort_key`;
+
+const SELECT = `SELECT ${RETURNING} FROM tasks`;
 
 /** Der nächste Sortierschlüssel am Ende einer Liste. */
 async function keyAtEnd(
@@ -121,7 +151,7 @@ export interface Created {
 export async function createFromLine(pool: Pool, input: CreateFromLine): Promise<Created> {
   const q = parseQuickAdd(input.line, { now: input.now });
 
-  return withTransaction(pool, async (client) => {
+  return retryOnOrderClash(() => withTransaction(pool, async (client) => {
     let projectId = input.projectId ?? null;
     let unknownProject: string | undefined;
     if (q.project !== undefined) {
@@ -147,10 +177,7 @@ export async function createFromLine(pool: Pool, input: CreateFromLine): Promise
          recur_rrule, recur_dtstart, recur_after_n, recur_after_unit,
          sort_key, created_by)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
-       RETURNING id, workspace_id, project_id, parent_id, title, note,
-                 planned_at, planned_all_day, due_at, due_all_day, priority,
-                 completed_at, recur_rrule, recur_dtstart, recur_after_n,
-                 recur_after_unit, sort_key`,
+       RETURNING ${RETURNING}`,
       [
         input.workspaceId,
         projectId,
@@ -210,7 +237,7 @@ export async function createFromLine(pool: Pool, input: CreateFromLine): Promise
     }
 
     return { task: row, unknownProject, unknownAssignees };
-  });
+  }));
 }
 
 const hasTime = (d: Date) =>
@@ -240,7 +267,7 @@ export async function complete(
   userId: string,
   at: Date,
 ): Promise<Completion> {
-  return withTransaction(pool, async (client) => {
+  return retryOnOrderClash(() => withTransaction(pool, async (client) => {
     const rows = await queryRows<TaskRow>(
       client,
       `${SELECT} WHERE id = $1 AND trashed_at IS NULL FOR UPDATE`,
@@ -254,10 +281,7 @@ export async function complete(
       client,
       `UPDATE tasks SET completed_at = $2, completed_by = $3, updated_at = $2
         WHERE id = $1
-       RETURNING id, workspace_id, project_id, parent_id, title, note,
-                 planned_at, planned_all_day, due_at, due_all_day, priority,
-                 completed_at, recur_rrule, recur_dtstart, recur_after_n,
-                 recur_after_unit, sort_key`,
+       RETURNING ${RETURNING}`,
       [taskId, at, userId],
     );
     if (done === undefined) throw new Error('UPDATE ohne Zeile');
@@ -288,10 +312,7 @@ export async function complete(
               recur_rrule, $3::timestamptz, recur_after_n, recur_after_unit,
               $4, $5
          FROM tasks WHERE id = $1
-       RETURNING id, workspace_id, project_id, parent_id, title, note,
-                 planned_at, planned_all_day, due_at, due_all_day, priority,
-                 completed_at, recur_rrule, recur_dtstart, recur_after_n,
-                 recur_after_unit, sort_key`,
+       RETURNING ${RETURNING}`,
       [
         taskId,
         when,
@@ -303,7 +324,7 @@ export async function complete(
       ],
     );
     return { completed: done, next: next ?? undefined };
-  });
+  }));
 }
 
 export class NotFound extends Error {
@@ -313,48 +334,165 @@ export class NotFound extends Error {
   }
 }
 
-export interface TodaySections {
-  readonly overdue: readonly TaskRow[];
-  readonly today: readonly TaskRow[];
+/**
+ * Verschieben.
+ *
+ * Der neue Schlüssel wird **zwischen den Nachbarn** gerechnet und nicht als
+ * Position gesetzt (SONE, ADR-0002). Zwei Leute, die gleichzeitig dieselbe
+ * Lücke treffen, bekommen dann verschiedene Schlüssel, und beide Reihen
+ * bleiben gültig — mit ganzzahligen Positionen würde eine sichtbar springen.
+ *
+ * **Der rechte Nachbar kommt aus der Datenbank, nicht aus der Anfrage.** Das
+ * ist der Kern und war beim ersten Versuch falsch: `generateKeyBetween` ist
+ * deterministisch, also rechnen zwei Transaktionen mit denselben Nachbar-Ids
+ * denselben Schlüssel — auch beim Wiederholen, immer wieder. Gefragt wird
+ * darum nach dem *nächsten vorhandenen* Schlüssel hinter dem linken Nachbarn.
+ * Nach dem ersten Gewinner ist das seiner, die Lücke ist kleiner, und die
+ * Sache endet.
+ *
+ * `beforeId` wird noch gelesen, aber nur zum Prüfen: es sagt, welche
+ * Reihenfolge der Browser gesehen hat, und eine vertauschte Angabe ist eine
+ * veraltete Ansicht und keine Anweisung.
+ */
+export async function move(
+  pool: Pool,
+  taskId: string,
+  workspaceId: string,
+  between: { afterId?: string | null; beforeId?: string | null },
+): Promise<TaskRow> {
+  return retryOnOrderClash(() =>
+    withTransaction(pool, async (client) => {
+      const me = await queryOne<{
+        project_id: string | null;
+        parent_id: string | null;
+      }>(
+        client,
+        'SELECT project_id, parent_id FROM tasks WHERE id = $1 AND workspace_id = $2',
+        [taskId, workspaceId],
+      );
+      if (me === undefined) throw new NotFound(`Aufgabe ${taskId} gibt es nicht`);
+
+      /** Ein Nachbar muss im selben Geschwisterkreis liegen wie der Index. */
+      const keyOf = async (id: string | null | undefined): Promise<string | null> => {
+        if (id === null || id === undefined) return null;
+        const row = await queryOne<{ sort_key: string }>(
+          client,
+          `SELECT sort_key FROM tasks
+            WHERE id = $1 AND workspace_id = $2
+              AND project_id IS NOT DISTINCT FROM $3
+              AND parent_id IS NOT DISTINCT FROM $4`,
+          [id, workspaceId, me.project_id, me.parent_id],
+        );
+        if (row === undefined) {
+          throw new NotFound(`${id} ist hier kein Nachbar`);
+        }
+        return row.sort_key;
+      };
+
+      const after = await keyOf(between.afterId);
+      const claimed = await keyOf(between.beforeId);
+      if (after !== null && claimed !== null && after >= claimed) {
+        throw new OutOfOrder(
+          'die beiden Nachbarn stehen nicht in dieser Reihenfolge — die Ansicht ist veraltet',
+        );
+      }
+
+      // Der tatsächliche rechte Nachbar: der kleinste Schlüssel, der größer ist
+      // als der linke. Die eigene Zeile zählt nicht mit, sonst wäre sie beim
+      // Verschieben um eine Stelle ihr eigener Nachbar.
+      const next = await queryOne<{ sort_key: string }>(
+        client,
+        `SELECT sort_key FROM tasks
+          WHERE workspace_id = $1
+            AND project_id IS NOT DISTINCT FROM $2
+            AND parent_id IS NOT DISTINCT FROM $3
+            AND id <> $4
+            AND ($5::text IS NULL OR sort_key > $5)
+          ORDER BY sort_key ASC LIMIT 1`,
+        [workspaceId, me.project_id, me.parent_id, taskId, after],
+      );
+
+      const key = generateKeyBetween(after, next?.sort_key ?? null);
+      const row = await queryOne<TaskRow>(
+        client,
+        `UPDATE tasks SET sort_key = $3, updated_at = now()
+          WHERE id = $1 AND workspace_id = $2
+         RETURNING ${RETURNING}`,
+        [taskId, workspaceId, key],
+      );
+      if (row === undefined) throw new NotFound(`Aufgabe ${taskId} gibt es nicht`);
+      return row;
+    }),
+  );
+}
+
+export class OutOfOrder extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'OutOfOrder';
+  }
 }
 
 /**
- * Die Heute-Ansicht.
+ * Einzelne Felder ändern — was das Anfasser-Menü schreibt.
  *
- * „Heute" heißt: geplant für heute oder früher, **oder** die Frist läuft heute
- * oder früher ab. Zwei Felder, eine Ansicht — das ist der Sinn der Trennung.
- * Überfällig ist alles, dessen Tag vorbei ist; es steht in einem eigenen
- * Abschnitt, weil „heute zu tun" und „liegengeblieben" zwei Nachrichten sind.
+ * **Nur die genannten Felder.** Ein `undefined` heißt „nicht angefasst", ein
+ * `null` heißt „leeren"; die beiden zu vermischen wäre ein Menü, das beim
+ * Setzen eines Datums die Priorität mitnimmt. Dieselbe Regel wie beim
+ * CalDAV-Fenster, nur von innen: wer ein Feld nicht trägt, darf es nicht
+ * löschen.
  */
-export async function today(
+export interface Patch {
+  readonly title?: string;
+  readonly note?: string;
+  readonly plannedAt?: Date | null;
+  readonly plannedAllDay?: boolean;
+  readonly dueAt?: Date | null;
+  readonly dueAllDay?: boolean;
+  readonly priority?: number;
+  readonly projectId?: string | null;
+}
+
+export async function patch(
   pool: Pool,
+  taskId: string,
   workspaceId: string,
-  now: Date,
-): Promise<TodaySections> {
-  const endOfDay = new Date(
-    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 23, 59, 59, 999),
-  );
-  const startOfDay = new Date(
-    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
-  );
+  fields: Patch,
+): Promise<TaskRow> {
+  const sets: string[] = [];
+  const params: unknown[] = [taskId, workspaceId];
+  const set = (column: string, value: unknown) => {
+    params.push(value);
+    sets.push(`${column} = $${params.length}`);
+  };
 
-  const rows = await queryRows<TaskRow>(
-    pool,
-    `${SELECT}
-      WHERE workspace_id = $1
-        AND completed_at IS NULL
-        AND trashed_at IS NULL
-        AND (planned_at <= $2 OR due_at <= $2)
-      ORDER BY priority ASC, COALESCE(planned_at, due_at) ASC, sort_key ASC`,
-    [workspaceId, endOfDay],
-  );
-
-  const overdue: TaskRow[] = [];
-  const rest: TaskRow[] = [];
-  for (const row of rows) {
-    const marker = row.planned_at ?? row.due_at;
-    if (marker !== null && marker.getTime() < startOfDay.getTime()) overdue.push(row);
-    else rest.push(row);
+  if (fields.title !== undefined) {
+    const title = fields.title.trim();
+    if (title === '') throw new OutOfOrder('ein Titel darf nicht leer werden');
+    set('title', title);
   }
-  return { overdue, today: rest };
+  if (fields.note !== undefined) set('note', fields.note);
+  if (fields.plannedAt !== undefined) set('planned_at', fields.plannedAt);
+  if (fields.plannedAllDay !== undefined) set('planned_all_day', fields.plannedAllDay);
+  if (fields.dueAt !== undefined) set('due_at', fields.dueAt);
+  if (fields.dueAllDay !== undefined) set('due_all_day', fields.dueAllDay);
+  if (fields.priority !== undefined) {
+    if (!Number.isInteger(fields.priority) || fields.priority < 1 || fields.priority > 4) {
+      throw new OutOfOrder('die Priorität hat vier Stufen');
+    }
+    set('priority', fields.priority);
+  }
+  if (fields.projectId !== undefined) set('project_id', fields.projectId);
+
+  if (sets.length === 0) throw new OutOfOrder('nichts zu ändern');
+
+  const row = await queryOne<TaskRow>(
+    pool,
+    `UPDATE tasks SET ${sets.join(', ')}, updated_at = now()
+      WHERE id = $1 AND workspace_id = $2
+     RETURNING ${RETURNING}`,
+    params,
+  );
+  if (row === undefined) throw new NotFound(`Aufgabe ${taskId} gibt es nicht`);
+  return row;
 }

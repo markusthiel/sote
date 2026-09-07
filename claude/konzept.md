@@ -277,10 +277,29 @@ Auflösung. Kein Speichern-Knopf, kein Spinner, kein Modal.
 
 Zwei Leute ziehen gleichzeitig Zeilen. Mit ganzzahligen Positionen springen die
 Reihen, und zwar sichtbar. Deshalb ein **gebrochener Index zwischen den
-Nachbarn** statt einer Nummer, mit definierter Behandlung des Falls, dass der
-Abstand aufgebraucht ist.
+Nachbarn** statt einer Nummer.
 
-Das gehört ins Konzept und nicht in die Umsetzung als Überraschung.
+**Und dabei liegt eine Falle, die SONEs Fassung nicht hat.** Gefunden beim Bauen
+durch den Test „zwei gleichzeitige Einfügungen in dieselbe Lücke":
+`generateKeyBetween` ist **deterministisch**. Zwei Transaktionen, die dieselben
+Nachbarn lesen, rechnen denselben Schlüssel und schreiben ihn beide — danach ist
+die Reihenfolge zwischen den zwei Zeilen undefiniert und kippt von Abfrage zu
+Abfrage. In SONE fällt das nicht auf, weil die Schlüssel dort in Yjs liegen und
+ein CRDT eine eigene Gleichstandsregel hat. **Eine Tabelle hat keine.**
+
+Zwei Dinge machen es dicht:
+
+- Ein Unique-Index über `(workspace_id, project_id, parent_id, sort_key)` mit
+  **`NULLS NOT DISTINCT`** (Migration 0003). Ohne diesen Zusatz hätte der Index
+  genau die Zeilen nicht geschützt, um die es am häufigsten geht: Postgres hält
+  zwei NULLs standardmäßig für verschieden, und `project_id` ist oft NULL.
+- **Der rechte Nachbar kommt aus der Datenbank, nicht aus der Anfrage.** Der
+  erste Versuch wiederholte den Vorgang mit denselben Nachbar-*Ids* und rechnete
+  deshalb endlos denselben Schlüssel. Jetzt wird nach dem *nächsten vorhandenen*
+  Schlüssel hinter dem linken Nachbarn gefragt; nach dem ersten Gewinner ist das
+  seiner, die Lücke ist kleiner, und die Wiederholung endet. `beforeId` aus der
+  Anfrage dient nur noch der Prüfung: eine vertauschte Angabe ist eine veraltete
+  Ansicht und keine Anweisung.
 
 ### Anwesenheit
 
@@ -651,6 +670,25 @@ Beim Bauen entschieden, weil es ohne Entscheidung keinen Code gibt:
   Abmeldung, die nur der Browser kennt, ist keine.
 - **Eine gelaufene Migration wird nicht bearbeitet.** Der Läufer merkt sich den
   sha256 und wirft, wenn eine Datei sich seit dem Lauf geändert hat.
+- **Eine erledigungsbezogene Wiederholung liegt vor ihrem ersten Abhaken unter
+  „Irgendwann".** Damit ist der offene Punkt von vorhin beantwortet: sie ist
+  nicht unsichtbar, sondern ungeplant — sonst könnte niemand sie abhaken, und
+  ohne Abhaken entsteht kein Termin. Als Test festgehalten.
+- **Eine Stelle entscheidet, was eine Ansicht bedeutet** (`views.ts`), und die
+  Zähler im Panel lesen dieselben Bedingungen wie die Listen, in **einer**
+  Abfrage. Drei Runden für drei Zahlen sind drei Zeitpunkte, und dann zeigt das
+  Panel eine Summe, die es nie gegeben hat.
+- **Nur „Heute" trennt überfällig ab.** In „Demnächst" wäre der Abschnitt leer,
+  in einem Projekt beantwortet er eine Frage, die dort nicht gestellt wird.
+- **Ein Projekt zeigt auch Erledigtes, aber unten.** „Was habe ich hier
+  geschafft" ist eine Frage für diesen Bildschirm und nicht für „Heute".
+- **`PATCH` ändert genau die genannten Felder.** Ein fehlender Schlüssel heißt
+  „nicht angefasst", `null` heißt „leeren". Geprüft wird die Anwesenheit des
+  Schlüssels und nicht die Wahrheit des Werts — sonst nimmt ein Menü beim Setzen
+  eines Datums die Priorität mit.
+- **Ein widersprüchlicher Auftrag ist 409 mit Grund, kein 500.** Vertauschte
+  Nachbarn, leerer Titel, fünfte Priorität: der Aufrufer hat etwas
+  Widersprüchliches geschickt, nicht der Server etwas falsch gemacht.
 
 ---
 

@@ -19,13 +19,40 @@ import { makeStatic } from './http/static.js';
 import {
   complete,
   createFromLine,
+  move,
   NotFound,
+  OutOfOrder,
+  patch,
   recurrenceOf,
-  today,
   type TaskRow,
 } from './tasks.js';
+import { counts, list, splitOverdue, type ViewId } from './views.js';
 
 const COOKIE = 'sote_session';
+const VIEWS: readonly ViewId[] = ['today', 'upcoming', 'someday', 'project'];
+
+/**
+ * Aus dem Körper einer PATCH-Anfrage die genannten Felder — und nur die.
+ *
+ * `undefined` heißt „nicht angefasst", `null` heißt „leeren". Ein Körper, der
+ * ein Feld nicht nennt, darf es nicht auf null setzen; genau deshalb wird hier
+ * auf Anwesenheit des Schlüssels geprüft und nicht auf Wahrheit des Werts.
+ */
+function readPatch(body: Record<string, unknown>): import('./tasks.js').Patch {
+  const out: Record<string, unknown> = {};
+  const date = (v: unknown) => (v === null ? null : new Date(String(v)));
+  if ('title' in body) out['title'] = String(body['title']);
+  if ('note' in body) out['note'] = String(body['note']);
+  if ('planned' in body) out['plannedAt'] = date(body['planned']);
+  if ('plannedAllDay' in body) out['plannedAllDay'] = body['plannedAllDay'] === true;
+  if ('due' in body) out['dueAt'] = date(body['due']);
+  if ('dueAllDay' in body) out['dueAllDay'] = body['dueAllDay'] === true;
+  if ('priority' in body) out['priority'] = Number(body['priority']);
+  if ('projectId' in body) {
+    out['projectId'] = body['projectId'] === null ? null : String(body['projectId']);
+  }
+  return out as import('./tasks.js').Patch;
+}
 
 /** Was die Oberfläche von einer Aufgabe braucht. Nicht die Zeile. */
 function taskView(row: TaskRow) {
@@ -98,6 +125,12 @@ export function makeServer(ctx: Ctx): Server {
     handle(ctx, req, res).catch((e: unknown) => {
       if (e instanceof NotFound) {
         fail(res, 404, 'not_found', e.message);
+        return;
+      }
+      if (e instanceof OutOfOrder) {
+        // Eine Ablehnung mit Grund, kein 500: der Aufrufer hat etwas
+        // Widersprüchliches geschickt, nicht der Server etwas falsch gemacht.
+        fail(res, 409, 'conflict', e.message);
         return;
       }
       console.error('unbehandelt:', e);
@@ -199,11 +232,42 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
   }
 
   if (path === '/api/today' && method === 'GET') {
-    const sections = await today(ctx.pool, workspaceId, now);
+    const rows = await list(ctx.pool, 'today', workspaceId, now);
+    const sections = splitOverdue(rows, now);
     json(res, 200, {
       overdue: sections.overdue.map(taskView),
-      today: sections.today.map(taskView),
+      today: sections.rest.map(taskView),
     });
+    return;
+  }
+
+  if (path === '/api/tasks' && method === 'GET') {
+    const wanted = url.searchParams.get('view') ?? 'today';
+    if (!VIEWS.includes(wanted as ViewId)) {
+      fail(res, 400, 'no_view', `Ansicht „${wanted}" gibt es nicht`);
+      return;
+    }
+    const view = wanted as ViewId;
+    const projectId = url.searchParams.get('project');
+    if (view === 'project' && projectId === null) {
+      fail(res, 400, 'no_project', 'diese Ansicht braucht ein Projekt');
+      return;
+    }
+    const rows = await list(ctx.pool, view, workspaceId, now, projectId);
+    const sections = view === 'today' ? splitOverdue(rows, now) : undefined;
+    json(res, 200, {
+      view,
+      // Nur Heute trennt überfällig ab: in Demnächst wäre der Abschnitt leer,
+      // und in einem Projekt beantwortet er eine Frage, die dort nicht gestellt
+      // wird.
+      overdue: sections === undefined ? [] : sections.overdue.map(taskView),
+      tasks: (sections === undefined ? rows : sections.rest).map(taskView),
+    });
+    return;
+  }
+
+  if (path === '/api/counts' && method === 'GET') {
+    json(res, 200, await counts(ctx.pool, workspaceId, now));
     return;
   }
 
@@ -276,6 +340,25 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
       completed: taskView(out.completed),
       next: out.next === undefined ? null : taskView(out.next),
     });
+    return;
+  }
+
+  const move_ = /^\/api\/tasks\/([0-9a-f-]{36})\/move$/.exec(path);
+  if (move_ && method === 'POST') {
+    const body = (await readJson(req)) as { afterId?: unknown; beforeId?: unknown };
+    const row = await move(ctx.pool, move_[1]!, workspaceId, {
+      afterId: typeof body?.afterId === 'string' ? body.afterId : null,
+      beforeId: typeof body?.beforeId === 'string' ? body.beforeId : null,
+    });
+    json(res, 200, { task: taskView(row) });
+    return;
+  }
+
+  const one = /^\/api\/tasks\/([0-9a-f-]{36})$/.exec(path);
+  if (one && method === 'PATCH') {
+    const body = (await readJson(req)) as Record<string, unknown>;
+    const row = await patch(ctx.pool, one[1]!, workspaceId, readPatch(body));
+    json(res, 200, { task: taskView(row) });
     return;
   }
 
