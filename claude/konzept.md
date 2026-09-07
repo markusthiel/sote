@@ -686,6 +686,28 @@ Beim Bauen entschieden, weil es ohne Entscheidung keinen Code gibt:
   „nicht angefasst", `null` heißt „leeren". Geprüft wird die Anwesenheit des
   Schlüssels und nicht die Wahrheit des Werts — sonst nimmt ein Menü beim Setzen
   eines Datums die Priorität mit.
+- **Ein Projekt im Papierkorb nimmt seine Aufgaben aus allen Ansichten mit**,
+  und sie tragen dafür **kein eigenes `trashed_at`**: dass ihr Projekt im
+  Papierkorb liegt, genügt. Damit gibt es keinen Zustand, in dem die Aufgaben
+  zurück sind und das Projekt nicht — und im Papierkorb steht ein Eintrag, der
+  sagt, wie viele mitkommen. Ohne diese Bedingung blieben die Aufgaben in Heute
+  stehen, während das Projekt aus dem Panel verschwunden ist, und niemand fände
+  den Ort, an dem man sie loswird.
+- **Eine einzeln weggeworfene Aufgabe braucht ein Ziel, wenn ihr Projekt
+  inzwischen selbst im Papierkorb liegt** (`needs_target`, 409). Sonst wäre sie
+  zurückgeholt und trotzdem unsichtbar, und das ist der eine Ausgang, den ein
+  Zurück-Knopf nicht haben darf. Der Eintrag sagt es vorher, statt die
+  Ablehnung erst beim Klicken zu zeigen.
+- **Zurückgeholt wird ans Ende der Zielliste**, nicht an die alte Stelle: die
+  Lücke ist längst zu, und ein alter Schlüssel kollidiert mit dem Index.
+- **Endgültig löschen geht nur aus dem Papierkorb.** Kein Weg führt an ihm
+  vorbei.
+- **`keyAtEnd` zählt weggeworfene Zeilen mit.** Gefunden von den
+  Papierkorb-Tests: die erste Fassung filterte `trashed_at IS NULL`, der
+  Unique-Index aus 0003 kennt aber keinen Papierkorb — ein Projekt, aus dem
+  einmal etwas weggeworfen wurde, nahm keine neue Aufgabe mehr an. **Die Lehre
+  ist allgemeiner als der Fall: eine Abfrage, die einen Schlüssel für einen
+  Index rechnet, muss denselben Umfang haben wie der Index.**
 - **Eine Ansicht steht in der URL** (`/`, `/demnaechst`, `/irgendwann`,
   `/p/<id>`). Eine Ansicht ist ein Ort, also verlinkbar und mit dem
   Zurück-Knopf erreichbar; eine Kopie im Komponentenzustand wäre eine zweite

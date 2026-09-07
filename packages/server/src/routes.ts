@@ -19,12 +19,18 @@ import { makeStatic } from './http/static.js';
 import {
   complete,
   createFromLine,
+  listTrash,
   move,
+  NeedsTarget,
   NotFound,
   OutOfOrder,
   patch,
+  purge,
   recurrenceOf,
+  restore,
+  trash,
   type TaskRow,
+  type TrashKind,
 } from './tasks.js';
 import { counts, list, splitOverdue, type ViewId } from './views.js';
 
@@ -125,6 +131,12 @@ export function makeServer(ctx: Ctx): Server {
     handle(ctx, req, res).catch((e: unknown) => {
       if (e instanceof NotFound) {
         fail(res, 404, 'not_found', e.message);
+        return;
+      }
+      if (e instanceof NeedsTarget) {
+        // Eine eigene Sorte Ablehnung: die Oberfläche soll nach einem Ziel
+        // fragen und nicht „ging nicht" anzeigen.
+        fail(res, 409, 'needs_target', e.message);
         return;
       }
       if (e instanceof OutOfOrder) {
@@ -340,6 +352,47 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
       completed: taskView(out.completed),
       next: out.next === undefined ? null : taskView(out.next),
     });
+    return;
+  }
+
+  if (path === '/api/trash' && method === 'GET') {
+    const wanted = url.searchParams.get('kind') ?? 'task';
+    if (wanted !== 'task' && wanted !== 'project') {
+      fail(res, 400, 'no_kind', 'der Papierkorb kennt Aufgaben und Projekte');
+      return;
+    }
+    const entries = await listTrash(ctx.pool, workspaceId, wanted);
+    json(res, 200, {
+      kind: wanted,
+      entries: entries.map((e) => ({
+        ...e,
+        trashedAt: e.trashedAt.toISOString(),
+      })),
+    });
+    return;
+  }
+
+  const bin = /^\/api\/(tasks|projects)\/([0-9a-f-]{36})\/(trash|restore|purge)$/.exec(path);
+  if (bin && method === 'POST') {
+    const kind: TrashKind = bin[1] === 'tasks' ? 'task' : 'project';
+    const id = bin[2]!;
+    if (bin[3] === 'trash') {
+      await trash(ctx.pool, kind, id, workspaceId, userId);
+    } else if (bin[3] === 'restore') {
+      const body = (await readJson(req)) as Record<string, unknown> | undefined;
+      // Anwesenheit des Schlüssels, nicht Wahrheit des Werts: `null` heißt
+      // „ohne Projekt", ein fehlender Schlüssel heißt „ich habe keins genannt".
+      const target =
+        body !== undefined && 'projectId' in body
+          ? body['projectId'] === null
+            ? null
+            : String(body['projectId'])
+          : undefined;
+      await restore(ctx.pool, kind, id, workspaceId, target);
+    } else {
+      await purge(ctx.pool, kind, id, workspaceId);
+    }
+    json(res, 200, { ok: true });
     return;
   }
 

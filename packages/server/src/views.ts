@@ -32,8 +32,23 @@ const COLUMNS = `
   completed_at, recur_rrule, recur_dtstart, recur_after_n,
   recur_after_unit, sort_key`;
 
-/** Immer wahr für jede Zeile, die überhaupt in einer Ansicht auftauchen darf. */
-const ALIVE = `completed_at IS NULL AND trashed_at IS NULL`;
+/**
+ * Immer wahr für jede Zeile, die überhaupt in einer Ansicht auftauchen darf.
+ *
+ * **Auch das Projekt muss leben.** Ein Projekt in den Papierkorb zu werfen
+ * nimmt seine Aufgaben mit (Konzept, Abschnitt 8a) — ohne diese Bedingung
+ * blieben sie in Heute stehen, während das Projekt aus dem Panel verschwunden
+ * ist, und niemand fände den Ort, an dem man sie loswird.
+ *
+ * Als NOT EXISTS und nicht als JOIN: ein JOIN müsste `LEFT` sein, weil
+ * `project_id` NULL sein darf, und ein vergessenes `LEFT` verliert genau die
+ * Aufgaben ohne Projekt.
+ */
+const ALIVE = `completed_at IS NULL AND trashed_at IS NULL
+  AND NOT EXISTS (
+    SELECT 1 FROM projects p
+     WHERE p.id = tasks.project_id AND p.trashed_at IS NOT NULL
+  )`;
 
 export interface Bounds {
   readonly startOfDay: Date;
@@ -97,9 +112,9 @@ function whereFor(
       };
     case 'project':
       return {
-        // Ein Projekt zeigt auch Erledigtes, aber unten und begrenzt: „was habe
-        // ich hier geschafft" ist eine Frage, die dieser Bildschirm beantworten
-        // soll, und `Heute` soll sie nicht beantworten.
+        // Ein Projekt zeigt auch Erledigtes, aber unten: „was habe ich hier
+        // geschafft" ist eine Frage, die dieser Bildschirm beantworten soll,
+        // und `Heute` soll sie nicht beantworten.
         sql: `workspace_id = $1 AND project_id = $2 AND trashed_at IS NULL`,
         params: [workspaceId, projectId],
         order: 'completed_at IS NOT NULL, sort_key ASC',

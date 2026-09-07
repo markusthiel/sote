@@ -51,12 +51,14 @@ export function HandleMenu({
   now,
   busy,
   onPatch,
+  onTrash,
   onClose,
 }: {
   task: Task;
   now: Date;
   busy: boolean;
   onPatch: (fields: TaskPatch) => void;
+  onTrash: () => void;
   onClose: () => void;
 }) {
   const box = useRef<HTMLDivElement>(null);
@@ -124,6 +126,18 @@ export function HandleMenu({
           <span className="k">{p.level}</span>
         </button>
       ))}
+
+      {/* „In den Papierkorb", nicht „Löschen": das Wort soll sagen, dass es
+          einen Weg zurück gibt. Endgültig wird erst dort gelöscht. */}
+      <div className="menu-label sep" />
+      <button
+        className="menu-item danger"
+        role="menuitem"
+        disabled={busy}
+        onClick={onTrash}
+      >
+        In den Papierkorb
+      </button>
     </div>
   );
 }

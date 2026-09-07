@@ -19,6 +19,7 @@ import { modeOf, type ModeId } from './modes.js';
 import { modeOfRoute, parseRoute, pathOf, type Route } from './route.js';
 import { SignIn } from './screens/SignIn.js';
 import { TaskList } from './screens/TaskList.js';
+import { Trash } from './screens/Trash.js';
 
 const initialsOf = (name: string) =>
   name
@@ -196,6 +197,13 @@ export function App() {
         {route.kind !== 'mode' ? (
           <TaskList
             route={route}
+            workspace={workspace}
+            projects={projects}
+            now={now}
+            onChanged={() => void loadPanel()}
+          />
+        ) : route.mode === 'trash' ? (
+          <Trash
             workspace={workspace}
             projects={projects}
             now={now}

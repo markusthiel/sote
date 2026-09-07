@@ -332,3 +332,18 @@ test('das Datum zu setzen bewegt die Aufgabe zwischen den Ansichten', async () =
   );
   assert.equal((await list(pool, 'someday', workspaceId, NOW)).length, 0);
 });
+
+test('ein Projekt nimmt nach einem weggeworfenen Eintrag weiter Aufgaben an', async () => {
+  // Der Fehler, den trash.db.test.ts gefunden hat, hier als eigener Wächter:
+  // keyAtEnd filterte weggeworfene Zeilen, der Unique-Index kennt keinen
+  // Papierkorb. Die Lehre ist allgemeiner als der Fall — eine Abfrage, die
+  // einen Schlüssel für einen Index rechnet, muss denselben Umfang haben wie
+  // der Index.
+  const { workspaceId } = await scratch('m-after-trash');
+  const first = await add(workspaceId, 'eins');
+  await pool.query('UPDATE tasks SET trashed_at = now() WHERE id = $1', [first.task.id]);
+  const second = await add(workspaceId, 'zwei');
+  assert.notEqual(second.task.sort_key, first.task.sort_key);
+  const third = await add(workspaceId, 'drei');
+  assert.ok(third.task.sort_key > second.task.sort_key);
+});

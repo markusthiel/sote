@@ -74,6 +74,19 @@ export interface Project {
   open: number | null;
 }
 
+export interface TrashEntry {
+  kind: 'task' | 'project';
+  id: string;
+  title: string;
+  trashedAt: string;
+  trashedBy: string | null;
+  projectId: string | null;
+  projectName: string | null;
+  projectTrashed: boolean;
+  carries: number | null;
+  peek: string | null;
+}
+
 export interface TaskPatch {
   title?: string;
   note?: string;
@@ -140,6 +153,32 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ line }),
     }),
+  trash: (kind: 'tasks' | 'projects', id: string, workspace?: string) =>
+    call<{ ok: true }>(
+      `/api/${kind}/${id}/trash${workspace === undefined ? '' : `?workspace=${workspace}`}`,
+      { method: 'POST' },
+    ),
+  /** `projectId` weglassen heißt „zurück, wohin es gehörte". */
+  restore: (
+    kind: 'tasks' | 'projects',
+    id: string,
+    body: { projectId?: string | null },
+    workspace?: string,
+  ) =>
+    call<{ ok: true }>(
+      `/api/${kind}/${id}/restore${workspace === undefined ? '' : `?workspace=${workspace}`}`,
+      { method: 'POST', body: JSON.stringify(body) },
+    ),
+  purge: (kind: 'tasks' | 'projects', id: string, workspace?: string) =>
+    call<{ ok: true }>(
+      `/api/${kind}/${id}/purge${workspace === undefined ? '' : `?workspace=${workspace}`}`,
+      { method: 'POST' },
+    ),
+  listTrash: (kind: 'task' | 'project', workspace?: string) => {
+    const q = new URLSearchParams({ kind });
+    if (workspace !== undefined) q.set('workspace', workspace);
+    return call<{ kind: string; entries: TrashEntry[] }>(`/api/trash?${q}`);
+  },
   complete: (id: string, workspace?: string) =>
     call<{ completed: Task; next: Task | null }>(
       `/api/tasks/${id}/complete${workspace === undefined ? '' : `?workspace=${workspace}`}`,

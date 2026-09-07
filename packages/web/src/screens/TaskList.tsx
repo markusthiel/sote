@@ -134,6 +134,21 @@ export function TaskList({
     }
   }
 
+  /** Wegwerfen: optimistisch wie das Abhaken — die Zeile soll sofort weg. */
+  async function throwAway(task: Task) {
+    setOpenMenu(null);
+    setOverdue((r) => r.filter((x) => x.id !== task.id));
+    setRows((r) => r.filter((x) => x.id !== task.id));
+    try {
+      await api.trash('tasks', task.id, workspace);
+      setNotice(`„${task.title}“ liegt im Papierkorb.`);
+      onChanged();
+    } catch (e) {
+      setNotice(e instanceof ApiError ? e.message : 'Wegwerfen ging nicht.');
+      await load();
+    }
+  }
+
   /** Felder ändern: nicht optimistisch. */
   async function change(task: Task, fields: TaskPatch) {
     setBusy(true);
@@ -238,6 +253,7 @@ export function TaskList({
                 now={now}
                 busy={busy}
                 onPatch={(fields) => void change(task, fields)}
+                onTrash={() => void throwAway(task)}
                 onClose={() => setOpenMenu(null)}
               />
             ) : null

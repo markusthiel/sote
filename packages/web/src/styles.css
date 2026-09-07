@@ -927,3 +927,85 @@ input {
   color: var(--text-faint);
   text-align: center;
 }
+
+.menu-item.danger {
+  color: var(--danger);
+}
+
+/* ── Papierkorb ── */
+
+.trash-entry {
+  border-bottom: 1px solid var(--line);
+  padding: 12px 0;
+}
+
+.trash-entry .head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.trash-entry .t {
+  font-size: 14.5px;
+}
+
+.trash-entry .m {
+  font-family: var(--sote-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 3px;
+  display: flex;
+  gap: 9px;
+  flex-wrap: wrap;
+}
+
+.trash-entry .warn {
+  color: var(--warning);
+}
+
+.peek {
+  border: 1px solid var(--line);
+  border-radius: var(--sote-radius-md);
+  background: var(--surface);
+  padding: 9px 11px;
+  margin-top: 9px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.peek .pl {
+  font-family: var(--sote-mono);
+  font-size: 10px;
+  color: var(--text-faint);
+  margin-bottom: 4px;
+}
+
+.row-actions {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+.btn.quiet {
+  border-color: transparent;
+  background: transparent;
+  color: var(--text-muted);
+}
+
+.btn.small {
+  min-height: 32px;
+  padding: 5px 11px;
+  font-size: 13px;
+}
+
+select.target {
+  border: 1px solid var(--line-strong);
+  border-radius: var(--sote-radius-md);
+  background: var(--page);
+  color: var(--text);
+  padding: 6px 9px;
+  font-size: 13px;
+  min-height: 32px;
+}

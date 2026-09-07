@@ -106,20 +106,33 @@ const RETURNING = `
 
 const SELECT = `SELECT ${RETURNING} FROM tasks`;
 
-/** Der nächste Sortierschlüssel am Ende einer Liste. */
-async function keyAtEnd(
+/**
+ * Der nächste Sortierschlüssel am Ende einer Liste.
+ *
+ * **Weggeworfene Zeilen zählen mit.** Sie sind aus jeder Ansicht verschwunden,
+ * aber nicht aus der Tabelle — und der Unique-Index aus Migration 0003 kennt
+ * keinen Papierkorb. Die erste Fassung filterte `trashed_at IS NULL` und
+ * rechnete darum denselben Schlüssel, den eine weggeworfene Zeile noch hielt:
+ * ein Projekt, aus dem einmal etwas weggeworfen wurde, nahm keine neue Aufgabe
+ * mehr an. Gefunden von `trash.db.test.ts`.
+ *
+ * Die Lehre ist allgemeiner als der Fall: **eine Abfrage, die einen Schlüssel
+ * für einen Index rechnet, muss denselben Umfang haben wie der Index.**
+ */
+export async function keyAtEnd(
   q: Pool | PoolClient,
   workspaceId: string,
   projectId: string | null,
+  parentId: string | null = null,
 ): Promise<string> {
   const last = await queryOne<{ sort_key: string }>(
     q,
     `SELECT sort_key FROM tasks
       WHERE workspace_id = $1
         AND project_id IS NOT DISTINCT FROM $2
-        AND trashed_at IS NULL
+        AND parent_id IS NOT DISTINCT FROM $3
       ORDER BY sort_key DESC LIMIT 1`,
-    [workspaceId, projectId],
+    [workspaceId, projectId, parentId],
   );
   return generateKeyBetween(last?.sort_key ?? null, null);
 }
@@ -495,4 +508,218 @@ export async function patch(
   );
   if (row === undefined) throw new NotFound(`Aufgabe ${taskId} gibt es nicht`);
   return row;
+}
+
+/* ── Papierkorb ────────────────────────────────────────────────────────────
+   „Erledigt ist nicht gelöscht" (Konzept, Abschnitt 8a). Eine abgehakte
+   Aufgabe ist ein Ergebnis und bleibt in ihrem Projekt; eine gelöschte ist ein
+   Irrtum und liegt hier. Und **es gibt keinen Sweep**: eine Frist, die von
+   selbst löscht, ist eine Löschung, die niemand angeordnet hat. */
+
+export type TrashKind = 'task' | 'project';
+
+export interface TrashEntry {
+  readonly kind: TrashKind;
+  readonly id: string;
+  readonly title: string;
+  readonly trashedAt: Date;
+  readonly trashedBy: string | null;
+  /** Bei einer Aufgabe: das Projekt, in das sie zurückwill. */
+  readonly projectId: string | null;
+  readonly projectName: string | null;
+  /** Ist dieses Projekt selbst im Papierkorb? Dann braucht das Zurück ein Ziel. */
+  readonly projectTrashed: boolean;
+  /** Bei einem Projekt: wie viele Aufgaben mitkommen. */
+  readonly carries: number | null;
+  /** Ein Blick hinein, ohne die Zeile zu öffnen. */
+  readonly peek: string | null;
+}
+
+export async function trash(
+  pool: Pool,
+  kind: TrashKind,
+  id: string,
+  workspaceId: string,
+  userId: string,
+): Promise<void> {
+  const table = kind === 'task' ? 'tasks' : 'projects';
+  const res = await pool.query(
+    `UPDATE ${table} SET trashed_at = now(), trashed_by = $3
+      WHERE id = $1 AND workspace_id = $2 AND trashed_at IS NULL`,
+    [id, workspaceId, userId],
+  );
+  if (res.rowCount === 0) {
+    throw new NotFound(`${kind} ${id} gibt es nicht oder liegt schon im Papierkorb`);
+  }
+}
+
+/**
+ * Zurückholen.
+ *
+ * **Ein Projekt nimmt seine Aufgaben mit**, in beide Richtungen: weggeworfen
+ * verschwinden sie, zurückgeholt kommen sie wieder. Sie tragen dafür kein
+ * eigenes `trashed_at` — dass ihr Projekt im Papierkorb liegt, genügt. Damit
+ * gibt es auch keinen Zustand, in dem die Aufgaben zurück sind und das Projekt
+ * nicht.
+ *
+ * Eine **einzeln** weggeworfene Aufgabe braucht ein Ziel, wenn ihr Projekt
+ * inzwischen selbst im Papierkorb liegt: sonst wäre sie zurückgeholt und
+ * trotzdem unsichtbar, und das ist der eine Ausgang, den ein Zurück-Knopf nicht
+ * haben darf.
+ */
+export async function restore(
+  pool: Pool,
+  kind: TrashKind,
+  id: string,
+  workspaceId: string,
+  target?: string | null,
+): Promise<void> {
+  if (kind === 'project') {
+    const res = await pool.query(
+      `UPDATE projects SET trashed_at = NULL, trashed_by = NULL
+        WHERE id = $1 AND workspace_id = $2 AND trashed_at IS NOT NULL`,
+      [id, workspaceId],
+    );
+    if (res.rowCount === 0) throw new NotFound(`Projekt ${id} liegt nicht im Papierkorb`);
+    return;
+  }
+
+  await withTransaction(pool, async (client) => {
+    const row = await queryOne<{ project_id: string | null; project_trashed: boolean }>(
+      client,
+      `SELECT t.project_id,
+              COALESCE(p.trashed_at IS NOT NULL, false) AS project_trashed
+         FROM tasks t LEFT JOIN projects p ON p.id = t.project_id
+        WHERE t.id = $1 AND t.workspace_id = $2 AND t.trashed_at IS NOT NULL`,
+      [id, workspaceId],
+    );
+    if (row === undefined) throw new NotFound(`Aufgabe ${id} liegt nicht im Papierkorb`);
+
+    let projectId = row.project_id;
+    if (row.project_trashed) {
+      if (target === undefined) {
+        throw new NeedsTarget(
+          'das Projekt dieser Aufgabe liegt selbst im Papierkorb — wohin soll sie zurück?',
+        );
+      }
+      if (target !== null) {
+        const ok = await queryOne<{ id: string }>(
+          client,
+          `SELECT id FROM projects
+            WHERE id = $1 AND workspace_id = $2 AND trashed_at IS NULL`,
+          [target, workspaceId],
+        );
+        if (ok === undefined) throw new NotFound(`Projekt ${target} gibt es nicht`);
+      }
+      projectId = target;
+    } else if (target !== undefined) {
+      projectId = target;
+    }
+
+    // Am Ende der Zielliste, nicht an der alten Stelle: die Lücke ist längst
+    // zu, und ein alter Schlüssel kollidiert mit dem Index aus 0003.
+    const key = await keyAtEnd(client, workspaceId, projectId);
+    await client.query(
+      `UPDATE tasks SET trashed_at = NULL, trashed_by = NULL,
+              project_id = $3, sort_key = $4, updated_at = now()
+        WHERE id = $1 AND workspace_id = $2`,
+      [id, workspaceId, projectId, key],
+    );
+  });
+}
+
+export class NeedsTarget extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'NeedsTarget';
+  }
+}
+
+/** Endgültig. Bei einem Projekt gehen seine Aufgaben mit (ON DELETE CASCADE). */
+export async function purge(
+  pool: Pool,
+  kind: TrashKind,
+  id: string,
+  workspaceId: string,
+): Promise<void> {
+  const table = kind === 'task' ? 'tasks' : 'projects';
+  const res = await pool.query(
+    `DELETE FROM ${table}
+      WHERE id = $1 AND workspace_id = $2 AND trashed_at IS NOT NULL`,
+    [id, workspaceId],
+  );
+  // Nur aus dem Papierkorb: endgültig löschen ist kein Weg, der an ihm
+  // vorbeiführt.
+  if (res.rowCount === 0) throw new NotFound(`${kind} ${id} liegt nicht im Papierkorb`);
+}
+
+export async function listTrash(
+  pool: Pool,
+  workspaceId: string,
+  kind: TrashKind,
+): Promise<TrashEntry[]> {
+  if (kind === 'project') {
+    const rows = await queryRows<{
+      id: string;
+      name: string;
+      trashed_at: Date;
+      trashed_by: string | null;
+      carries: string;
+      peek: string | null;
+    }>(
+      pool,
+      `SELECT p.id, p.name, p.trashed_at, p.trashed_by,
+              count(t.id) FILTER (WHERE t.trashed_at IS NULL) AS carries,
+              string_agg(t.title, ', ' ORDER BY t.sort_key)
+                FILTER (WHERE t.trashed_at IS NULL) AS peek
+         FROM projects p LEFT JOIN tasks t ON t.project_id = p.id
+        WHERE p.workspace_id = $1 AND p.trashed_at IS NOT NULL
+        GROUP BY p.id ORDER BY p.trashed_at DESC`,
+      [workspaceId],
+    );
+    return rows.map((r) => ({
+      kind: 'project' as const,
+      id: r.id,
+      title: r.name,
+      trashedAt: r.trashed_at,
+      trashedBy: r.trashed_by,
+      projectId: null,
+      projectName: null,
+      projectTrashed: false,
+      carries: Number(r.carries),
+      peek: r.peek,
+    }));
+  }
+
+  const rows = await queryRows<{
+    id: string;
+    title: string;
+    note: string;
+    trashed_at: Date;
+    trashed_by: string | null;
+    project_id: string | null;
+    project_name: string | null;
+    project_trashed: boolean;
+  }>(
+    pool,
+    `SELECT t.id, t.title, t.note, t.trashed_at, t.trashed_by,
+            t.project_id, p.name AS project_name,
+            COALESCE(p.trashed_at IS NOT NULL, false) AS project_trashed
+       FROM tasks t LEFT JOIN projects p ON p.id = t.project_id
+      WHERE t.workspace_id = $1 AND t.trashed_at IS NOT NULL
+      ORDER BY t.trashed_at DESC`,
+    [workspaceId],
+  );
+  return rows.map((r) => ({
+    kind: 'task' as const,
+    id: r.id,
+    title: r.title,
+    trashedAt: r.trashed_at,
+    trashedBy: r.trashed_by,
+    projectId: r.project_id,
+    projectName: r.project_name,
+    projectTrashed: r.project_trashed,
+    carries: null,
+    peek: r.note === '' ? null : r.note.slice(0, 200),
+  }));
 }
