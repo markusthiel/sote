@@ -992,6 +992,28 @@ Beim Bauen entschieden, weil es ohne Entscheidung keinen Code gibt:
     Fassung: fünf Pixel über die Kante hinaus, bei `overflow: hidden` der
     Leiste. Anfassbar blieben vier statt zehn — im Browser gemessen, bei x+2
     traf man den Griff, bei x+5 die Leiste dahinter.
+- **Was beim Start über die Leitung geht, ist eine Entscheidung.** Gemeldet:
+  „hängt teilweise sekunden". Gemessen: 1018 KB Zeichensatz auf **jedem**
+  Laden, um in der Seitenleiste eine Handvoll Symbole zu zeichnen — 3,1 s bis
+  zum ersten Inhalt bei vierfach gedrosseltem Prozessor.
+  - Mein Fehler war der Kurzschluss **„SONE macht das, also passt es"**. SONE
+    ist eine Notizanwendung, in der der Zeichenwähler mitten im Gegenstand
+    sitzt; SOTE lädt ihn für eine Seitenleiste. Dieselbe Entscheidung, anderer
+    Ort, anderer Preis.
+  - Ein eigener Brocken für den Zwischenspeicher war **richtig gedacht und am
+    falschen Ende**: `manualChunks` schreibt ihn per `modulepreload` ins HTML,
+    also ging er trotzdem bei jedem Laden über die Leitung. Der dynamische
+    Import baut den Brocken von selbst — ohne Vorladen.
+  - Jetzt: 269 KB beim Start, 905 statt 3094 ms auf dem gedrosselten Tablet.
+    Der Satz kommt, wenn ein Projekt wirklich ein Zeichen hat oder der Wähler
+    aufgeht. Wer keine Zeichen vergibt, lädt ihn nie.
+  - **Ein Umlauf, nicht zwei:** das Speichern in den Einstellungen holte danach
+    die ganze Antwort neu. Auf einer entfernten Instanz sind das zwei
+    Wartezeiten für eine Handlung; der Kern rechnet dasselbe Ergebnis aus der
+    Antwort des Schreibens.
+  - Festgehalten in `test/weight.test.ts` — als **Dateiinhalt**, nicht als
+    Absicht: ein Kommentar über „nur bei Bedarf" ist beim nächsten `import` von
+    oben still wieder falsch.
 - **`pnpm check` ist genau das, was die CI fährt.** Erst standen die Prüfungen
   einzeln in der Workflow-Datei, und `pnpm -r typecheck` scheiterte dort — in
   einem frischen Klon gibt es kein `dist`, und `@sote/core` zeigt mit `types`

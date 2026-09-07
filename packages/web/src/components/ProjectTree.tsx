@@ -21,7 +21,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { colorValue, PALETTE } from '@sote/core';
 
 import type { Project } from '../api.js';
-import { iconsFor, IconPreview, ProjectMark } from './ProjectMark.js';
+import { iconsFor, IconPreview, loadIcons, ProjectMark } from './ProjectMark.js';
 
 /**
  * Die acht Namen aus der Palette, plus „ohne".
@@ -81,12 +81,26 @@ export function ProjectTree({
 
   /* Ohne Suchbegriff ein Anfang, mit Suchbegriff der ganze Satz — `iconsFor`
      erklärt, warum das nicht dasselbe ist wie eine Auswahl. */
-  const shown = useMemo(() => iconsFor(find), [find]);
+  /*
+   * Der Zeichensatz kommt, wenn ein Menü aufgeht.
+   *
+   * Ein Megabyte auf jedem Laden, damit ein Wähler sofort bereit ist, den die
+   * meisten nie öffnen — das war der gemessene Grund für „hängt teilweise
+   * sekunden". Jetzt wird er hier geholt; bis er da ist, sagt das Gitter es.
+   */
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    if (menu === null) return;
+    void loadIcons().then(() => setReady(true));
+  }, [menu]);
+
+  const shown = useMemo(() => (ready ? iconsFor(find) : []), [find, ready]);
   const box = useRef<HTMLDivElement>(null);
 
   // Ein neues Menü beginnt ohne Suchbegriff: der vom letzten Projekt ist eine
   // Einschränkung, die niemand gesetzt hat.
   useEffect(() => setFind(''), [menu]);
+
 
   useEffect(() => {
     if (menu === null) return;
@@ -280,9 +294,11 @@ export function ProjectTree({
                 </button>
               ))}
             </div>
-            {shown.length === 0 ? (
-              <p className="fpop-none">Kein Zeichen mit diesem Namen.</p>
-            ) : null}
+            {shown.length > 0 ? null : (
+              <p className="fpop-none">
+                {ready ? 'Kein Zeichen mit diesem Namen.' : 'Zeichen werden geladen…'}
+              </p>
+            )}
             <div className="menu-label sep">Farbe</div>
             <div className="swatches">
               {COLORS.map((c) => (

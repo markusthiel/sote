@@ -13,6 +13,23 @@
  * keinen Grund, für irgendwen zu wählen: sie können den ganzen Satz
  * durchsuchen."
  *
+ * ## Der Satz wird geholt, wenn er gebraucht wird
+ *
+ * Gemeldet: „sote hängt teilweise sekunden." Gemessen: 1018 KB Zeichensatz auf
+ * **jedem** Laden, eingebunden, um in der Seitenleiste eine Handvoll Symbole zu
+ * zeichnen. Bei vierfach gedrosseltem Prozessor 663 ms bis zum ersten Inhalt,
+ * und das ohne Netz.
+ *
+ * Mein Fehler war der Kurzschluss „SONE macht das, also passt es". SONE ist
+ * eine Notizanwendung, in der der Zeichenwähler mitten im Gegenstand sitzt;
+ * SOTE lädt ihn für eine Seitenleiste. Dieselbe Entscheidung, anderer Ort,
+ * anderer Preis.
+ *
+ * Jetzt wird der Satz **nachgeladen**, und zwar nur, wenn ihn jemand braucht:
+ * wenn ein Projekt wirklich ein Zeichen hat, oder wenn der Wähler aufgeht. Bis
+ * dahin steht der Anfangsbuchstabe — derselbe Rückfall, den es ohnehin für
+ * unbekannte Namen gibt. Wer keine Zeichen vergibt, lädt das Megabyte nie.
+ *
  * ## Die beiden Fallen, die SONE schon hatte
  *
  * **Die Umwandlung ist in beide Richtungen verlustbehaftet.** `AArrowDown` und
@@ -30,7 +47,55 @@
  */
 
 import { colorValue } from '@sote/core';
-import * as lucide from 'lucide-react';
+import type * as lucideTypes from 'lucide-react';
+import { useEffect, useState } from 'react';
+
+/*
+ * Der geladene Satz, oder `null`.
+ *
+ * Ein Modulzustand und kein React-Zustand: es gibt genau einen Satz, und jede
+ * Zeile, die ein Zeichen zeichnen will, meint denselben. Über einen Kontext
+ * wäre es dieselbe Sache mit mehr Teilen.
+ */
+let loaded: typeof lucideTypes | null = null;
+let loading: Promise<void> | null = null;
+const waiting = new Set<() => void>();
+
+/**
+ * Holt den Satz, einmal.
+ *
+ * Mehrere Aufrufer bekommen dasselbe Versprechen — sonst lädt eine Liste mit
+ * fünf Zeichen ihn fünfmal an. Scheitert es, bleibt es beim Anfangsbuchstaben:
+ * ein fehlendes Zeichen ist kein Grund, eine Zeile unbrauchbar zu machen.
+ */
+export function loadIcons(): Promise<void> {
+  if (loaded !== null) return Promise.resolve();
+  loading ??= import('lucide-react')
+    .then((mod) => {
+      loaded = mod;
+      for (const tell of waiting) tell();
+      waiting.clear();
+    })
+    .catch(() => {
+      loading = null;
+    });
+  return loading;
+}
+
+/** Sagt Bescheid, sobald der Satz da ist. */
+function useIcons(needed: boolean): typeof lucideTypes | null {
+  const [, bump] = useState(0);
+  useEffect(() => {
+    if (!needed || loaded !== null) return undefined;
+    const tell = () => bump((n) => n + 1);
+    waiting.add(tell);
+    void loadIcons();
+    return () => {
+      waiting.delete(tell);
+    };
+  }, [needed]);
+  return loaded;
+}
 
 /** Trennt bei `aB` und bei `ABc`, damit eine Abkürzung nicht das nächste Wort schluckt. */
 function kebab(key: string): string {
@@ -41,15 +106,16 @@ function kebab(key: string): string {
 }
 
 /** `wallet-cards` wird als `WalletCards` exportiert. */
-function componentFor(name: string): lucide.LucideIcon | null {
+function componentFor(name: string): lucideTypes.LucideIcon | null {
+  if (loaded === null) return null;
   const exported = name
     .split('-')
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join('');
-  const found = (lucide as unknown as Record<string, unknown>)[exported];
+  const found = (loaded as unknown as Record<string, unknown>)[exported];
   // Objekt ODER Funktion — siehe oben.
   const usable = typeof found === 'function' || (typeof found === 'object' && found !== null);
-  return usable ? (found as lucide.LucideIcon) : null;
+  return usable ? (found as lucideTypes.LucideIcon) : null;
 }
 
 /**
@@ -58,16 +124,22 @@ function componentFor(name: string): lucide.LucideIcon | null {
  * Aliasse und die `*Icon`-Doppel, die Lucide mitliefert, fallen weg — sonst
  * steht dieselbe Zeichnung dreimal unter drei Namen im Gitter.
  */
-export const ICON_NAMES: string[] = [
-  ...new Set(
-    Object.keys(lucide)
-      .filter((key) => /^[A-Z]/.test(key) && !key.endsWith('Icon') && !key.startsWith('Lucide'))
-      .map(kebab)
-      .filter((name) => /^[a-z][a-z0-9-]*$/.test(name)),
-  ),
-]
-  .filter((name) => componentFor(name) !== null)
-  .sort();
+let names: string[] | null = null;
+
+export function iconNames(): string[] {
+  if (loaded === null) return [];
+  names ??= [
+    ...new Set(
+      Object.keys(loaded)
+        .filter((key) => /^[A-Z]/.test(key) && !key.endsWith('Icon') && !key.startsWith('Lucide'))
+        .map(kebab)
+        .filter((name) => /^[a-z][a-z0-9-]*$/.test(name)),
+    ),
+  ]
+    .filter((name) => componentFor(name) !== null)
+    .sort();
+  return names;
+}
 
 /**
  * Was ohne Suchbegriff im Gitter steht.
@@ -88,7 +160,7 @@ const SUGGESTED = [
   'book-open', 'calendar', 'camera', 'code', 'coffee', 'dumbbell',
   'file-text', 'gift', 'globe', 'hammer', 'key', 'lightbulb',
   'map-pin', 'music', 'package', 'phone', 'palette', 'shield',
-].filter((name) => componentFor(name) !== null);
+];
 
 /**
  * Die Zeichen für das Gitter: entweder der Anfang oder der gefilterte Satz.
@@ -99,8 +171,11 @@ const SUGGESTED = [
  */
 export function iconsFor(query: string): string[] {
   const needle = query.trim().toLowerCase();
-  if (needle === '') return SUGGESTED;
-  return ICON_NAMES.filter((n) => n.includes(needle)).slice(0, 120);
+  const all = iconNames();
+  // Vor dem Laden gibt es nichts zu zeigen; der Wähler sagt das selbst.
+  if (all.length === 0) return [];
+  if (needle === '') return SUGGESTED.filter((n) => componentFor(n) !== null);
+  return all.filter((n) => n.includes(needle)).slice(0, 120);
 }
 
 export const hasIcon = (name: string | undefined): boolean =>
@@ -126,6 +201,8 @@ export function ProjectMark({
   /** Schon durch `colorValue` gegangen, oder `undefined`. */
   color: string | undefined;
 }) {
+  // Der Satz wird nur geholt, wenn dieses Projekt wirklich ein Zeichen hat.
+  useIcons(icon !== undefined);
   const Chosen = icon === undefined ? null : componentFor(icon);
   return (
     <span

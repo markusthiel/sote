@@ -6,22 +6,21 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     emptyOutDir: true,
-    rollupOptions: {
-      output: {
-        /*
-         * Der Zeichensatz in einen eigenen Brocken.
-         *
-         * SOTE liefert wie SONE den ganzen Lucide-Satz aus, damit der Wähler
-         * durchsuchbar ist statt eine Auswahl anzubieten, die jemand einmal
-         * getroffen hat. Das kostet: das Bündel wuchs von 253 KB auf 1,26 MB.
-         * SONEs Hauptbündel liegt bei 2 MB, also ist das dieselbe Größenordnung
-         * — aber der Satz ändert sich fast nie, und der Rest der Anwendung bei
-         * jedem Commit. Getrennt bleibt er im Zwischenspeicher liegen, statt
-         * bei jeder Auslieferung neu über die Leitung zu gehen.
-         */
-        manualChunks: (id) => (id.includes('lucide-react') ? 'icons' : undefined),
-      },
-    },
+    /*
+     * Kein `manualChunks` für den Zeichensatz mehr — und das ist der Punkt.
+     *
+     * Er lag in einem eigenen Brocken, damit er im Zwischenspeicher bleibt.
+     * Richtig gedacht und am falschen Ende: ein eigener Brocken, den Vite per
+     * `modulepreload` ins HTML schreibt, geht trotzdem bei **jedem** Laden über
+     * die Leitung. Gemeldet als „hängt teilweise sekunden", gemessen als
+     * 1018 KB und 663 ms bis zum ersten Inhalt bei vierfach gedrosseltem
+     * Prozessor.
+     *
+     * `ProjectMark` holt den Satz jetzt per dynamischem Import, und daraus
+     * baut Rollup von selbst einen eigenen Brocken — **ohne** Vorladen. Er
+     * kommt, wenn ein Projekt wirklich ein Zeichen hat oder der Wähler aufgeht.
+     * Wer keine Zeichen vergibt, lädt ihn nie.
+     */
   },
   server: {
     port: 5173,

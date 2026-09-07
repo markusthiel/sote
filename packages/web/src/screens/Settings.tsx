@@ -27,7 +27,7 @@
  * Abschnitt „Dieses Gerät", damit niemand sie für synchronisiert hält.
  */
 
-import { SCHEMES, type Scheme } from '@sote/core';
+import { resolveSettings, SCHEMES, type Scheme } from '@sote/core';
 import { useEffect, useState } from 'react';
 
 import { api, ApiError, type SettingsAnswer } from '../api.js';
@@ -93,8 +93,21 @@ export function Settings({
     setBusy(true);
     setNotice(undefined);
     try {
-      await api.patchSettings(scope, changes);
-      const next = await api.settings();
+      /*
+       * Ein Umlauf, nicht zwei.
+       *
+       * Vorher: PATCH, dann ein volles GET hinterher — auf einer entfernten
+       * Instanz sind das zwei Wartezeiten für eine Handlung. Die Antwort des
+       * PATCH enthält, was die Ebene jetzt sagt; was daraus insgesamt folgt,
+       * rechnet der Kern mit derselben Funktion wie der Server.
+       */
+      const saved = await api.patchSettings(scope, changes);
+      // `data` ist hier gesetzt: ohne geladene Antwort gibt es keine Knöpfe.
+      const levels = { ...data!.levels, [scope]: saved.settings };
+      const next = {
+        levels,
+        effective: resolveSettings(levels.user, levels.workspace, levels.instance),
+      };
       setData(next);
       // Sofort anwenden und nicht erst beim nächsten Laden: eine Einstellung,
       // die man ändert und nicht sieht, ist eine Einstellung, die man zweimal

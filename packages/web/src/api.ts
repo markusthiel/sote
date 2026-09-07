@@ -104,7 +104,8 @@ export interface Task {
 
 /** Was gilt, und wer was gesagt hat — beides in einer Antwort. */
 export interface SettingsAnswer {
-  effective: { scheme: 'system' | 'light' | 'dark'; zone?: string };
+  /** `zone` ist auch hier optional: „nirgends gesagt" ist eine Antwort. */
+  effective: { scheme: 'system' | 'light' | 'dark'; zone?: string | undefined };
   levels: {
     instance: { scheme?: 'system' | 'light' | 'dark'; zone?: string };
     workspace: { scheme?: 'system' | 'light' | 'dark'; zone?: string };
@@ -239,7 +240,7 @@ export const api = {
   patchSettings: (
     scope: 'instance' | 'workspace' | 'user',
     body: Record<string, unknown>,
-  ) => call<{ settings: unknown }>(`/api/settings/${scope}`, {
+  ) => call<{ settings: SettingsAnswer['levels']['user'] }>(`/api/settings/${scope}`, {
     method: 'PATCH',
     body: JSON.stringify(body),
   }),
