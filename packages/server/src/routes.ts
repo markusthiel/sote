@@ -8,7 +8,7 @@
 
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 
-import { describe as describeRecurrence, isZone } from '@sote/core';
+import { describe as describeRecurrence, isZone, readIcon } from '@sote/core';
 import type { Pool } from 'pg';
 
 import { signIn, signOut, userOfToken } from './auth.js';
@@ -402,28 +402,29 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
       parent_id: string | null;
       name: string;
       color: string | null;
+      icon: unknown;
       depth: number;
       open: string;
     }>(
       ctx.pool,
       `WITH RECURSIVE walk AS (
-         SELECT p.id, p.parent_id, p.name, p.color, p.sort_key,
+         SELECT p.id, p.parent_id, p.name, p.color, p.icon, p.sort_key,
                 0 AS depth, ARRAY[p.sort_key] AS path
            FROM projects p
           WHERE p.workspace_id = $1 AND p.parent_id IS NULL AND p.trashed_at IS NULL
          UNION ALL
-         SELECT c.id, c.parent_id, c.name, c.color, c.sort_key,
+         SELECT c.id, c.parent_id, c.name, c.color, c.icon, c.sort_key,
                 w.depth + 1, w.path || c.sort_key
            FROM projects c JOIN walk w ON c.parent_id = w.id
           WHERE c.workspace_id = $1 AND c.trashed_at IS NULL
        )
-       SELECT w.id, w.parent_id, w.name, w.color, w.depth,
+       SELECT w.id, w.parent_id, w.name, w.color, w.icon, w.depth,
               count(t.id) FILTER (
                 WHERE t.completed_at IS NULL AND t.trashed_at IS NULL
               ) AS open
          FROM walk w
          LEFT JOIN tasks t ON t.project_id = w.id
-        GROUP BY w.id, w.parent_id, w.name, w.color, w.depth, w.path
+        GROUP BY w.id, w.parent_id, w.name, w.color, w.icon, w.depth, w.path
         ORDER BY w.path`,
       [workspaceId],
     );
@@ -433,6 +434,7 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
         parentId: r.parent_id,
         name: r.name,
         color: r.color,
+        icon: readIcon(r.icon),
         depth: r.depth,
         // Keine Null: eine Zahl über nichts ist Rauschen in einer ruhigen
         // Zeile (SONE, ADR-0092).
@@ -441,6 +443,28 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
     });
     return;
   }
+
+  /*
+   * Eine Projektzeile, wie die Oberfläche sie braucht.
+   *
+   * `open: null` weil eine gerade angelegte Zeile keine offenen Aufgaben hat —
+   * und keine Null, weil eine Zahl über nichts Rauschen ist.
+   */
+  const projectView = (row: {
+    id: string;
+    parent_id: string | null;
+    name: string;
+    color: string | null;
+    icon: unknown;
+  }) => ({
+    id: row.id,
+    parentId: row.parent_id,
+    name: row.name,
+    color: row.color,
+    icon: readIcon(row.icon),
+    depth: 0,
+    open: null,
+  });
 
   if (path === '/api/projects' && method === 'POST') {
     const body = (await readJson(req)) as Record<string, unknown>;
@@ -452,8 +476,9 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
       ...('color' in (body ?? {})
         ? { color: body['color'] === null ? null : String(body['color']) }
         : {}),
+      ...('icon' in (body ?? {}) ? { icon: body['icon'] } : {}),
     });
-    json(res, 201, { project: { ...row, open: null } });
+    json(res, 201, { project: projectView(row) });
     return;
   }
 
@@ -468,8 +493,9 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
       ...('parentId' in (body ?? {})
         ? { parentId: body['parentId'] === null ? null : String(body['parentId']) }
         : {}),
+      ...('icon' in (body ?? {}) ? { icon: body['icon'] } : {}),
     });
-    json(res, 200, { project: { ...row, open: null } });
+    json(res, 200, { project: projectView(row) });
     return;
   }
 

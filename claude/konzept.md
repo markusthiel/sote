@@ -843,6 +843,46 @@ Beim Bauen entschieden, weil es ohne Entscheidung keinen Code gibt:
   `#projekt` gewinnt darüber — aber die Oberfläche schickte die Herkunft nicht
   mit, und die Aufgabe landete in Heute oder Irgendwann. Angelegt, aber nicht
   dort, wo man stand.
+- **Projekte sind Ordner** (angeglichen an SONE, ADR-0023/0028). Unterprojekte,
+  Zeichen, Palettenfarben, Zweige zuklappen.
+  - **Eine gewählte Farbe ist ein Palettenname ODER ein Hex-Wert.** Vorher
+    standen fünf Hex-Werte direkt in `ProjectTree.tsx`. Zwei Dinge waren daran
+    falsch: ein Name gespeichert **folgt der Palette** (ändert die Palette,
+    ändert sich jedes Projekt mit diesem Namen), und dieselben gesättigten
+    Werte, die auf Weiß richtig aussehen, **glühen auf Schwarz** — als Token hat
+    jede Farbe einen Wert pro Thema, als Hex-Wert hatte sie einen für beide.
+  - **Ein Palettenname ist keine CSS-Farbe.** Roh in ein `style` geschrieben tat
+    er in SONE für die acht Namen stillschweigend nichts — „die schlechtere
+    Hälfte, weil das die sind, die man wählt". Alles geht über `colorValue()`.
+  - Das Zeichen hat **dieselbe Form wie SONEs `pages.icon`** (`{icon,
+    iconColor}` als jsonb), damit wer beide Systeme liest, nicht zwei Formen für
+    eine Sache lernt. In **einer** Spalte, weil das Zeichen **eine** Wahl ist:
+    zwei Spalten lassen den halben Zustand zu, in dem eine Farbe ohne Zeichen
+    gespeichert ist und niemand weiß, ob das Absicht war.
+  - Zwölf Zeichen, **selbst gezeichnet**: SOTE holt keine Datei von außen, und
+    ein Satz mit tausend Einträgen im Bündel für zwölf davon ist Ladezeit für
+    nichts. Was die Liste nicht kennt, wird der **Anfangsbuchstabe** — wie
+    SONEs `WorkspaceMark`.
+  - **Der Name des Zeichens wird nicht geprüft**, nur begrenzt. Welche Zeichen
+    es gibt, weiß die Oberfläche; eine Liste im Kern wäre eine zweite Wahrheit.
+  - Beim Zuklappen wird die **Ausnahme** gemerkt, nicht der Normalfall: ein
+    Baum, der zugeklappt beginnt, verbirgt genau die Unterprojekte, die man
+    gerade angelegt hat.
+- **Eine Zahl in der Zeile gehört nicht in ihren Namen.** Die Ansichtszeilen und
+  die Projektzeilen hatten kein `aria-label`, ihr zugänglicher Name war also
+  „Demnächst 6" und „Haus 3". Im Bild sieht man das nie. Jetzt trennt die
+  Beschriftung beides („Demnächst, 6 offen"), und die Zahl ist `aria-hidden`.
+- **Ein `height: 100%` braucht eine Kette, die oben ankommt.** `#root` fehlte
+  darin, also war die Hülle so hoch wie ihr Inhalt. Sichtbar wurde das genau
+  dort, wo es am schlechtesten aussieht: auf einem leeren „Heute" endete die
+  Seitenleiste mitten im Fenster. Bei viel Inhalt sieht alles richtig aus —
+  der Fehler zeigt sich beim ersten Blick eines neuen Kontos.
+- **Ein Klappzettel in einem scrollenden Kasten wird an dessen Rand
+  geschnitten.** `.panel-list` war inhaltshoch mit `overflow: auto`, also endete
+  das Projektmenü hinter „Unterprojekt anlegen" — Zeichen und Farben standen im
+  Markup und waren nicht zu sehen. `flex: 1` macht den Rahmen so hoch wie die
+  Leiste. Offen bleibt „Zeile ganz unten in einer langen Liste": dann müsste
+  der Zettel nach oben klappen.
 - **`pnpm check` ist genau das, was die CI fährt.** Erst standen die Prüfungen
   einzeln in der Workflow-Datei, und `pnpm -r typecheck` scheiterte dort — in
   einem frischen Klon gibt es kein `dist`, und `@sote/core` zeigt mit `types`

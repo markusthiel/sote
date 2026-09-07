@@ -6,7 +6,7 @@
  * dieselbe Vorsicht: ein Projekt darf nicht sein eigener Nachfahre werden.
  */
 
-import { generateKeyBetween } from '@sote/core';
+import { generateKeyBetween, readColor, readIcon, type ProjectIcon } from '@sote/core';
 import type { Pool } from 'pg';
 
 import { queryOne, queryRows, withTransaction, type PoolClient } from './db.js';
@@ -18,13 +18,27 @@ export interface ProjectRow {
   parent_id: string | null;
   name: string;
   color: string | null;
+  icon: unknown;
   sort_key: string;
 }
 
-const COLUMNS = 'id, workspace_id, parent_id, name, color, sort_key';
+const COLUMNS = 'id, workspace_id, parent_id, name, color, icon, sort_key';
 
-/** Ein Farbwert ist ein Farbwert und kein beliebiger String im Stylesheet. */
-const COLOR = /^#[0-9a-f]{6}$/i;
+/**
+ * Eine Farbe ist ein Palettenname oder ein Hex-Wert.
+ *
+ * Vorher stand hier nur `/^#[0-9a-f]{6}$/` — ein Name war nicht möglich, also
+ * folgte keine Projektfarbe je einer Palette. Die Prüfung liegt jetzt im Kern
+ * (`readColor`), damit Server und Oberfläche dieselbe Antwort geben.
+ */
+function checkColor(value: string | null | undefined): void {
+  if (value === undefined || value === null) return;
+  if (readColor(value) === null) {
+    throw new OutOfOrder(
+      'eine Farbe ist ein Name aus der Palette oder ein Wert wie #2f7d6f',
+    );
+  }
+}
 
 const NAME_CLASH = '23505';
 const NAME_INDEX = 'projects_sibling_name';
@@ -61,13 +75,16 @@ async function keyAtEnd(
 export async function create(
   pool: Pool,
   workspaceId: string,
-  input: { name: string; parentId?: string | null; color?: string | null },
+  input: {
+    name: string;
+    parentId?: string | null;
+    color?: string | null;
+    icon?: unknown;
+  },
 ): Promise<ProjectRow> {
   const name = input.name.trim();
   if (name === '') throw new OutOfOrder('ein Projekt braucht einen Namen');
-  if (input.color !== undefined && input.color !== null && !COLOR.test(input.color)) {
-    throw new OutOfOrder('eine Farbe ist ein Wert wie #2f7d6f');
-  }
+  checkColor(input.color);
 
   try {
     return await withTransaction(pool, async (client) => {
@@ -84,9 +101,20 @@ export async function create(
       const key = await keyAtEnd(client, workspaceId, parentId);
       const row = await queryOne<ProjectRow>(
         client,
-        `INSERT INTO projects (workspace_id, parent_id, name, color, sort_key)
-         VALUES ($1,$2,$3,$4,$5) RETURNING ${COLUMNS}`,
-        [workspaceId, parentId, name, input.color ?? null, key],
+        `INSERT INTO projects (workspace_id, parent_id, name, color, icon, sort_key)
+         VALUES ($1,$2,$3,$4,$5,$6) RETURNING ${COLUMNS}`,
+        [
+          workspaceId,
+          parentId,
+          name,
+          input.color ?? null,
+          // `readIcon` wirft weg, was keine Form hat — ein leeres Objekt in
+          // der Spalte würde behaupten, jemand hätte etwas gewählt.
+          input.icon === undefined || input.icon === null
+            ? null
+            : JSON.stringify(readIcon(input.icon)),
+          key,
+        ],
       );
       if (row === undefined) throw new Error('INSERT ohne Zeile');
       return row;
@@ -111,11 +139,15 @@ export async function update(
   pool: Pool,
   id: string,
   workspaceId: string,
-  fields: { name?: string; color?: string | null; parentId?: string | null },
+  fields: {
+    name?: string;
+    color?: string | null;
+    parentId?: string | null;
+    /** `null` leert das Zeichen, ein fehlender Schlüssel lässt es stehen. */
+    icon?: unknown;
+  },
 ): Promise<ProjectRow> {
-  if (fields.color !== undefined && fields.color !== null && !COLOR.test(fields.color)) {
-    throw new OutOfOrder('eine Farbe ist ein Wert wie #2f7d6f');
-  }
+  checkColor(fields.color);
   if (fields.name !== undefined && fields.name.trim() === '') {
     throw new OutOfOrder('ein Projekt braucht einen Namen');
   }
@@ -139,6 +171,16 @@ export async function update(
 
       if (fields.name !== undefined) set('name', fields.name.trim());
       if (fields.color !== undefined) set('color', fields.color);
+      /*
+       * `null` leert, ein fehlender Schlüssel lässt stehen — dieselbe Regel wie
+       * überall in SOTE. Und `readIcon` wirft weg, was keine Form hat: ein
+       * leeres Objekt in der Spalte würde behaupten, jemand hätte etwas
+       * gewählt.
+       */
+      if (fields.icon !== undefined) {
+        const icon: ProjectIcon | null = fields.icon === null ? null : readIcon(fields.icon);
+        set('icon', icon === null ? null : JSON.stringify(icon));
+      }
 
       if (fields.parentId !== undefined && fields.parentId !== me.parent_id) {
         const target = fields.parentId;

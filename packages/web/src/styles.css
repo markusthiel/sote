@@ -41,6 +41,28 @@
   --accent-300: #6fc0b0;
   --accent-100: #d3ebe5;
 
+  /* ── Palette: acht Namen, ein Wert pro Thema ──
+     Gesättigte Farben, die auf Weiß richtig aussehen, glühen auf Schwarz
+     unangenehm (ADR-0028). Deshalb Tokens und keine Konstanten — und ein Name
+     gespeichert folgt der Palette, ein Hex-Wert nicht. */
+  --palette-grau-light: #8a857b;
+  --palette-rot-light: #c0442f;
+  --palette-orange-light: #bd6a1c;
+  --palette-gelb-light: #a3830f;
+  --palette-gruen-light: #2f7d4f;
+  --palette-blau-light: #2b6398;
+  --palette-lila-light: #6b4c9a;
+  --palette-pink-light: #a83e6d;
+
+  --palette-grau-dark: #a29c91;
+  --palette-rot-dark: #e08a76;
+  --palette-orange-dark: #d99a55;
+  --palette-gelb-dark: #c9b25c;
+  --palette-gruen-dark: #71bf90;
+  --palette-blau-dark: #7fb0dd;
+  --palette-lila-dark: #a992d6;
+  --palette-pink-dark: #d98cae;
+
   --danger-500: #b4442f;
   --danger-300: #d9705c;
   --warning-500: #a8762b;
@@ -61,6 +83,14 @@
   --accent-on: var(--page);
   --danger: var(--danger-500);
   --warning: var(--warning-500);
+  --sote-palette-grau: var(--palette-grau-light);
+  --sote-palette-rot: var(--palette-rot-light);
+  --sote-palette-orange: var(--palette-orange-light);
+  --sote-palette-gelb: var(--palette-gelb-light);
+  --sote-palette-gruen: var(--palette-gruen-light);
+  --sote-palette-blau: var(--palette-blau-light);
+  --sote-palette-lila: var(--palette-lila-light);
+  --sote-palette-pink: var(--palette-pink-light);
 
   /* ── Aliasse, Maße, Bewegung ── */
   --sote-radius-sm: 2px;
@@ -100,6 +130,16 @@
   --accent-on: #161615;
   --danger: var(--danger-300);
   --warning: var(--warning-300);
+  /* Dunkel ist entworfen, nicht invertiert: die Palette ist hier heller und
+     weniger gesättigt, weil dieselben Werte auf Schwarz glühen. */
+  --sote-palette-grau: var(--palette-grau-dark);
+  --sote-palette-rot: var(--palette-rot-dark);
+  --sote-palette-orange: var(--palette-orange-dark);
+  --sote-palette-gelb: var(--palette-gelb-dark);
+  --sote-palette-gruen: var(--palette-gruen-dark);
+  --sote-palette-blau: var(--palette-blau-dark);
+  --sote-palette-lila: var(--palette-lila-dark);
+  --sote-palette-pink: var(--palette-pink-dark);
   --sote-shadow-sm: 0 1px 2px rgb(0 0 0 / 40%);
   --sote-shadow-md: 0 1px 2px rgb(0 0 0 / 40%), 0 4px 12px rgb(0 0 0 / 50%);
   --sote-shadow-lg: 0 2px 4px rgb(0 0 0 / 50%), 0 12px 32px rgb(0 0 0 / 60%);
@@ -112,7 +152,22 @@
 }
 
 html,
-body {
+body,
+/*
+ * Die Wurzel, an der React hängt, gehört in diese Kette.
+ *
+ * Ohne sie löst das `height: 100%` von `.app` gegen eine automatische Höhe auf
+ * — die Hülle wird also so hoch wie ihr Inhalt. Sichtbar wurde das genau
+ * dort, wo es am schlechtesten aussieht: auf einem leeren „Heute" endete die
+ * Seitenleiste mitten im Fenster, und das Projektmenü wurde vom `overflow:
+ * hidden` der Leiste abgeschnitten — Zeichen und Farben waren nicht
+ * erreichbar.
+ *
+ * Warum es lange nicht auffiel: bei viel Inhalt ist die Inhaltshöhe größer als
+ * das Fenster, und dann sieht alles richtig aus. Der Fehler zeigt sich nur bei
+ * wenig Inhalt, also beim ersten Blick eines neuen Kontos.
+ */
+#root {
   margin: 0;
   height: 100%;
 }
@@ -316,6 +371,21 @@ input {
   padding: 8px 8px 12px;
   overflow: auto;
   min-block-size: 0;
+  /*
+   * Nimmt den Platz, der übrig ist.
+   *
+   * Vorher war die Liste inhaltshoch — mit `overflow: auto` ist das ein
+   * Schnittrahmen von der Höhe der Einträge, und ein Klappzettel darin wurde
+   * daran abgeschnitten. Bei drei Ansichten und einem Projekt endete das
+   * Projektmenü hinter „Unterprojekt anlegen": Zeichen und Farben standen im
+   * Markup und waren nicht zu sehen.
+   *
+   * `flex: 1` macht den Rahmen so hoch wie die Leiste. Was bleibt, ist der
+   * Fall „Zeile ganz unten in einer langen Liste" — dann müsste der Zettel
+   * nach oben klappen. Noch nicht gebaut, und hier vermerkt, damit es nicht
+   * als erledigt gilt.
+   */
+  flex: 1;
 }
 
 .group-label {
@@ -1598,4 +1668,80 @@ select.target {
   color: var(--text);
   font: inherit;
   font-size: 13px;
+}
+
+/* ── Projektzeile: Zeichen, Aufklappen ─────────────────────────────────────
+   Zu SONEs Ordnern aufgeschlossen: Unterprojekte, Zeichen, Palettenfarben. */
+
+.p-twist {
+  width: 16px;
+  min-height: 26px;
+  flex: none;
+  border: 0;
+  background: none;
+  color: var(--text-faint);
+  font-size: 9px;
+  cursor: pointer;
+  outline-offset: -2px;
+}
+
+.p-twist:hover {
+  color: var(--text);
+}
+
+/* Ein Platzhalter, wo es nichts aufzuklappen gibt — sonst springen die Namen
+   zwischen den Zeilen. */
+.p-twist-gap {
+  width: 16px;
+  flex: none;
+}
+
+.p-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 15px;
+  height: 15px;
+  flex: none;
+  /* Ohne gewählte Farbe folgt das Zeichen dem Text und drängt sich nicht vor. */
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.p-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Der Zeichenwähler: ein Gitter, damit zwölf Zeichen nicht zu einer Spalte
+   werden, die das Menü doppelt so hoch macht wie den Rest. */
+.swatches.marks {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.mark-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 26px;
+  border: 1px solid transparent;
+  border-radius: var(--sote-radius-md);
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.mark-btn:hover:not(:disabled) {
+  background: var(--sunken);
+  color: var(--text);
+}
+
+.mark-btn[aria-current="true"] {
+  border-color: var(--accent);
+  color: var(--text);
 }

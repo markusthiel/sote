@@ -106,7 +106,10 @@ export interface Project {
   id: string;
   parentId: string | null;
   name: string;
+  /** Ein Palettenname oder ein `#rrggbb` — nie roh in ein `style`. */
   color: string | null;
+  /** Dieselbe Form wie SONEs `pages.icon`. `null`, wenn nichts gewählt ist. */
+  icon: { icon?: string; iconColor?: string } | null;
   /** Tiefe im Baum, vom Server gerechnet. */
   depth?: number;
   /** `null` und nicht 0 — eine Zahl über nichts ist Rauschen. */
@@ -235,7 +238,13 @@ export const api = {
     ),
   patchProject: (
     id: string,
-    body: { name?: string; color?: string | null; parentId?: string | null },
+    body: {
+      name?: string;
+      color?: string | null;
+      parentId?: string | null;
+      /** `null` leert das Zeichen, ein fehlender Schlüssel lässt es stehen. */
+      icon?: { icon?: string; iconColor?: string } | null;
+    },
     workspace?: string,
   ) =>
     call<{ project: Project }>(

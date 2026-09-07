@@ -309,3 +309,70 @@ test('die Projektliste kommt in Baumreihenfolge und trägt ihre Tiefe', async ()
     ],
   );
 });
+
+/* ── Farbe und Zeichen (wie SONEs Ordner) ────────────────────────────────── */
+
+test('eine Farbe darf ein Palettenname sein — und folgt damit der Palette', async () => {
+  const ws = await space('p-palette');
+  // Vorher stand im Server nur /^#[0-9a-f]{6}$/, also folgte keine
+  // Projektfarbe je einer Palette. Ein gespeichertes „blau" tut das.
+  const p = await create(pool, ws, { name: 'Mit Namen', color: 'blau' });
+  assert.equal(p.color, 'blau');
+  const q = await create(pool, ws, { name: 'Mit Wert', color: '#2b6398' });
+  assert.equal(q.color, '#2b6398');
+});
+
+test('was keine Farbe ist, wird abgelehnt statt gespeichert', async () => {
+  const ws = await space('p-badcolor');
+  for (const bad of ['blue', 'türkis', '#abc', 'var(--x)', 'red; background: url(x)']) {
+    await assert.rejects(
+      () => create(pool, ws, { name: `Farbe ${bad}`, color: bad }),
+      OutOfOrder,
+      bad,
+    );
+  }
+});
+
+test('ein Zeichen ist Name und Farbe, in einer Spalte', async () => {
+  const ws = await space('p-icon');
+  const p = await create(pool, ws, {
+    name: 'Haus',
+    icon: { icon: 'home', iconColor: 'gruen' },
+  });
+  assert.deepEqual(p.icon, { icon: 'home', iconColor: 'gruen' });
+});
+
+test('ein Zeichen ohne Inhalt wird nicht gespeichert', async () => {
+  const ws = await space('p-icon-empty');
+  // Ein leeres Objekt in der Spalte würde behaupten, jemand hätte etwas
+  // gewählt.
+  const p = await create(pool, ws, { name: 'Ohne', icon: {} });
+  assert.equal(p.icon, null);
+  const q = await create(pool, ws, { name: 'Auch ohne', icon: { iconColor: 'nope' } });
+  assert.equal(q.icon, null);
+});
+
+test('null leert das Zeichen, ein fehlender Schlüssel lässt es stehen', async () => {
+  const ws = await space('p-icon-null');
+  const p = await create(pool, ws, {
+    name: 'Zeichen',
+    icon: { icon: 'folder', iconColor: 'lila' },
+  });
+  // Nur den Namen ändern — das Zeichen bleibt.
+  const renamed = await update(pool, p.id, ws, { name: 'Zeichen neu' });
+  assert.deepEqual(renamed.icon, { icon: 'folder', iconColor: 'lila' });
+  // Und `null` leert.
+  const cleared = await update(pool, p.id, ws, { icon: null });
+  assert.equal(cleared.icon, null);
+});
+
+test('ein Unterprojekt darf denselben Namen wie ein anderes Kind eines anderen Elternteils tragen', async () => {
+  const ws = await space('p-sibling-icon');
+  // Die Regel von vorher, hier noch einmal mit Zeichen: eindeutig ist der Name
+  // nur im Geschwisterkreis.
+  const a = await create(pool, ws, { name: 'A', icon: { icon: 'home' } });
+  const b = await create(pool, ws, { name: 'B' });
+  const one = await create(pool, ws, { name: 'Kabel', parentId: a.id });
+  const two = await create(pool, ws, { name: 'Kabel', parentId: b.id });
+  assert.notEqual(one.id, two.id);
+});

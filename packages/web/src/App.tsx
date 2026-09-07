@@ -214,11 +214,25 @@ export function App() {
             <button
               key={kind}
               className="p-item"
+              /*
+               * Die Beschriftung nennt Name und Zahl getrennt.
+               *
+               * Ohne sie war der zugängliche Name „Demnächst 6" — die Zahl
+               * klebte am Namen der Ansicht. Im Bild sieht man das nie; einer
+               * Vorleseansage fällt es sofort auf. Gefunden beim Nachsehen,
+               * warum die Projektzeile keine Beschriftung zu haben schien: sie
+               * hatte eine, diese drei nicht.
+               */
+              aria-label={n === 0 ? label : `${label}, ${n} offen`}
               aria-current={route.kind === kind}
               onClick={() => go({ kind })}
             >
               {label}
-              {n === 0 ? null : <span className="n">{n}</span>}
+              {n === 0 ? null : (
+                <span className="n" aria-hidden="true">
+                  {n}
+                </span>
+              )}
             </button>
           ))}
 
@@ -235,6 +249,9 @@ export function App() {
             }
             onColor={(id, color) =>
               void panelWrite(() => api.patchProject(id, { color }, workspace))
+            }
+            onIcon={(id, icon) =>
+              void panelWrite(() => api.patchProject(id, { icon }, workspace))
             }
             onTrash={(id) => void panelWrite(() => api.trash('projects', id, workspace))}
           />

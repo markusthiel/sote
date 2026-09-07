@@ -18,16 +18,27 @@
 
 import { useEffect, useRef, useState } from 'react';
 
-import type { Project } from '../api.js';
+import { colorValue, PALETTE } from '@sote/core';
 
-/** Aus der Palette, damit ein Projekt nicht wie der Akzent aussieht. */
+import type { Project } from '../api.js';
+import { ICON_NAMES, ProjectMark } from './ProjectMark.js';
+
+/**
+ * Die acht Namen aus der Palette, plus „ohne".
+ *
+ * Vorher standen hier fünf **Hex-Werte** direkt in der Datei. Zwei Dinge waren
+ * daran falsch, und beide hat SONE schon gelernt (ADR-0023, ADR-0028):
+ *
+ * 1. Ein Name gespeichert **folgt der Palette**. Ändert die Palette, ändert
+ *    sich jedes Projekt mit diesem Namen. Ein Hex-Wert bleibt für immer dieser
+ *    eine Wert.
+ * 2. Dieselben gesättigten Werte, die auf Weiß richtig aussehen, **glühen auf
+ *    Schwarz**. Als Token hat jede Farbe einen Wert pro Thema; als Hex-Wert
+ *    hatte sie einen für beide.
+ */
 const COLORS: readonly { value: string | null; name: string }[] = [
-  { value: null, name: 'ohne' },
-  { value: '#2f7d6f', name: 'Grün' },
-  { value: '#a8762b', name: 'Ocker' },
-  { value: '#b4442f', name: 'Rot' },
-  { value: '#4a6c8c', name: 'Blau' },
-  { value: '#6a675f', name: 'Grau' },
+  { value: null, name: 'ohne Farbe' },
+  ...PALETTE.map((n) => ({ value: n as string, name: n })),
 ];
 
 export function ProjectTree({
@@ -38,6 +49,7 @@ export function ProjectTree({
   onCreate,
   onRename,
   onColor,
+  onIcon,
   onTrash,
 }: {
   projects: readonly Project[];
@@ -47,11 +59,24 @@ export function ProjectTree({
   onCreate: (name: string, parentId: string | null) => void;
   onRename: (id: string, name: string) => void;
   onColor: (id: string, color: string | null) => void;
+  onIcon: (id: string, icon: { icon?: string; iconColor?: string } | null) => void;
   onTrash: (id: string) => void;
 }) {
   const [adding, setAdding] = useState<{ parentId: string | null } | null>(null);
   const [renaming, setRenaming] = useState<string | null>(null);
   const [menu, setMenu] = useState<string | null>(null);
+  /*
+   * Welche Zweige zugeklappt sind — zugeklappt und nicht aufgeklappt.
+   *
+   * Die Vorgabe ist offen: ein Baum, der zugeklappt beginnt, verbirgt genau
+   * die Unterprojekte, die man gerade angelegt hat. Gemerkt wird darum die
+   * Ausnahme, und die ist am Anfang leer.
+   *
+   * Im Zustand und nicht in der URL: das ist keine Auskunft darüber, wo man
+   * ist, sondern wie man sitzt. Über einen Neustart hinaus zu merken wäre eine
+   * Einstellung, und die kommt mit den Einstellungen.
+   */
+  const [closed, setClosed] = useState<ReadonlySet<string>>(new Set());
   const box = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -99,20 +124,63 @@ export function ProjectTree({
           />
         ) : (
           <>
+            {/*
+              Aufklappen, wenn es etwas aufzuklappen gibt.
+              Ein eigener Knopf und nicht die Zeile selbst: die Zeile
+              navigiert, und ein Klick, der manchmal öffnet und manchmal
+              aufklappt, ist ein Klick, dessen Wirkung man erst danach weiß.
+              Wo es keine Kinder gibt, steht ein Platzhalter — sonst
+              springen die Namen zwischen den Zeilen.
+            */}
+            {childrenOf(p.id).length > 0 ? (
+              <button
+                className="p-twist"
+                aria-label={`${p.name} ${closed.has(p.id) ? 'aufklappen' : 'zuklappen'}`}
+                aria-expanded={!closed.has(p.id)}
+                style={{ marginInlineStart: depth * 14 }}
+                onClick={() =>
+                  setClosed((was) => {
+                    const next = new Set(was);
+                    if (next.has(p.id)) next.delete(p.id);
+                    else next.add(p.id);
+                    return next;
+                  })
+                }
+              >
+                <span aria-hidden="true">{closed.has(p.id) ? '▸' : '▾'}</span>
+              </button>
+            ) : (
+              <span className="p-twist-gap" style={{ marginInlineStart: depth * 14 }} />
+            )}
             <button
               className="p-item"
+              /*
+               * Die Beschriftung nennt den Namen und die Zahl getrennt.
+               *
+               * Vorher hatte die Zeile keine, und ihr zugänglicher Name war
+               * „Haus 1" — die offene Zahl klebte am Projektnamen. Einer
+               * Vorleseansage fällt das sofort auf; im Bild sieht man es nie.
+               */
+              aria-label={
+                p.open === null
+                  ? `Projekt ${p.name}`
+                  : `Projekt ${p.name}, ${p.open} offen`
+              }
               aria-current={activeId === p.id}
-              style={{ paddingInlineStart: 8 + depth * 14 }}
               onClick={() => onOpen(p.id)}
             >
-              <span
-                className="p-sq"
-                aria-hidden="true"
-                {...(p.color === null ? {} : { style: { background: p.color } })}
+              <ProjectMark
+                icon={p.icon?.icon}
+                name={p.name}
+                color={colorValue(p.icon?.iconColor ?? p.color)}
               />
-              {p.name}
+              <span className="p-name">{p.name}</span>
               {/* Keine Null: eine Zahl über nichts ist Rauschen. */}
-              {p.open === null ? null : <span className="n">{p.open}</span>}
+              {p.open === null ? null : (
+                <span className="n" aria-hidden="true">
+                  {p.open}
+                </span>
+              )}
             </button>
             <button
               className="p-dots"
@@ -143,6 +211,45 @@ export function ProjectTree({
             >
               Unterprojekt anlegen
             </button>
+            <div className="menu-label sep">Zeichen</div>
+            <div className="swatches marks">
+              {/* „ohne" zuerst: es ist die eine Wahl, die kein Bild hat und
+                  sonst zwischen zwölf Bildern verschwindet. */}
+              <button
+                className="mark-btn"
+                aria-label="ohne Zeichen"
+                aria-current={(p.icon?.icon ?? undefined) === undefined}
+                disabled={busy}
+                onClick={() => {
+                  setMenu(null);
+                  onIcon(p.id, null);
+                }}
+              >
+                <span aria-hidden="true">–</span>
+              </button>
+              {ICON_NAMES.map((n) => (
+                <button
+                  key={n}
+                  className="mark-btn"
+                  aria-label={n}
+                  aria-current={p.icon?.icon === n}
+                  disabled={busy}
+                  onClick={() => {
+                    setMenu(null);
+                    // Die Farbe des Zeichens bleibt, wenn es eine gab: wer das
+                    // Bild wechselt, hat nichts über die Farbe gesagt.
+                    onIcon(p.id, {
+                      icon: n,
+                      ...(p.icon?.iconColor === undefined
+                        ? {}
+                        : { iconColor: p.icon.iconColor }),
+                    });
+                  }}
+                >
+                  <ProjectMark icon={n} name={n} color={undefined} />
+                </button>
+              ))}
+            </div>
             <div className="menu-label sep">Farbe</div>
             <div className="swatches">
               {COLORS.map((c) => (
@@ -154,7 +261,17 @@ export function ProjectTree({
                   disabled={busy}
                   {...(c.value === null
                     ? {}
-                    : { style: { background: c.value, borderColor: c.value } })}
+                    : {
+                        style: {
+                          // Über colorValue und nicht direkt: ein Palettenname
+                          // ist KEINE CSS-Farbe. Ihn roh zu setzen tat in SONE
+                          // für die acht Namen stillschweigend nichts — „die
+                          // schlechtere Hälfte, weil das die sind, die man
+                          // wählt".
+                          background: colorValue(c.value),
+                          borderColor: colorValue(c.value),
+                        },
+                      })}
                   onClick={() => {
                     setMenu(null);
                     onColor(p.id, c.value);
@@ -177,7 +294,7 @@ export function ProjectTree({
           </div>
         ) : null}
       </div>,
-      ...rows(p.id, depth + 1),
+      ...(closed.has(p.id) ? [] : rows(p.id, depth + 1)),
       ...(adding !== null && adding.parentId === p.id
         ? [
             <input
