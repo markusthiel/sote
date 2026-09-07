@@ -1009,3 +1009,215 @@ select.target {
   font-size: 13px;
   min-height: 32px;
 }
+
+/* ── Die Detailspalte ─────────────────────────────────────────────────────
+   Ab 1100 px eine Spalte, darunter ein Drawer von rechts — dieselbe Regel wie
+   SONEs rechtes Panel, und umgeschaltet per Stylesheet. */
+
+.app[data-detail="true"] {
+  grid-template-columns: var(--sote-rail) var(--sote-panel) 1fr 340px;
+}
+
+.detail {
+  background: var(--surface);
+  border-left: 1px solid var(--line);
+  overflow: auto;
+  min-block-size: 0;
+  padding-bottom: 24px;
+}
+
+.detail-head {
+  display: flex;
+  justify-content: flex-end;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--line);
+}
+
+.detail-title {
+  display: block;
+  width: 100%;
+  border: 0;
+  background: none;
+  padding: 16px 18px 10px;
+  font-size: 17px;
+  font-weight: 500;
+  outline-offset: -2px;
+}
+
+.frow {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 8px 18px;
+  border-bottom: 1px solid var(--line);
+  font-size: 13.5px;
+}
+
+.frow .fl {
+  font-family: var(--sote-mono);
+  font-size: 10.5px;
+  color: var(--text-faint);
+  width: 74px;
+  flex: none;
+  letter-spacing: 0.02em;
+}
+
+.frow .fv {
+  color: var(--text);
+  min-width: 0;
+}
+
+.empty-value {
+  color: var(--text-faint);
+}
+
+/* Der Rückweg nach SONE. Zwei Zeilen, weil eine URL ohne Titel nicht sagt,
+   wohin sie führt — und der Titel ist gespeichert, nicht abgefragt. */
+.origin {
+  display: block;
+  margin: 14px 18px;
+  border: 1px solid var(--line-strong);
+  border-left: 2px solid var(--accent);
+  border-radius: var(--sote-radius-sm);
+  padding: 9px 11px;
+  background: var(--page);
+  text-decoration: none;
+  color: inherit;
+}
+
+.origin .ol {
+  display: block;
+  font-family: var(--sote-mono);
+  font-size: 10px;
+  color: var(--text-faint);
+}
+
+.origin .ot {
+  display: block;
+  font-size: 13px;
+  margin-top: 3px;
+}
+
+.detail-section {
+  padding: 6px 18px 4px;
+  border-top: 1px solid var(--line);
+  margin-top: 10px;
+}
+
+.detail-section .group-label {
+  padding: 8px 0 6px;
+  display: flex;
+  gap: 8px;
+}
+
+.detail-section .group-label .n {
+  margin-left: auto;
+  color: var(--text-faint);
+}
+
+.note {
+  width: 100%;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--sote-radius-md);
+  background: var(--page);
+  color: var(--text);
+  padding: 8px 10px;
+  font: inherit;
+  font-size: max(0.9rem, 16px);
+  resize: vertical;
+  margin-bottom: 10px;
+}
+
+.child {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 13.5px;
+}
+
+.child[data-done="true"] .ct {
+  color: var(--text-muted);
+  text-decoration: line-through;
+  text-decoration-color: var(--line-strong);
+}
+
+.child .ct {
+  flex: 1;
+  min-width: 0;
+}
+
+.child .task-box {
+  margin-top: 0;
+}
+
+.child.add {
+  border-bottom: 0;
+  color: var(--text-faint);
+  padding-top: 8px;
+}
+
+.child.add input {
+  border: 0;
+  background: none;
+  outline: none;
+  flex: 1;
+  min-width: 0;
+  font-size: 13.5px;
+}
+
+.child .plus {
+  width: 17px;
+  text-align: center;
+}
+
+.cmt {
+  padding: 7px 0;
+}
+
+.cmt .mt {
+  font-family: var(--sote-mono);
+  font-size: 10px;
+  color: var(--text-faint);
+  margin-bottom: 2px;
+}
+
+.cmt .bd {
+  font-size: 13px;
+  white-space: pre-wrap;
+}
+
+@media (max-width: 1099px) {
+  .app[data-detail="true"] {
+    grid-template-columns: var(--sote-rail) var(--sote-panel) 1fr;
+  }
+
+  .detail {
+    position: fixed;
+    inset: 0 0 0 auto;
+    width: min(360px, 90vw);
+    z-index: 20;
+    box-shadow: var(--sote-shadow-lg);
+  }
+}
+
+@media (max-width: 799px) {
+  .detail {
+    width: 100vw;
+    padding-bottom: calc(var(--sote-bar) + 24px);
+  }
+}
+
+.task-title.as-link {
+  text-align: left;
+  width: 100%;
+  font: inherit;
+  font-size: 14.5px;
+}
+
+.task[data-open="true"] {
+  box-shadow: inset 2px 0 0 var(--accent);
+  padding-left: 10px;
+  margin-left: -10px;
+}

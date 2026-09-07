@@ -1,0 +1,294 @@
+/**
+ * SOTE — die Detailspalte.
+ *
+ * Die vierte Spalte, ab 1100 px eine Spalte und darunter ein Drawer — wie
+ * SONEs rechtes Panel. Kommentare und Teilaufgaben liegen **in** der Aufgabe,
+ * damit Diskussion und Material im Zusammenhang bleiben.
+ *
+ * Titel und Notiz schreiben beim Verlassen des Feldes und nicht bei jedem
+ * Tastendruck: ein Feld, das pro Zeichen eine Runde dreht, ist ein Feld, das
+ * bei schlechter Verbindung hakt — und die Notiz ist der eine Ort, an dem
+ * jemand länger tippt. Wer Enter drückt, will sofort speichern; wer weiterklickt,
+ * hat aufgehört.
+ *
+ * **Nichts hier ist optimistisch.** Der Grund ist derselbe wie beim
+ * Anfasser-Menü (Blatt 03): ein Wert, der gesetzt aussieht und nirgends steht,
+ * ist schlimmer als einer, der eine halbe Sekunde braucht. Das Häkchen ist die
+ * Ausnahme, weil es die häufigste Handlung ist.
+ */
+
+import { useCallback, useEffect, useRef, useState } from 'react';
+
+import { api, ApiError, type Detail as DetailData, type Task } from '../api.js';
+import { whenLabel } from '../dates.js';
+
+const PRIORITY_NAMES = ['', 'Dringend', 'Wichtig', 'Normal', 'Später'] as const;
+
+export function Detail({
+  taskId,
+  workspace,
+  now,
+  onClose,
+  onChanged,
+}: {
+  taskId: string;
+  workspace: string | undefined;
+  now: Date;
+  onClose: () => void;
+  onChanged: () => void;
+}) {
+  const [data, setData] = useState<DetailData | undefined>(undefined);
+  const [notice, setNotice] = useState<string | undefined>(undefined);
+  const [busy, setBusy] = useState(false);
+  const [childLine, setChildLine] = useState('');
+  const [commentLine, setCommentLine] = useState('');
+  const noteBox = useRef<HTMLTextAreaElement>(null);
+
+  const load = useCallback(async () => {
+    try {
+      setData(await api.detail(taskId, workspace));
+    } catch (e) {
+      setNotice(e instanceof ApiError ? e.message : 'Laden ging nicht.');
+    }
+  }, [taskId, workspace]);
+
+  useEffect(() => {
+    setData(undefined);
+    setNotice(undefined);
+    void load();
+  }, [load]);
+
+  async function save<T>(body: () => Promise<T>) {
+    setBusy(true);
+    setNotice(undefined);
+    try {
+      await body();
+      await load();
+      onChanged();
+    } catch (e) {
+      setNotice(e instanceof ApiError ? e.message : 'Speichern ging nicht.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (data === undefined) {
+    return (
+      <aside className="detail" aria-busy="true">
+        <div className="detail-head">
+          <button className="btn quiet small" onClick={onClose} aria-label="Spalte schließen">
+            schließen
+          </button>
+        </div>
+        {notice !== undefined ? <p className="note-error">{notice}</p> : null}
+      </aside>
+    );
+  }
+
+  const task = data.task;
+  const openChildren = data.children.filter((c) => c.completed === null).length;
+
+  return (
+    <aside className="detail" aria-label="Aufgabe im Detail">
+      <div className="detail-head">
+        <button className="btn quiet small" onClick={onClose} aria-label="Spalte schließen">
+          schließen
+        </button>
+      </div>
+
+      {/* Der Titel ist ein Feld und kein Text mit Stift daneben: wer ihn
+          ändern will, klickt hinein. */}
+      <input
+        className="detail-title"
+        defaultValue={task.title}
+        aria-label="Titel"
+        disabled={busy}
+        onBlur={(e) => {
+          const next = e.target.value.trim();
+          if (next !== '' && next !== task.title) {
+            void save(() => api.patch(task.id, { title: next }, workspace));
+          } else {
+            e.target.value = task.title;
+          }
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') e.currentTarget.blur();
+          if (e.key === 'Escape') {
+            e.currentTarget.value = task.title;
+            e.currentTarget.blur();
+          }
+        }}
+      />
+
+      <div className="frow">
+        <span className="fl">projekt</span>
+        <span className="fv">
+          {data.projectName ?? <span className="empty-value">ohne Projekt</span>}
+        </span>
+      </div>
+      <div className="frow">
+        <span className="fl">geplant</span>
+        <span className="fv">
+          {task.planned === null ? (
+            <span className="empty-value">kein Datum</span>
+          ) : (
+            whenLabel(new Date(task.planned), task.plannedAllDay, now)
+          )}
+        </span>
+      </div>
+      <div className="frow">
+        <span className="fl">frist</span>
+        <span className="fv">
+          {task.due === null ? (
+            <span className="empty-value">keine</span>
+          ) : (
+            whenLabel(new Date(task.due), true, now)
+          )}
+        </span>
+      </div>
+      {task.recurrence !== null ? (
+        <div className="frow">
+          <span className="fl">wiederholt</span>
+          <span className="fv">{task.recurrence.says}</span>
+        </div>
+      ) : null}
+      <div className="frow">
+        <span className="fl">priorität</span>
+        <span className="fv">{PRIORITY_NAMES[task.priority]}</span>
+      </div>
+      <div className="frow">
+        <span className="fl">zuständig</span>
+        <span className="fv">
+          {data.assignees.length === 0 ? (
+            <span className="empty-value">niemand</span>
+          ) : (
+            data.assignees
+              .map((a) => a.name ?? a.guestKey?.replace(/^guest:/, '') ?? '?')
+              .join(', ')
+          )}
+        </span>
+      </div>
+
+      {/* Nur wenn es eine Herkunft gibt. Gespeicherte URL und Titel, damit der
+          Rückweg auch ohne SONE funktioniert. */}
+      {data.origin !== undefined ? (
+        <a className="origin" href={data.origin.url}>
+          <span className="ol">entstanden in SONE</span>
+          <span className="ot">{data.origin.pageTitle}</span>
+        </a>
+      ) : null}
+
+      <div className="detail-section">
+        <div className="group-label">Notiz</div>
+        <textarea
+          className="note"
+          ref={noteBox}
+          defaultValue={task.note}
+          rows={4}
+          aria-label="Notiz"
+          disabled={busy}
+          placeholder="Was man wissen muss, um das zu tun."
+          onBlur={(e) => {
+            if (e.target.value !== task.note) {
+              void save(() => api.patch(task.id, { note: e.target.value }, workspace));
+            }
+          }}
+        />
+      </div>
+
+      <div className="detail-section">
+        <div className="group-label">
+          Teilaufgaben
+          {data.children.length > 0 ? (
+            <span className="n">
+              {openChildren} von {data.children.length}
+            </span>
+          ) : null}
+        </div>
+        {data.children.map((child: Task) => (
+          <div className="child" key={child.id} data-done={child.completed !== null}>
+            <button
+              className="task-box"
+              data-priority={child.priority}
+              data-done={child.completed !== null}
+              aria-label={
+                child.completed !== null
+                  ? `${child.title} wieder öffnen`
+                  : `${child.title} abhaken`
+              }
+              aria-pressed={child.completed !== null}
+              disabled={busy}
+              onClick={() => void save(() => api.complete(child.id, workspace))}
+            >
+              <svg width="11" height="11" viewBox="0 0 12 12" aria-hidden="true">
+                <path
+                  d="M2 6.5 4.7 9 10 3.2"
+                  fill="none"
+                  stroke={child.completed !== null ? 'var(--accent-on)' : 'var(--text-muted)'}
+                  strokeWidth="1.8"
+                />
+              </svg>
+            </button>
+            <span className="ct">{child.title}</span>
+            {child.planned !== null ? (
+              <span className="when">
+                {whenLabel(new Date(child.planned), child.plannedAllDay, now)}
+              </span>
+            ) : null}
+          </div>
+        ))}
+        <div className="child add">
+          <span className="plus" aria-hidden="true">
+            +
+          </span>
+          <input
+            value={childLine}
+            aria-label="Teilaufgabe hinzufügen"
+            placeholder="Teilaufgabe hinzufügen"
+            disabled={busy}
+            onChange={(e) => setChildLine(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key !== 'Enter') return;
+              const value = childLine.trim();
+              if (value === '') return;
+              setChildLine('');
+              void save(() => api.addChild(task.id, value, workspace));
+            }}
+          />
+        </div>
+      </div>
+
+      <div className="detail-section">
+        <div className="group-label">Gespräch</div>
+        {data.comments.map((c) => (
+          <div className="cmt" key={c.id}>
+            <div className="mt">
+              {c.authorName ?? `${c.authorGuest?.replace(/^guest:/, '') ?? '?'} (Gast)`} —{' '}
+              {whenLabel(new Date(c.createdAt), false, now)}
+            </div>
+            <div className="bd">{c.body}</div>
+          </div>
+        ))}
+        <textarea
+          className="note"
+          rows={2}
+          value={commentLine}
+          aria-label="Kommentar schreiben"
+          placeholder="Schreiben — Enter schickt, Umschalt und Enter macht eine Zeile"
+          disabled={busy}
+          onChange={(e) => setCommentLine(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key !== 'Enter' || e.shiftKey) return;
+            e.preventDefault();
+            const value = commentLine.trim();
+            if (value === '') return;
+            setCommentLine('');
+            void save(() => api.addComment(task.id, value, workspace));
+          }}
+        />
+      </div>
+
+      {notice !== undefined ? <p className="note-error">{notice}</p> : null}
+    </aside>
+  );
+}

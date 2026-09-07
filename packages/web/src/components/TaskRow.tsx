@@ -19,8 +19,10 @@ export function TaskRow({
   projectName,
   grip,
   menu,
+  open,
   onComplete,
   onOpenMenu,
+  onOpen,
 }: {
   task: Task;
   now: Date;
@@ -29,15 +31,22 @@ export function TaskRow({
   projectName?: string | undefined;
   grip?: boolean;
   menu?: import('react').ReactNode;
+  open?: boolean;
   onComplete: (task: Task) => void;
   onOpenMenu?: () => void;
+  onOpen?: () => void;
 }) {
   const done = task.completed !== null;
   const planned = task.planned === null ? null : new Date(task.planned);
   const due = task.due === null ? null : new Date(task.due);
 
   return (
-    <div className="task" data-done={done} data-pending={pending === true}>
+    <div
+      className="task"
+      data-done={done}
+      data-pending={pending === true}
+      data-open={open === true}
+    >
       {grip === true ? (
         <span className="grip" aria-hidden="true" title="ziehen, oder Alt und Pfeiltaste">
           ⠿
@@ -62,7 +71,15 @@ export function TaskRow({
       </button>
 
       <div className="task-mid">
-        <div className="task-title">{task.title}</div>
+        {/* Der Titel öffnet die Detailspalte. Ein eigener Knopf daneben wäre
+            ein zweiter Weg in dieselbe Sache. */}
+        {onOpen === undefined ? (
+          <div className="task-title">{task.title}</div>
+        ) : (
+          <button className="task-title as-link" onClick={onOpen} aria-expanded={open === true}>
+            {task.title}
+          </button>
+        )}
         <div className="task-meta">
           {planned !== null ? (
             <span className={isOverdue(planned, now) ? 'when late' : 'when'}>

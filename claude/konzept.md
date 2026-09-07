@@ -686,6 +686,28 @@ Beim Bauen entschieden, weil es ohne Entscheidung keinen Code gibt:
   „nicht angefasst", `null` heißt „leeren". Geprüft wird die Anwesenheit des
   Schlüssels und nicht die Wahrheit des Werts — sonst nimmt ein Menü beim Setzen
   eines Datums die Priorität mit.
+- **Eine Teilaufgabe erbt Projekt und Arbeitsbereich vom Elternteil**, nicht
+  aus der Anfrage: eine Teilaufgabe in einem anderen Projekt als ihre Aufgabe
+  wäre in zwei Listen zu Hause, und „wo gehört das hin" hätte zwei Antworten.
+- **Eine Ebene tief.** Eine Teilaufgabe bekommt keine Teilaufgaben. Beliebig
+  tiefe Bäume in einer Liste sind der Anfang von Projektmanagement, und die
+  Oberfläche könnte sie nicht ruhig zeigen.
+- **Die Projektansicht zeigt nur die obersten Zeilen**, die Teilaufgaben stehen
+  in der Detailspalte. Beides zu zeigen hieße, dieselbe Sache zweimal in einer
+  Liste zu haben, mit zwei Kästchen, die dasselbe meinen. In den
+  Zeit-Ansichten ist es umgekehrt: dort steht eine Teilaufgabe, **weil** sie
+  ein eigenes Datum hat — und genau das ist der Grund für echte Teilaufgaben
+  statt Checklistenpunkte.
+- **`+vorname` genügt.** Gesucht wird über vier Schreibweisen (voller Name,
+  Adresse, erster Vorname, Teil vor dem @), weil niemand `+Markus Thiel` tippt:
+  ein Leerzeichen beendet das Zeichen. **Passen mehrere, wird nicht geraten** —
+  die Aufgabe bleibt ohne Zuständigen, und die Antwort trägt
+  `ambiguousAssignees`. Das ist eine andere Nachricht als „gibt es hier nicht",
+  und eine von zwei Personen still auszuwählen wäre schlimmer als keine: die
+  Aufgabe hätte einen Zuständigen, der nichts davon weiß.
+- **Titel und Notiz schreiben beim Verlassen des Feldes**, nicht bei jedem
+  Tastendruck. Ein Feld, das pro Zeichen eine Runde dreht, hakt bei schlechter
+  Verbindung — und die Notiz ist der eine Ort, an dem jemand länger tippt.
 - **Ein Projekt im Papierkorb nimmt seine Aufgaben aus allen Ansichten mit**,
   und sie tragen dafür **kein eigenes `trashed_at`**: dass ihr Projekt im
   Papierkorb liegt, genügt. Damit gibt es keinen Zustand, in dem die Aufgaben

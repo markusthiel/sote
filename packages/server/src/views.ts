@@ -115,7 +115,15 @@ function whereFor(
         // Ein Projekt zeigt auch Erledigtes, aber unten: „was habe ich hier
         // geschafft" ist eine Frage, die dieser Bildschirm beantworten soll,
         // und `Heute` soll sie nicht beantworten.
-        sql: `workspace_id = $1 AND project_id = $2 AND trashed_at IS NULL`,
+        //
+        // Und **nur die obersten Zeilen**: eine Teilaufgabe steht in der
+        // Detailspalte unter ihrer Aufgabe. Beides zu zeigen hieße, dieselbe
+        // Sache zweimal in einer Liste zu haben, mit zwei Kästchen, die
+        // dasselbe meinen. In den Zeit-Ansichten ist es umgekehrt: dort steht
+        // sie, weil sie ein eigenes Datum hat, und genau das ist der Grund für
+        // echte Teilaufgaben statt Checklistenpunkte.
+        sql: `workspace_id = $1 AND project_id = $2 AND trashed_at IS NULL
+              AND parent_id IS NULL`,
         params: [workspaceId, projectId],
         order: 'completed_at IS NOT NULL, sort_key ASC',
       };

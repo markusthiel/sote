@@ -12,6 +12,7 @@ import { describe as describeRecurrence } from '@sote/core';
 import type { Pool } from 'pg';
 
 import { signIn, signOut, userOfToken } from './auth.js';
+import { addChild, addComment, detail } from './detail.js';
 import { queryOne, queryRows } from './db.js';
 import type { Config } from './env.js';
 import { cookie, fail, json, readJson } from './http/respond.js';
@@ -337,6 +338,7 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
       // steuer2025 gibt es nicht — anlegen?"
       unknownProject: out.unknownProject ?? null,
       unknownAssignees: out.unknownAssignees,
+      ambiguousAssignees: out.ambiguousAssignees,
     });
     return;
   }
@@ -407,7 +409,62 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
     return;
   }
 
+  const kid = /^\/api\/tasks\/([0-9a-f-]{36})\/children$/.exec(path);
+  if (kid && method === 'POST') {
+    const body = (await readJson(req)) as { title?: unknown };
+    const row = await addChild(
+      ctx.pool,
+      kid[1]!,
+      workspaceId,
+      userId,
+      typeof body?.title === 'string' ? body.title : '',
+    );
+    json(res, 201, { task: taskView(row) });
+    return;
+  }
+
+  const talk = /^\/api\/tasks\/([0-9a-f-]{36})\/comments$/.exec(path);
+  if (talk && method === 'POST') {
+    const body = (await readJson(req)) as { body?: unknown };
+    const comment = await addComment(
+      ctx.pool,
+      talk[1]!,
+      workspaceId,
+      userId,
+      typeof body?.body === 'string' ? body.body : '',
+    );
+    json(res, 201, {
+      comment: { ...comment, createdAt: comment.createdAt.toISOString() },
+    });
+    return;
+  }
+
   const one = /^\/api\/tasks\/([0-9a-f-]{36})$/.exec(path);
+  if (one && method === 'GET') {
+    const d = await detail(ctx.pool, one[1]!, workspaceId);
+    json(res, 200, {
+      task: taskView(d.task),
+      projectName: d.projectName,
+      children: d.children.map(taskView),
+      comments: d.comments.map((c) => ({
+        ...c,
+        createdAt: c.createdAt.toISOString(),
+      })),
+      assignees: d.assignees,
+      // Kein Feld „Herkunft: keine".
+      ...(d.origin === undefined
+        ? {}
+        : {
+            origin: {
+              url: d.origin.url,
+              pageTitle: d.origin.pageTitle,
+              seenAt: d.origin.seenAt.toISOString(),
+            },
+          }),
+    });
+    return;
+  }
+
   if (one && method === 'PATCH') {
     const body = (await readJson(req)) as Record<string, unknown>;
     const row = await patch(ctx.pool, one[1]!, workspaceId, readPatch(body));

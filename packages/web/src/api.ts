@@ -87,6 +87,24 @@ export interface TrashEntry {
   peek: string | null;
 }
 
+export interface Comment {
+  id: string;
+  body: string;
+  createdAt: string;
+  authorName: string | null;
+  authorGuest: string | null;
+}
+
+export interface Detail {
+  task: Task;
+  projectName: string | null;
+  children: Task[];
+  comments: Comment[];
+  assignees: { userId: string | null; name: string | null; guestKey: string | null }[];
+  /** Fehlt, wenn es keine Herkunft gibt — kein „Herkunft: keine". */
+  origin?: { url: string; pageTitle: string; seenAt: string };
+}
+
 export interface TaskPatch {
   title?: string;
   note?: string;
@@ -149,6 +167,7 @@ export const api = {
       task: Task;
       unknownProject: string | null;
       unknownAssignees: string[];
+      ambiguousAssignees: string[];
     }>(`/api/tasks${workspace === undefined ? '' : `?workspace=${workspace}`}`, {
       method: 'POST',
       body: JSON.stringify({ line }),
@@ -179,6 +198,20 @@ export const api = {
     if (workspace !== undefined) q.set('workspace', workspace);
     return call<{ kind: string; entries: TrashEntry[] }>(`/api/trash?${q}`);
   },
+  detail: (id: string, workspace?: string) =>
+    call<Detail>(
+      `/api/tasks/${id}${workspace === undefined ? '' : `?workspace=${workspace}`}`,
+    ),
+  addChild: (id: string, title: string, workspace?: string) =>
+    call<{ task: Task }>(
+      `/api/tasks/${id}/children${workspace === undefined ? '' : `?workspace=${workspace}`}`,
+      { method: 'POST', body: JSON.stringify({ title }) },
+    ),
+  addComment: (id: string, body: string, workspace?: string) =>
+    call<{ comment: Comment }>(
+      `/api/tasks/${id}/comments${workspace === undefined ? '' : `?workspace=${workspace}`}`,
+      { method: 'POST', body: JSON.stringify({ body }) },
+    ),
   complete: (id: string, workspace?: string) =>
     call<{ completed: Task; next: Task | null }>(
       `/api/tasks/${id}/complete${workspace === undefined ? '' : `?workspace=${workspace}`}`,

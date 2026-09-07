@@ -38,12 +38,16 @@ export function TaskList({
   projects,
   now,
   onChanged,
+  openTask,
+  onOpenTask,
 }: {
   route: Route;
   workspace: string | undefined;
   projects: readonly Project[];
   now: Date;
   onChanged: () => void;
+  openTask: string | null;
+  onOpenTask: (id: string | null) => void;
 }) {
   const view = viewOf(route);
   const projectId = route.kind === 'project' ? route.projectId : undefined;
@@ -239,6 +243,8 @@ export function TaskList({
       >
         <TaskRow
           task={task}
+          open={openTask === task.id}
+          onOpen={() => onOpenTask(openTask === task.id ? null : task.id)}
           now={now}
           pending={isPending(task.id)}
           error={errorOf(task.id)}

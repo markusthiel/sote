@@ -19,6 +19,7 @@ import { modeOf, type ModeId } from './modes.js';
 import { modeOfRoute, parseRoute, pathOf, type Route } from './route.js';
 import { SignIn } from './screens/SignIn.js';
 import { TaskList } from './screens/TaskList.js';
+import { Detail } from './screens/Detail.js';
 import { Trash } from './screens/Trash.js';
 
 const initialsOf = (name: string) =>
@@ -41,6 +42,7 @@ export function App() {
   }>({ today: 0, upcoming: 0, someday: 0, overdue: 0 });
   const [workspace, setWorkspace] = useState<string | undefined>(undefined);
   const [drawer, setDrawer] = useState(false);
+  const [openTask, setOpenTask] = useState<string | null>(null);
   const [now] = useState(() => new Date());
 
   const loadMe = useCallback(async () => {
@@ -103,7 +105,7 @@ export function App() {
   const wsName = me.workspaces.find((w) => w.id === workspace)?.name ?? 'Kein Workspace';
 
   return (
-    <div className="app">
+    <div className="app" data-detail={openTask !== null}>
       <IconRail
         active={modeOfRoute(route) as ModeId}
         onPick={(id) => go(id === 'tasks' ? { kind: 'today' } : { kind: 'mode', mode: id })}
@@ -201,6 +203,8 @@ export function App() {
             projects={projects}
             now={now}
             onChanged={() => void loadPanel()}
+            openTask={openTask}
+            onOpenTask={setOpenTask}
           />
         ) : route.mode === 'trash' ? (
           <Trash
@@ -225,6 +229,16 @@ export function App() {
           </>
         )}
       </main>
+
+      {openTask !== null ? (
+        <Detail
+          taskId={openTask}
+          workspace={workspace}
+          now={now}
+          onClose={() => setOpenTask(null)}
+          onChanged={() => void loadPanel()}
+        />
+      ) : null}
 
       <FootBar
         active={modeOfRoute(route) as ModeId}

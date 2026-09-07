@@ -151,6 +151,15 @@ export interface Created {
   /** Ein `#name`, den es im Arbeitsbereich nicht gibt. Wird gemeldet, nicht angelegt. */
   readonly unknownProject: string | undefined;
   readonly unknownAssignees: readonly string[];
+  /**
+   * Ein `+name`, auf den **mehrere** passen.
+   *
+   * Getrennt von `unknownAssignees`, weil es eine andere Nachricht ist: „gibt
+   * es hier nicht" gegen „wen von beiden meinst du". Eine von zwei Personen
+   * still auszuwählen wäre schlimmer als keine — die Aufgabe hätte einen
+   * Zuständigen, der nichts davon weiß.
+   */
+  readonly ambiguousAssignees: readonly string[];
 }
 
 /**
@@ -214,22 +223,33 @@ export async function createFromLine(pool: Pool, input: CreateFromLine): Promise
     if (row === undefined) throw new Error('INSERT ohne Zeile');
 
     const unknownAssignees: string[] = [];
+    const ambiguousAssignees: string[] = [];
     for (const name of q.assignees) {
-      const person = await queryOne<{ id: string }>(
+      // Vier Schreibweisen, weil niemand „+Markus Thiel" tippt: ein
+      // Leerzeichen beendet das Zeichen, also muss der Vorname reichen. Und
+      // der Teil vor dem @, weil Adressen kürzer sind als Namen.
+      const people = await queryRows<{ id: string }>(
         client,
         `SELECT u.id FROM users u
            JOIN workspace_members m ON m.user_id = u.id AND m.workspace_id = $1
-          WHERE lower(u.display_name) = lower($2) OR lower(u.email) = lower($2)
-          LIMIT 1`,
+          WHERE lower(u.display_name) = lower($2)
+             OR lower(u.email) = lower($2)
+             OR lower(split_part(u.display_name, ' ', 1)) = lower($2)
+             OR lower(split_part(u.email, '@', 1)) = lower($2)
+          LIMIT 2`,
         [input.workspaceId, name],
       );
-      if (person) {
+      if (people.length === 1) {
         await client.query(
           'INSERT INTO task_assignees (task_id, user_id) VALUES ($1,$2) ON CONFLICT DO NOTHING',
-          [row.id, person.id],
+          [row.id, people[0]!.id],
         );
-      } else {
+      } else if (people.length === 0) {
         unknownAssignees.push(name);
+      } else {
+        // Mehr als einer: nicht raten. Die Aufgabe bleibt ohne Zuständigen und
+        // die Antwort sagt, warum.
+        ambiguousAssignees.push(name);
       }
     }
 
@@ -249,7 +269,7 @@ export async function createFromLine(pool: Pool, input: CreateFromLine): Promise
       }
     }
 
-    return { task: row, unknownProject, unknownAssignees };
+    return { task: row, unknownProject, unknownAssignees, ambiguousAssignees };
   }));
 }
 
