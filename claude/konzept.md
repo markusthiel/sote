@@ -770,6 +770,15 @@ Beim Bauen entschieden, weil es ohne Entscheidung keinen Code gibt:
     hat.
   - Nach der Einrichtung ist die Route **410 mit Grund** und nicht 404: ein 404
     ließe offen, ob der Weg je existiert hat.
+  - **Serialisiert mit einem Advisory Lock**, und die Prüfung auf „gibt es schon
+    ein Konto" liegt **innerhalb** davon. Von SONE gelernt und nicht selbst
+    gemerkt: dessen `bootstrapInstance` hat diesen Lock mit dem Kommentar
+    „Serialise concurrent first-run attempts". Ohne ihn sehen zwei gleichzeitige
+    Anfragen mit demselben Schlüssel und verschiedenen Adressen beide „kein
+    Konto" und legen beide an — danach hat die Instanz zwei Eigentümer, von
+    denen einer nicht eingeplant war.
+  - **Konto, Arbeitsbereich, Rollen und Kennwort in einer Transaktion.** Ein
+    Konto ohne Kennwort ist ein Konto, in das niemand kommt.
 - **`pnpm check` ist genau das, was die CI fährt.** Erst standen die Prüfungen
   einzeln in der Workflow-Datei, und `pnpm -r typecheck` scheiterte dort — in
   einem frischen Klon gibt es kein `dist`, und `@sote/core` zeigt mit `types`

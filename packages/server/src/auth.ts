@@ -14,7 +14,7 @@ import { promisify } from 'node:util';
 
 import type { Pool } from 'pg';
 
-import { queryOne } from './db.js';
+import { queryOne, type PoolClient } from './db.js';
 
 const scrypt = promisify(scryptCb) as (
   password: string,
@@ -29,9 +29,24 @@ export async function setPassword(
   userId: string,
   password: string,
 ): Promise<void> {
+  await setPasswordIn(pool, userId, password);
+}
+
+/**
+ * Dasselbe auf einer vorhandenen Verbindung.
+ *
+ * Damit das Anlegen eines Kontos **eine** Transaktion sein kann: ein Konto ohne
+ * Kennwort ist ein Konto, in das niemand kommt, und ein halb angelegtes Konto
+ * ist ein Fall, den man nur von Hand aufräumt.
+ */
+export async function setPasswordIn(
+  q: Pool | PoolClient,
+  userId: string,
+  password: string,
+): Promise<void> {
   const salt = randomBytes(16);
   const hash = await scrypt(password, salt, KEY_LEN);
-  await pool.query(
+  await q.query(
     `INSERT INTO user_passwords (user_id, salt, hash) VALUES ($1,$2,$3)
      ON CONFLICT (user_id) DO UPDATE SET salt = EXCLUDED.salt,
        hash = EXCLUDED.hash, set_at = now()`,

@@ -227,3 +227,42 @@ test('ein zweites Konto ohne Arbeitsbereichsnamen bekommt den Vorgabenamen', asy
   );
   assert.equal(ws?.name, 'Mein Arbeitsbereich');
 });
+
+test('zwei gleichzeitige Einrichtungen ergeben ein Konto, nicht zwei', async () => {
+  // Von SONE gelernt und nicht selbst gemerkt: dessen `bootstrapInstance` nimmt
+  // ein `pg_advisory_xact_lock` mit dem Kommentar „Serialise concurrent
+  // first-run attempts". Meine erste Fassung hatte das nicht — zwei
+  // gleichzeitige Anfragen mit demselben Schlüssel und verschiedenen Adressen
+  // sahen beide „kein Konto", beide fanden den Schlüssel gültig, und beide
+  // legten an. Danach hätte die Instanz zwei Eigentümer, von denen einer nicht
+  // eingeplant war.
+  if (!usable) return;
+  const name = `${NAME}_race`;
+  await admin.query(`DROP DATABASE IF EXISTS ${name}`);
+  await admin.query(`CREATE DATABASE ${name}`);
+  const url = BASE.replace(/\/[^/]+$/, `/${name}`);
+  const race = makePool(url);
+  try {
+    await migrate(race);
+    const gate = new SetupKey();
+    const key = await gate.openIfEmpty(race);
+    assert.ok(key !== null);
+
+    const results = await Promise.allSettled([
+      setupFirstAccount(race, gate, key, { ...account, email: 'erste@example.org' }),
+      setupFirstAccount(race, gate, key, { ...account, email: 'zweite@example.org' }),
+    ]);
+    const ok = results.filter((r) => r.status === 'fulfilled');
+    assert.equal(ok.length, 1, 'genau eine Einrichtung geht durch');
+    assert.equal(await userCount(race), 1, 'und genau ein Konto entsteht');
+
+    const failed = results.find((r) => r.status === 'rejected') as PromiseRejectedResult;
+    assert.ok(
+      failed.reason instanceof SetupClosed,
+      'die zweite bekommt „schon eingerichtet" und keinen Datenbankfehler',
+    );
+  } finally {
+    await race.end();
+    await admin.query(`DROP DATABASE IF EXISTS ${name}`);
+  }
+});

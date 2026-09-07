@@ -27,8 +27,8 @@ import { randomBytes } from 'node:crypto';
 
 import type { Pool } from 'pg';
 
-import { setPassword } from './auth.js';
-import { queryOne, withTransaction } from './db.js';
+import { setPasswordIn } from './auth.js';
+import { queryOne, withTransaction, type PoolClient } from './db.js';
 import { OutOfOrder } from './tasks.js';
 
 export class SetupClosed extends Error {
@@ -65,6 +65,19 @@ export interface NewAccount {
  * eine hätte irgendwann eine Rolle, die die andere nicht hat.
  */
 export async function createAccount(pool: Pool, input: NewAccount): Promise<string> {
+  return withTransaction(pool, (client) => createAccountIn(client, input));
+}
+
+/**
+ * Dasselbe auf einer vorhandenen Verbindung.
+ *
+ * Getrennt, damit die Einrichtung sie **innerhalb** ihres Advisory Locks
+ * aufrufen kann. Zwei Umsetzungen wären zwei Rollenlisten.
+ */
+export async function createAccountIn(
+  client: PoolClient,
+  input: NewAccount,
+): Promise<string> {
   const email = input.email.trim();
   const displayName = input.displayName.trim();
   const workspaceName = (input.workspaceName ?? '').trim() || 'Mein Arbeitsbereich';
@@ -78,7 +91,7 @@ export async function createAccount(pool: Pool, input: NewAccount): Promise<stri
   }
 
   const existing = await queryOne<{ id: string }>(
-    pool,
+    client,
     'SELECT id FROM users WHERE lower(email) = lower($1)',
     [email],
   );
@@ -88,52 +101,52 @@ export async function createAccount(pool: Pool, input: NewAccount): Promise<stri
     throw new OutOfOrder(`${email} gibt es schon`);
   }
 
-  const userId = await withTransaction(pool, async (client) => {
-    const user = await queryOne<{ id: string }>(
+  const user = await queryOne<{ id: string }>(
+    client,
+    'INSERT INTO users (email, display_name) VALUES ($1,$2) RETURNING id',
+    [email, displayName],
+  );
+  if (user === undefined) throw new Error('INSERT ohne Zeile');
+
+  const workspace = await queryOne<{ id: string }>(
+    client,
+    'INSERT INTO workspaces (name) VALUES ($1) RETURNING id',
+    [workspaceName],
+  );
+  if (workspace === undefined) throw new Error('INSERT ohne Zeile');
+
+  // Die vier Systemrollen aus SONE, gleiche Bedeutung: `list_level = NULL`
+  // heißt wirklich nichts — wer eine Rolle ohne Stufe bekommt, ist Gast
+  // (ADR-0110).
+  const roles: [name: string, level: string | null, rights: string[]][] = [
+    ['owner', 'admin', ['people.manage', 'roles.manage', 'groups.manage']],
+    ['admin', 'admin', ['people.manage', 'roles.manage', 'groups.manage']],
+    ['member', 'editor', []],
+    ['guest', null, []],
+  ];
+  let ownerRole: string | undefined;
+  for (const [name, level, rights] of roles) {
+    const row = await queryOne<{ id: string }>(
       client,
-      'INSERT INTO users (email, display_name) VALUES ($1,$2) RETURNING id',
-      [email, displayName],
+      `INSERT INTO roles (workspace_id, name, list_level, rights)
+       VALUES ($1,$2,$3,$4) RETURNING id`,
+      [workspace.id, name, level, rights],
     );
-    if (user === undefined) throw new Error('INSERT ohne Zeile');
+    if (name === 'owner') ownerRole = row?.id;
+  }
+  if (ownerRole === undefined) throw new Error('owner-Rolle fehlt');
 
-    const workspace = await queryOne<{ id: string }>(
-      client,
-      'INSERT INTO workspaces (name) VALUES ($1) RETURNING id',
-      [workspaceName],
-    );
-    if (workspace === undefined) throw new Error('INSERT ohne Zeile');
+  await client.query(
+    `INSERT INTO workspace_members (workspace_id, user_id, role_id, is_owner)
+     VALUES ($1,$2,$3,true)`,
+    [workspace.id, user.id, ownerRole],
+  );
 
-    // Die vier Systemrollen aus SONE, gleiche Bedeutung: `list_level = NULL`
-    // heißt wirklich nichts — wer eine Rolle ohne Stufe bekommt, ist Gast
-    // (ADR-0110).
-    const roles: [name: string, level: string | null, rights: string[]][] = [
-      ['owner', 'admin', ['people.manage', 'roles.manage', 'groups.manage']],
-      ['admin', 'admin', ['people.manage', 'roles.manage', 'groups.manage']],
-      ['member', 'editor', []],
-      ['guest', null, []],
-    ];
-    let ownerRole: string | undefined;
-    for (const [name, level, rights] of roles) {
-      const row = await queryOne<{ id: string }>(
-        client,
-        `INSERT INTO roles (workspace_id, name, list_level, rights)
-         VALUES ($1,$2,$3,$4) RETURNING id`,
-        [workspace.id, name, level, rights],
-      );
-      if (name === 'owner') ownerRole = row?.id;
-    }
-    if (ownerRole === undefined) throw new Error('owner-Rolle fehlt');
-
-    await client.query(
-      `INSERT INTO workspace_members (workspace_id, user_id, role_id, is_owner)
-       VALUES ($1,$2,$3,true)`,
-      [workspace.id, user.id, ownerRole],
-    );
-    return user.id;
-  });
-
-  await setPassword(pool, userId, input.password);
-  return userId;
+  // In derselben Transaktion: ein Konto ohne Kennwort ist ein Konto, in das
+  // niemand kommt, und ein halb angelegtes Konto ist ein Fall, den man nur von
+  // Hand aufräumt.
+  await setPasswordIn(client, user.id, input.password);
+  return user.id;
 }
 
 /**
@@ -190,15 +203,34 @@ export async function setupFirstAccount(
   token: string,
   input: NewAccount,
 ): Promise<string> {
-  if ((await userCount(pool)) > 0) {
+  /*
+   * Serialisiert, und das habe ich von SONE gelernt statt selbst gemerkt.
+   *
+   * SONEs `bootstrapInstance` nimmt ein `pg_advisory_xact_lock` mit dem
+   * Kommentar „Serialise concurrent first-run attempts". Meine erste Fassung
+   * hier hatte das nicht: zwei gleichzeitige Anfragen mit **demselben**
+   * Schlüssel und **verschiedenen** Adressen sehen beide „kein Konto", beide
+   * finden den Schlüssel gültig, und beide legen an. Danach hat die Instanz
+   * zwei Eigentümer, von denen einer nicht eingeplant war.
+   *
+   * Die Prüfung auf „gibt es schon ein Konto" muss darum **innerhalb** des
+   * Locks stehen und nicht davor.
+   */
+  return withTransaction(pool, async (client) => {
+    await client.query("SELECT pg_advisory_xact_lock(hashtext('sote:setup'))");
+
+    const row = await queryOne<{ n: string }>(client, 'SELECT count(*) AS n FROM users');
+    if (Number(row?.n ?? 0) > 0) {
+      gate.close();
+      throw new SetupClosed('es gibt schon ein Konto — die Einrichtung ist vorbei');
+    }
+    if (!gate.matches(token)) {
+      throw new BadSetupKey('der Einrichtungsschlüssel stimmt nicht');
+    }
+
+    const id = await createAccountIn(client, input);
+    // Einmal und nie wieder: der Schlüssel ist mit dem ersten Konto verbraucht.
     gate.close();
-    throw new SetupClosed('es gibt schon ein Konto — die Einrichtung ist vorbei');
-  }
-  if (!gate.matches(token)) {
-    throw new BadSetupKey('der Einrichtungsschlüssel stimmt nicht');
-  }
-  const id = await createAccount(pool, input);
-  // Einmal und nie wieder: der Schlüssel ist mit dem ersten Konto verbraucht.
-  gate.close();
-  return id;
+    return id;
+  });
 }
