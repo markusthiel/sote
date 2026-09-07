@@ -47,18 +47,19 @@ services:
       # etwas aus, es wirkt nicht, und nichts sagt warum. Also lieber eine Zeile
       # zu viel als eine Einstellung, die stumm ins Leere geht.
       SOTE_SESSION_DAYS: ${SOTE_SESSION_DAYS:-30}
-      # Minuten ohne Hinsehen, bevor die Erinnerungsmail geht. `0` heißt „sofort
-      # mailen", nicht „nie".
-      SOTE_REMINDER_MAIL_AFTER_MINUTES: ${SOTE_REMINDER_MAIL_AFTER_MINUTES:-10}
     ports:
       # Host-Port links, der feste Port des Containers rechts.
       #
-      # 3001, weil SONE 3000 nimmt und beide auf demselben Rechner laufen
-      # sollen. Gebunden wird an alle Schnittstellen, wie bei SONE — davor
-      # gehört ein Reverse Proxy mit TLS, weil der Sitzungskeks sonst im
-      # Klartext reist. Wer den Port nur lokal will, schreibt
-      # `127.0.0.1:3001:8080`.
-      - "${SOTE_PORT:-3001}:8080"
+      # 32901, im Nachbarfeld von SONEs 32900. Die erste Fassung hatte 3001
+      # „weil SONE 3000 nimmt" — das ist die Vorgabe im SONE-Repo und nicht der
+      # Port, auf dem SONE hier tatsächlich läuft. Eine Vorgabe, die sich an
+      # einer Beispieldatei orientiert statt an der Anlage, ist eine Vorgabe,
+      # die niemand benutzt.
+      #
+      # Gebunden wird an alle Schnittstellen, wie bei SONE — davor gehört ein
+      # Reverse Proxy mit TLS, weil der Sitzungskeks sonst im Klartext reist.
+      # Wer den Port nur lokal will, schreibt `127.0.0.1:32901:8080`.
+      - "${SOTE_PORT:-32901}:8080"
     healthcheck:
       test: ["CMD", "node", "docker/healthcheck.mjs"]
       interval: 30s

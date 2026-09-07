@@ -66,7 +66,6 @@ before(async () => {
       databaseUrl: URL_,
       port: 0,
       sessionDays: 30,
-      reminderMailAfterMinutes: 10,
     },
     now: () => NOW,
   });

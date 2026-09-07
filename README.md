@@ -57,6 +57,30 @@ hört auf `SOTE_PORT`, Vorgabe 3001, weil SONE 3000 nimmt. Gebunden wird an alle
 Schnittstellen, wie bei SONE; davor gehört ein Reverse Proxy mit TLS, weil der
 Keks sonst im Klartext reist.
 
+### Was SOTE nicht liest
+
+Wer von SONE kommt, hat eine `.env` mit siebzehn Zeilen. SOTE liest drei, und
+das ist keine Sparsamkeit, sondern der Stand: eine Variable für eine Sache, die
+es nicht gibt, ist eine Zusage, die nichts einlöst.
+
+| in SONE | in SOTE | warum |
+|---|---|---|
+| `SONE_SECRET_KEY` | **nicht nötig** | Sitzungen und Freigabelinks tragen einen Zufallswert, und die Datenbank hält nur seinen sha256. Ohne Signatur braucht es keinen Schlüssel — und keinen, dessen Verlust alle Sitzungen entwertet. |
+| `POSTGRES_PASSWORD` | gleich | |
+| `SONE_PORT` | `SOTE_PORT` | Host-Port, Vorgabe 32901. |
+| `SONE_PUBLIC_URL` | **noch nicht** | Wird gebraucht, sobald etwas eine absolute URL erzeugt: die Erinnerungsmail, der Freigabelink, der Rückverweis für SONE. Nichts davon ist gebaut, also liest es niemand. |
+| `SONE_LOG_LEVEL` | **noch nicht** | SOTE schreibt auf stdout, ohne Stufen. |
+| `SONE_MAX_UPLOAD_MB` | **nicht nötig** | Es gibt keine Anhänge. |
+| `SONE_STORAGE_BACKEND` | **nicht nötig** | Es gibt keine Dateien. |
+| `SONE_SMTP_*` | **noch nicht** | Kein Mailweg. Entworfen ist er (Erinnerungen, Blatt 12), gebaut nicht. |
+| `SONE_IMAP_*`, `SONE_REPLY_MAILBOX` | **noch nicht** | Kein Antworten per Mail. |
+
+Eine Zeile stand hier zu Unrecht und ist wieder weg:
+`SOTE_REMINDER_MAIL_AFTER_MINUTES`. Sie war in `env.ts` gelesen und geprüft —
+und **nichts versendete Mail**. Sie kommt zurück, wenn der Mailweg da ist.
+
+### Das erste Konto
+
 Das erste Konto legt ein Skript an — eine Einladung gibt es noch nicht:
 
 ```

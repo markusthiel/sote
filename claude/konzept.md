@@ -608,8 +608,12 @@ und braucht beim Bau keine zweite Runde.
 
 **Zahlen**
 
-- **Zehn Minuten bis zur Erinnerungsmail**, als Einstellung mit
-  `check-env-numbers` abgesichert. `0` heißt „sofort mailen", nicht „nie".
+- **Zehn Minuten bis zur Erinnerungsmail**, als Einstellung. `0` heißt „sofort
+  mailen", nicht „nie". **Die Variable existiert vorläufig nicht:** sie war
+  gebaut und geprüft, während nichts Mail versendete — genau der Fehler aus
+  ADR-0112, wo vierzehn Einstellungen den Container nie erreichten. Sie kommt
+  mit dem Mailweg zurück, nicht davor. Eine Einstellung für eine Sache, die es
+  nicht gibt, ist eine Zusage, die nichts einlöst.
 
 ## 10a. Was offen bleibt
 
@@ -821,6 +825,27 @@ Beim Bauen entschieden, weil es ohne Entscheidung keinen Code gibt:
 - **Ein widersprüchlicher Auftrag ist 409 mit Grund, kein 500.** Vertauschte
   Nachbarn, leerer Titel, fünfte Priorität: der Aufrufer hat etwas
   Widersprüchliches geschickt, nicht der Server etwas falsch gemacht.
+
+---
+
+## 10c. Was SOTE aus SONEs Umgebung **nicht** braucht
+
+Festgehalten, weil die Frage sonst wiederkommt — und weil jede dieser Zeilen
+eine Entscheidung ist und nicht eine Lücke:
+
+- **Kein `SECRET_KEY`.** Sitzungen und Freigabelinks tragen einen Zufallswert,
+  die Datenbank hält nur seinen sha256. Ohne Signatur braucht es keinen
+  Schlüssel — und keinen, dessen Verlust alle Sitzungen entwertet. Sollte
+  irgendwann etwas signiert werden müssen, ist das eine bewusste Änderung und
+  keine nachgeholte Selbstverständlichkeit.
+- **Kein Speicher-Backend, keine Uploadgrenze.** SOTE hat keine Dateien.
+- **`PUBLIC_URL` noch nicht.** Gebraucht wird sie, sobald etwas eine absolute
+  URL erzeugt: Erinnerungsmail, Freigabelink, der Rückverweis für SONE. Solange
+  nichts davon existiert, würde sie nur dastehen.
+- **Der Host-Port richtet sich an der Anlage aus, nicht an der Beispieldatei.**
+  Vorgabe 32901, im Nachbarfeld von SONEs 32900. Die erste Fassung nahm 3001
+  „weil SONE 3000 nimmt" — das ist der Wert im Repo und nicht der, auf dem SONE
+  läuft.
 
 ---
 

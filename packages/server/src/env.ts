@@ -43,19 +43,21 @@ export interface Config {
   readonly databaseUrl: string;
   readonly port: number;
   readonly sessionDays: number;
-  /** Minuten ohne Hinsehen, bevor die Erinnerungsmail geht (Konzept, 10). */
-  readonly reminderMailAfterMinutes: number;
 }
+
+/*
+ * Hier stand `reminderMailAfterMinutes`, gelesen aus
+ * SOTE_REMINDER_MAIL_AFTER_MINUTES — und **nichts versendete Mail**. Eine
+ * Einstellung für eine Sache, die es nicht gibt, ist genau der Fehler, den SONE
+ * vierzehn Mal hatte (ADR-0112): der Betreiber füllt etwas aus, es wirkt nicht,
+ * und nichts sagt warum. Sie kommt zurück, wenn der Mailweg gebaut ist, und
+ * nicht vorher.
+ */
 
 export function loadConfig(): Config {
   return {
     databaseUrl: text('SOTE_DATABASE_URL'),
     port: count('SOTE_PORT', 8080, { min: 1, max: 65535 }),
     sessionDays: count('SOTE_SESSION_DAYS', 30, { min: 1, max: 400 }),
-    // 0 heißt „sofort mailen", nicht „nie".
-    reminderMailAfterMinutes: count('SOTE_REMINDER_MAIL_AFTER_MINUTES', 10, {
-      min: 0,
-      max: 24 * 60,
-    }),
   };
 }
