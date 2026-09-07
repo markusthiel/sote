@@ -21,6 +21,7 @@ import { modeOfRoute, parseRoute, pathOf, type Route } from './route.js';
 import { SignIn } from './screens/SignIn.js';
 import { TaskList } from './screens/TaskList.js';
 import { Detail } from './screens/Detail.js';
+import { Search } from './screens/Search.js';
 import { Trash } from './screens/Trash.js';
 
 const initialsOf = (name: string) =>
@@ -33,7 +34,7 @@ const initialsOf = (name: string) =>
 
 export function App() {
   const [me, setMe] = useState<Me | null | undefined>(undefined);
-  const [route, setRoute] = useState<Route>(() => parseRoute(window.location.pathname));
+  const [route, setRoute] = useState<Route>(() => parseRoute(window.location.pathname, window.location.search));
   const [projects, setProjects] = useState<Project[]>([]);
   const [counts, setCounts] = useState<{
     today: number;
@@ -80,15 +81,22 @@ export function App() {
    * teilbar, und es gibt **eine** Antwort auf „wo bin ich" — die URL. Eine
    * Kopie im Zustand wäre eine zweite (SONE, `claude/suche-als-ort.md`).
    */
-  const go = useCallback((next: Route) => {
+  const go = useCallback((next: Route, replace = false) => {
     const path = pathOf(next);
-    if (window.location.pathname !== path) window.history.pushState(null, '', path);
+    const current = `${window.location.pathname}${window.location.search}`;
+    if (current !== path) {
+      // Tippen ersetzt, Abschicken schiebt: ein Tastendruck ist kein Ort, zu
+      // dem man zurückgeht (SONE, `claude/suche-als-ort.md`).
+      if (replace) window.history.replaceState(null, '', path);
+      else window.history.pushState(null, '', path);
+    }
     setRoute(next);
     setDrawer(false);
   }, []);
 
   useEffect(() => {
-    const back = () => setRoute(parseRoute(window.location.pathname));
+    const back = () =>
+      setRoute(parseRoute(window.location.pathname, window.location.search));
     window.addEventListener('popstate', back);
     return () => window.removeEventListener('popstate', back);
   }, []);
@@ -171,7 +179,11 @@ export function App() {
           <input
             placeholder="Aufgaben durchsuchen"
             aria-label="Aufgaben durchsuchen"
-            onFocus={() => go({ kind: 'mode', mode: 'search' })}
+            value={route.kind === 'search' ? route.q : ''}
+            /* Das Feld IST der Eingang. Tippen bringt einen in die Suche,
+               mitsamt dem Getippten — kein Knopf, der einen Bildschirm mit
+               einem Feld öffnet. */
+            onChange={(e) => go({ kind: 'search', q: e.target.value }, true)}
           />
         </div>
 
@@ -219,13 +231,23 @@ export function App() {
       </div>
 
       <main className="main">
-        {route.kind !== 'mode' ? (
+        {route.kind !== 'mode' && route.kind !== 'search' ? (
           <TaskList
             route={route}
             workspace={workspace}
             projects={projects}
             now={now}
             onChanged={() => void loadPanel()}
+            openTask={openTask}
+            onOpenTask={setOpenTask}
+          />
+        ) : route.kind === 'search' ? (
+          <Search
+            q={route.q}
+            workspace={workspace}
+            projects={projects}
+            now={now}
+            onQuery={(next) => go({ kind: 'search', q: next }, true)}
             openTask={openTask}
             onOpenTask={setOpenTask}
           />

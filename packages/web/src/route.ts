@@ -16,6 +16,15 @@ export type Route =
   | { readonly kind: 'upcoming' }
   | { readonly kind: 'someday' }
   | { readonly kind: 'project'; readonly projectId: string }
+  /**
+   * Die Suche trägt ihre Abfrage **in der URL**.
+   *
+   * Ein String, drei Schreiber: das Feld über dem Baum, das Feld im Bildschirm
+   * und jedes Bedienelement im Panel. Eine Kopie im Komponentenzustand wäre
+   * eine zweite Antwort auf „wonach wird gesucht", und die beiden laufen beim
+   * ersten Gebrauch auseinander (SONE, `claude/suche-als-ort.md`).
+   */
+  | { readonly kind: 'search'; readonly q: string }
   | { readonly kind: 'mode'; readonly mode: string };
 
 /** Die Ansichten, wie der Server sie nennt. */
@@ -34,8 +43,12 @@ export function viewOf(route: Route): 'today' | 'upcoming' | 'someday' | 'projec
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
-export function parseRoute(pathname: string): Route {
+export function parseRoute(pathname: string, queryString = ''): Route {
   const parts = pathname.split('/').filter((p) => p !== '');
+
+  if (parts[0] === 'suche') {
+    return { kind: 'search', q: new URLSearchParams(queryString).get('q') ?? '' };
+  }
 
   if (parts.length === 0) return { kind: 'today' };
 
@@ -52,8 +65,6 @@ export function parseRoute(pathname: string): Route {
       return { kind: 'upcoming' };
     case 'irgendwann':
       return { kind: 'someday' };
-    case 'suche':
-      return { kind: 'mode', mode: 'search' };
     case 'workspaces':
       return { kind: 'mode', mode: 'workspaces' };
     case 'posteingang':
@@ -79,6 +90,8 @@ export function pathOf(route: Route): string {
       return '/irgendwann';
     case 'project':
       return `/p/${route.projectId}`;
+    case 'search':
+      return route.q === '' ? '/suche' : `/suche?q=${encodeURIComponent(route.q)}`;
     case 'mode':
       return `/${MODE_PATHS[route.mode] ?? ''}`;
   }
@@ -94,5 +107,6 @@ const MODE_PATHS: Record<string, string> = {
 
 /** Welcher Modus in der Schiene zu dieser Ansicht leuchtet. */
 export function modeOfRoute(route: Route): string {
+  if (route.kind === 'search') return 'search';
   return route.kind === 'mode' ? route.mode : 'tasks';
 }

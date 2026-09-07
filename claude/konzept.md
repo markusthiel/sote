@@ -686,6 +686,42 @@ Beim Bauen entschieden, weil es ohne Entscheidung keinen Code gibt:
   „nicht angefasst", `null` heißt „leeren". Geprüft wird die Anwesenheit des
   Schlüssels und nicht die Wahrheit des Werts — sonst nimmt ein Menü beim Setzen
   eines Datums die Priorität mit.
+### Die Suche (Abschnitt 5s Modus, jetzt gebaut)
+
+- **Die Abfrage ist ein String, und dieser String ist die Wahrheit.** Drei
+  Schreiber — das Feld über dem Baum, das Feld im Bildschirm, jeder Chip —, und
+  alle lesen ihn aus der URL. Kein Bedienelement setzt `projekt:` selbst
+  zusammen; das tut `buildTaskQuery` in `core`, neben dem Parser (SONEs Lösung
+  aus `claude/suche-als-ort.md`).
+- **Tippen ersetzt, Abschicken schiebt** (`replaceState` gegen `pushState`): ein
+  Tastendruck ist kein Ort, zu dem man zurückgeht.
+- **Das Feld über dem Baum ist der Eingang.** Es war ein Knopf, der einen
+  Bildschirm öffnet, dessen erstes Bedienelement ein Feld ist — eine Tür vor
+  einer Tür. Das Symbol in der Schiene ist der Weg **zurück** zu einer Suche.
+- **Der leere Bildschirm zeigt das Vokabular**, anklickbar. Eine Suche, die
+  belohnt, wer die Dokumentation gelesen hat, gehört nicht in eine Anwendung,
+  deren übrige Bildschirme das nicht tun.
+- **Präfix ODER gestemmt, je Wort.** Nachgemessen: `:*` schaltet die Stemmung
+  ab — `to_tsquery('german','dosen:*')` ergibt `'dosen':*` und trifft den
+  gestemmten Vektor `'dos'` nicht. Präfix braucht man beim Tippen, Stemmung bei
+  einer fertigen Abfrage; keins von beiden allein genügt. Also wird jedes Wort
+  zu `(wort:* | wort)`.
+- **Zwei Wörter verengen, zwei Schlagwörter auch.** Wer eine Auswahl will, sucht
+  zweimal.
+- **Offen ist die Vorgabe.** Wer sucht, sucht meistens etwas zu tun.
+  Weggeworfenes wird nie gefunden, auch nicht mit `status:alles`.
+- **Ein Doppelpunkt, der keine bekannte Facette ist, bleibt Text.** Eine
+  Abfrage, die bei „12:30" nichts findet, wäre schlechter als eine, die danach
+  sucht. Aber **das Zeichen wird vor dem Doppelpunkt geprüft**: `+guest:lars`
+  ist eine Zuweisung an einen Gast und keine Facette namens `+guest`. Die erste
+  Fassung prüfte umgekehrt, und die Suche nach einem Gast fand nichts.
+- **„Mehr als das Limit" wird als solches gemeldet**, nicht als ungefähre Zahl.
+- **Offen:** die Textsuche-Konfiguration ist fest `german`. Eine englische
+  Aufgabe wird nach deutschen Regeln gestemmt, und Komposita werden nicht
+  zerlegt — „dosen" findet „Dose", aber nicht „Netzwerkdosen". Eine
+  Konfiguration pro Arbeitsbereich wäre richtiger und würde den Index
+  vervielfachen.
+
 - **Ein Projektname ist in seinem Geschwisterkreis eindeutig** (Migration
   0004, partieller Unique-Index über `(workspace_id, parent_id, lower(name))`
   mit `NULLS NOT DISTINCT`, nur für lebende Projekte). Grund ist `#name` in der

@@ -136,6 +136,17 @@ export const api = {
     if (opts.project !== undefined) q.set('project', opts.project);
     return call<{ view: string; overdue: Task[]; tasks: Task[] }>(`/api/tasks?${q}`);
   },
+  search: (q: string, workspace?: string) => {
+    const p = new URLSearchParams({ q });
+    if (workspace !== undefined) p.set('workspace', workspace);
+    return call<{
+      q: string;
+      read: { facet: string; value: string }[];
+      status: 'open' | 'done' | 'all';
+      tasks: Task[];
+      more: boolean;
+    }>(`/api/search?${p}`);
+  },
   counts: (workspace?: string) =>
     call<{ today: number; upcoming: number; someday: number; overdue: number }>(
       `/api/counts${workspace === undefined ? '' : `?workspace=${workspace}`}`,

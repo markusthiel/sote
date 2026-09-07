@@ -34,6 +34,7 @@ import {
   type TaskRow,
   type TrashKind,
 } from './tasks.js';
+import { search } from './search.js';
 import { counts, list, splitOverdue, type ViewId } from './views.js';
 
 const COOKIE = 'sote_session';
@@ -280,6 +281,21 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
       // wird.
       overdue: sections === undefined ? [] : sections.overdue.map(taskView),
       tasks: (sections === undefined ? rows : sections.rest).map(taskView),
+    });
+    return;
+  }
+
+  if (path === '/api/search' && method === 'GET') {
+    const raw = url.searchParams.get('q') ?? '';
+    const out = await search(ctx.pool, workspaceId, raw, now);
+    json(res, 200, {
+      q: raw,
+      // Die gelesene Abfrage kommt mit zurück, damit die Oberfläche ihre Chips
+      // nicht selbst rät — dieselbe Funktion, dasselbe Ergebnis.
+      read: out.query.read,
+      status: out.query.status,
+      tasks: out.tasks.map(taskView),
+      more: out.more,
     });
     return;
   }

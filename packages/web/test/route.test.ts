@@ -8,18 +8,41 @@ import { modeOfRoute, parseRoute, pathOf, viewOf, type Route } from '../src/rout
 
 const ID = '7f3a9c21-4b5e-4d8a-9c1f-2e6b8a0d4f57';
 
+/** Wie der Browser: Pfad und Abfrageteil getrennt. */
+function roundTrip(route: Route): Route {
+  const path = pathOf(route);
+  const q = path.indexOf('?');
+  return q < 0 ? parseRoute(path) : parseRoute(path.slice(0, q), path.slice(q));
+}
+
 test('jede Route überlebt den Weg in die URL und zurück', () => {
   const routes: Route[] = [
     { kind: 'today' },
     { kind: 'upcoming' },
     { kind: 'someday' },
     { kind: 'project', projectId: ID },
-    { kind: 'mode', mode: 'search' },
+    { kind: 'search', q: '' },
+    { kind: 'search', q: 'kabel #haus' },
     { kind: 'mode', mode: 'trash' },
   ];
   for (const route of routes) {
-    assert.deepEqual(parseRoute(pathOf(route)), route, `${pathOf(route)} kommt nicht zurück`);
+    assert.deepEqual(roundTrip(route), route, `${pathOf(route)} kommt nicht zurück`);
   }
+});
+
+test('die Suchabfrage steht in der URL und wird richtig kodiert', () => {
+  const path = pathOf({ kind: 'search', q: 'projekt:"Umzug Büro" !!' });
+  assert.match(path, /^\/suche\?q=/);
+  assert.equal(path.includes(' '), false, 'ein Leerzeichen gehört kodiert');
+  assert.deepEqual(roundTrip({ kind: 'search', q: 'projekt:"Umzug Büro" !!' }), {
+    kind: 'search',
+    q: 'projekt:"Umzug Büro" !!',
+  });
+});
+
+test('/suche ohne Abfrage ist die leere Suche, nicht Heute', () => {
+  assert.deepEqual(parseRoute('/suche'), { kind: 'search', q: '' });
+  assert.deepEqual(parseRoute('/suche', '?q='), { kind: 'search', q: '' });
 });
 
 test('die Wurzel ist Heute', () => {
@@ -47,6 +70,7 @@ test('die Route sagt, welche Ansicht der Server liefern soll', () => {
   assert.equal(viewOf({ kind: 'project', projectId: ID }), 'project');
   // Ein Modus ohne Bildschirm liefert keine fremde Liste nach.
   assert.equal(viewOf({ kind: 'mode', mode: 'trash' }), 'today');
+  assert.equal(viewOf({ kind: 'search', q: 'kabel' }), 'today');
 });
 
 test('alle Aufgaben-Ansichten leuchten denselben Modus in der Schiene', () => {

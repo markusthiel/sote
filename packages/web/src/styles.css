@@ -1308,3 +1308,83 @@ select.target {
   font-size: 12.5px;
   margin: 8px 10px 0;
 }
+
+/* ── Suche ── */
+
+.chip.removable {
+  cursor: pointer;
+}
+
+.chip.removable:hover {
+  border-color: var(--line-strong);
+}
+
+.chip .x {
+  color: var(--text-faint);
+  margin-inline-start: 1px;
+}
+
+.more-hint {
+  font-family: var(--sote-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  margin: 14px 0 0;
+}
+
+/* Der leere Bildschirm zeigt das Vokabular. Eine Suche, die belohnt, wer die
+   Dokumentation gelesen hat, gehört nicht in diese Anwendung. */
+.vocab {
+  margin-top: 8px;
+  max-width: 34rem;
+}
+
+.vocab-row {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  width: 100%;
+  text-align: left;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.vocab-row:hover code {
+  border-color: var(--accent-line);
+}
+
+.vocab-row code {
+  font-family: var(--sote-mono);
+  font-size: 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--sote-radius-sm);
+  padding: 1px 6px;
+  flex: none;
+  min-width: 9rem;
+}
+
+.vocab-row span {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.vocab-note {
+  color: var(--text-muted);
+  font-size: 13px;
+  margin: 14px 0 0;
+}
+
+.vocab-note code {
+  font-family: var(--sote-mono);
+  font-size: 12px;
+}
+
+.tabrow {
+  display: flex;
+  gap: 7px;
+  padding: 14px 0 4px;
+}
+
+.btn.small[aria-current="true"] {
+  background: var(--sunken);
+  font-weight: 500;
+}
