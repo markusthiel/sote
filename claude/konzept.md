@@ -24,9 +24,33 @@ bewusst bezahlt: ein Buchstabe Unterschied in der Mitte sieht in Logzeilen und
 Dateipfaden nach Tippfehler aus. Dafür gehören die beiden erkennbar zusammen,
 und sie werden ohnehin fast immer als Paar genannt.
 
-Signet: derselbe eingerückte Balkenstapel wie SONE (ADR-0068), ein Balken
-durchgestrichen statt in der Akzentfarbe. Dieselbe Glyphe, anderer Zustand.
-Vier Balken in jeder Größe, dreibalkig nur bei Favicon und Installations-Icons.
+Signet: dieselbe Geometrie wie SONE (ADR-0068) — vier Zeilen, Tuschekasten
+12–88 waagerecht und 16–88 senkrecht, die dritte Zeile im Akzent —, aber
+**jede Zeile beginnt mit einem Punkt, dann ein Abstand, dann die Linie.** Punkt
+9 × 9 auf der ursprünglichen Startkante, Abstand 7, Linie bis zur alten rechten
+Kante 88.
+
+Zwei Gründe für diese Fassung und gegen die beiden zuerst gezeichneten
+(Akzentbalken durchgestrichen; Akzentbalken durch ein Häkchen ersetzt):
+
+- Sie liest sich als **Liste von Dingen** statt als ein durchgestrichenes Ding,
+  und sie behält den Akzentbalken für den Workspace-Ton (ADR-0023), statt ihn
+  für ein Häkchen auszugeben.
+- Sie unterscheidet sich in **allen vier Zeilen**. Zwei Marken, die sich um
+  einen Balken unterscheiden, sind in einer Tab-Leiste mit beiden Anwendungen
+  nicht auseinanderzuhalten.
+
+Punkt + Abstand = 16 ist genau der Einrückungsschritt, also steht jeder Punkt in
+der Spalte, in der die Zeile darüber ihre Linie beginnt. Die Linien messen
+60 / 44 / 28 / 44 — SONEs Rampe um einen Schritt versetzt, als Folge des
+Abstands und nicht als eigene Wahl.
+
+**Offen:** bei 16 px trägt der Abstand nicht mehr. SONE geht dort auf drei
+Balken; mit Punkten wäre die dritte Zeile so breit wie ihr eigener Punkt.
+Vorschlag ist **zweizeilig für Favicon und Installations-Icons**. Und: Punkt 9 /
+Abstand 7 gegen Punkt 8 / Abstand 6 — die zweite Fassung wiegt etwas mehr, weil
+C insgesamt rund ein Fünftel Fläche gegenüber SONE verliert. Beides am
+Bildschirm zu entscheiden, beides in `design/artboards.html` gezeichnet.
 
 ### Der Maßstab
 
@@ -187,8 +211,8 @@ Schiene oder Fußleiste fallen (ADR-0072/0074).
 | Suche | Filter und gemerkte Suchen |
 | Workspaces | ein Workspace, gewählt |
 | Posteingang | was mir zugewiesen wurde, was kommentiert wurde |
+| Freigaben | Links, von mir, für mich |
 | Papierkorb | ein Workspace |
-| Freigaben | Links · von mir · für mich |
 | Du | kein Modus, abgesetzt |
 
 **Heute ist kein Modus, sondern ein Menüeintrag.** Ein Modus ist ein Ort mit
@@ -196,10 +220,11 @@ einem Menü daneben; Heute ist, was das Menü ausgewählt hat. Das Feld über de
 Baum ist der Eingang zur Suche, nicht ein Knopf, der einen Bildschirm mit einem
 Feld öffnet.
 
-**Offen:** Sieben Einträge sind viel für eine Fußleiste. SONE hat dasselbe
-Problem und trägt es; hier wäre zu prüfen, ob Papierkorb und Freigaben auf dem
-Telefon zusammengehen dürfen — was gegen ADR-0072 verstieße und deshalb eine
-eigene Begründung braucht.
+**Nicht offen:** sieben Einträge tragen. Die ausgelieferte SONE-Fußleiste zeigt
+genau diese sieben mit vollen Beschriftungen — Seiten, Suchen, Workspaces,
+Posteingang, Freigaben, Papierkorb, Du. Es gibt also keinen Grund zu kürzen und
+erst recht keinen, gegen ADR-0072 zwei Modi zusammenzulegen. Die Reihenfolge
+oben folgt der Leiste, wie sie steht.
 
 ---
 
@@ -382,7 +407,15 @@ damit eine native App. Im ersten Wurf ist Ort ein Feld, keine Erinnerung.
 
 1. Status — binär oder mehr?
 2. Zuweisung in der Schnellerfassung oder nur im Anfasser-Menü?
-3. Sieben Einträge in der Fußleiste — tragen oder begründet zusammenlegen?
+3. Die Benachrichtigungen ins Profil, in **beiden** Werkzeugen? Dann sind es
+   sechs Einträge statt sieben. Das ist eine gemeinsame Entscheidung über beide
+   Produkte und keine über SOTE allein — und sie **dreht ADR-0092 um**, das das
+   Abzeichen ausdrücklich vom Profilbild auf die Glocke gelegt hat. Die
+   Begründung dort war, dass ein Abzeichen nicht auf einem Bedienelement sitzen
+   darf, das ein Menü öffnet, in dem die Benachrichtigungen nicht liegen. Wenn
+   sie ins Profil wandern, liegen sie darin, und dieselbe Regel führt zur
+   umgekehrten Platzierung. Das ist zulässig, muss aber als Begründung
+   aufgeschrieben werden und nicht als Aufräumen durchgehen.
 4. Eigentum von Projekten und Zuweisungen, wenn jemand geht.
 
 ### Entschieden am 2026-09-07: die Reihenfolge

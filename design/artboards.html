@@ -289,77 +289,183 @@ svg{flex:none}
 
 <!-- 1 ─────────────────────────────────────────────────────── -->
 <section class="board">
-  <header><span class="no">01</span><h2>Das Signet</h2></header>
-  <p class="note">Dieselbe Glyphe wie SONE — der eingerückte Balkenstapel, vier
-  Balken, Tuschekasten 12–88 waagerecht und 16–88 senkrecht — in anderem
-  Zustand. <b>Zwei Fassungen zur Wahl.</b> A streicht den Akzentbalken durch,
-  B ersetzt ihn durch ein Häkchen derselben Strichstärke.
-  <b>Mein Rat ist B</b>, und zwar aus einem Größengrund: bei 16 px ist ein
-  Strich innerhalb eines 9 Einheiten hohen Balkens nicht mehr zu sehen, ein
-  Häkchen schon. A liest sich bei 96 px besser und verschwindet im Favicon.</p>
+  <header><span class="no">01</span><h2>Das Signet — Fassung C</h2></header>
+  <p class="note"><b>Gewählt: C.</b> Dieselbe Geometrie wie SONE, aber jede der
+  vier Zeilen beginnt mit einem Punkt, dann ein Abstand, dann die Linie. Das
+  liest sich als Liste von Dingen, nicht als ein durchgestrichenes Ding — und es
+  behält den Akzentbalken für den Workspace-Ton, statt ihn für ein Häkchen
+  auszugeben.</p>
+  <p class="note">Der Vorteil, den A und B nicht haben:
+  <b>C unterscheidet sich in allen vier Zeilen</b>, nicht in einer. Zwei Marken,
+  die sich um einen Balken unterscheiden, sind in einer Tab-Leiste mit beiden
+  Anwendungen nicht auseinanderzuhalten. Vier Punkte sieht man sofort.</p>
+  <p class="note"><b>Die Maße:</b> Punkt 9 × 9 auf der ursprünglichen Startkante,
+  Abstand 7, Linie von dort bis zur alten rechten Kante 88. Daraus wird
+  Punkt + Abstand = 16, also genau der Einrückungsschritt — <b>jeder Punkt steht
+  in der Spalte, in der die Zeile darüber ihre Linie beginnt.</b> Die Linien
+  messen dann 60 / 44 / 28 / 44, das ist SONEs Rampe um einen Schritt versetzt.
+  Nicht ausgesucht, sondern die Folge des Abstands.</p>
   <div class="pair">
     <div class="frame"><div class="marks">
-      <div class="mk">
-        <svg width="96" height="96" viewBox="0 0 100 100">
-          <rect x="12" y="16" width="76" height="9" fill="#161615"/>
-          <rect x="28" y="37" width="60" height="9" fill="#161615"/>
-          <rect x="44" y="58" width="44" height="9" fill="#2f7d6f"/>
-          <rect x="28" y="79" width="60" height="9" fill="#161615"/>
-        </svg>
-        <div class="lb">SONE</div>
-      </div>
-      <div class="mk">
-        <svg width="96" height="96" viewBox="0 0 100 100">
-          <rect x="12" y="16" width="76" height="9" fill="#161615"/>
-          <rect x="28" y="37" width="60" height="9" fill="#161615"/>
-          <rect x="44" y="58" width="44" height="9" fill="#2f7d6f"/>
-          <rect x="40" y="59.5" width="52" height="4" fill="#faf8f4"/>
-          <rect x="28" y="79" width="60" height="9" fill="#161615"/>
-        </svg>
-        <div class="lb">SOTE A</div>
-      </div>
-      <div class="mk">
-        <svg width="96" height="96" viewBox="0 0 100 100">
-          <rect x="12" y="16" width="76" height="9" fill="#161615"/>
-          <rect x="28" y="37" width="60" height="9" fill="#161615"/>
-          <path d="M44 62.5 L53 71 L70 54" fill="none" stroke="#2f7d6f"
-                stroke-width="9" stroke-linecap="square" stroke-linejoin="miter"/>
-          <rect x="28" y="79" width="60" height="9" fill="#161615"/>
-        </svg>
-        <div class="lb">SOTE B</div>
-      </div>
+      <div class="mk"><svg width="96" height="96" viewBox="0 0 100 100"><rect x="12" y="16" width="76" height="9" fill="#161615"/><rect x="28" y="37" width="60" height="9" fill="#161615"/><rect x="44" y="58" width="44" height="9" fill="#2f7d6f"/><rect x="28" y="79" width="60" height="9" fill="#161615"/></svg><div class="lb">SONE</div></div>
+      <div class="mk"><svg width="96" height="96" viewBox="0 0 100 100">
+          <rect x="12" y="16" width="9" height="9" fill="#161615"/>
+          <rect x="28" y="16" width="60" height="9" fill="#161615"/>
+          <rect x="28" y="37" width="9" height="9" fill="#161615"/>
+          <rect x="44" y="37" width="44" height="9" fill="#161615"/>
+          <rect x="44" y="58" width="9" height="9" fill="#2f7d6f"/>
+          <rect x="60" y="58" width="28" height="9" fill="#2f7d6f"/>
+          <rect x="28" y="79" width="9" height="9" fill="#161615"/>
+          <rect x="44" y="79" width="44" height="9" fill="#161615"/>
+        </svg><div class="lb">SOTE C</div></div>
     </div></div>
     <div class="frame" data-theme="dark"><div class="marks">
-      <div class="mk">
-        <div class="sizes">
-          <svg width="48" height="48" viewBox="0 0 100 100">
-            <rect x="12" y="16" width="76" height="9" fill="#f7f5f0"/>
-            <rect x="28" y="37" width="60" height="9" fill="#f7f5f0"/>
-            <path d="M44 62.5 L53 71 L70 54" fill="none" stroke="#6fc0b0"
-                  stroke-width="9" stroke-linecap="square"/>
-            <rect x="28" y="79" width="60" height="9" fill="#f7f5f0"/>
-          </svg>
-          <svg width="32" height="32" viewBox="0 0 100 100">
-            <rect x="12" y="16" width="76" height="9" fill="#f7f5f0"/>
-            <rect x="28" y="37" width="60" height="9" fill="#f7f5f0"/>
-            <path d="M44 62.5 L53 71 L70 54" fill="none" stroke="#6fc0b0"
-                  stroke-width="9" stroke-linecap="square"/>
-            <rect x="28" y="79" width="60" height="9" fill="#f7f5f0"/>
-          </svg>
-          <svg width="16" height="16" viewBox="0 0 100 100">
-            <rect x="10" y="20" width="80" height="14" fill="#f7f5f0"/>
-            <path d="M40 60 L52 72 L74 50" fill="none" stroke="#6fc0b0"
-                  stroke-width="14" stroke-linecap="square"/>
-          </svg>
-        </div>
-        <div class="lb">B in 48 / 32 / 16 — bei 16 dreibalkig</div>
-      </div>
+      <div class="mk"><svg width="96" height="96" viewBox="0 0 100 100"><rect x="12" y="16" width="76" height="9" fill="#f7f5f0"/><rect x="28" y="37" width="60" height="9" fill="#f7f5f0"/><rect x="44" y="58" width="44" height="9" fill="#6fc0b0"/><rect x="28" y="79" width="60" height="9" fill="#f7f5f0"/></svg><div class="lb">SONE</div></div>
+      <div class="mk"><svg width="96" height="96" viewBox="0 0 100 100">
+          <rect x="12" y="16" width="9" height="9" fill="#f7f5f0"/>
+          <rect x="28" y="16" width="60" height="9" fill="#f7f5f0"/>
+          <rect x="28" y="37" width="9" height="9" fill="#f7f5f0"/>
+          <rect x="44" y="37" width="44" height="9" fill="#f7f5f0"/>
+          <rect x="44" y="58" width="9" height="9" fill="#6fc0b0"/>
+          <rect x="60" y="58" width="28" height="9" fill="#6fc0b0"/>
+          <rect x="28" y="79" width="9" height="9" fill="#f7f5f0"/>
+          <rect x="44" y="79" width="44" height="9" fill="#f7f5f0"/>
+        </svg><div class="lb">SOTE C</div></div>
     </div></div>
   </div>
   <div class="caps">
     <div class="cap">hell — Akzent #2f7d6f</div>
     <div class="cap">dunkel — Akzent #6fc0b0</div>
   </div>
+
+  <p class="note" style="margin-top:26px"><b>Zwei Dinge, die ich dabei sehe und
+  die du am Bildschirm entscheiden musst.</b></p>
+  <p class="note"><b>Erstens die Farbmenge.</b> Die Akzentzeile schrumpft von 44
+  auf 28 Einheiten, und das ganze Signet verliert etwa ein Fünftel seiner
+  Fläche. Neben SONE gestellt liest es sich leichter. Rechts daneben eine
+  Fassung mit Punkt 8 und Abstand 6 — Linien 62 / 46 / 30 / 46, ein wenig mehr
+  Gewicht bei gleichem Aufbau. Der Unterschied ist klein und genau deshalb eine
+  Entscheidung am Bildschirm und nicht am Rechner.</p>
+  <div class="pair">
+    <div class="frame"><div class="marks">
+      <div class="mk"><svg width="96" height="96" viewBox="0 0 100 100">
+          <rect x="12" y="16" width="9" height="9" fill="#161615"/>
+          <rect x="28" y="16" width="60" height="9" fill="#161615"/>
+          <rect x="28" y="37" width="9" height="9" fill="#161615"/>
+          <rect x="44" y="37" width="44" height="9" fill="#161615"/>
+          <rect x="44" y="58" width="9" height="9" fill="#2f7d6f"/>
+          <rect x="60" y="58" width="28" height="9" fill="#2f7d6f"/>
+          <rect x="28" y="79" width="9" height="9" fill="#161615"/>
+          <rect x="44" y="79" width="44" height="9" fill="#161615"/>
+        </svg><div class="lb">Punkt 9, Abstand 7</div></div>
+      <div class="mk"><svg width="96" height="96" viewBox="0 0 100 100">
+          <rect x="12" y="16" width="8" height="9" fill="#161615"/>
+          <rect x="26" y="16" width="62" height="9" fill="#161615"/>
+          <rect x="28" y="37" width="8" height="9" fill="#161615"/>
+          <rect x="42" y="37" width="46" height="9" fill="#161615"/>
+          <rect x="44" y="58" width="8" height="9" fill="#2f7d6f"/>
+          <rect x="58" y="58" width="30" height="9" fill="#2f7d6f"/>
+          <rect x="28" y="79" width="8" height="9" fill="#161615"/>
+          <rect x="42" y="79" width="46" height="9" fill="#161615"/>
+        </svg><div class="lb">Punkt 8, Abstand 6</div></div>
+    </div></div>
+    <div class="frame"><div class="marks">
+      <div class="mk"><svg width="48" height="48" viewBox="0 0 100 100"><rect x="12" y="16" width="76" height="9" fill="#161615"/><rect x="28" y="37" width="60" height="9" fill="#161615"/><rect x="44" y="58" width="44" height="9" fill="#2f7d6f"/><rect x="28" y="79" width="60" height="9" fill="#161615"/></svg><div class="lb">SONE 48</div></div>
+      <div class="mk"><svg width="48" height="48" viewBox="0 0 100 100">
+          <rect x="12" y="16" width="9" height="9" fill="#161615"/>
+          <rect x="28" y="16" width="60" height="9" fill="#161615"/>
+          <rect x="28" y="37" width="9" height="9" fill="#161615"/>
+          <rect x="44" y="37" width="44" height="9" fill="#161615"/>
+          <rect x="44" y="58" width="9" height="9" fill="#2f7d6f"/>
+          <rect x="60" y="58" width="28" height="9" fill="#2f7d6f"/>
+          <rect x="28" y="79" width="9" height="9" fill="#161615"/>
+          <rect x="44" y="79" width="44" height="9" fill="#161615"/>
+        </svg><div class="lb">C 48</div></div>
+      <div class="mk"><svg width="32" height="32" viewBox="0 0 100 100">
+          <rect x="12" y="16" width="9" height="9" fill="#161615"/>
+          <rect x="28" y="16" width="60" height="9" fill="#161615"/>
+          <rect x="28" y="37" width="9" height="9" fill="#161615"/>
+          <rect x="44" y="37" width="44" height="9" fill="#161615"/>
+          <rect x="44" y="58" width="9" height="9" fill="#2f7d6f"/>
+          <rect x="60" y="58" width="28" height="9" fill="#2f7d6f"/>
+          <rect x="28" y="79" width="9" height="9" fill="#161615"/>
+          <rect x="44" y="79" width="44" height="9" fill="#161615"/>
+        </svg><div class="lb">C 32</div></div>
+      <div class="mk"><svg width="24" height="24" viewBox="0 0 100 100">
+          <rect x="12" y="16" width="9" height="9" fill="#161615"/>
+          <rect x="28" y="16" width="60" height="9" fill="#161615"/>
+          <rect x="28" y="37" width="9" height="9" fill="#161615"/>
+          <rect x="44" y="37" width="44" height="9" fill="#161615"/>
+          <rect x="44" y="58" width="9" height="9" fill="#2f7d6f"/>
+          <rect x="60" y="58" width="28" height="9" fill="#2f7d6f"/>
+          <rect x="28" y="79" width="9" height="9" fill="#161615"/>
+          <rect x="44" y="79" width="44" height="9" fill="#161615"/>
+        </svg><div class="lb">C 24</div></div>
+    </div></div>
+  </div>
+  <div class="caps">
+    <div class="cap">zwei Gewichte im Vergleich</div>
+    <div class="cap">C bei 48 / 32 / 24 — bis hierher trägt der Abstand</div>
+  </div>
+
+  <p class="note" style="margin-top:26px"><b>Zweitens die kleinen Größen, und
+  das ist der echte Haken.</b> SONE geht bei 16 px auf drei Balken, weil vier zu
+  dicht liegen. Mit Punkten wird die dritte Zeile dort 14 Einheiten lang, also
+  genau so breit wie ihr eigener Punkt — bei 16 px sind das etwa zwei Pixel Linie
+  und zwei Pixel Punkt mit anderthalb Pixel Abstand dazwischen. Das verschmiert.
+  <b>Mein Vorschlag: bei 16 px zwei Zeilen statt drei.</b> Zwei Punkte mit zwei
+  Linien sind bei dieser Größe noch eindeutig eine Liste, drei sind ein Fleck.</p>
+  <div class="pair">
+    <div class="frame"><div class="marks">
+      <div class="mk"><div class="sizes"><svg width="64" height="64" viewBox="0 0 100 100"><rect x="12" y="26" width="14" height="14" fill="#161615"/><rect x="34" y="26" width="56" height="14" fill="#161615"/><rect x="34" y="60" width="14" height="14" fill="#2f7d6f"/><rect x="56" y="60" width="34" height="14" fill="#2f7d6f"/></svg><svg width="32" height="32" viewBox="0 0 100 100"><rect x="12" y="26" width="14" height="14" fill="#161615"/><rect x="34" y="26" width="56" height="14" fill="#161615"/><rect x="34" y="60" width="14" height="14" fill="#2f7d6f"/><rect x="56" y="60" width="34" height="14" fill="#2f7d6f"/></svg><svg width="16" height="16" viewBox="0 0 100 100"><rect x="12" y="26" width="14" height="14" fill="#161615"/><rect x="34" y="26" width="56" height="14" fill="#161615"/><rect x="34" y="60" width="14" height="14" fill="#2f7d6f"/><rect x="56" y="60" width="34" height="14" fill="#2f7d6f"/></svg></div>
+        <div class="lb">zweizeilig — 64 / 32 / 16</div></div>
+      <div class="mk"><div class="sizes"><svg width="16" height="16" viewBox="0 0 100 100">
+          <rect x="12" y="16" width="9" height="9" fill="#161615"/>
+          <rect x="28" y="16" width="60" height="9" fill="#161615"/>
+          <rect x="28" y="37" width="9" height="9" fill="#161615"/>
+          <rect x="44" y="37" width="44" height="9" fill="#161615"/>
+          <rect x="44" y="58" width="9" height="9" fill="#2f7d6f"/>
+          <rect x="60" y="58" width="28" height="9" fill="#2f7d6f"/>
+          <rect x="28" y="79" width="9" height="9" fill="#161615"/>
+          <rect x="44" y="79" width="44" height="9" fill="#161615"/>
+        </svg></div>
+        <div class="lb">vierzeilig bei 16 — zu dicht</div></div>
+    </div></div>
+    <div class="frame" data-theme="dark"><div class="marks">
+      <div class="mk"><div class="sizes"><svg width="64" height="64" viewBox="0 0 100 100"><rect x="12" y="26" width="14" height="14" fill="#f7f5f0"/><rect x="34" y="26" width="56" height="14" fill="#f7f5f0"/><rect x="34" y="60" width="14" height="14" fill="#6fc0b0"/><rect x="56" y="60" width="34" height="14" fill="#6fc0b0"/></svg><svg width="32" height="32" viewBox="0 0 100 100"><rect x="12" y="26" width="14" height="14" fill="#f7f5f0"/><rect x="34" y="26" width="56" height="14" fill="#f7f5f0"/><rect x="34" y="60" width="14" height="14" fill="#6fc0b0"/><rect x="56" y="60" width="34" height="14" fill="#6fc0b0"/></svg><svg width="16" height="16" viewBox="0 0 100 100"><rect x="12" y="26" width="14" height="14" fill="#f7f5f0"/><rect x="34" y="26" width="56" height="14" fill="#f7f5f0"/><rect x="34" y="60" width="14" height="14" fill="#6fc0b0"/><rect x="56" y="60" width="34" height="14" fill="#6fc0b0"/></svg></div>
+        <div class="lb">zweizeilig, dunkel</div></div>
+    </div></div>
+  </div>
+  <div class="caps">
+    <div class="cap">Favicon und Installations-Icons</div>
+    <div class="cap">derselbe Zuschnitt, dunkel</div>
+  </div>
+
+  <p class="note" style="margin-top:26px">Zum Vergleich die beiden verworfenen
+  Fassungen. A streicht den Akzentbalken durch und verschwindet bei kleinen
+  Größen, B ersetzt ihn durch ein Häkchen und gibt dafür den Workspace-Ton auf.
+  Beide unterscheiden sich von SONE nur in einer von vier Zeilen.</p>
+  <div class="frame"><div class="marks">
+    <div class="mk"><svg width="72" height="72" viewBox="0 0 100 100"><rect x="12" y="16" width="76" height="9" fill="#161615"/><rect x="28" y="37" width="60" height="9" fill="#161615"/><rect x="44" y="58" width="44" height="9" fill="#2f7d6f"/><rect x="40" y="59.5" width="52" height="4" fill="#faf8f4"/><rect x="28" y="79" width="60" height="9" fill="#161615"/></svg><div class="lb">A — verworfen</div></div>
+    <div class="mk"><svg width="72" height="72" viewBox="0 0 100 100">
+      <rect x="12" y="16" width="76" height="9" fill="#161615"/>
+      <rect x="28" y="37" width="60" height="9" fill="#161615"/>
+      <path d="M44 62.5 L53 71 L70 54" fill="none" stroke="#2f7d6f"
+            stroke-width="9" stroke-linecap="square"/>
+      <rect x="28" y="79" width="60" height="9" fill="#161615"/>
+    </svg><div class="lb">B — verworfen</div></div>
+    <div class="mk"><svg width="72" height="72" viewBox="0 0 100 100">
+          <rect x="12" y="16" width="9" height="9" fill="#161615"/>
+          <rect x="28" y="16" width="60" height="9" fill="#161615"/>
+          <rect x="28" y="37" width="9" height="9" fill="#161615"/>
+          <rect x="44" y="37" width="44" height="9" fill="#161615"/>
+          <rect x="44" y="58" width="9" height="9" fill="#2f7d6f"/>
+          <rect x="60" y="58" width="28" height="9" fill="#2f7d6f"/>
+          <rect x="28" y="79" width="9" height="9" fill="#161615"/>
+          <rect x="44" y="79" width="44" height="9" fill="#161615"/>
+        </svg><div class="lb">C</div></div>
+  </div></div>
+  <div class="cap">und der Grund für C steht in der dritten Zeile jeder Fassung</div>
 </section>
 
 <!-- 2 ─────────────────────────────────────────────────────── -->
@@ -377,13 +483,7 @@ svg{flex:none}
       <!-- Schiene -->
       <nav class="rail">
         <div class="slot on" title="Aufgaben">
-          <svg width="22" height="22" viewBox="0 0 100 100">
-            <rect x="12" y="16" width="76" height="9" fill="currentColor"/>
-            <rect x="28" y="37" width="60" height="9" fill="currentColor"/>
-            <path d="M44 62.5 L53 71 L70 54" fill="none" stroke="#2f7d6f"
-                  stroke-width="9" stroke-linecap="square"/>
-            <rect x="28" y="79" width="60" height="9" fill="currentColor"/>
-          </svg>
+          <svg width="22" height="22" viewBox="0 0 100 100"><rect x="12" y="16" width="9" height="9" fill="currentColor"/><rect x="28" y="16" width="60" height="9" fill="currentColor"/><rect x="28" y="37" width="9" height="9" fill="currentColor"/><rect x="44" y="37" width="44" height="9" fill="currentColor"/><rect x="44" y="58" width="9" height="9" fill="#2f7d6f"/><rect x="60" y="58" width="28" height="9" fill="#2f7d6f"/><rect x="28" y="79" width="9" height="9" fill="currentColor"/><rect x="44" y="79" width="44" height="9" fill="currentColor"/></svg>
         </div>
         <div class="slot" title="Suche">
           <svg width="19" height="19" viewBox="0 0 20 20" fill="none"
@@ -405,16 +505,16 @@ svg{flex:none}
           </svg>
           <span class="badge">3</span>
         </div>
-        <div class="slot" title="Papierkorb">
-          <svg width="19" height="19" viewBox="0 0 20 20" fill="none"
-               stroke="currentColor" stroke-width="1.6">
-            <path d="M3.5 5.5h13M8 5.5V3.5h4v2M5 5.5l1 12h8l1-12"/>
-          </svg>
-        </div>
         <div class="slot" title="Freigaben">
           <svg width="19" height="19" viewBox="0 0 20 20" fill="none"
                stroke="currentColor" stroke-width="1.6">
             <path d="M8 12l4-4M7.5 6.5 9 5a3.5 3.5 0 0 1 5 5l-1.5 1.5M12.5 13.5 11 15a3.5 3.5 0 0 1-5-5L7.5 8.5"/>
+          </svg>
+        </div>
+        <div class="slot" title="Papierkorb">
+          <svg width="19" height="19" viewBox="0 0 20 20" fill="none"
+               stroke="currentColor" stroke-width="1.6">
+            <path d="M3.5 5.5h13M8 5.5V3.5h4v2M5 5.5l1 12h8l1-12"/>
           </svg>
         </div>
         <div class="spacer"></div>
@@ -646,13 +746,7 @@ svg{flex:none}
     <div class="app with-detail" style="min-height:470px">
       <nav class="rail">
         <div class="slot on">
-          <svg width="22" height="22" viewBox="0 0 100 100">
-            <rect x="12" y="16" width="76" height="9" fill="currentColor"/>
-            <rect x="28" y="37" width="60" height="9" fill="currentColor"/>
-            <path d="M44 62.5 L53 71 L70 54" fill="none" stroke="#2f7d6f"
-                  stroke-width="9" stroke-linecap="square"/>
-            <rect x="28" y="79" width="60" height="9" fill="currentColor"/>
-          </svg>
+          <svg width="22" height="22" viewBox="0 0 100 100"><rect x="12" y="16" width="9" height="9" fill="currentColor"/><rect x="28" y="16" width="60" height="9" fill="currentColor"/><rect x="28" y="37" width="9" height="9" fill="currentColor"/><rect x="44" y="37" width="44" height="9" fill="currentColor"/><rect x="44" y="58" width="9" height="9" fill="#2f7d6f"/><rect x="60" y="58" width="28" height="9" fill="#2f7d6f"/><rect x="28" y="79" width="9" height="9" fill="currentColor"/><rect x="44" y="79" width="44" height="9" fill="currentColor"/></svg>
         </div>
         <div class="spacer"></div>
         <div class="slot"><span class="face">MT</span></div>
@@ -746,13 +840,7 @@ svg{flex:none}
 
       <div class="embed">
         <div class="eh">
-          <svg width="15" height="15" viewBox="0 0 100 100">
-            <rect x="12" y="16" width="76" height="9" fill="currentColor"/>
-            <rect x="28" y="37" width="60" height="9" fill="currentColor"/>
-            <path d="M44 62.5 L53 71 L70 54" fill="none" stroke="#2f7d6f"
-                  stroke-width="9" stroke-linecap="square"/>
-            <rect x="28" y="79" width="60" height="9" fill="currentColor"/>
-          </svg>
+          <svg width="15" height="15" viewBox="0 0 100 100"><rect x="12" y="16" width="9" height="9" fill="currentColor"/><rect x="28" y="16" width="60" height="9" fill="currentColor"/><rect x="28" y="37" width="9" height="9" fill="currentColor"/><rect x="44" y="37" width="44" height="9" fill="currentColor"/><rect x="44" y="58" width="9" height="9" fill="#2f7d6f"/><rect x="60" y="58" width="28" height="9" fill="#2f7d6f"/><rect x="28" y="79" width="9" height="9" fill="currentColor"/><rect x="44" y="79" width="44" height="9" fill="currentColor"/></svg>
           <span class="nm">Kopplung — Schritte</span>
           <span class="src">4 offen — in SOTE öffnen</span>
         </div>
@@ -792,13 +880,7 @@ svg{flex:none}
     <div class="frame"><div class="doc" style="padding:22px 24px">
       <div class="embed" style="margin:0">
         <div class="eh">
-          <svg width="15" height="15" viewBox="0 0 100 100">
-            <rect x="12" y="16" width="76" height="9" fill="currentColor"/>
-            <rect x="28" y="37" width="60" height="9" fill="currentColor"/>
-            <path d="M44 62.5 L53 71 L70 54" fill="none" stroke="#2f7d6f"
-                  stroke-width="9" stroke-linecap="square"/>
-            <rect x="28" y="79" width="60" height="9" fill="currentColor"/>
-          </svg>
+          <svg width="15" height="15" viewBox="0 0 100 100"><rect x="12" y="16" width="9" height="9" fill="currentColor"/><rect x="28" y="16" width="60" height="9" fill="currentColor"/><rect x="28" y="37" width="9" height="9" fill="currentColor"/><rect x="44" y="37" width="44" height="9" fill="currentColor"/><rect x="44" y="58" width="9" height="9" fill="#2f7d6f"/><rect x="60" y="58" width="28" height="9" fill="#2f7d6f"/><rect x="28" y="79" width="9" height="9" fill="currentColor"/><rect x="44" y="79" width="44" height="9" fill="currentColor"/></svg>
           <span class="nm">Kopplung — Schritte</span>
           <span class="src">Kopie</span>
         </div>
@@ -815,13 +897,7 @@ svg{flex:none}
     <div class="frame"><div class="doc" style="padding:22px 24px">
       <div class="embed" style="margin:0">
         <div class="eh">
-          <svg width="15" height="15" viewBox="0 0 100 100" style="opacity:.45">
-            <rect x="12" y="16" width="76" height="9" fill="currentColor"/>
-            <rect x="28" y="37" width="60" height="9" fill="currentColor"/>
-            <path d="M44 62.5 L53 71 L70 54" fill="none" stroke="currentColor"
-                  stroke-width="9" stroke-linecap="square"/>
-            <rect x="28" y="79" width="60" height="9" fill="currentColor"/>
-          </svg>
+          <svg width="15" height="15" viewBox="0 0 100 100" style="opacity:.45"><rect x="12" y="16" width="9" height="9" fill="currentColor"/><rect x="28" y="16" width="60" height="9" fill="currentColor"/><rect x="28" y="37" width="9" height="9" fill="currentColor"/><rect x="44" y="37" width="44" height="9" fill="currentColor"/><rect x="44" y="58" width="9" height="9" fill="currentColor"/><rect x="60" y="58" width="28" height="9" fill="currentColor"/><rect x="28" y="79" width="9" height="9" fill="currentColor"/><rect x="44" y="79" width="44" height="9" fill="currentColor"/></svg>
           <span class="nm" style="color:#6a675f">Kopplung — Schritte</span>
         </div>
         <div class="eb">
@@ -848,22 +924,10 @@ svg{flex:none}
       <div class="mi">Aufzählung</div>
       <div class="mi">Tabelle</div>
       <div class="mi on">
-        <svg width="14" height="14" viewBox="0 0 100 100">
-          <rect x="12" y="16" width="76" height="9" fill="currentColor"/>
-          <rect x="28" y="37" width="60" height="9" fill="currentColor"/>
-          <path d="M44 62.5 L53 71 L70 54" fill="none" stroke="#2f7d6f"
-                stroke-width="9" stroke-linecap="square"/>
-          <rect x="28" y="79" width="60" height="9" fill="currentColor"/>
-        </svg>
+        <svg width="14" height="14" viewBox="0 0 100 100"><rect x="12" y="16" width="9" height="9" fill="currentColor"/><rect x="28" y="16" width="60" height="9" fill="currentColor"/><rect x="28" y="37" width="9" height="9" fill="currentColor"/><rect x="44" y="37" width="44" height="9" fill="currentColor"/><rect x="44" y="58" width="9" height="9" fill="#2f7d6f"/><rect x="60" y="58" width="28" height="9" fill="#2f7d6f"/><rect x="28" y="79" width="9" height="9" fill="currentColor"/><rect x="44" y="79" width="44" height="9" fill="currentColor"/></svg>
         Neue Aufgabe<span class="k">SOTE</span></div>
       <div class="mi">
-        <svg width="14" height="14" viewBox="0 0 100 100">
-          <rect x="12" y="16" width="76" height="9" fill="currentColor"/>
-          <rect x="28" y="37" width="60" height="9" fill="currentColor"/>
-          <path d="M44 62.5 L53 71 L70 54" fill="none" stroke="#2f7d6f"
-                stroke-width="9" stroke-linecap="square"/>
-          <rect x="28" y="79" width="60" height="9" fill="currentColor"/>
-        </svg>
+        <svg width="14" height="14" viewBox="0 0 100 100"><rect x="12" y="16" width="9" height="9" fill="currentColor"/><rect x="28" y="16" width="60" height="9" fill="currentColor"/><rect x="28" y="37" width="9" height="9" fill="currentColor"/><rect x="44" y="37" width="44" height="9" fill="currentColor"/><rect x="44" y="58" width="9" height="9" fill="#2f7d6f"/><rect x="60" y="58" width="28" height="9" fill="#2f7d6f"/><rect x="28" y="79" width="9" height="9" fill="currentColor"/><rect x="44" y="79" width="44" height="9" fill="currentColor"/></svg>
         Bestehende Liste einbinden<span class="k">SOTE</span></div>
     </div>
   </div>
@@ -875,9 +939,10 @@ svg{flex:none}
   <header><span class="no">07</span><h2>Mobil</h2></header>
   <p class="note">Dieselbe Modusmenge quer, wie ADR-0074 es verlangt: kein Modus
   darf aus einer der beiden Zeichnungen fallen, sonst ist er auf dem Telefon
-  unerreichbar. <b>Sieben Einträge sind hier der offene Punkt</b> — die
-  Beschriftungen sind an der Grenze, und ich habe sie absichtlich nicht gekürzt,
-  damit man sieht, wo sie liegt. Der Knopf für die Erfassung sitzt über der
+  unerreichbar. Sieben Einträge, mit denselben
+  vollen Beschriftungen wie in SONE — dort stehen sie und tragen. Meine erste
+  Fassung hatte auf „Räume", „Eingang" und „Korb" gekürzt; das war eine Lösung
+  für ein Problem, das die ausgelieferte Leiste nicht hat. Der Knopf für die Erfassung sitzt über der
   Leiste und nicht darin: er ist eine Handlung, und die Leiste enthält Orte.
   Ziele 44 px, Eingabefelder mindestens 16 px gegen den iOS-Zoom.</p>
   <div class="pair">
@@ -907,31 +972,39 @@ svg{flex:none}
       <div class="fab">+</div>
       <div class="bar">
         <div class="b on">
-          <svg width="19" height="19" viewBox="0 0 100 100">
-            <rect x="12" y="16" width="76" height="9" fill="currentColor"/>
-            <rect x="28" y="37" width="60" height="9" fill="currentColor"/>
-            <path d="M44 62.5 L53 71 L70 54" fill="none" stroke="#2f7d6f"
-                  stroke-width="9" stroke-linecap="square"/>
-            <rect x="28" y="79" width="60" height="9" fill="currentColor"/>
-          </svg><span class="t">Aufgaben</span></div>
+          <svg width="19" height="19" viewBox="0 0 100 100"><rect x="12" y="16" width="9" height="9" fill="currentColor"/><rect x="28" y="16" width="60" height="9" fill="currentColor"/><rect x="28" y="37" width="9" height="9" fill="currentColor"/><rect x="44" y="37" width="44" height="9" fill="currentColor"/><rect x="44" y="58" width="9" height="9" fill="#2f7d6f"/><rect x="60" y="58" width="28" height="9" fill="#2f7d6f"/><rect x="28" y="79" width="9" height="9" fill="currentColor"/><rect x="44" y="79" width="44" height="9" fill="currentColor"/></svg><span class="t">Aufgaben</span></div>
         <div class="b"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"
             stroke="currentColor" stroke-width="1.6"><circle cx="8.5" cy="8.5" r="5.5"/>
             <path d="M12.8 12.8 17 17"/></svg><span class="t">Suche</span></div>
         <div class="b"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"
             stroke="currentColor" stroke-width="1.6"><rect x="2.5" y="2.5" width="6" height="6"/>
             <rect x="11.5" y="2.5" width="6" height="6"/><rect x="2.5" y="11.5" width="6" height="6"/>
-            <rect x="11.5" y="11.5" width="6" height="6"/></svg><span class="t">Räume</span></div>
+            <rect x="11.5" y="11.5" width="6" height="6"/></svg><span class="t">Workspaces</span></div>
         <div class="b"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"
             stroke="currentColor" stroke-width="1.6"><path d="M5 8.5a5 5 0 0 1 10 0v4l1.5 2h-13L5 12.5z"/>
-            <path d="M8 16.5h4"/></svg><span class="t">Eingang</span>
+            <path d="M8 16.5h4"/></svg><span class="t">Posteingang</span>
             <span class="badge">3</span></div>
-        <div class="b"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"
-            stroke="currentColor" stroke-width="1.6"><path d="M3.5 5.5h13M8 5.5V3.5h4v2M5 5.5l1 12h8l1-12"/>
-            </svg><span class="t">Korb</span></div>
         <div class="b"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"
             stroke="currentColor" stroke-width="1.6">
             <path d="M8 12l4-4M7.5 6.5 9 5a3.5 3.5 0 0 1 5 5l-1.5 1.5M12.5 13.5 11 15a3.5 3.5 0 0 1-5-5L7.5 8.5"/>
             </svg><span class="t">Freigaben</span></div>
+        <div class="b"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"
+            stroke="currentColor" stroke-width="1.6"><circle cx="8.5" cy="8.5" r="5.5"/>
+            <path d="M12.8 12.8 17 17"/></svg><span class="t">Suche</span></div>
+        <div class="b"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"
+            stroke="currentColor" stroke-width="1.6"><rect x="2.5" y="2.5" width="6" height="6"/>
+            <rect x="11.5" y="2.5" width="6" height="6"/><rect x="2.5" y="11.5" width="6" height="6"/>
+            <rect x="11.5" y="11.5" width="6" height="6"/></svg><span class="t">Workspaces</span></div>
+        <div class="b"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"
+            stroke="currentColor" stroke-width="1.6"><path d="M5 8.5a5 5 0 0 1 10 0v4l1.5 2h-13L5 12.5z"/>
+            <path d="M8 16.5h4"/></svg><span class="t">Posteingang</span></div>
+        <div class="b"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"
+            stroke="currentColor" stroke-width="1.6">
+            <path d="M8 12l4-4M7.5 6.5 9 5a3.5 3.5 0 0 1 5 5l-1.5 1.5M12.5 13.5 11 15a3.5 3.5 0 0 1-5-5L7.5 8.5"/>
+            </svg><span class="t">Freigaben</span></div>
+        <div class="b"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"
+            stroke="currentColor" stroke-width="1.6"><path d="M3.5 5.5h13M8 5.5V3.5h4v2M5 5.5l1 12h8l1-12"/>
+            </svg><span class="t">Papierkorb</span></div>
         <div class="b"><span class="face" style="width:22px;height:22px;font-size:9px">MT</span>
           <span class="t">Du</span></div>
       </div>
@@ -955,30 +1028,10 @@ svg{flex:none}
       </div>
       <div class="bar">
         <div class="b on">
-          <svg width="19" height="19" viewBox="0 0 100 100">
-            <rect x="12" y="16" width="76" height="9" fill="currentColor"/>
-            <rect x="28" y="37" width="60" height="9" fill="currentColor"/>
-            <path d="M44 62.5 L53 71 L70 54" fill="none" stroke="#6fc0b0"
-                  stroke-width="9" stroke-linecap="square"/>
-            <rect x="28" y="79" width="60" height="9" fill="currentColor"/>
-          </svg><span class="t">Aufgaben</span></div>
-        <div class="b"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"
-            stroke="currentColor" stroke-width="1.6"><circle cx="8.5" cy="8.5" r="5.5"/>
-            <path d="M12.8 12.8 17 17"/></svg><span class="t">Suche</span></div>
-        <div class="b"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"
-            stroke="currentColor" stroke-width="1.6"><rect x="2.5" y="2.5" width="6" height="6"/>
-            <rect x="11.5" y="2.5" width="6" height="6"/><rect x="2.5" y="11.5" width="6" height="6"/>
-            <rect x="11.5" y="11.5" width="6" height="6"/></svg><span class="t">Räume</span></div>
-        <div class="b"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"
-            stroke="currentColor" stroke-width="1.6"><path d="M5 8.5a5 5 0 0 1 10 0v4l1.5 2h-13L5 12.5z"/>
-            <path d="M8 16.5h4"/></svg><span class="t">Eingang</span></div>
+          <svg width="19" height="19" viewBox="0 0 100 100"><rect x="12" y="16" width="9" height="9" fill="currentColor"/><rect x="28" y="16" width="60" height="9" fill="currentColor"/><rect x="28" y="37" width="9" height="9" fill="currentColor"/><rect x="44" y="37" width="44" height="9" fill="currentColor"/><rect x="44" y="58" width="9" height="9" fill="#6fc0b0"/><rect x="60" y="58" width="28" height="9" fill="#6fc0b0"/><rect x="28" y="79" width="9" height="9" fill="currentColor"/><rect x="44" y="79" width="44" height="9" fill="currentColor"/></svg><span class="t">Aufgaben</span></div>
         <div class="b"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"
             stroke="currentColor" stroke-width="1.6"><path d="M3.5 5.5h13M8 5.5V3.5h4v2M5 5.5l1 12h8l1-12"/>
-            </svg><span class="t">Korb</span></div>
-        <div class="b"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"
-            stroke="currentColor" stroke-width="1.6">
-            <path d="M8 12l4-4M7.5 6.5 9 5a3.5 3.5 0 0 1 5 5l-1.5 1.5M12.5 13.5 11 15a3.5 3.5 0 0 1-5-5L7.5 8.5"/>
-            </svg><span class="t">Freigaben</span></div>
+            </svg><span class="t">Papierkorb</span></div>
         <div class="b"><span class="face" style="width:22px;height:22px;font-size:9px">MT</span>
           <span class="t">Du</span></div>
       </div>
@@ -995,10 +1048,12 @@ svg{flex:none}
   <header><span class="no">—</span><h2>Was diese Blätter offen lassen</h2></header>
   <div class="open">
     <ol>
-      <li><b>Signet A oder B.</b> Mein Rat ist B, aus dem Größengrund auf Blatt 01.</li>
-      <li><b>Sieben Einträge in der Fußleiste.</b> Auf Blatt 07 absichtlich
-      ungekürzt gezeigt. „Räume" für Workspaces und „Eingang" für Posteingang
-      sind Notlösungen, die ich nicht mag.</li>
+      <li><b>Punkt 9 / Abstand 7 oder Punkt 8 / Abstand 6</b> beim Signet,
+      und ob das Favicon zweizeilig wird. Blatt 01.</li>
+      <li><b>Sieben Einträge in der Fußleiste tragen</b> — in SONE stehen dort
+      dieselben sieben mit vollen Beschriftungen. Später möglich: die
+      Benachrichtigungen wandern in beiden Werkzeugen ins Profil, dann sind es
+      sechs.</li>
       <li><b>Die Zuweisung in der Erfassungszeile.</b> Auf Blatt 04 als
       <code>+anna</code> gezeigt, aber nicht entschieden.</li>
       <li><b>Status.</b> Alle Blätter zeigen offen und erledigt. Ob es mehr
