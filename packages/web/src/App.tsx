@@ -16,8 +16,9 @@ import { api, ApiError, type Me, type Project } from './api.js';
 import { FootBar } from './components/FootBar.js';
 import { IconRail } from './components/IconRail.js';
 import { modeOf, type ModeId } from './modes.js';
+import { modeOfRoute, parseRoute, pathOf, type Route } from './route.js';
 import { SignIn } from './screens/SignIn.js';
-import { Today } from './screens/Today.js';
+import { TaskList } from './screens/TaskList.js';
 
 const initialsOf = (name: string) =>
   name
@@ -29,8 +30,14 @@ const initialsOf = (name: string) =>
 
 export function App() {
   const [me, setMe] = useState<Me | null | undefined>(undefined);
-  const [mode, setMode] = useState<ModeId>('tasks');
+  const [route, setRoute] = useState<Route>(() => parseRoute(window.location.pathname));
   const [projects, setProjects] = useState<Project[]>([]);
+  const [counts, setCounts] = useState<{
+    today: number;
+    upcoming: number;
+    someday: number;
+    overdue: number;
+  }>({ today: 0, upcoming: 0, someday: 0, overdue: 0 });
   const [workspace, setWorkspace] = useState<string | undefined>(undefined);
   const [drawer, setDrawer] = useState(false);
   const [now] = useState(() => new Date());
@@ -46,23 +53,47 @@ export function App() {
     }
   }, []);
 
-  const loadProjects = useCallback(async () => {
+  const loadPanel = useCallback(async () => {
     if (workspace === undefined) return;
     try {
-      const data = await api.projects(workspace);
-      setProjects(data.projects);
+      const [p, c] = await Promise.all([
+        api.projects(workspace),
+        api.counts(workspace),
+      ]);
+      setProjects(p.projects);
+      setCounts(c);
     } catch {
       setProjects([]);
     }
   }, [workspace]);
+
+  /**
+   * Ein Ort wird betreten, nicht ein Zustand gesetzt.
+   *
+   * `pushState` plus `popstate`: der Zurück-Knopf funktioniert, ein Link ist
+   * teilbar, und es gibt **eine** Antwort auf „wo bin ich" — die URL. Eine
+   * Kopie im Zustand wäre eine zweite (SONE, `claude/suche-als-ort.md`).
+   */
+  const go = useCallback((next: Route) => {
+    const path = pathOf(next);
+    if (window.location.pathname !== path) window.history.pushState(null, '', path);
+    setRoute(next);
+    setDrawer(false);
+  }, []);
+
+  useEffect(() => {
+    const back = () => setRoute(parseRoute(window.location.pathname));
+    window.addEventListener('popstate', back);
+    return () => window.removeEventListener('popstate', back);
+  }, []);
 
   useEffect(() => {
     void loadMe();
   }, [loadMe]);
 
   useEffect(() => {
-    void loadProjects();
-  }, [loadProjects]);
+    void loadPanel();
+  }, [loadPanel]);
 
   if (me === undefined) return <div className="signin" aria-busy="true" />;
   if (me === null) return <SignIn onDone={() => void loadMe()} />;
@@ -73,8 +104,8 @@ export function App() {
   return (
     <div className="app">
       <IconRail
-        active={mode}
-        onPick={setMode}
+        active={modeOfRoute(route) as ModeId}
+        onPick={(id) => go(id === 'tasks' ? { kind: 'today' } : { kind: 'mode', mode: id })}
         inboxCount={0}
         initials={initials}
         onAccount={() => void 0}
@@ -110,16 +141,30 @@ export function App() {
           <input
             placeholder="Aufgaben durchsuchen"
             aria-label="Aufgaben durchsuchen"
-            onFocus={() => setMode('search')}
+            onFocus={() => go({ kind: 'mode', mode: 'search' })}
           />
         </div>
 
         <div className="panel-list">
-          <button className="p-item" aria-current="true">
-            Heute
-          </button>
-          <button className="p-item">Demnächst</button>
-          <button className="p-item">Irgendwann</button>
+          {/* Die Zahlen kommen aus derselben Abfrage wie die Listen. Keine
+              Null: eine Zahl über nichts ist Rauschen in einer ruhigen Zeile. */}
+          {(
+            [
+              ['today', 'Heute', counts.today],
+              ['upcoming', 'Demnächst', counts.upcoming],
+              ['someday', 'Irgendwann', counts.someday],
+            ] as const
+          ).map(([kind, label, n]) => (
+            <button
+              key={kind}
+              className="p-item"
+              aria-current={route.kind === kind}
+              onClick={() => go({ kind })}
+            >
+              {label}
+              {n === 0 ? null : <span className="n">{n}</span>}
+            </button>
+          ))}
 
           <div className="group-label">Projekte</div>
           {projects.length === 0 ? (
@@ -128,14 +173,18 @@ export function App() {
             </div>
           ) : (
             projects.map((p) => (
-              <button key={p.id} className="p-item">
+              <button
+                key={p.id}
+                className="p-item"
+                aria-current={route.kind === 'project' && route.projectId === p.id}
+                onClick={() => go({ kind: 'project', projectId: p.id })}
+              >
                 <span
                   className="p-sq"
                   aria-hidden="true"
                   {...(p.color === null ? {} : { style: { background: p.color } })}
                 />
                 {p.name}
-                {/* Keine Null: eine Zahl über nichts ist Rauschen. */}
                 {p.open === null ? null : <span className="n">{p.open}</span>}
               </button>
             ))
@@ -144,17 +193,18 @@ export function App() {
       </div>
 
       <main className="main">
-        {mode === 'tasks' ? (
-          <Today
+        {route.kind !== 'mode' ? (
+          <TaskList
+            route={route}
             workspace={workspace}
             projects={projects}
             now={now}
-            onProjectsChanged={() => void loadProjects()}
+            onChanged={() => void loadPanel()}
           />
         ) : (
           <>
             <div className="main-head">
-              <h1>{modeOf(mode).label}</h1>
+              <h1>{modeOf(route.mode).label}</h1>
               <div className="sub">noch nicht gebaut</div>
             </div>
             <div className="body">
@@ -169,11 +219,8 @@ export function App() {
       </main>
 
       <FootBar
-        active={mode}
-        onPick={(id) => {
-          setMode(id);
-          setDrawer(false);
-        }}
+        active={modeOfRoute(route) as ModeId}
+        onPick={(id) => go(id === 'tasks' ? { kind: 'today' } : { kind: 'mode', mode: id })}
         inboxCount={0}
         initials={initials}
         onAccount={() => void 0}

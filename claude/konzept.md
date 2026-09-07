@@ -686,6 +686,28 @@ Beim Bauen entschieden, weil es ohne Entscheidung keinen Code gibt:
   „nicht angefasst", `null` heißt „leeren". Geprüft wird die Anwesenheit des
   Schlüssels und nicht die Wahrheit des Werts — sonst nimmt ein Menü beim Setzen
   eines Datums die Priorität mit.
+- **Eine Ansicht steht in der URL** (`/`, `/demnaechst`, `/irgendwann`,
+  `/p/<id>`). Eine Ansicht ist ein Ort, also verlinkbar und mit dem
+  Zurück-Knopf erreichbar; eine Kopie im Komponentenzustand wäre eine zweite
+  Antwort auf „wo bin ich" (SONE, `claude/suche-als-ort.md`). Ein unbekannter
+  Pfad ist Heute und kein Fehlerbildschirm — wer einen alten Link öffnet, will
+  nicht wissen, dass er alt ist. Eine Projekt-Id, die keine uuid ist, wird gar
+  nicht an den Server gegeben.
+- **Ein Bildschirm für alle vier Ansichten.** Was sich unterscheidet, sind
+  Überschrift, Abschnitte und ob man ziehen darf.
+- **Gezogen wird nur, wo die Reihenfolge etwas bedeutet** — in einem Projekt.
+  In „Heute" ist nach Priorität und Zeit sortiert; eine Zeile dort zu ziehen
+  würde einen Schlüssel setzen, den niemand sieht.
+- **Ziehen hat eine Tastaturfassung** (Alt und Pfeiltaste). Eine Reihenfolge,
+  die man nur mit der Maus ändern kann, ist eine, die manche nicht ändern
+  können. Und die Nachbarrechnung liegt in einer reinen Funktion
+  (`reorder.ts`), weil ein Fehler darin unsichtbar bleibt — die Reihe hat
+  hinterher ja *irgendeine* Reihenfolge. Ein Test prüft für jede Kombination
+  von Ausgangs- und Zielstelle, dass die gezeigte Vorschau und die gemeldeten
+  Nachbarn dieselbe Reihenfolge ergeben.
+- **Nach einem fehlgeschlagenen Verschieben wird neu geladen**, nicht
+  zurückgerechnet. Eine selbst gerechnete Rücknahme wäre eine zweite Antwort
+  auf „wie stehen die Zeilen".
 - **Ein widersprüchlicher Auftrag ist 409 mit Grund, kein 500.** Vertauschte
   Nachbarn, leerer Titel, fünfte Priorität: der Aufrufer hat etwas
   Widersprüchliches geschickt, nicht der Server etwas falsch gemacht.

@@ -17,14 +17,20 @@ export function TaskRow({
   pending,
   error,
   projectName,
+  grip,
+  menu,
   onComplete,
+  onOpenMenu,
 }: {
   task: Task;
   now: Date;
   pending?: boolean;
   error?: string | undefined;
   projectName?: string | undefined;
+  grip?: boolean;
+  menu?: import('react').ReactNode;
   onComplete: (task: Task) => void;
+  onOpenMenu?: () => void;
 }) {
   const done = task.completed !== null;
   const planned = task.planned === null ? null : new Date(task.planned);
@@ -32,6 +38,11 @@ export function TaskRow({
 
   return (
     <div className="task" data-done={done} data-pending={pending === true}>
+      {grip === true ? (
+        <span className="grip" aria-hidden="true" title="ziehen, oder Alt und Pfeiltaste">
+          ⠿
+        </span>
+      ) : null}
       <button
         className="task-box"
         data-priority={task.priority}
@@ -77,6 +88,20 @@ export function TaskRow({
         </div>
         {error !== undefined ? <div className="task-error">{error}</div> : null}
       </div>
+
+      {onOpenMenu !== undefined ? (
+        <div className="task-right">
+          <button
+            className="dots"
+            aria-label={`Menü für ${task.title}`}
+            aria-haspopup="menu"
+            onClick={onOpenMenu}
+          >
+            ⋮
+          </button>
+          {menu}
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -783,3 +783,147 @@ input {
     padding-bottom: calc(var(--sote-bar) + 24px);
   }
 }
+
+/* ── Anfasser, Menü, Ziehen ───────────────────────────────────────────────
+   Nachtrag zu den Ansichten: der Griff erscheint erst beim Zeigen, weil eine
+   Reihe ruhender Zeilen keine Griffleiste braucht (Blatt 03). Auf einem Gerät
+   ohne Zeiger steht er dauerhaft — dort gibt es kein Zeigen. */
+
+.task-wrap {
+  position: relative;
+}
+
+.task-wrap[data-dragging="true"] {
+  opacity: 0.4;
+}
+
+.grip {
+  position: absolute;
+  left: -19px;
+  top: 12px;
+  color: var(--line-strong);
+  font-size: 12px;
+  line-height: 1;
+  letter-spacing: -1px;
+  opacity: 0;
+  cursor: grab;
+}
+
+.task:hover .grip,
+.task:focus-within .grip {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .grip {
+    opacity: 1;
+  }
+}
+
+.task-right {
+  position: relative;
+  flex: none;
+  margin-top: 2px;
+}
+
+.dots {
+  color: var(--text-faint);
+  font-size: 15px;
+  line-height: 1;
+  padding: 2px 6px;
+  min-width: var(--sote-tap);
+  min-height: 28px;
+  opacity: 0;
+}
+
+.task:hover .dots,
+.task:focus-within .dots,
+.dots[aria-expanded="true"] {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .dots {
+    opacity: 1;
+  }
+}
+
+.menu {
+  position: absolute;
+  right: 0;
+  top: 28px;
+  z-index: 30;
+  background: var(--raised);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--sote-radius-lg);
+  box-shadow: var(--sote-shadow-lg);
+  padding: 5px;
+  min-width: 220px;
+}
+
+.menu-label {
+  font-family: var(--sote-mono);
+  font-size: 10px;
+  color: var(--text-faint);
+  padding: 6px 9px 4px;
+  letter-spacing: 0.03em;
+}
+
+.menu-label.sep {
+  border-top: 1px solid var(--line);
+  margin: 5px -5px 0;
+  padding-top: 9px;
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 9px;
+  border-radius: var(--sote-radius-md);
+  font-size: 13.5px;
+  width: 100%;
+  text-align: left;
+  min-height: 32px;
+}
+
+.menu-item:hover:not(:disabled) {
+  background: var(--sunken);
+}
+
+.menu-item[aria-current="true"] {
+  background: var(--sunken);
+  font-weight: 500;
+}
+
+.menu-item:disabled {
+  color: var(--text-faint);
+  cursor: default;
+}
+
+.menu-item .k {
+  margin-left: auto;
+  font-family: var(--sote-mono);
+  font-size: 10.5px;
+  color: var(--text-faint);
+}
+
+.menu-item .swatch {
+  width: 11px;
+  height: 11px;
+  border-radius: 2px;
+  flex: none;
+}
+
+/* Ohne diese Stelle gibt es kein „nach ganz unten" — die letzte Zeile hat
+   keinen Nachbarn hinter sich, auf den man zielen könnte. */
+.drop-tail {
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--sote-radius-md);
+  padding: 10px 12px;
+  margin-top: 8px;
+  font-family: var(--sote-mono);
+  font-size: 11px;
+  color: var(--text-faint);
+  text-align: center;
+}

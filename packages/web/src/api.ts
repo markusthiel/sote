@@ -74,6 +74,17 @@ export interface Project {
   open: number | null;
 }
 
+export interface TaskPatch {
+  title?: string;
+  note?: string;
+  planned?: string | null;
+  plannedAllDay?: boolean;
+  due?: string | null;
+  dueAllDay?: boolean;
+  priority?: 1 | 2 | 3 | 4;
+  projectId?: string | null;
+}
+
 export const api = {
   signIn: (email: string, password: string) =>
     call<{ ok: true }>('/api/session', {
@@ -82,9 +93,39 @@ export const api = {
     }),
   signOut: () => call<{ ok: true }>('/api/session', { method: 'DELETE' }),
   me: () => call<Me>('/api/me'),
-  today: (workspace?: string) =>
-    call<{ overdue: Task[]; today: Task[] }>(
-      `/api/today${workspace === undefined ? '' : `?workspace=${workspace}`}`,
+  /** Eine Ansicht. `overdue` ist nur bei `today` gefüllt. */
+  tasks: (
+    view: 'today' | 'upcoming' | 'someday' | 'project',
+    opts: { workspace?: string; project?: string } = {},
+  ) => {
+    const q = new URLSearchParams({ view });
+    if (opts.workspace !== undefined) q.set('workspace', opts.workspace);
+    if (opts.project !== undefined) q.set('project', opts.project);
+    return call<{ view: string; overdue: Task[]; tasks: Task[] }>(`/api/tasks?${q}`);
+  },
+  counts: (workspace?: string) =>
+    call<{ today: number; upcoming: number; someday: number; overdue: number }>(
+      `/api/counts${workspace === undefined ? '' : `?workspace=${workspace}`}`,
+    ),
+  move: (
+    id: string,
+    between: { afterId: string | null; beforeId: string | null },
+    workspace?: string,
+  ) =>
+    call<{ task: Task }>(
+      `/api/tasks/${id}/move${workspace === undefined ? '' : `?workspace=${workspace}`}`,
+      { method: 'POST', body: JSON.stringify(between) },
+    ),
+  /**
+   * Nur die genannten Felder. Ein fehlender Schlüssel heißt „nicht angefasst",
+   * `null` heißt „leeren" — dieselbe Regel wie im Server, und sie muss hier
+   * stehen, damit `JSON.stringify` kein `undefined` verschluckt und daraus
+   * versehentlich „nicht angefasst" macht, wo „leeren" gemeint war.
+   */
+  patch: (id: string, fields: TaskPatch, workspace?: string) =>
+    call<{ task: Task }>(
+      `/api/tasks/${id}${workspace === undefined ? '' : `?workspace=${workspace}`}`,
+      { method: 'PATCH', body: JSON.stringify(fields) },
     ),
   projects: (workspace?: string) =>
     call<{ projects: Project[] }>(
