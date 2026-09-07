@@ -1,0 +1,21 @@
+# SOTE — aus dem Quellstand bauen statt ein Abbild zu ziehen.
+#
+# Als Überlagerung und nicht als zweite vollständige Datei: eine Kopie von
+# `docker-compose.yml` mit einem geänderten Feld ist eine Kopie, die
+# auseinanderläuft — und man merkt es an der Stelle, an der beide Dateien gleich
+# aussehen sollten.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
+#
+# Dafür da, bis der Bau-Workflow einmal gelaufen ist: vorher liegt kein Abbild
+# in der Registry, und ein `docker compose up` bekäme nur einen 404. Danach
+# weiterhin nützlich für einen Zweig, für den nichts veröffentlicht wird.
+
+services:
+  server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    # Überschreibt den Registry-Namen, damit `docker compose` nicht versucht,
+    # das selbst gebaute Abbild anschließend zu ziehen.
+    image: sote-local

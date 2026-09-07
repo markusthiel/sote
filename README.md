@@ -34,6 +34,23 @@ cp .env.example .env      # SOTE_DB_PASSWORD ausfüllen
 docker compose up -d
 ```
 
+Das zieht `ghcr.io/markusthiel/sote:main`. **Solange der Bau-Workflow
+nicht einmal gelaufen ist, gibt es dieses Abbild nicht** — dann aus dem
+Quellstand bauen:
+
+```
+docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
+```
+
+Der Workflow braucht ein Repository-Secret `REGISTRY_TOKEN` mit den Bereichen
+`write:package` und `read:package`. Der automatische Actions-Token kann keine
+Pakete schreiben; ein Push scheitert damit mit „401 reqPackageAccess".
+
+Die Vorgabe ist `:main` und nicht `:latest`: `:latest` wird erst für ein
+Nicht-Vorab-Tag veröffentlicht, und eine Vorgabe darauf gäbe vorher einen 404 —
+was wie ein kaputtes Deployment aussieht und nicht wie ein unveröffentlichtes
+Projekt.
+
 Der Server migriert beim Start selbst und liefert die gebaute Oberfläche mit
 aus — ein Ursprung für beides, damit der Sitzungskeks ohne CORS auskommt. Er
 bindet nur an localhost; davor gehört ein Reverse Proxy mit TLS, weil der Keks

@@ -1,0 +1,12 @@
+# Was nicht in den Bau-Kontext gehört. Ohne diese Datei wandern node_modules
+# und dist des Arbeitsrechners mit — und dann baut das Abbild nicht aus dem
+# Quellstand, sondern aus dem, was hier gerade herumliegt.
+node_modules
+**/node_modules
+dist
+**/dist
+*.tsbuildinfo
+.git
+.env
+design
+claude

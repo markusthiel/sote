@@ -29,7 +29,24 @@ services:
       retries: 20
 
   server:
-    build: .
+    # Ein gebautes Abbild aus der Registry, nicht ein Bau auf dem Zielrechner:
+    # ein Deployment, das baut, braucht dort eine Werkzeugkette und scheitert
+    # zu einem Zeitpunkt, an dem niemand hinsieht.
+    #
+    # **Vorgabe ist `:main`, nicht `:latest`.** `:latest` wird erst fuer ein
+    # Nicht-Vorab-Tag veroeffentlicht; solange es keines gibt, gaebe eine
+    # Vorgabe darauf beim Pullen einen 404 -- und das liest sich wie ein
+    # kaputtes Deployment und nicht wie ein unveroeffentlichtes Projekt.
+    # Dieselbe Erfahrung wie in SONE (ADR-0013). Ab dem ersten Release steht
+    # hier `:latest`.
+    #
+    # `:main` aendert sich mit jedem Push auf main. Wer das deployt, nimmt das
+    # in Kauf; fuer einen Stand, der nicht unter einem weggeht, setzt man
+    # SOTE_IMAGE auf eine Version.
+    #
+    # Aus dem Quellstand bauen statt ziehen:
+    #   docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
+    image: ${SOTE_IMAGE:-ghcr.io/markusthiel/sote:main}
     restart: unless-stopped
     depends_on:
       db:

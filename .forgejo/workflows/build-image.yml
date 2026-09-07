@@ -1,0 +1,311 @@
+# SOTE — das Abbild bauen und veröffentlichen.
+#
+# Nach dem Vorbild von SONEs `.github/workflows/build-image.yml`, und drei
+# Dinge daraus sind dort als hart erarbeitet dokumentiert. Sie stehen hier
+# nicht, weil sie klug klingen, sondern weil jedes davon einen Lauf gekostet
+# hat:
+#
+#   1. **Kein `container:` am Job.** Das Standard-Image des Runners hat einen
+#      Docker-Daemon; ein eigenes Container-Image nimmt ihn weg. Die Meldung
+#      lautet dann ehrlich „no daemon reachable", und die Ursache ist die eigene
+#      Konfiguration und nicht der Runner.
+#   2. **Die `docker/*`-Actions lösen auf dieser Instanz auf.** Der Spiegel
+#      trägt sie.
+#   3. **Der automatische Actions-Token darf keine Pakete schreiben.** Ein Push
+#      scheitert mit „401 reqPackageAccess". Es braucht ein Repository-Secret
+#      `REGISTRY_TOKEN` mit `write:package`, und bewusst ohne Rückfall auf den
+#      automatischen Token: ein Rückfall auf etwas, das nicht schreiben kann,
+#      macht aus einem fehlenden Secret einen verwirrenden Rechtefehler.
+#
+# Erzeugte Tags:
+#   main            jeder Push auf main. Entwicklungsstand, nicht für Betrieb.
+#   X.Y.Z und X.Y   ein Versions-Tag.
+#   latest          ein Versions-Tag, das keine Vorabversion ist.
+#
+# Ein veröffentlichtes Versions-Tag wird nicht bewegt; `latest` und `main` sind
+# die beiden beweglichen Zeiger.
+#
+# Und der Punkt, der SOTE von SONE unterscheidet: **geprüft wird vor dem
+# Veröffentlichen, nicht danach.** Zuerst in den lokalen Daemon laden, dann
+# hineinsehen, dann pushen. Umgekehrt wäre ein schlechtes Abbild kurz das
+# veröffentlichte — und bei einem Versions-Tag dauerhaft, weil ein solches Tag
+# nicht bewegt wird.
+
+name: Build image
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+
+jobs:
+  # Zuerst prüfen, dann bauen.
+  #
+  # Der Bau hing anfangs an keinem Test, und damit hätte jeder Push auf main ein
+  # ungeprüftes Abbild nach `:main` veröffentlicht — also genau in das, was ein
+  # Deployment zieht. Ein Abbild, das niemand befragt hat, ist kein Abbild, das
+  # man deployen sollte.
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: sote
+          POSTGRES_PASSWORD: sote
+          POSTGRES_DB: sote_test
+          # Dieselbe Collation wie im Betrieb. Ohne sie sortiert die
+          # Testdatenbank die Sortierschlüssel anders als die echte, und der
+          # eine Test, der das prüft, wäre grün an der falschen Stelle.
+          POSTGRES_INITDB_ARGS: "--locale=C --encoding=UTF8"
+        options: >-
+          --health-cmd "pg_isready -U sote -d sote_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+        ports:
+          - 5432:5432
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile
+
+      - name: Wächter
+        run: node scripts/check-migrations.mjs
+
+      - name: Typprüfung
+        run: pnpm -r typecheck
+
+      - name: Tests
+        env:
+          SOTE_TEST_DATABASE_URL: postgres://sote:sote@127.0.0.1:5432/sote_test
+        run: pnpm -r test
+
+  image:
+    needs: check
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    # Bewusst kein `container:` — siehe Punkt 1 oben.
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Volle Geschichte, damit `git describe` das nächste Tag findet.
+          fetch-depth: 0
+
+      - name: Registry-Token verlangen
+        env:
+          REGISTRY_TOKEN: ${{ secrets.REGISTRY_TOKEN }}
+        run: |
+          set -eu
+          if [ -z "${REGISTRY_TOKEN}" ]; then
+            cat <<'MSG' >&2
+          REGISTRY_TOKEN ist nicht gesetzt.
+
+          Der automatische Actions-Token kann keine Pakete schreiben; ein Push
+          scheitert mit "401 reqPackageAccess". Also: in Forgejo einen Token mit
+          den Bereichen write:package und read:package anlegen und als
+          Repository-Secret REGISTRY_TOKEN hinterlegen.
+
+          Sonst ist nichts blockiert. Dieser Stand ist auch ohne Abbild
+          deploybar:
+
+            docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
+          MSG
+            exit 1
+          fi
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Version und Tags bestimmen
+        id: meta
+        run: |
+          set -eu
+          IMAGE="ghcr.io/${GITHUB_REPOSITORY}"
+
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+            TAGS="${IMAGE}:${VERSION} ${IMAGE}:$(echo "$VERSION" | cut -d. -f1,2)"
+            # `latest` zeigt nie auf eine Vorabversion.
+            case "$VERSION" in
+              *-*) : ;;
+              *) TAGS="$TAGS ${IMAGE}:latest" ;;
+            esac
+          else
+            # Ein Bau von main muss über dem Tag sortieren, dem er folgt. In
+            # SONE ist genau das zweimal schiefgegangen und hat eine laufende
+            # Instanz mit einer leeren Seite angehalten, weil die Versionshürde
+            # den neuen Bau korrekt als Rückschritt gelesen hat.
+            #
+            # SOTE hat noch keine Versionshürde, also kostet ein falscher Wert
+            # hier nichts außer einer irreführenden Beschriftung. Die Regel wird
+            # trotzdem eingehalten: Commits nach einem stabilen Tag gehören zum
+            # nächsten Patch.
+            described="$(git describe --tags --long --always 2>/dev/null || echo '')"
+            described="${described#v}"
+            case "$described" in
+              *-*-g*)
+                sha="${described##*-g}"
+                without_sha="${described%-g$sha}"
+                commits="${without_sha##*-}"
+                base="${without_sha%-$commits}"
+                case "$base" in
+                  *-*)
+                    # Nach einer Vorabversion: dieselbe Basis, mehr Commits.
+                    VERSION="${base}.${commits}.g${sha}"
+                    ;;
+                  *)
+                    # Nach einem stabilen Tag: der nächste Patch, als Vorabversion.
+                    major="$(echo "$base" | cut -d. -f1)"
+                    minor="$(echo "$base" | cut -d. -f2)"
+                    patch="$(echo "$base" | cut -d. -f3)"
+                    VERSION="${major}.${minor}.$((patch + 1))-dev.${commits}.g${sha}"
+                    ;;
+                esac
+                ;;
+              *)
+                VERSION="0.0.0-dev.0.g${described}"
+                ;;
+            esac
+            TAGS="${IMAGE}:main"
+          fi
+
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tags=$TAGS" >> "$GITHUB_OUTPUT"
+          {
+            echo 'tags_multiline<<EOF'
+            for t in $TAGS; do echo "$t"; done
+            echo 'EOF'
+          } >> "$GITHUB_OUTPUT"
+          echo "Baue $VERSION als: $TAGS"
+
+      - name: Platz vor dem Bauen
+        # Berichtet, weil „der Bau fühlt sich langsam an" keine Zahl ist und die
+        # erste Frage lautet, ob der Runner volläuft.
+        run: |
+          set -eu
+          df -h / | tail -1
+          docker system df || true
+
+      - name: Bauen
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          # In den lokalen Daemon geladen, nicht gepusht: erst hineinsehen,
+          # dann veröffentlichen.
+          push: false
+          load: true
+          tags: ${{ steps.meta.outputs.tags_multiline }}
+          # Kein Cache-Backend: `type=gha` braucht den Cache-Dienst von GitHub
+          # Actions, den eine Forgejo-Instanz nicht zwingend hat, und ein Cache,
+          # der nicht auflöst, lässt den Bau scheitern.
+
+      - name: Abbild prüfen, bevor es veröffentlicht wird
+        run: |
+          set -eu
+          FIRST="$(echo '${{ steps.meta.outputs.tags }}' | awk '{print $1}')"
+
+          # Ein Abbild, das baut, ist kein Abbild, das läuft. Geprüft wird, was
+          # tatsächlich fehlen kann: der Einstiegspunkt des Servers, die gebaute
+          # Oberfläche, die Migrationen.
+          echo "Inhalt:"
+          docker run --rm --entrypoint /bin/sh "$FIRST" -c '
+            set -e
+            for f in packages/server/dist/main.js \
+                     packages/core/dist/index.js \
+                     packages/web/dist/index.html \
+                     packages/server/migrations/0001_init.sql; do
+              if [ -e "$f" ]; then echo "  ok      $f"; else echo "  FEHLT   $f"; exit 1; fi
+            done
+            printf "  node %s\n" "$(node --version)"
+          '
+
+          # Und nicht als root. Das Dockerfile sagt `USER node`; eine
+          # Behauptung im Dockerfile ist noch keine Messung.
+          echo
+          echo "Rechte:"
+          uid="$(docker run --rm --entrypoint /bin/sh "$FIRST" -c 'id -u')"
+          if [ "$uid" = "0" ]; then
+            echo "  der Server würde als root laufen" >&2
+            exit 1
+          fi
+          echo "  läuft als uid $uid"
+
+          # Der Healthcheck aus compose fragt /api/health. Ohne Datenbank kommt
+          # der Server nicht bis dorthin — geprüft wird darum nur, dass er ohne
+          # SOTE_DATABASE_URL mit einer benennbaren Meldung abbricht und nicht
+          # stumm hängt.
+          echo
+          echo "Start ohne Datenbank:"
+          out="$(docker run --rm "$FIRST" 2>&1 || true)"
+          echo "$out" | sed 's/^/  /' | head -5
+          if ! echo "$out" | grep -q 'SOTE_DATABASE_URL'; then
+            echo "  erwartet war eine Meldung über SOTE_DATABASE_URL" >&2
+            exit 1
+          fi
+
+      # Anmelden und pushen, mit Wiederholungen: Registry, Forge und Runner sind
+      # dieselbe Maschine. Wird die Forge kurz unwohl — sie antwortet unter Last
+      # mit 503 —, ist die Registry es im selben Moment, und ein Bau von zwei
+      # Minuten wäre für einen Schluckauf von fünf Sekunden weggeworfen. Das ist
+      # die eine Stelle, an der Wiederholen klar richtig ist: das Abbild ist
+      # gebaut und geprüft, und es zweimal zu pushen ist harmlos.
+      - name: An der Registry anmelden
+        env:
+          REGISTRY_TOKEN: ${{ secrets.REGISTRY_TOKEN }}
+        run: |
+          set -eu
+          registry=ghcr.io
+
+          # Vorher berichtet, damit das Protokoll „Registry ist unten" von
+          # „diese Zugangsdaten sind falsch" unterscheidet. 401 ist hier die
+          # gesunde Antwort: der Endpunkt existiert und will Anmeldung.
+          code=$(curl -s -o /dev/null -m 20 -w '%{http_code}' "https://$registry/v2/" || echo "keine-antwort")
+          echo "Registry /v2/ antwortete: $code (401 ist erwartet und gesund)"
+
+          for attempt in 1 2 3 4 5; do
+            if printf '%s' "$REGISTRY_TOKEN" \
+                 | docker login "$registry" --username thiel --password-stdin; then
+              echo "angemeldet im Versuch $attempt"
+              exit 0
+            fi
+            echo "Versuch $attempt gescheitert, neuer in $((attempt * 10))s" >&2
+            sleep $((attempt * 10))
+          done
+
+          echo "Anmeldung an $registry nach fünf Versuchen gescheitert." >&2
+          echo "Meldete die Probe oben 5xx, war die Forge unwohl und nicht der" >&2
+          echo "Token falsch — dann diesen Workflow erneut starten." >&2
+          echo "Meldete sie 401 und die Anmeldung scheitert trotzdem, braucht" >&2
+          echo "REGISTRY_TOKEN die Bereiche write:package und read:package." >&2
+          exit 1
+
+      - name: Pushen
+        run: |
+          set -eu
+          for tag in ${{ steps.meta.outputs.tags }}; do
+            pushed=""
+            for attempt in 1 2 3; do
+              echo "pushe $tag (Versuch $attempt)"
+              if docker push "$tag"; then
+                pushed="ja"
+                break
+              fi
+              echo "Push gescheitert, neuer in $((attempt * 15))s" >&2
+              sleep $((attempt * 15))
+            done
+            if [ -z "$pushed" ]; then
+              echo "$tag nach drei Versuchen nicht gepusht." >&2
+              exit 1
+            fi
+          done
+          echo
+          echo "Veröffentlicht: ${{ steps.meta.outputs.tags }}"
