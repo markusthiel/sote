@@ -8,6 +8,7 @@
 
 import { MODES, type ModeId } from '../modes.js';
 import { AccountMenu } from './AccountMenu.js';
+import { SidebarIcon } from './icons.js';
 
 export function IconRail({
   active,
@@ -17,6 +18,8 @@ export function IconRail({
   email,
   onSettings,
   onSignOut,
+  sidebarVisible,
+  onToggleSidebar,
 }: {
   active: ModeId;
   onPick: (id: ModeId) => void;
@@ -25,9 +28,26 @@ export function IconRail({
   email: string;
   onSettings: () => void;
   onSignOut: () => void;
+  sidebarVisible: boolean;
+  onToggleSidebar: () => void;
 }) {
   return (
     <nav className="rail" aria-label="Bereiche">
+      {/*
+        Der Umschalter für die Leiste, ganz oben und über den Bereichen.
+        Er gehört zur Anordnung und nicht zu den Orten — deshalb abgesetzt,
+        wie das Konto unten.
+      */}
+      <button
+        className="rail-slot"
+        aria-label={sidebarVisible ? 'Leiste ausblenden' : 'Leiste einblenden'}
+        aria-pressed={sidebarVisible}
+        title={sidebarVisible ? 'Leiste ausblenden' : 'Leiste einblenden'}
+        onClick={onToggleSidebar}
+      >
+        <SidebarIcon size={19} />
+      </button>
+      <span className="rail-gap" />
       {MODES.map((mode) => (
         <button
           key={mode.id}

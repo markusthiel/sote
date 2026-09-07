@@ -14,6 +14,8 @@ import { useCallback, useEffect, useState } from 'react';
 
 import { api, ApiError, type Me, type Project } from './api.js';
 import { useScheme } from './appearance.js';
+import { useSidebar } from './hooks/useSidebar.js';
+import { useSidebarWidth } from './hooks/useSidebarWidth.js';
 import { FootBar } from './components/FootBar.js';
 import { IconRail } from './components/IconRail.js';
 import { ProjectTree } from './components/ProjectTree.js';
@@ -39,7 +41,22 @@ export function App() {
     overdue: number;
   }>({ today: 0, upcoming: 0, someday: 0, overdue: 0 });
   const [workspace, setWorkspace] = useState<string | undefined>(undefined);
-  const [drawer, setDrawer] = useState(false);
+  /*
+   * Die Leiste: **ein** Zustand, nicht zwei.
+   *
+   * Hier stand `const [drawer, setDrawer] = useState(false)` — ein Flag, das
+   * nur unter 800 px etwas bedeutete, und das **nirgends auf `true` gesetzt
+   * wurde**. Die Schublade ließ sich also gar nicht öffnen; auf dem Telefon war
+   * die Projektliste unerreichbar.
+   *
+   * `useSidebar` ist aus SONE kopiert und löst beides: ein Zustand für beide
+   * Layouts, mit dem Unterschied in der **Vorgabe** statt im Zustand — als
+   * Spalte ist Zeigen die Vorgabe und Verbergen eine gemerkte Vorliebe, als
+   * Schublade ist Verborgen die einzig sinnvolle Vorgabe, und sie schließt beim
+   * Navigieren wieder.
+   */
+  const sidebar = useSidebar(route);
+  const panelWidth = useSidebarWidth();
   const [openTask, setOpenTask] = useState<string | null>(null);
   const [panelBusy, setPanelBusy] = useState(false);
   const [panelError, setPanelError] = useState<string | undefined>(undefined);
@@ -93,7 +110,9 @@ export function App() {
       else window.history.pushState(null, '', path);
     }
     setRoute(next);
-    setDrawer(false);
+    // Das Schließen beim Navigieren macht `useSidebar` selbst — und nur für
+    // die Schublade. Eine Spalte zu schließen, weil jemand geklickt hat, wäre
+    // zum Wahnsinnigwerden.
   }, []);
 
   useEffect(() => {
@@ -195,7 +214,7 @@ export function App() {
   const wsName = me.workspaces.find((w) => w.id === workspace)?.name ?? 'Kein Workspace';
 
   return (
-    <div className="app" data-detail={openTask !== null}>
+    <div className="app" data-detail={openTask !== null} data-sidebar={sidebar.visible}>
       <IconRail
         active={modeOfRoute(route) as ModeId}
         onPick={(id) => go(id === 'tasks' ? { kind: 'today' } : { kind: 'mode', mode: id })}
@@ -204,11 +223,31 @@ export function App() {
         email={me.email}
         onSettings={() => go({ kind: 'settings' })}
         onSignOut={signOut}
+        sidebarVisible={sidebar.visible}
+        onToggleSidebar={sidebar.toggle}
       />
 
-      {drawer ? <div className="scrim" onClick={() => setDrawer(false)} /> : null}
+      {sidebar.visible && !sidebar.isColumn ? (
+        <div className="scrim" onClick={sidebar.close} />
+      ) : null}
 
-      <div className="panel" data-open={drawer}>
+      <div className="panel" data-open={sidebar.visible}>
+        {/*
+          Der Griff an der rechten Kante.
+          Nur als Spalte: eine Schublade hat keine Kante, an der man ziehen
+          könnte, ohne die Seite darunter zu treffen. Doppelklick setzt zurück,
+          weil das jemand versuchen wird.
+        */}
+        {sidebar.isColumn ? (
+          <div
+            className="panel-grip"
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="Breite der Leiste"
+            onMouseDown={panelWidth.startResize}
+            onDoubleClick={panelWidth.reset}
+          />
+        ) : null}
         <div className="panel-head">
           <button className="ws" aria-label="Workspace wechseln">
             <span className="ws-dot" aria-hidden="true" />

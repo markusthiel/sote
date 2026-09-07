@@ -973,6 +973,25 @@ Beim Bauen entschieden, weil es ohne Entscheidung keinen Code gibt:
   `if (me === undefined) return …`, lief also beim Anmeldebildschirm nicht und
   beim angemeldeten schon — React #310, weißer Bildschirm. Kein Test hat es
   gemerkt, weil keiner die Anwendung rendert.
+- **Die Leiste: ein Zustand, nicht zwei** (`useSidebar`, aus SONE kopiert).
+  Hier stand ein `drawer`-Flag, das nur unter 800 px etwas bedeutete — und das
+  **nirgends auf `true` gesetzt wurde**. Die Schublade ließ sich gar nicht
+  öffnen; auf dem Telefon war die Projektliste unerreichbar.
+  - Der Unterschied zwischen den Layouts liegt in der **Vorgabe**, nicht im
+    Zustand: als Spalte ist Zeigen die Vorgabe und Verbergen eine gemerkte
+    Vorliebe; als Schublade ist Verborgen die einzig sinnvolle Vorgabe, und sie
+    schließt beim Navigieren.
+  - Ein zweites Flag hatte SONE schon: die Leiste kam beim Drehen eines Tablets
+    von selbst zurück, und das liest sich, als hätte die Anwendung vergessen,
+    was man ihr gesagt hat.
+  - Die Breite steht als `--sote-panel` **am Dokument** und nicht in einem
+    Prop: sie gehört zur Rasterregel, und die steht im Stylesheet.
+  - Ausgeblendet heißt **keine Spalte**, nicht eine leere: eine Spalte mit
+    Breite 0 lässt Rand und Schatten stehen, und die sieht man.
+  - **Ein Griff, der zur Hälfte abgeschnitten ist, ist halb so breit.** Erste
+    Fassung: fünf Pixel über die Kante hinaus, bei `overflow: hidden` der
+    Leiste. Anfassbar blieben vier statt zehn — im Browser gemessen, bei x+2
+    traf man den Griff, bei x+5 die Leiste dahinter.
 - **`pnpm check` ist genau das, was die CI fährt.** Erst standen die Prüfungen
   einzeln in der Workflow-Datei, und `pnpm -r typecheck` scheiterte dort — in
   einem frischen Klon gibt es kein `dist`, und `@sote/core` zeigt mit `types`

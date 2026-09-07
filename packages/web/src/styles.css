@@ -228,9 +228,56 @@ input {
 
 .app {
   display: grid;
+  /* Die Breite kommt aus `--sote-panel`, und `useSidebarWidth` schreibt sie an
+     `<html>`. Am Dokument und nicht als Prop, weil sie zur Rasterregel gehört
+     und die im Stylesheet steht, nicht in einem Bauteil (SONEs Begründung). */
   grid-template-columns: var(--sote-rail) var(--sote-panel) 1fr;
   height: 100%;
   overflow: hidden;
+}
+
+/* Ausgeblendet heißt: keine Spalte, nicht eine leere Spalte. Eine Spalte mit
+   Breite 0 lässt Ränder und Schatten stehen, und die sieht man. */
+.app[data-sidebar="false"] {
+  grid-template-columns: var(--sote-rail) 0 1fr;
+}
+
+.app[data-sidebar="false"] .panel {
+  display: none;
+}
+
+/*
+ * Der Griff liegt GANZ INNEN.
+ *
+ * Erste Fassung: `inset: 0 -5px 0 auto`, also fünf Pixel über die Kante
+ * hinaus — und die Leiste hat `overflow: hidden`. Damit war die Hälfte
+ * abgeschnitten und anfassbar blieben vier Pixel statt zehn. Im Browser
+ * gemessen: bei x+2 traf man den Griff, bei x+5 schon die Leiste dahinter.
+ *
+ * Zehn Pixel breit, die Linie sichtbar erst beim Zeigen: eine ständig
+ * gezeichnete Trennlinie neben dem Rand der Leiste wäre ein zweiter Rand.
+ */
+.panel-grip {
+  position: absolute;
+  inset: 0 0 0 auto;
+  width: 10px;
+  cursor: col-resize;
+  z-index: 5;
+}
+
+.panel-grip:hover,
+.panel-grip:active {
+  background: linear-gradient(
+    to right,
+    transparent 7px,
+    var(--accent) 7px,
+    var(--accent) 9px,
+    transparent 9px
+  );
+}
+
+.rail-gap {
+  height: 10px;
 }
 
 .rail,
@@ -312,6 +359,7 @@ input {
 }
 
 .panel {
+  position: relative;
   background: var(--surface);
   border-right: 1px solid var(--line);
   display: flex;
