@@ -50,24 +50,19 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_USER: sote
-          POSTGRES_PASSWORD: sote
-          POSTGRES_DB: sote_test
-          # Dieselbe Collation wie im Betrieb. Ohne sie sortiert die
-          # Testdatenbank die Sortierschlüssel anders als die echte, und der
-          # eine Test, der das prüft, wäre grün an der falschen Stelle.
-          POSTGRES_INITDB_ARGS: "--locale=C --encoding=UTF8"
-        options: >-
-          --health-cmd "pg_isready -U sote -d sote_test"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 20
-        ports:
-          - 5432:5432
+    # **Postgres wird selbst gestartet, nicht als `services:`.**
+    #
+    # Die erste Fassung hatte einen `services:`-Block, und die Tests bekamen
+    # `ECONNREFUSED 127.0.0.1:5432`. Der Runner dieser Instanz ist ein
+    # *hostexecutor* — er führt Schritte direkt auf dem Rechner aus und startet
+    # **keine** Service-Container. Docker ist da (deshalb baut der image-Job),
+    # Services sind es nicht. Also mit `docker run`, was auf diesem Runner
+    # tatsächlich funktioniert, statt mit einer Zutat, die eine andere
+    # Runner-Art voraussetzt.
+    #
+    # Port 55432 und nicht 5432: auf demselben Rechner läuft SONE mit seiner
+    # eigenen Datenbank, und ein belegter Port wäre ein Fehlschlag, dessen
+    # Ursache nirgends steht.
 
     steps:
       - uses: actions/checkout@v4
@@ -77,18 +72,57 @@ jobs:
       - run: corepack enable
       - run: pnpm install --frozen-lockfile
 
+      - name: Postgres starten
+        run: |
+          set -eu
+          docker rm -f sote-ci-pg >/dev/null 2>&1 || true
+          docker run -d --name sote-ci-pg \
+            -e POSTGRES_USER=sote \
+            -e POSTGRES_PASSWORD=sote \
+            -e POSTGRES_DB=sote_test \
+            -e POSTGRES_INITDB_ARGS="--locale=C --encoding=UTF8" \
+            -p 127.0.0.1:55432:5432 \
+            postgres:16-alpine
+
+          # Gewartet wird auf `pg_isready` und nicht auf eine Anzahl Sekunden:
+          # ein `sleep 10` ist entweder zu kurz und der Lauf scheitert
+          # gelegentlich, oder zu lang und jeder Lauf zahlt dafür.
+          for i in $(seq 1 40); do
+            if docker exec sote-ci-pg pg_isready -U sote -d sote_test >/dev/null 2>&1; then
+              echo "Postgres bereit nach $i Versuchen"
+              break
+            fi
+            sleep 1
+          done
+          docker exec sote-ci-pg pg_isready -U sote -d sote_test
+
+          # Dieselbe Collation wie im Betrieb, hier nachgewiesen und nicht
+          # angenommen: ohne sie sortiert die Testdatenbank die
+          # Sortierschlüssel anders als die echte, und der Test, der genau das
+          # prüft, wäre grün an der falschen Stelle.
+          docker exec sote-ci-pg psql -U sote -d sote_test -tAc \
+            "SELECT datcollate FROM pg_database WHERE datname='sote_test'" | grep -qx C
+          echo "Collation ist C"
+
       # Ein Befehl, und es ist derselbe, den jemand hier fährt: `pnpm check`.
       #
       # Vorher standen die drei Schritte einzeln hier — und der zweite hieß
-      # `pnpm -r typecheck`, was in einem frischen Klon **scheitert**: `@sote/core`
-      # zeigt mit `types` auf `dist`, und ohne Bau findet Server und Oberfläche
-      # das Paket nicht. Lokal fiel das nicht auf, weil dist vom letzten Bau
-      # dalag. Die Bauordnung steht jetzt im Skript, nicht in der CI-Datei, damit
-      # es nur eine Liste von Prüfungen gibt.
+      # `pnpm -r typecheck`, was in einem frischen Klon **scheitert**:
+      # `@sote/core` zeigt mit `types` auf `dist`, und ohne Bau findet Server
+      # und Oberfläche das Paket nicht. Lokal fiel das nicht auf, weil dist vom
+      # letzten Bau dalag. Die Bauordnung steht jetzt im Skript, nicht in der
+      # CI-Datei, damit es nur eine Liste von Prüfungen gibt.
       - name: Prüfen
         env:
-          SOTE_TEST_DATABASE_URL: postgres://sote:sote@127.0.0.1:5432/sote_test
+          SOTE_TEST_DATABASE_URL: postgres://sote:sote@127.0.0.1:55432/sote_test
         run: pnpm check
+
+      - name: Postgres wegräumen
+        # Auch bei einem Fehlschlag: ein Container, der stehen bleibt, hält den
+        # Port belegt und lässt den nächsten Lauf an einer ganz anderen Stelle
+        # scheitern.
+        if: always()
+        run: docker rm -f sote-ci-pg || true
 
   image:
     needs: check

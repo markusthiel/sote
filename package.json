@@ -16,18 +16,6 @@
     "check": "node scripts/check-migrations.mjs && pnpm typecheck && pnpm test"
   },
   "devDependencies": {
-    "tsx": "^4.23.13",
-    "typescript": "^5.9.3"
-  },
-  "dependencies": {
-    "@types/node": "^26.5.0",
-    "@types/pg": "^8.23.1",
-    "@types/react": "^19.2.18",
-    "@types/react-dom": "^19.2.7",
-    "@vitejs/plugin-react": "^6.1.1",
-    "pg": "^8.23.0",
-    "react": "^19.2.8",
-    "react-dom": "^19.2.8",
-    "vite": "^8.2.2"
+    "typescript": "^5.7.0"
   }
 }
