@@ -119,6 +119,19 @@ export interface TaskPatch {
 }
 
 export const api = {
+  /** Braucht diese Instanz noch ein erstes Konto? */
+  setupNeeded: () => call<{ needed: boolean }>('/api/setup'),
+  setup: (body: {
+    key: string;
+    email: string;
+    displayName: string;
+    password: string;
+    workspaceName?: string;
+  }) =>
+    call<{ userId: string }>('/api/setup', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
   signIn: (email: string, password: string) =>
     call<{ ok: true }>('/api/session', {
       method: 'POST',

@@ -752,6 +752,24 @@ Beim Bauen entschieden, weil es ohne Entscheidung keinen Code gibt:
   diesem Server ein Konto hat. Per Test gehalten.
 - **Sitzungen liegen in der Datenbank**, nicht in einem signierten Keks: eine
   Abmeldung, die nur der Browser kennt, ist keine.
+- **Das erste Konto entsteht über einen Einrichtungsschlüssel**, den der Server
+  beim Start ins Protokoll wirft, solange es kein Konto gibt. Nicht über eine
+  offene Maske: eine Maske, die es beim ersten Aufruf kann, kann es auch beim
+  tausendsten, sobald die Bedingung „kein Konto" einmal wieder wahr wird — etwa
+  weil jemand das letzte Konto löscht.
+  - Der Schlüssel liegt **im Speicher** des Prozesses und nicht in der
+    Datenbank: dort wäre er ein Geheimnis in jeder Sicherung (ADR-0058). Er
+    verfällt beim Neustart und ist mit dem ersten Konto verbraucht.
+  - **Geprüft wird zuerst die Datenbank, dann der Schlüssel.** Umgekehrt würde
+    eine falsche Eingabe verraten, dass die Einrichtung noch offen ist. Und der
+    Schlüssel im Speicher weiß nichts davon, was ein Skript oder eine zweite
+    Instanz inzwischen getan hat.
+  - **Eine Stelle legt an** (`bootstrap.ts`), benutzt vom Skript und vom
+    Bildschirm. Zwei Umsetzungen von „das erste Konto anlegen" wären zwei
+    Rollenlisten, und die eine hätte irgendwann eine Rolle, die die andere nicht
+    hat.
+  - Nach der Einrichtung ist die Route **410 mit Grund** und nicht 404: ein 404
+    ließe offen, ob der Weg je existiert hat.
 - **`pnpm check` ist genau das, was die CI fährt.** Erst standen die Prüfungen
   einzeln in der Workflow-Datei, und `pnpm -r typecheck` scheiterte dort — in
   einem frischen Klon gibt es kein `dist`, und `@sote/core` zeigt mit `types`

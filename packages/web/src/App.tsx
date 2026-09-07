@@ -18,6 +18,7 @@ import { IconRail } from './components/IconRail.js';
 import { ProjectTree } from './components/ProjectTree.js';
 import { modeOf, type ModeId } from './modes.js';
 import { modeOfRoute, parseRoute, pathOf, type Route } from './route.js';
+import { Setup } from './screens/Setup.js';
 import { SignIn } from './screens/SignIn.js';
 import { TaskList } from './screens/TaskList.js';
 import { Detail } from './screens/Detail.js';
@@ -34,6 +35,7 @@ const initialsOf = (name: string) =>
 
 export function App() {
   const [me, setMe] = useState<Me | null | undefined>(undefined);
+  const [needsSetup, setNeedsSetup] = useState(false);
   const [route, setRoute] = useState<Route>(() => parseRoute(window.location.pathname, window.location.search));
   const [projects, setProjects] = useState<Project[]>([]);
   const [counts, setCounts] = useState<{
@@ -54,9 +56,15 @@ export function App() {
       const data = await api.me();
       setMe(data);
       setWorkspace(data.workspaces[0]?.id);
-    } catch (e) {
-      if (e instanceof ApiError && e.status === 401) setMe(null);
-      else setMe(null);
+    } catch {
+      setMe(null);
+      // Erst wenn keine Sitzung da ist, wird gefragt, ob überhaupt ein Konto
+      // existiert. Vorher wäre es eine Anfrage, deren Antwort niemand braucht.
+      try {
+        setNeedsSetup((await api.setupNeeded()).needed);
+      } catch {
+        setNeedsSetup(false);
+      }
     }
   }, []);
 
@@ -134,7 +142,13 @@ export function App() {
   );
 
   if (me === undefined) return <div className="signin" aria-busy="true" />;
-  if (me === null) return <SignIn onDone={() => void loadMe()} />;
+  if (me === null) {
+    return needsSetup ? (
+      <Setup onDone={() => void loadMe()} />
+    ) : (
+      <SignIn onDone={() => void loadMe()} />
+    );
+  }
 
   const initials = initialsOf(me.displayName);
   const wsName = me.workspaces.find((w) => w.id === workspace)?.name ?? 'Kein Workspace';

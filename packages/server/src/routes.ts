@@ -12,6 +12,13 @@ import { describe as describeRecurrence } from '@sote/core';
 import type { Pool } from 'pg';
 
 import { signIn, signOut, userOfToken } from './auth.js';
+import {
+  BadSetupKey,
+  SetupClosed,
+  setupFirstAccount,
+  userCount,
+  type SetupKey,
+} from './bootstrap.js';
 import { addChild, addComment, detail } from './detail.js';
 import { queryOne, queryRows } from './db.js';
 import { create as createProject, NameTaken, update as updateProject } from './projects.js';
@@ -91,6 +98,8 @@ interface Ctx {
   readonly now: () => Date;
   /** Wurzel der gebauten Oberfläche. Fehlt sie, ist es nur eine API. */
   readonly webRoot?: string | undefined;
+  /** Fehlt in Tests, die die Einrichtung nicht betreffen. */
+  readonly setup?: SetupKey | undefined;
 }
 
 /** Der Arbeitsbereich, in dem diese Person Mitglied ist. */
@@ -134,6 +143,16 @@ export function makeServer(ctx: Ctx): Server {
     handle(ctx, req, res).catch((e: unknown) => {
       if (e instanceof NotFound) {
         fail(res, 404, 'not_found', e.message);
+        return;
+      }
+      if (e instanceof SetupClosed) {
+        // 410 und nicht 404: die Einrichtung gab es, sie ist vorbei. Ein 404
+        // ließe offen, ob der Weg je existiert hat.
+        fail(res, 410, 'setup_done', e.message);
+        return;
+      }
+      if (e instanceof BadSetupKey) {
+        fail(res, 401, 'bad_setup_key', e.message);
         return;
       }
       if (e instanceof NeedsTarget) {
@@ -180,6 +199,53 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
   }
 
   /* ── Anmelden ─────────────────────────────────────────────────────────── */
+
+  /*
+   * Die Einrichtung. Vor der Sitzungsprüfung, weil es hier noch keine gibt.
+   *
+   * `needed` sagt nur, ob es überhaupt kein Konto gibt — nicht, ob ein
+   * Schlüssel bereitliegt. Das ist ohnehin öffentlich sichtbar: eine Instanz
+   * ohne Konto zeigt eine Einrichtungsmaske. Was nicht öffentlich ist, ist der
+   * Schlüssel.
+   */
+  if (path === '/api/setup' && method === 'GET') {
+    json(res, 200, { needed: (await userCount(ctx.pool)) === 0 });
+    return;
+  }
+
+  if (path === '/api/setup' && method === 'POST') {
+    if (ctx.setup === undefined) {
+      fail(res, 410, 'setup_done', 'diese Instanz richtet nicht ein');
+      return;
+    }
+    const body = (await readJson(req)) as Record<string, unknown>;
+    const str = (k: string) => (typeof body?.[k] === 'string' ? (body[k] as string) : '');
+    const id = await setupFirstAccount(ctx.pool, ctx.setup, str('key'), {
+      email: str('email'),
+      displayName: str('displayName'),
+      password: str('password'),
+      ...(str('workspaceName') === '' ? {} : { workspaceName: str('workspaceName') }),
+    });
+    // Gleich angemeldet: wer gerade sein Konto angelegt hat, soll nicht als
+    // Erstes ein Anmeldeformular sehen.
+    const session = await signIn(
+      ctx.pool,
+      str('email'),
+      str('password'),
+      ctx.config.sessionDays,
+      now,
+    );
+    if (session !== null) {
+      res.setHeader(
+        'set-cookie',
+        `${COOKIE}=${session.token}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${
+          ctx.config.sessionDays * 86_400
+        }`,
+      );
+    }
+    json(res, 201, { userId: id });
+    return;
+  }
 
   if (path === '/api/session' && method === 'POST') {
     const body = (await readJson(req)) as { email?: unknown; password?: unknown };
