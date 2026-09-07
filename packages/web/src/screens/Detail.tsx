@@ -19,7 +19,9 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { api, ApiError, type Detail as DetailData, type Task } from '../api.js';
+import { api, ApiError, type Detail as DetailData, type Project, type Task } from '../api.js';
+import { FieldRow, FreeDate } from '../components/FieldRow.js';
+import { whenOptions } from '../components/HandleMenu.js';
 import { whenLabel } from '../dates.js';
 
 const PRIORITY_NAMES = ['', 'Dringend', 'Wichtig', 'Normal', 'Später'] as const;
@@ -42,6 +44,15 @@ export function Detail({
   const [busy, setBusy] = useState(false);
   const [childLine, setChildLine] = useState('');
   const [commentLine, setCommentLine] = useState('');
+  /*
+   * Die Projekte für die Klappe.
+   *
+   * Hier geladen und nicht durchgereicht: die Detailspalte öffnet sich einzeln
+   * und selten, und ein Aufruf beim Öffnen ist billiger als ein Zustand, den
+   * jeder Bildschirm oberhalb mitschleppen muss, nur damit dieser eine
+   * Klappzettel eine Liste hat.
+   */
+  const [projects, setProjects] = useState<Project[]>([]);
   const noteBox = useRef<HTMLTextAreaElement>(null);
 
   const load = useCallback(async () => {
@@ -57,6 +68,30 @@ export function Detail({
     setNotice(undefined);
     void load();
   }, [load]);
+
+  /*
+   * Die Projektliste, einmal beim Öffnen.
+   *
+   * Ein eigener Effekt und nicht Teil von `load()`: die Liste hängt am
+   * Arbeitsbereich und nicht an der Aufgabe, also braucht sie kein Nachladen,
+   * wenn nur ein Datum gespeichert wurde. Scheitert sie, bleibt sie leer und
+   * die Klappe sagt „noch keine Projekte" — kein Grund, die Aufgabe
+   * unbedienbar zu machen.
+   */
+  useEffect(() => {
+    let live = true;
+    void api
+      .projects(workspace)
+      .then((r) => {
+        if (live) setProjects(r.projects);
+      })
+      .catch(() => {
+        if (live) setProjects([]);
+      });
+    return () => {
+      live = false;
+    };
+  }, [workspace]);
 
   async function save<T>(body: () => Promise<T>) {
     setBusy(true);
@@ -120,42 +155,201 @@ export function Detail({
         }}
       />
 
-      <div className="frow">
-        <span className="fl">projekt</span>
-        <span className="fv">
-          {data.projectName ?? <span className="empty-value">ohne Projekt</span>}
-        </span>
-      </div>
-      <div className="frow">
-        <span className="fl">geplant</span>
-        <span className="fv">
-          {task.planned === null ? (
-            <span className="empty-value">kein Datum</span>
-          ) : (
-            whenLabel(new Date(task.planned), task.plannedAllDay, now)
-          )}
-        </span>
-      </div>
-      <div className="frow">
-        <span className="fl">frist</span>
-        <span className="fv">
-          {task.due === null ? (
-            <span className="empty-value">keine</span>
-          ) : (
-            whenLabel(new Date(task.due), true, now)
-          )}
-        </span>
-      </div>
+      {/*
+        Fünf Reihen, die etwas ändern.
+        Vorher standen hier fünf `<span>`: anlegen ging, ändern nicht. Ein
+        Datum konnte man nur beim Tippen mitgeben und danach nie wieder.
+      */}
+      <FieldRow
+        label="projekt"
+        value={data.projectName}
+        empty="ohne Projekt"
+        disabled={busy}
+      >
+        {(close) => (
+          <>
+            {/* Herausnehmen zuerst, weil es die eine Zeile ist, die keinen
+                Namen hat und sonst unter zwanzig Projekten verschwindet. */}
+            <button
+              type="button"
+              role="menuitem"
+              className="fpop-row"
+              disabled={task.projectId === null}
+              onClick={() => {
+                close();
+                void save(() => api.patch(task.id, { projectId: null }, workspace));
+              }}
+            >
+              <span className="empty-value">ohne Projekt</span>
+            </button>
+            {projects.length === 0 ? (
+              <p className="fpop-none">Noch keine Projekte.</p>
+            ) : (
+              projects.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  role="menuitem"
+                  className="fpop-row"
+                  aria-current={p.id === task.projectId}
+                  onClick={() => {
+                    close();
+                    void save(() => api.patch(task.id, { projectId: p.id }, workspace));
+                  }}
+                >
+                  <span
+                    className="fpop-dot"
+                    aria-hidden="true"
+                    style={p.color === null ? undefined : { background: p.color }}
+                  />
+                  {p.name}
+                </button>
+              ))
+            )}
+          </>
+        )}
+      </FieldRow>
+
+      <FieldRow
+        label="geplant"
+        value={
+          task.planned === null
+            ? null
+            : whenLabel(new Date(task.planned), task.plannedAllDay, now)
+        }
+        empty="kein Datum"
+        disabled={busy}
+      >
+        {(close) => (
+          <>
+            {whenOptions(now).map((o) => (
+              <button
+                key={o.label}
+                type="button"
+                role="menuitem"
+                className="fpop-row"
+                onClick={() => {
+                  close();
+                  void save(() =>
+                    api.patch(
+                      task.id,
+                      { planned: o.at.toISOString(), plannedAllDay: o.allDay },
+                      workspace,
+                    ),
+                  );
+                }}
+              >
+                {o.label}
+                {/* Das Datum nur, wenn es etwas hinzufügt: bei „heute" stand
+                    „heute heute" — eine Wiederholung, die man erst liest und
+                    dann wegdenkt. Im Bild aufgefallen, nicht im Code. */}
+                {whenLabel(o.at, o.allDay, now) === o.label ? null : (
+                  <span className="fpop-aside">{whenLabel(o.at, o.allDay, now)}</span>
+                )}
+              </button>
+            ))}
+            <button
+              type="button"
+              role="menuitem"
+              className="fpop-row"
+              disabled={task.planned === null}
+              onClick={() => {
+                close();
+                void save(() => api.patch(task.id, { planned: null }, workspace));
+              }}
+            >
+              <span className="empty-value">kein Datum</span>
+            </button>
+            <FreeDate
+              label="anderer Tag"
+              onPick={(at) => {
+                close();
+                void save(() =>
+                  api.patch(
+                    task.id,
+                    { planned: at.toISOString(), plannedAllDay: true },
+                    workspace,
+                  ),
+                );
+              }}
+            />
+          </>
+        )}
+      </FieldRow>
+
+      {/*
+        Die Frist war bisher NIRGENDS setzbar — nicht im Anfasser-Menü, nicht
+        hier. Ein Feld, das die Oberfläche zeigt und nie füllen kann, ist eine
+        Auskunft über etwas, das es für die Person nicht gibt.
+
+        Ganztägig, immer: eine Frist um 14:37 ist eine Verabredung, keine Frist.
+      */}
+      <FieldRow
+        label="frist"
+        value={task.due === null ? null : whenLabel(new Date(task.due), true, now)}
+        empty="keine"
+        disabled={busy}
+      >
+        {(close) => (
+          <>
+            <button
+              type="button"
+              role="menuitem"
+              className="fpop-row"
+              disabled={task.due === null}
+              onClick={() => {
+                close();
+                void save(() => api.patch(task.id, { due: null }, workspace));
+              }}
+            >
+              <span className="empty-value">keine Frist</span>
+            </button>
+            <FreeDate
+              label="fällig am"
+              onPick={(at) => {
+                close();
+                void save(() =>
+                  api.patch(task.id, { due: at.toISOString(), dueAllDay: true }, workspace),
+                );
+              }}
+            />
+          </>
+        )}
+      </FieldRow>
+
       {task.recurrence !== null ? (
         <div className="frow">
           <span className="fl">wiederholt</span>
           <span className="fv">{task.recurrence.says}</span>
         </div>
       ) : null}
-      <div className="frow">
-        <span className="fl">priorität</span>
-        <span className="fv">{PRIORITY_NAMES[task.priority]}</span>
-      </div>
+
+      <FieldRow
+        label="priorität"
+        value={PRIORITY_NAMES[task.priority] ?? null}
+        empty="ohne"
+        disabled={busy}
+      >
+        {(close) =>
+          ([1, 2, 3, 4] as const).map((level) => (
+            <button
+              key={level}
+              type="button"
+              role="menuitem"
+              className="fpop-row"
+              aria-current={level === task.priority}
+              onClick={() => {
+                close();
+                void save(() => api.patch(task.id, { priority: level }, workspace));
+              }}
+            >
+              <span className="fpop-dot" data-priority={level} aria-hidden="true" />
+              {PRIORITY_NAMES[level]}
+            </button>
+          ))
+        }
+      </FieldRow>
+
       <div className="frow">
         <span className="fl">zuständig</span>
         <span className="fv">

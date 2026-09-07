@@ -1416,3 +1416,186 @@ select.target {
   margin: 6px 0;
   user-select: all;
 }
+
+/* ── Anfassbare Reihen in der Detailspalte ──────────────────────────────────
+   Der Befund, der das nötig machte: projekt, geplant, frist und priorität
+   standen als fünf <span> da. Anlegen ging, ändern nicht.
+
+   Eine Reihe, die etwas ändert, muss aussehen wie eine — sonst findet sie
+   niemand, und das war ja genau der Fehler. Also derselbe Wechsel auf Hover
+   wie bei den Aufgabenzeilen und rechts ein Zeichen, das die Klappe
+   ankündigt. */
+
+.frow {
+  position: relative;
+}
+
+.fv-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: var(--sote-tap);
+  margin: -8px -8px -8px 0;
+  padding: 8px;
+  border: 0;
+  border-radius: var(--sote-radius-md);
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  outline-offset: -2px;
+}
+
+.fv-button:hover:not(:disabled) {
+  background: var(--sunken);
+}
+
+.fv-button:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+/* Erst auf Hover und Fokus sichtbar: vier ständig stehende Pfeile in einer
+   Spalte, die vor allem lesen soll, sind vier Punkte Unruhe. */
+.fv-caret {
+  margin-left: auto;
+  color: var(--text-faint);
+  font-size: 10px;
+  opacity: 0;
+  transition: opacity 90ms linear;
+}
+
+.fv-button:hover .fv-caret,
+.fv-button:focus-visible .fv-caret,
+.frow[data-open="true"] .fv-caret {
+  opacity: 1;
+}
+
+.fpop {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% - 4px);
+  /* Nur rechts verankert, damit die Klappe nach LINKS wächst.
+     Mit `left` UND `right` klebt sie an der Breite der Reihe, und ein
+     `min-width` darüber schiebt sie über den rechten Rand hinaus — genau das
+     hat der Randcheck im Browser gemeldet, drei Pixel weit. */
+  right: 8px;
+  /* Breit genug für „nächster Montag" neben seinem Datum. Vorher brach die
+     Zeile auf dem Schreibtisch um, weil die Klappe dort schmaler ist als auf
+     dem Telefon — im Bild aufgefallen. */
+  min-width: 268px;
+  max-width: calc(100vw - 24px);
+  padding: 5px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--sote-radius-lg);
+  background: var(--raised);
+  box-shadow: var(--sote-shadow-lg);
+}
+
+.fpop-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  min-height: 32px;
+  padding: 7px 9px;
+  border: 0;
+  border-radius: var(--sote-radius-md);
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 13.5px;
+  text-align: left;
+  cursor: pointer;
+}
+
+/* Umbruch verboten: eine Angabe, die über zwei Zeilen läuft, sieht wie zwei
+   Angaben aus. Lieber schiebt das Datum nach rechts heraus. */
+.fpop-row > :first-child,
+.fpop-row {
+  white-space: nowrap;
+}
+
+.fpop-row:hover:not(:disabled) {
+  background: var(--sunken);
+}
+
+.fpop-row[aria-current="true"] {
+  background: var(--sunken);
+  font-weight: 500;
+}
+
+.fpop-row:disabled {
+  color: var(--text-faint);
+  cursor: default;
+}
+
+/* Das Datum neben der Angabe, damit niemand nachzählt, was „nächster Montag"
+   heißt (dieselbe Regel wie im Anfasser-Menü). */
+.fpop-aside {
+  margin-left: auto;
+  font-family: var(--sote-mono);
+  font-size: 10.5px;
+  color: var(--text-faint);
+}
+
+.fpop-dot {
+  width: 9px;
+  height: 9px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--line-strong);
+}
+
+.fpop-dot[data-priority="1"] {
+  background: var(--danger);
+}
+
+.fpop-dot[data-priority="2"] {
+  background: var(--warning);
+}
+
+.fpop-dot[data-priority="3"] {
+  background: var(--accent);
+}
+
+.fpop-none {
+  margin: 0;
+  padding: 8px 9px;
+  color: var(--text-faint);
+  font-size: 12.5px;
+}
+
+/* Der eingebaute Kalender, nicht ein eigener: er kennt Sprache, Woche und
+   Tastatur der Person. */
+.fpop-date {
+  border-top: 1px solid var(--line);
+  margin: 5px -5px 0;
+  padding: 8px 9px 4px;
+}
+
+.fpop-date label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.fpop-date span {
+  font-family: var(--sote-mono);
+  font-size: 10px;
+  color: var(--text-faint);
+  letter-spacing: 0.03em;
+}
+
+.fpop-date input {
+  min-height: 32px;
+  padding: 4px 6px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--sote-radius-md);
+  background: var(--page);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+}

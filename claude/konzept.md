@@ -779,6 +779,33 @@ Beim Bauen entschieden, weil es ohne Entscheidung keinen Code gibt:
     denen einer nicht eingeplant war.
   - **Konto, Arbeitsbereich, Rollen und Kennwort in einer Transaktion.** Ein
     Konto ohne Kennwort ist ein Konto, in das niemand kommt.
+- **Die Detailspalte ändert, sie berichtet nicht.** `projekt`, `geplant`,
+  `frist` und `priorität` waren fünf `<span>` — anlegen ging, ändern nicht, und
+  ein Datum konnte man nur beim Tippen der ersten Zeile mitgeben. Gefunden
+  nicht durch Nachdenken, sondern durch Anklicken im echten Browser.
+  - **Eine Reihe, die etwas ändert, muss aussehen wie eine.** Knopf über die
+    ganze Breite, derselbe Wechsel auf Hover wie bei den Aufgabenzeilen, rechts
+    ein Zeichen, das die Klappe ankündigt — und das nur auf Hover und Fokus,
+    weil vier ständig stehende Pfeile in einer Lesespalte vier Punkte Unruhe
+    sind.
+  - Die Beschriftung nennt **Feld und Wert**: „geplant: Mo, 14. Sept. —
+    ändern". „Ändern" allein sagt einer Vorleseansage nicht, was sich ändert.
+  - **Die Frist war nirgends setzbar** — nicht im Anfasser-Menü, nicht in der
+    Spalte. Ein Feld, das die Oberfläche zeigt und nie füllen kann, ist eine
+    Auskunft über etwas, das es für die Person nicht gibt. Immer ganztägig:
+    eine Frist um 14:37 ist eine Verabredung.
+  - **Ein freies Datum** neben den drei schnellen Angaben, mit `type="date"` —
+    der eingebaute Kalender kennt Sprache, Woche und Tastatur der Person, ein
+    selbstgebauter müsste das nachbilden, um schlechter zu sein. Der Wert wird
+    als **lokaler** Tag gebaut: `new Date('2026-10-14')` ist Mitternacht UTC
+    und in Berlin der 14. um 02:00.
+  - **Die Klappe wächst nach links**, nur rechts verankert. Mit `left` und
+    `right` klebt sie an der Breite der Reihe, und ein `min-width` darüber
+    schiebt sie über den Rand — drei Pixel weit, gemessen im Browser.
+- **Was nur im Bild auffällt, fällt nur im Bild auf.** Zwei Sachen dieser Art:
+  „heute heute" (Angabe und Datum waren dasselbe Wort) und „Mi, 14. Okto" —
+  Monatskürzel aus `slice(0, 4)`, was bei sieben von zwölf Monaten kein
+  deutsches Kürzel trifft. Kürzel sind jetzt eine geprüfte Liste.
 - **`pnpm check` ist genau das, was die CI fährt.** Erst standen die Prüfungen
   einzeln in der Workflow-Datei, und `pnpm -r typecheck` scheiterte dort — in
   einem frischen Klon gibt es kein `dist`, und `@sote/core` zeigt mit `types`

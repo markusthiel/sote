@@ -13,6 +13,23 @@ const MONTHS = [
   'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember',
 ] as const;
 
+/*
+ * Die Kürzel als Liste, nicht als `slice(0, 4)`.
+ *
+ * Der Fehler, den das ersetzt, stand im Browser: eine Frist am 14. Oktober
+ * las sich als „Mi, 14. Okto". Abschneiden nach vier Zeichen trifft bei
+ * sieben von zwölf Monaten kein deutsches Kürzel — „Janu", „Apri", „Augu",
+ * „Nove", „Deze", „Febr", „Okto".
+ *
+ * Also die Kürzel nach Duden, und wo der Monatsname selbst kurz ist (März,
+ * Mai, Juni, Juli), bleibt er ganz und ohne Punkt: ein Punkt behauptet eine
+ * Abkürzung, die nicht stattgefunden hat.
+ */
+const MONTHS_SHORT = [
+  'Jan.', 'Feb.', 'März', 'Apr.', 'Mai', 'Juni',
+  'Juli', 'Aug.', 'Sept.', 'Okt.', 'Nov.', 'Dez.',
+] as const;
+
 const startOfDay = (d: Date) =>
   new Date(d.getFullYear(), d.getMonth(), d.getDate());
 
@@ -29,7 +46,7 @@ export function whenLabel(at: Date, allDay: boolean, now: Date): string {
   if (diff === 0) return allDay ? 'heute' : `heute, ${time}`;
   if (diff === 1) return allDay ? 'morgen' : `morgen, ${time}`;
   if (diff === -1) return allDay ? 'gestern' : `gestern, ${time}`;
-  const day = `${DAYS[at.getDay()]}, ${at.getDate()}. ${MONTHS[at.getMonth()]!.slice(0, 4)}`;
+  const day = `${DAYS[at.getDay()]}, ${at.getDate()}. ${MONTHS_SHORT[at.getMonth()]}`;
   return allDay ? day : `${day}, ${time}`;
 }
 
