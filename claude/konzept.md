@@ -462,6 +462,86 @@ liegt.
 
 ---
 
+## 8b. Anhänge
+
+Bilder und Dokumente an einer Aufgabe. Entschieden am 2026-09-07, gezeichnet in
+`design/artboards-4.html`; **nichts davon ist gebaut.**
+
+### Wo ein Anhang hängt
+
+**An der Aufgabe, nicht am Kommentar.** Blatt 05 sagt es schon für Kommentare
+und Dateien: beides liegt *in* der Aufgabe, damit Diskussion und Material im
+Zusammenhang bleiben. Ein Anhang trägt optional den Kommentar, in dem er
+auftauchte — als Herkunftsangabe und nicht als Besitzverhältnis. Umgekehrt
+verschwände er mit einem gelöschten Kommentar, und das ist der Fall, den niemand
+erwartet.
+
+### Nur `local`, und keine Variable für etwas anderes
+
+SONEs ADR-0107 ist hier die Warnung und nicht das Vorbild: dort stand `s3` in
+der Beispieldatei, mit sechs Einstellungen darunter, und **nichts hatte es
+implementiert.** Die Uploads gingen trotzdem auf das lokale Volume, und die
+Sicherung übersprang dieses Volume dann, weil das Flag behauptete, die Dateien
+lägen woanders.
+
+Also: ein Volume, keine `SOTE_STORAGE_BACKEND`. Kommt ein zweites Backend, kommt
+die Variable mit ihm.
+
+### Bilder wie in SONE (ADR-0029)
+
+Im Browser verkleinern, **bevor** etwas hochgeht. Original plus Web-Variante bis
+2048 px. Das kommt geprüft aus SONE, und beide Systeme verhalten sich dann
+gleich — ein Bild, das in SONE anders ankommt als in SOTE, wäre eine Frage, die
+niemand beantworten will.
+
+### Ein Freigabelink lädt nicht hoch
+
+Der Punkt, an dem Anhänge und Gastlinks zusammenstoßen: wer den Link hat, darf
+schreiben, und schreiben hieße dann hochladen — ohne Konto, ohne Namen, bis die
+Platte voll ist. Der Pflicht-Ablauf aus Blatt 09 begrenzt das zeitlich, nicht
+mengenmäßig.
+
+**Entschieden: über einen Link wird nicht hochgeladen.** Ein Kontingent wäre die
+andere Antwort, und es ist die schlechtere: eine Zahl, die niemand pflegt, und
+ein Gast, der beim Hochladen abgewiesen wird, ohne vorher zu wissen, dass es
+eine Grenze gab. Wer hochladen soll, bekommt ein Konto.
+
+Gäste **sehen** Anhänge. Lesen ist keine Menge.
+
+### Der Papierkorb sagt, wie viel er hält
+
+„Kein automatisches Leeren" (Abschnitt 8a) bleibt richtig: eine Frist, die von
+selbst löscht, ist eine Löschung, die niemand angeordnet hat. Aber die
+Begründung stand unter der Annahme, dass eine weggeworfene Aufgabe eine
+Textzeile ist. Mit Anhängen liegt darin ein PDF von zwölf Megabyte, und der
+Papierkorb wird ein Verzeichnis, das nur wächst.
+
+**Ergänzung statt Umkehr: der Papierkorb nennt seine Größe**, je Eintrag und
+gesamt. Eine Zahl, die man sieht, ist der ehrliche Ersatz für eine Frist, die
+man nicht will.
+
+### Die Sicherung wird zweiteilig
+
+Bis jetzt ist der ganze Zustand von SOTE ein `pg_dump`. Mit Dateien liegt die
+Hälfte auf einem Volume, und ein Datenbankabzug allein ist dann **kein**
+Wiederherstellungspunkt mehr. Dazu gehört der Waisen-Sweep aus ADR-0109 —
+Dateien ohne Zeile —, und dessen Lehre war, dass das Schema einen anderen Sweep
+beschrieb als den, der gebraucht wurde. Also erst die Frage stellen, welche
+Richtung verwaist, und dann den Sweep schreiben.
+
+### Was geprüft wird, und wo
+
+- **Typ und Größe serverseitig**, nicht nur im Browser. Eine Grenze, die nur der
+  Browser kennt, ist keine.
+- **Der Typ aus dem Inhalt**, nicht aus der Endung und nicht aus dem
+  `Content-Type` der Anfrage: beides schreibt der Absender.
+- **Ausgeliefert wird mit `Content-Disposition: attachment`** und
+  `X-Content-Type-Options: nosniff`, außer bei Bildern, die inline gezeigt
+  werden. Eine hochgeladene HTML-Datei, die im selben Ursprung wie die
+  Anwendung geöffnet wird, ist der Sitzungskeks in fremder Hand.
+
+---
+
 ## 9. Erinnerungen
 
 Vorhanden und übertragbar: der Notify-Rahmen für die Glocke (ADR-0093), das

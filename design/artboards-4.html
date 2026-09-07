@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SOTE — Artboards 4: Anhänge</title>
+<link rel="stylesheet" href="artboards.css">
+</head>
+<body>
+<div class="sheet">
+
+<div class="masthead">
+  <div class="stamp">SOTE / Artboards 4 / 2026-09-07 / Grundlage: claude/konzept.md, Abschnitt 8b</div>
+  <h1>Anhänge</h1>
+  <p>Bilder und Dokumente an einer Aufgabe. Vier Blätter, und drei von ihnen
+  zeigen nicht die Funktion, sondern ihre Grenzen: was der Browser vor dem
+  Hochladen tut, was ein Gast nicht darf, und was der Papierkorb dadurch über
+  sich sagen muss.</p>
+</div>
+
+<!-- 16 ────────────────────────────────────────────────────── -->
+<section class="board">
+  <header><span class="no">16</span><h2>Ein Anhang liegt in der Aufgabe</h2></header>
+  <p class="note">Blatt 05 sagt es schon für Kommentare und Dateien: beides
+  liegt <b>in</b> der Aufgabe, damit Diskussion und Material im Zusammenhang
+  bleiben. Ein Anhang trägt optional den Kommentar, in dem er auftauchte — als
+  <b>Herkunftsangabe und nicht als Besitzverhältnis</b>. Hinge er am Kommentar,
+  verschwände er mit einem gelöschten Kommentar, und das ist der Fall, den
+  niemand erwartet.</p>
+  <p class="note">Ein Bild wird gezeigt, ein Dokument benannt. Der Unterschied
+  ist keine Vorliebe: ein Bild sagt sich selbst, was es ist, ein PDF sagt es nur
+  über seinen Namen. Und ausgeliefert werden die beiden verschieden —
+  Bilder inline, alles andere als Download (Abschnitt 8b).</p>
+  <div class="pair">
+    <div class="frame">
+      <div class="detail" style="border-left:0">
+        <div class="dh"><div class="t">Netzwerkdosen zählen</div></div>
+        <div class="frow"><span class="fl">projekt</span>
+          <span class="fv"><span class="crumb"><span class="sq" style="background:#6a675f"></span>Umzug Büro</span></span></div>
+        <div class="frow"><span class="fl">geplant</span><span class="fv">heute, 09:30</span></div>
+        <div class="thread">
+          <div class="glabel" style="padding:0 0 4px">Anhänge <span style="color:var(--ink-350)">3</span></div>
+          <div class="files">
+            <div class="file">
+              <span class="thumb"></span>
+              <span class="nm">grundriss-eg.jpg</span>
+              <span class="mt">1,2 MB</span>
+              <span class="x">×</span>
+            </div>
+            <div class="file">
+              <span class="ic">PDF</span>
+              <span class="nm">angebot-netzwerktechnik.pdf</span>
+              <span class="mt">340 kB</span>
+              <span class="x">×</span>
+            </div>
+            <div class="file">
+              <span class="ic">XLSX</span>
+              <span class="nm">dosen-pro-raum.xlsx</span>
+              <span class="mt">18 kB</span>
+              <span class="x">×</span>
+            </div>
+          </div>
+          <div class="shot">grundriss-eg.jpg — Web-Variante, 2048 px</div>
+          <div class="drop">Datei hierher ziehen oder <code>anhängen</code></div>
+        </div>
+      </div>
+    </div>
+    <div class="frame" data-theme="dark">
+      <div class="detail" style="border-left:0">
+        <div class="dh"><div class="t">Netzwerkdosen zählen</div></div>
+        <div class="thread">
+          <div class="glabel" style="padding:0 0 4px">Gespräch</div>
+          <div class="cmt"><span class="who">LB</span>
+            <div><div class="mt">Lars B. — vor 2 Stunden</div>
+              <div class="bd">Im Erdgeschoss sind es 14, im ersten 9.</div>
+              <div class="files" style="margin-top:6px">
+                <div class="file" style="border:0;padding:5px 0">
+                  <span class="ic">PDF</span>
+                  <span class="nm">angebot-netzwerktechnik.pdf</span>
+                  <span class="mt">340 kB</span>
+                </div>
+              </div>
+            </div></div>
+          <div class="cmt"><span class="who a">MT</span>
+            <div><div class="mt">Markus T. — vor 40 Minuten</div>
+              <div class="bd">Dann passt das Angebot.</div></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="caps">
+    <div class="cap">die Liste an der Aufgabe — alles, was hängt</div>
+    <div class="cap">dieselbe Datei im Kommentar, aus dem sie kam</div>
+  </div>
+  <p class="note" style="margin-top:22px">Rechts steht dieselbe Datei ein
+  zweites Mal, und das ist Absicht: sie liegt an der Aufgabe und wird beim
+  Kommentar <b>gezeigt</b>. Zwei Zeilen, ein Anhang. Die Alternative wäre eine
+  Datei, die nur im Gespräch auftaucht und in der Liste fehlt — und dann ist
+  „was hängt an dieser Aufgabe" nicht mehr beantwortbar.</p>
+</section>
+
+<!-- 17 ────────────────────────────────────────────────────── -->
+<section class="board">
+  <header><span class="no">17</span><h2>Hochladen, und was vorher passiert</h2></header>
+  <p class="note"><b>Der Browser verkleinert, bevor etwas hochgeht</b> — Original
+  plus Web-Variante bis 2048 px, wie ADR-0029 in SONE. Das kommt geprüft von
+  dort, und beide Systeme verhalten sich dann gleich: ein Bild, das in SONE
+  anders ankommt als in SOTE, wäre eine Frage, die niemand beantworten will.</p>
+  <p class="note">Vier Zustände, und die letzten beiden sind der eigentliche
+  Inhalt dieses Blattes. Eine Grenze, die nur der Browser kennt, ist keine —
+  <b>Typ und Größe werden serverseitig geprüft</b>, und der Typ <b>aus dem
+  Inhalt</b> und nicht aus der Endung oder dem <code>Content-Type</code> der
+  Anfrage: beides schreibt der Absender.</p>
+  <div class="frame">
+    <div class="detail" style="border-left:0;max-width:none">
+      <div class="thread">
+        <div class="glabel" style="padding:0 0 6px">Anhänge</div>
+        <div class="files">
+          <div class="file" data-state="up">
+            <span class="thumb" style="opacity:.5"></span>
+            <span class="nm">grundriss-og.jpg
+              <div class="bar-track"><span class="bar-fill" style="width:62%;display:block"></span></div>
+            </span>
+            <span class="mt">2,4 MB → 480 kB</span>
+          </div>
+          <div class="file">
+            <span class="thumb"></span>
+            <span class="nm">grundriss-eg.jpg</span>
+            <span class="mt">1,2 MB</span>
+            <span class="x">×</span>
+          </div>
+          <div class="file" data-state="bad">
+            <span class="ic">?</span>
+            <span class="nm">rundgang.mov
+              <div class="mt" style="color:var(--danger)">115 MB — mehr als 50 MB gehen nicht</div>
+            </span>
+            <span class="x">×</span>
+          </div>
+          <div class="file" data-state="bad">
+            <span class="ic">?</span>
+            <span class="nm">notiz.html
+              <div class="mt" style="color:var(--danger)">HTML wird nicht angenommen</div>
+            </span>
+            <span class="x">×</span>
+          </div>
+        </div>
+        <div class="drop hot">loslassen — 2 Dateien</div>
+      </div>
+    </div>
+  </div>
+  <div class="cap">läuft · fertig · zu groß · falscher Typ</div>
+
+  <p class="note" style="margin-top:26px">„HTML wird nicht angenommen" ist keine
+  Prüderie. <b>Eine hochgeladene HTML-Datei, die im selben Ursprung wie die
+  Anwendung geöffnet wird, ist der Sitzungskeks in fremder Hand.</b> Weil SOTE
+  Oberfläche und API absichtlich im selben Ursprung ausliefert — damit der Keks
+  ohne CORS auskommt —, ist das hier ein Verbot und nicht eine Einstellung.
+  Alles, was nicht Bild ist, geht mit <code>Content-Disposition: attachment</code>
+  und <code>nosniff</code> hinaus.</p>
+  <p class="note">Die Zahl „2,4 MB → 480 kB" steht da, weil sie die einzige
+  Rückmeldung darauf ist, dass das Verkleinern überhaupt stattgefunden hat. Ohne
+  sie ist ADR-0029 eine Behauptung im Quelltext.</p>
+</section>
+
+<!-- 18 ────────────────────────────────────────────────────── -->
+<section class="board">
+  <header><span class="no">18</span><h2>Der Papierkorb sagt, wie viel er hält</h2></header>
+  <p class="note">„Kein automatisches Leeren" (Blatt 11) bleibt richtig: eine
+  Frist, die von selbst löscht, ist eine Löschung, die niemand angeordnet hat.
+  Aber die Begründung stand unter der Annahme, dass eine weggeworfene Aufgabe
+  eine <b>Textzeile</b> ist. Mit Anhängen liegt darin ein PDF von zwölf
+  Megabyte, und der Papierkorb wird ein Verzeichnis, das nur wächst.</p>
+  <p class="note"><b>Ergänzung statt Umkehr: er nennt seine Größe</b>, je Eintrag
+  und gesamt. Eine Zahl, die man sieht, ist der ehrliche Ersatz für eine Frist,
+  die man nicht will — und sie beantwortet die Frage, die sonst erst die Platte
+  stellt.</p>
+  <div class="frame">
+    <div class="main" style="min-height:340px">
+      <div class="mhead"><h3>Papierkorb</h3>
+        <div class="sub">Bleibt liegen, bis jemand leert — Erledigtes liegt hier nicht</div></div>
+      <div class="body">
+        <div class="total">Dieser Papierkorb hält
+          <span class="n">14,8 MB in 12 Aufgaben</span></div>
+        <div class="task" style="align-items:flex-start">
+          <div class="tmid">
+            <div class="ttl">Angebot Netzwerktechnik einholen</div>
+            <div class="tmeta"><span class="when">gelöscht vor 2 Tagen — Anna K.</span>
+              <span class="crumb"><span class="sq" style="background:#6a675f"></span>Umzug Büro</span>
+              <span class="rep">2 Anhänge, 12,1 MB</span></div>
+            <div class="peek"><div class="pl">Inhalt</div>
+              Drei Angebote, Frist war der 15. Für Dosen im Erdgeschoss.</div>
+            <div class="restore"><span class="btn">Wiederherstellen</span>
+              <span class="btn q">Endgültig löschen</span></div>
+          </div>
+        </div>
+        <div class="task" style="align-items:flex-start">
+          <div class="tmid">
+            <div class="ttl">Kabelkanäle ausmessen</div>
+            <div class="tmeta"><span class="when">gelöscht vor 3 Wochen — Lars B.</span>
+              <span class="crumb"><span class="sq" style="background:#6a675f"></span>Umzug Büro</span></div>
+            <div class="restore"><span class="btn">Wiederherstellen</span>
+              <span class="btn q">Endgültig löschen</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="cap">die Größe steht nur da, wo es eine gibt — keine „0 Anhänge, 0 kB"</div>
+
+  <p class="note" style="margin-top:22px">Und daraus folgt eine Zweiteilung, die
+  bisher nicht nötig war: <b>der ganze Zustand von SOTE ist bis jetzt ein
+  <code>pg_dump</code>.</b> Mit Dateien liegt die Hälfte auf einem Volume, und
+  ein Datenbankabzug allein ist dann kein Wiederherstellungspunkt mehr. Dazu der
+  Waisen-Sweep aus ADR-0109 — Dateien ohne Zeile —, und dessen Lehre war, dass
+  das Schema einen <i>anderen</i> Sweep beschrieb als den, der gebraucht wurde.
+  Also erst die Frage stellen, welche Richtung verwaist, dann den Sweep
+  schreiben.</p>
+</section>
+
+<!-- 19 ────────────────────────────────────────────────────── -->
+<section class="board">
+  <header><span class="no">19</span><h2>Ein Freigabelink lädt nicht hoch</h2></header>
+  <p class="note">Der Punkt, an dem Anhänge und Gastlinks zusammenstoßen. Wer den
+  Link hat, darf schreiben, und schreiben hieße dann hochladen — <b>ohne Konto,
+  ohne Namen, bis die Platte voll ist</b>. Der Pflicht-Ablauf aus Blatt 09
+  begrenzt das zeitlich, nicht mengenmäßig.</p>
+  <p class="note"><b>Entschieden: über einen Link wird nicht hochgeladen.</b> Ein
+  Kontingent wäre die andere Antwort und die schlechtere — eine Zahl, die niemand
+  pflegt, und ein Gast, der beim Hochladen abgewiesen wird, ohne vorher zu
+  wissen, dass es eine Grenze gab. Wer hochladen soll, bekommt ein Konto.
+  <b>Sehen dürfen Gäste alles</b>: Lesen ist keine Menge.</p>
+  <div class="pair">
+    <div class="frame">
+      <div class="pop">
+        <div class="tabs"><div>Leute <span class="n">3</span></div>
+          <div class="on">Link <span class="n">1</span></div></div>
+        <div class="linkbox">
+          <div class="u">https://sote.example.org/g/7Kq2-vT9m-4Rb</div>
+          <div class="o"><span class="fl">darf</span>
+            <span class="inp">bearbeiten <span class="chev">▾</span></span>
+            <span class="sm" style="margin-left:auto">nicht mehr änderbar</span></div>
+          <div class="o"><span class="fl">Name nötig</span><span class="sw"></span>
+            <span class="sm" style="margin-left:auto">bevor geschrieben wird</span></div>
+          <div class="o"><span class="fl">läuft ab</span>
+            <span class="inp">in 30 Tagen <span class="chev">▾</span></span>
+            <span class="sm" style="margin-left:auto">höchstens ein Jahr</span></div>
+          <div class="o"><span class="fl">hochladen</span>
+            <span class="sm" style="margin-left:auto">geht über einen Link nicht</span></div>
+        </div>
+        <div class="warnrow"><div><b>Anhänge nur mit Konto.</b> Über einen Link
+          lässt sich abhaken, schreiben und kommentieren — Dateien ansehen auch,
+          Dateien hinzufügen nicht.</div></div>
+        <div class="cf"><span class="btn q">Zurückziehen</span>
+          <span class="r"><span class="btn">Schließen</span>
+            <span class="btn pri">Link kopieren</span></span></div>
+      </div>
+    </div>
+    <div class="frame" data-theme="dark">
+      <div class="guest">
+        <div class="gtop">
+          <svg width="16" height="16" viewBox="0 0 100 100">
+            <rect x="12" y="16" width="9" height="9" fill="currentColor"/>
+            <rect x="28" y="16" width="60" height="9" fill="currentColor"/>
+            <rect x="28" y="37" width="9" height="9" fill="currentColor"/>
+            <rect x="44" y="37" width="44" height="9" fill="currentColor"/>
+            <rect x="44" y="58" width="9" height="9" fill="#6fc0b0"/>
+            <rect x="60" y="58" width="28" height="9" fill="#6fc0b0"/>
+            <rect x="28" y="79" width="9" height="9" fill="currentColor"/>
+            <rect x="44" y="79" width="44" height="9" fill="currentColor"/>
+          </svg>
+          <span class="nm">Umzug Büro</span>
+          <span class="rt">als Lars B. — du darfst bearbeiten</span>
+        </div>
+        <div class="gbody">
+          <h3>Netzwerkdosen zählen</h3>
+          <div class="sub">fällig 12. September</div>
+          <div class="glabel" style="padding:6px 0 4px">Anhänge <span style="color:var(--ink-350)">2</span></div>
+          <div class="files">
+            <div class="file"><span class="thumb"></span>
+              <span class="nm">grundriss-eg.jpg</span><span class="mt">1,2 MB</span></div>
+            <div class="file"><span class="ic">PDF</span>
+              <span class="nm">angebot-netzwerktechnik.pdf</span><span class="mt">340 kB</span></div>
+          </div>
+          <div class="sizes-row" style="margin-top:12px">Zum Anhängen brauchst du ein Konto.</div>
+          <div class="glabel" style="padding:14px 0 4px">Gespräch</div>
+          <div class="cmt" style="padding-top:0">
+            <div><div class="mt">du — vor 2 Stunden</div>
+              <div class="bd">Im Erdgeschoss sind es 14, im ersten 9.</div></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="caps">
+    <div class="cap">die Freigabe sagt es vorher, nicht beim Versuch</div>
+    <div class="cap">der Gast sieht die Dateien und darf keine hinzufügen</div>
+  </div>
+  <p class="note" style="margin-top:22px">Die Zeile im Freigabe-Popover ist keine
+  Einstellung, sondern eine Auskunft — sie hat absichtlich keinen Schalter. Ein
+  Schalter dort wäre die Einladung, genau das zu tun, wovon dieses Blatt abrät,
+  und „umstufen nein" gilt für einen Link ohnehin (Blatt 09).</p>
+</section>
+
+<!-- Offen ─────────────────────────────────────────────────── -->
+<section class="board">
+  <header><span class="no">—</span><h2>Was diese Blätter offen lassen</h2></header>
+  <div class="open">
+    <ol>
+      <li><b>50 MB je Datei</b> sind eine Zahl aus dem Bauch. Sie gehört zu den
+      Einstellungen, die nach ADR-0111 abgesichert werden müssen — und anders als
+      SONEs <code>MAX_UPLOAD_MB</code> darf sie erst dann in
+      <code>.env.example</code> stehen, wenn sie auch gelesen wird.</li>
+      <li><b>Eine Grenze pro Arbeitsbereich</b> gibt es nicht. Ohne sie kann ein
+      Mitglied das Volume füllen; mit ihr braucht es eine Anzeige, wie viel noch
+      bleibt, sonst ist sie eine Wand ohne Warnung.</li>
+      <li><b>Ob ein Anhang mit der Aufgabe in den Papierkorb geht</b> oder sofort
+      verschwindet. Blatt 18 zeigt ihn als mitgezählt, also mitgehend — dann ist
+      „endgültig löschen" die einzige Stelle, an der Platz frei wird.</li>
+      <li><b>Was beim Wiederherstellen einer Aufgabe passiert, deren Datei
+      gelöscht wurde.</b> Der Fall entsteht, sobald es einen Waisen-Sweep gibt.</li>
+      <li><b>Bildvorschau in der Liste</b> — Blatt 16 zeigt eine, aber woher die
+      kleine Fassung kommt, ist nicht entschieden: dritte Variante beim Upload
+      oder Skalierung der Web-Variante im Browser.</li>
+      <li><b>Anhänge in der Suche.</b> Ein Dateiname ist Text und wäre findbar;
+      der Inhalt eines PDF ist es nicht, und ihn zu indexieren wäre ein eigenes
+      Projekt.</li>
+    </ol>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

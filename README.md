@@ -70,8 +70,8 @@ es nicht gibt, ist eine Zusage, die nichts einlöst.
 | `SONE_PORT` | `SOTE_PORT` | Host-Port, Vorgabe 32901. |
 | `SONE_PUBLIC_URL` | **noch nicht** | Wird gebraucht, sobald etwas eine absolute URL erzeugt: die Erinnerungsmail, der Freigabelink, der Rückverweis für SONE. Nichts davon ist gebaut, also liest es niemand. |
 | `SONE_LOG_LEVEL` | **noch nicht** | SOTE schreibt auf stdout, ohne Stufen. |
-| `SONE_MAX_UPLOAD_MB` | **nicht nötig** | Es gibt keine Anhänge. |
-| `SONE_STORAGE_BACKEND` | **nicht nötig** | Es gibt keine Dateien. |
+| `SONE_MAX_UPLOAD_MB` | **noch nicht** | Anhänge sind entworfen (Blatt 17), nicht gebaut. Die Zahl kommt in die `.env`, wenn sie gelesen wird — und nicht vorher. |
+| `SONE_STORAGE_BACKEND` | **kommt nicht** | Ein Volume, und keine Variable für ein Backend, das es nicht gibt: genau die Falle aus ADR-0107, wo `s3` dastand, nichts es umsetzte und die Sicherung deshalb das lokale Volume übersprang. |
 | `SONE_SMTP_*` | **noch nicht** | Kein Mailweg. Entworfen ist er (Erinnerungen, Blatt 12), gebaut nicht. |
 | `SONE_IMAP_*`, `SONE_REPLY_MAILBOX` | **noch nicht** | Kein Antworten per Mail. |
 
@@ -101,6 +101,8 @@ Konto wird nicht stillschweigend überschrieben.
   Papierkorb
 - [`design/artboards-3.html`](design/artboards-3.html) — Erinnerungen, CalDAV,
   Einstellungen, Kopplung
+- [`design/artboards-4.html`](design/artboards-4.html) — Anhänge (entworfen,
+  nicht gebaut)
 - [`packages/core`](packages/core) — Schnellerfassung, Wiederholungen,
   Sortierung. Rein und getestet.
 - [`packages/server/migrations`](packages/server/migrations) — das Schema
