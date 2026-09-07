@@ -20,6 +20,7 @@ import {
   type SetupKey,
 } from './bootstrap.js';
 import { addChild, addComment, detail } from './detail.js';
+import { effectiveFor, mayChange, patchSettings, type Scope } from './settings.js';
 import { queryOne, queryRows } from './db.js';
 import { create as createProject, NameTaken, update as updateProject } from './projects.js';
 import type { Config } from './env.js';
@@ -378,6 +379,33 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
       tasks: out.tasks.map(taskView),
       more: out.more,
     });
+    return;
+  }
+
+  /*
+   * Was gilt, und wer was gesagt hat.
+   *
+   * Beides in einer Antwort: die Oberfläche braucht das Ergebnis, um zu
+   * zeichnen, und die einzelnen Ebenen, um im Einstellungsbildschirm zu
+   * zeigen, WOHER ein Wert kommt. Ein Schalter, der „dunkel" zeigt, ohne zu
+   * sagen, dass der Arbeitsbereich das vorgibt, ist eine Auskunft, die zur
+   * Frage wird, sobald man sie ändert und nichts passiert.
+   */
+  if (path === '/api/settings' && method === 'GET') {
+    json(res, 200, await effectiveFor(ctx.pool, userId, workspaceId));
+    return;
+  }
+
+  const oneScope = /^\/api\/settings\/(instance|workspace|user)$/.exec(path);
+  if (oneScope && method === 'PATCH') {
+    const scope = oneScope[1] as Scope;
+    if (!(await mayChange(ctx.pool, scope, userId, workspaceId))) {
+      fail(res, 403, 'not_allowed', 'das darfst du hier nicht ändern');
+      return;
+    }
+    const body = (await readJson(req)) as Record<string, unknown>;
+    const scopeId = scope === 'instance' ? null : scope === 'user' ? userId : workspaceId;
+    json(res, 200, { settings: await patchSettings(ctx.pool, scope, scopeId, body ?? {}) });
     return;
   }
 

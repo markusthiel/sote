@@ -1874,3 +1874,119 @@ select.target {
   left: auto;
   right: 8px;
 }
+
+/* ── Einstellungen ─────────────────────────────────────────────────────────
+   Ein eigener Bildschirm und kein Dialog: ein Dialog über etwas, das man beim
+   Einstellen ansehen will, verdeckt genau das (SONEs ADR-0027). */
+
+.settings {
+  max-width: var(--sote-read);
+  margin: 0 auto;
+  padding: 28px 24px 64px;
+  overflow-y: auto;
+}
+
+.settings-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 22px;
+}
+
+.settings h1 {
+  margin: 0;
+  font-size: 26px;
+  font-weight: var(--sote-heading-weight);
+  letter-spacing: -0.01em;
+}
+
+/* Ein Kasten je Ebene, und die Überschrift sagt, WESSEN Einstellung es ist.
+   In SONE liegen die drei in getrennten Bereichen; hier auf einem Bildschirm,
+   also muss die Zugehörigkeit an der Sache selbst stehen. */
+.set-card {
+  border: 1px solid var(--line);
+  border-radius: var(--sote-radius-lg);
+  background: var(--raised);
+  padding: 16px 18px;
+  margin-bottom: 16px;
+}
+
+.set-card h2 {
+  margin: 0 0 4px;
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.set-card > .muted {
+  margin: 0 0 14px;
+  font-size: 13px;
+}
+
+.set-row {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  padding: 10px 0 2px;
+  border-top: 1px solid var(--line);
+}
+
+.set-label {
+  font-family: var(--sote-mono);
+  font-size: 10.5px;
+  color: var(--text-faint);
+  width: 88px;
+  flex: none;
+  letter-spacing: 0.02em;
+}
+
+.set-value,
+.set-choice {
+  min-width: 0;
+  flex: 1;
+}
+
+/* Eine Reihe aus Möglichkeiten, nicht ein Auswahlfeld: vier Antworten, die
+   alle sichtbar sind, sagen mehr als eine Antwort mit einem Pfeil daneben. */
+.set-choice {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.set-choice button {
+  min-height: 32px;
+  padding: 5px 11px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--sote-radius-md);
+  background: var(--page);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.set-choice button:hover:not(:disabled) {
+  background: var(--sunken);
+}
+
+.set-choice button[aria-checked='true'] {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-on);
+}
+
+.set-value select {
+  min-height: 34px;
+  padding: 5px 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--sote-radius-md);
+  background: var(--page);
+  color: var(--text);
+  font: inherit;
+  font-size: 13.5px;
+}
+
+.small {
+  font-size: 12px;
+}

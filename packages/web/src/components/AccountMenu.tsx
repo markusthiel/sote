@@ -18,9 +18,9 @@
  * what these entries are actually distinguished by."
  *
  * **Abwesend statt anwesend und verweigernd.** Ein Eintrag, der „gibt es nicht"
- * antwortet, bringt Leute dazu, dem Menü zu misstrauen (SONEs ADR-0027). Also
- * steht hier noch **keine** Einstellungszeile: den Bildschirm gibt es nicht.
- * Sobald er da ist, kommt sie — und nicht vorher als Versprechen.
+ * antwortet, bringt Leute dazu, dem Menü zu misstrauen (SONEs ADR-0027). Hier
+ * stand darum eine Runde lang **keine** Einstellungszeile — den Bildschirm gab
+ * es nicht. Jetzt gibt es ihn, und sie steht da.
  *
  * **Zuletzt und abgesetzt** steht das eine, was man nicht durch nochmaliges
  * Drücken zurücknimmt.
@@ -32,7 +32,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 
-import { PersonIcon, SignOutIcon } from './icons.js';
+import { PersonIcon, SettingsIcon, SignOutIcon } from './icons.js';
 
 export function AccountMenu({
   displayName,
@@ -47,11 +47,13 @@ export function AccountMenu({
    */
   label,
   email,
+  onSettings,
   onSignOut,
 }: {
   displayName: string;
   label?: string | undefined;
   email: string;
+  onSettings: () => void;
   onSignOut: () => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -110,6 +112,20 @@ export function AccountMenu({
               <span className="account-mail">{email}</span>
             </span>
           </div>
+          <button
+            type="button"
+            role="menuitem"
+            className="account-item"
+            onClick={() => {
+              setOpen(false);
+              onSettings();
+            }}
+          >
+            <SettingsIcon size={15} />
+            Einstellungen
+          </button>
+          {/* Zuletzt und abgesetzt: das eine hier, was man nicht durch
+              nochmaliges Drücken zurücknimmt. */}
           <button type="button" role="menuitem" className="account-item" onClick={onSignOut}>
             <SignOutIcon size={15} />
             Abmelden

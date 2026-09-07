@@ -13,6 +13,7 @@
 import { useCallback, useEffect, useState } from 'react';
 
 import { api, ApiError, type Me, type Project } from './api.js';
+import { useScheme } from './appearance.js';
 import { FootBar } from './components/FootBar.js';
 import { IconRail } from './components/IconRail.js';
 import { ProjectTree } from './components/ProjectTree.js';
@@ -23,6 +24,7 @@ import { SignIn } from './screens/SignIn.js';
 import { TaskList } from './screens/TaskList.js';
 import { Detail } from './screens/Detail.js';
 import { Search } from './screens/Search.js';
+import { Settings } from './screens/Settings.js';
 import { Trash } from './screens/Trash.js';
 
 export function App() {
@@ -133,6 +135,34 @@ export function App() {
     [loadPanel],
   );
 
+  /*
+   * Was gerade gilt, an <html>.
+   *
+   * Geladen, sobald es eine Sitzung gibt — vorher steht die gemerkte Antwort
+   * dort (`main.tsx`). Fehlt die Anfrage, bleibt die gemerkte stehen: eine
+   * Oberfläche, die bei einem Netzfehler die Farbe wechselt, ist schlimmer als
+   * eine, die die letzte behält.
+   *
+   * **Vor den frühen Rückgaben**, und das war ein echter Fehler: zuerst stand
+   * das hier hinter `if (me === undefined) return …`, also lief es beim
+   * Anmeldebildschirm nicht und beim angemeldeten schon — React zählt dann
+   * unterschiedlich viele Hooks und wirft #310. Der Bildschirm blieb leer, und
+   * kein Test hat es gemerkt, weil keiner die Anwendung rendert. Gefunden im
+   * Browser.
+   */
+  const [scheme, setScheme] = useState<'system' | 'light' | 'dark' | undefined>(undefined);
+  useEffect(() => {
+    // Erst mit Sitzung fragen. Vorher antwortet die Route 401, und ein
+    // erwarteter Fehlschlag im Protokoll ist einer, den man beim Suchen nach
+    // einem echten überliest.
+    if (me === undefined || me === null) return;
+    void api
+      .settings()
+      .then((s) => setScheme(s.effective.scheme))
+      .catch(() => undefined);
+  }, [me, workspace]);
+  useScheme(scheme);
+
   if (me === undefined) return <div className="signin" aria-busy="true" />;
   if (me === null) {
     return needsSetup ? (
@@ -155,6 +185,7 @@ export function App() {
    * Antwort 401 und der Anmeldebildschirm da. Ein Fehler beim Verwerfen darf
    * nicht dazu führen, dass man angemeldet bleibt, obwohl man es nicht will.
    */
+
   const signOut = () => {
     void api
       .signOut()
@@ -171,6 +202,7 @@ export function App() {
         inboxCount={0}
         displayName={me.displayName}
         email={me.email}
+        onSettings={() => go({ kind: 'settings' })}
         onSignOut={signOut}
       />
 
@@ -273,7 +305,14 @@ export function App() {
       </div>
 
       <main className="main">
-        {route.kind !== 'mode' && route.kind !== 'search' ? (
+        {route.kind === 'settings' ? (
+          <Settings
+            workspaceName={wsName}
+            displayName={me.displayName}
+            email={me.email}
+            onClose={() => go({ kind: 'today' })}
+          />
+        ) : route.kind !== 'mode' && route.kind !== 'search' ? (
           <TaskList
             route={route}
             workspace={workspace}
@@ -333,6 +372,7 @@ export function App() {
         inboxCount={0}
         displayName={me.displayName}
         email={me.email}
+        onSettings={() => go({ kind: 'settings' })}
         onSignOut={signOut}
       />
     </div>

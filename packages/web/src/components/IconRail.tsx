@@ -15,6 +15,7 @@ export function IconRail({
   inboxCount,
   displayName,
   email,
+  onSettings,
   onSignOut,
 }: {
   active: ModeId;
@@ -22,6 +23,7 @@ export function IconRail({
   inboxCount: number;
   displayName: string;
   email: string;
+  onSettings: () => void;
   onSignOut: () => void;
 }) {
   return (
@@ -44,7 +46,8 @@ export function IconRail({
       <span className="rail-spacer" />
       {/* Kein Wort unter dem Gesicht: in einer Spalte ist Platz, und der Name
           steht im Menü. Die Fußleiste gibt „Du" mit — siehe AccountMenu. */}
-      <AccountMenu displayName={displayName} email={email} onSignOut={onSignOut} />
+      <AccountMenu displayName={displayName} email={email} onSettings={onSettings}
+        onSignOut={onSignOut} />
     </nav>
   );
 }

@@ -16,6 +16,7 @@ export function FootBar({
   inboxCount,
   displayName,
   email,
+  onSettings,
   onSignOut,
 }: {
   active: ModeId;
@@ -23,6 +24,7 @@ export function FootBar({
   inboxCount: number;
   displayName: string;
   email: string;
+  onSettings: () => void;
   onSignOut: () => void;
 }) {
   return (
@@ -48,6 +50,7 @@ export function FootBar({
         displayName={displayName}
         label="Du"
         email={email}
+        onSettings={onSettings}
         onSignOut={onSignOut}
       />
     </nav>

@@ -937,6 +937,42 @@ Beim Bauen entschieden, weil es ohne Entscheidung keinen Code gibt:
   Einstellungszeile, weil es den Bildschirm nicht gibt. Ein Eintrag, der „gibt
   es nicht" antwortet, bringt Leute dazu, dem Menü zu misstrauen (SONEs
   ADR-0027). Sie kommt, wenn sie hinführt.
+- **Einstellungen auf drei Ebenen** (Migration 0008, SONEs ADR-0124): Person,
+  dann Arbeitsbereich über Instanz, dann das Gerät.
+  - **Eine Tabelle für drei Ebenen.** Sie unterscheiden sich in genau einem
+    Punkt — wessen Einstellung es ist. Drei Tabellen wären dreimal dasselbe
+    Schema und drei Stellen für jedes neue Feld, und die Auflösung müsste
+    dreimal woanders nachsehen.
+  - **`system` ist eine Wahl und kein fehlender Wert.** Wer ausdrücklich „wie
+    das Gerät" wählt, schlägt einen Arbeitsbereich, der dunkel sagt. Die
+    vierte Antwort ist `null`: „wie die Ebene darüber".
+  - **Was der Kern nicht kennt, bleibt liegen.** Geschrieben wird gelesen,
+    ergänzt, zurückgeschrieben — eine ältere Fassung darf die Werte einer
+    neueren nicht wegwerfen. Das wäre Datenverlust, der wie ein Speichern
+    aussieht.
+  - **Geprüft wird vor dem Schreiben:** ein ungültiger Wert in der Datenbank
+    wäre still, ein abgelehnter Aufruf ist es nicht.
+  - **Die Größen gehören dem Browser, das Schema nicht.** SONEs Begründung:
+    was auf dem Telefon passt, ist auf einem 27-Zoll-Monitor falsch, und ein
+    Abgleich machte die Einstellung des einen Geräts zum Problem des anderen.
+    Eine Vorliebe für dunkel gehört der Person und reist mit.
+  - Im Speicher liegt **eine Kopie der Antwort**, nicht die Antwort: das erste
+    Zeichnen passiert vor der Sitzung, und wer dunkel liest, darf keine halbe
+    Sekunde eine weiße Seite sehen.
+  - **`data-theme` hat einen Schreiber**, auch beim Systemwert. Meine erste
+    Fassung entfernte das Attribut bei `system` und verließ sich auf eine
+    `prefers-color-scheme`-Regel — die es in SOTEs CSS nicht gibt. Das hätte
+    jeden, der „wie das Gerät" wählt, ins Helle geschickt.
+  - **Woher ein Wert kommt, steht dabei.** Ein Schalter, der „dunkel" zeigt,
+    ohne zu sagen, dass der Arbeitsbereich das vorgibt, wird zur Frage, sobald
+    man ihn ändert und nichts passiert.
+  - Bei der Instanz gibt es **kein** „nichts gesagt": darüber steht nichts
+    mehr, also hätte es dieselbe Wirkung wie „wie das Gerät" — zwei Knöpfe mit
+    demselben Wort nebeneinander, im Bild aufgefallen.
+- **Hooks stehen vor den frühen Rückgaben.** Der Abruf des Schemas stand hinter
+  `if (me === undefined) return …`, lief also beim Anmeldebildschirm nicht und
+  beim angemeldeten schon — React #310, weißer Bildschirm. Kein Test hat es
+  gemerkt, weil keiner die Anwendung rendert.
 - **`pnpm check` ist genau das, was die CI fährt.** Erst standen die Prüfungen
   einzeln in der Workflow-Datei, und `pnpm -r typecheck` scheiterte dort — in
   einem frischen Klon gibt es kein `dist`, und `@sote/core` zeigt mit `types`

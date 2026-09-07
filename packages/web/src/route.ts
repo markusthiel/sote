@@ -25,7 +25,14 @@ export type Route =
    * ersten Gebrauch auseinander (SONE, `claude/suche-als-ort.md`).
    */
   | { readonly kind: 'search'; readonly q: string }
-  | { readonly kind: 'mode'; readonly mode: string };
+  | { readonly kind: 'mode'; readonly mode: string }
+  /**
+   * Einstellungen sind ein **Ort**, keine Klappe.
+   *
+   * Also eine Adresse: man kann sie verlinken, zurückgehen führt zurück, und
+   * ein Neuladen bleibt dort. Ein Dialog kann das alles nicht (SONEs ADR-0027).
+   */
+  | { readonly kind: 'settings' };
 
 /** Die Ansichten, wie der Server sie nennt. */
 export function viewOf(route: Route): 'today' | 'upcoming' | 'someday' | 'project' {
@@ -73,6 +80,8 @@ export function parseRoute(pathname: string, queryString = ''): Route {
       return { kind: 'mode', mode: 'shares' };
     case 'papierkorb':
       return { kind: 'mode', mode: 'trash' };
+    case 'einstellungen':
+      return { kind: 'settings' };
     default:
       // Ein unbekannter Pfad ist Heute und nicht ein Fehlerbildschirm: wer
       // einen alten Link öffnet, will nicht wissen, dass er alt ist.
@@ -92,6 +101,8 @@ export function pathOf(route: Route): string {
       return `/p/${route.projectId}`;
     case 'search':
       return route.q === '' ? '/suche' : `/suche?q=${encodeURIComponent(route.q)}`;
+    case 'settings':
+      return '/einstellungen';
     case 'mode':
       return `/${MODE_PATHS[route.mode] ?? ''}`;
   }

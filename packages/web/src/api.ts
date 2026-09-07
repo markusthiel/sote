@@ -102,6 +102,16 @@ export interface Task {
   sortKey: string;
 }
 
+/** Was gilt, und wer was gesagt hat — beides in einer Antwort. */
+export interface SettingsAnswer {
+  effective: { scheme: 'system' | 'light' | 'dark'; zone?: string };
+  levels: {
+    instance: { scheme?: 'system' | 'light' | 'dark'; zone?: string };
+    workspace: { scheme?: 'system' | 'light' | 'dark'; zone?: string };
+    user: { scheme?: 'system' | 'light' | 'dark'; zone?: string };
+  };
+}
+
 export interface Project {
   id: string;
   parentId: string | null;
@@ -224,6 +234,15 @@ export const api = {
       `/api/tasks/${id}${workspace === undefined ? '' : `?workspace=${workspace}`}`,
       { method: 'PATCH', body: JSON.stringify(fields) },
     ),
+  settings: () => call<SettingsAnswer>('/api/settings'),
+  /** `null` bei einem Feld heißt „nichts gesagt" — die Ebene darüber gilt. */
+  patchSettings: (
+    scope: 'instance' | 'workspace' | 'user',
+    body: Record<string, unknown>,
+  ) => call<{ settings: unknown }>(`/api/settings/${scope}`, {
+    method: 'PATCH',
+    body: JSON.stringify(body),
+  }),
   projects: (workspace?: string) =>
     call<{ projects: Project[] }>(
       `/api/projects${workspace === undefined ? '' : `?workspace=${workspace}`}`,
