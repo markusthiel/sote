@@ -14,10 +14,26 @@ mit den reinen Funktionen und dem Schema.
 
 ```
 pnpm install
-pnpm -r test          # 46 Tests
 pnpm -r typecheck
+pnpm --filter @sote/core test                      # 46 Tests, ohne Datenbank
+SOTE_TEST_DATABASE_URL=postgres://… \
+  pnpm --filter @sote/server test                  # 25 Tests, gegen Postgres
 node scripts/check-migrations.mjs
 ```
+
+Die Testdatenbank muss mit `--locale=C` angelegt sein. Sonst sortiert eine
+sprachabhängige Collation die Sortierschlüssel um und vertauscht Zeilen.
+
+### Deployen
+
+```
+cp .env.example .env      # SOTE_DB_PASSWORD ausfüllen
+docker compose up -d
+```
+
+Der Server migriert beim Start selbst. Er bindet nur an localhost; davor gehört
+ein Reverse Proxy mit TLS, weil der Sitzungskeks sonst im Klartext reist. Eine
+Oberfläche gibt es noch nicht — bislang ist es eine API.
 
 - [`claude/konzept.md`](claude/konzept.md) — die Festlegungen und die offenen
   Punkte
@@ -28,8 +44,9 @@ node scripts/check-migrations.mjs
   Einstellungen, Kopplung
 - [`packages/core`](packages/core) — Schnellerfassung, Wiederholungen,
   Sortierung. Rein und getestet.
-- [`packages/server/migrations/0001_init.sql`](packages/server/migrations/0001_init.sql)
-  — das Schema
+- [`packages/server/migrations`](packages/server/migrations) — das Schema
+- [`packages/server/src/tasks.ts`](packages/server/src/tasks.ts) — was Abhaken
+  bedeutet, und die Heute-Ansicht
 
 ## Was SOTE werden soll
 

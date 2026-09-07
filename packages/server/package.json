@@ -1,0 +1,24 @@
+{
+  "name": "@sote/server",
+  "version": "0.0.0",
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsx watch src/main.ts",
+    "start": "node dist/main.js",
+    "typecheck": "tsc -p tsconfig.test.json --noEmit",
+    "test": "tsx --test test/*.test.ts",
+    "migrate": "tsx src/migrate.ts"
+  },
+  "dependencies": {
+    "@sote/core": "workspace:*",
+    "pg": "^8.13.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/pg": "^8.11.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  }
+}

@@ -622,6 +622,38 @@ Kopplung als etwas, das man einrichten kann, nicht als etwas, das fehlt.
 
 ---
 
+## 10b. Was das Gerippe zusätzlich festgelegt hat
+
+Beim Bauen entschieden, weil es ohne Entscheidung keinen Code gibt:
+
+- **Ein unbekanntes `#projekt` oder `+person` wird gemeldet, nicht erfunden.**
+  Ein `#finanzen`, das stillschweigend ein Projekt anlegt, produziert
+  Karteileichen; eines, das stillschweigend verschwindet, verliert, was jemand
+  gemeint hat. Die Antwort auf `POST /api/tasks` trägt `unknownProject` und
+  `unknownAssignees`, damit die Oberfläche fragen kann.
+- **Ein zweites `#tag` in einer Zeile wird Schlagwort.** Eine Aufgabe hat ein
+  Projekt; ein Zeichen, das erkennbar Syntax ist und trotzdem im Titel landet,
+  sieht wie ein Fehler aus.
+- **Ob eine Erinnerung existiert, steht in `planned_all_day`** und nicht in
+  einem zweiten Schalter. „Morgen" ist ganztägig, „morgen 9 Uhr" nicht — das
+  ist die Regel aus Abschnitt 9, als Spalte.
+- **Der Anker einer kalenderfesten Wiederholung wandert beim Abhaken mit.**
+  Sonst rechnet „jeden zweiten Dienstag" beim zweiten Mal von der falschen
+  Woche aus.
+- **Eine Frist wandert im gleichen Abstand mit** wie der geplante Tag.
+- **Ein Fehler nennt einen maschinenlesbaren Grund** (`no_session`,
+  `empty_line`, `not_a_member`, `no_route`). SONEs Regel aus ADR-0086: eine
+  Oberfläche, die „ging nicht" anzeigt, kann nicht sagen, was zu tun ist.
+- **Falsches Kennwort und unbekanntes Konto geben dieselbe Antwort** und
+  brauchen dieselbe Zeit. Sonst ist die Anmeldemaske ein Verzeichnis, wer auf
+  diesem Server ein Konto hat. Per Test gehalten.
+- **Sitzungen liegen in der Datenbank**, nicht in einem signierten Keks: eine
+  Abmeldung, die nur der Browser kennt, ist keine.
+- **Eine gelaufene Migration wird nicht bearbeitet.** Der Läufer merkt sich den
+  sha256 und wirft, wenn eine Datei sich seit dem Lauf geändert hat.
+
+---
+
 ## 11. Was aus SONE mitkommt, ohne neu entschieden zu werden
 
 - Tokens dreischichtig, warme Neutralrampe, Radien 2/2/4, Archivo +

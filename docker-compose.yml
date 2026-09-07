@@ -1,0 +1,55 @@
+# SOTE — zum Deployen.
+#
+# Zwei Dienste, nichts weiter: die Datenbank und der Server. Die Oberfläche wird
+# vom Server mit ausgeliefert, sobald es eine gibt.
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: sote
+      POSTGRES_PASSWORD: ${SOTE_DB_PASSWORD:?SOTE_DB_PASSWORD fehlt}
+      POSTGRES_DB: sote
+      # Deterministische Collation. Sortierschlüssel sind Fractional Indices und
+      # werden lexikographisch verglichen — eine sprachabhängige Collation
+      # sortiert sie um und vertauscht Zeilen. Dieselbe Zeile steht aus
+      # demselben Grund in SONEs Compose-Datei.
+      #
+      # Sie wirkt nur beim ERSTEN Start, wenn das Datenverzeichnis leer ist.
+      # Eine bestehende Datenbank ändert sie nicht — dafür braucht es ein
+      # Dump-and-Restore in eine neue.
+      POSTGRES_INITDB_ARGS: "--locale=C --encoding=UTF8"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sote -d sote"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  server:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      SOTE_DATABASE_URL: postgres://sote:${SOTE_DB_PASSWORD:?SOTE_DB_PASSWORD fehlt}@db:5432/sote
+      SOTE_PORT: 8080
+      SOTE_SESSION_DAYS: ${SOTE_SESSION_DAYS:-30}
+      SOTE_REMINDER_MAIL_AFTER_MINUTES: ${SOTE_REMINDER_MAIL_AFTER_MINUTES:-10}
+    ports:
+      - "${SOTE_BIND:-127.0.0.1:8080}:8080"
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:8080/api/health').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"
+      interval: 10s
+      timeout: 5s
+      retries: 6
+
+volumes:
+  db-data:

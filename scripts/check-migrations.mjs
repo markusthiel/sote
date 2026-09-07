@@ -81,3 +81,23 @@ if (problems.length > 0) {
 }
 
 console.log(`check-migrations: ${files.length} Migration(en) in Ordnung`);
+
+/*
+ * Und die andere Hälfte derselben Regel: die Collation nützt nichts, wenn die
+ * Datenbank sie nicht hat. Sie wirkt nur beim ersten Start eines leeren
+ * Datenverzeichnisses — wer sie später vermisst, braucht ein Dump-and-Restore.
+ * Also wird hier geprüft, dass sie überhaupt dasteht.
+ */
+try {
+  const compose = readFileSync('docker-compose.yml', 'utf8');
+  if (!/--locale=C\b/.test(compose)) {
+    console.error(
+      'check-migrations: docker-compose.yml nennt --locale=C nicht — ' +
+        'die Sortierschlüssel würden in einer neuen Datenbank umsortiert',
+    );
+    process.exit(1);
+  }
+  console.log('check-migrations: docker-compose.yml nennt --locale=C');
+} catch (e) {
+  if (e.code !== 'ENOENT') throw e;
+}
