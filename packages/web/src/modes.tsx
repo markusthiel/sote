@@ -26,10 +26,27 @@
 import { BellIcon, SearchIcon, ShareIcon, TrashIcon, WorkspacesIcon } from './components/icons.js';
 import { SoteMark } from './components/Logo.js';
 
-export type ModeId = 'tasks' | 'search' | 'workspaces' | 'inbox' | 'shares' | 'trash';
+export type ModeId =
+  | 'tasks'
+  | 'search'
+  | 'workspaces'
+  /** Die Glocke. Der Posteingang ist keine Schiene, sondern eine Aufgabenansicht. */
+  | 'notifications'
+  | 'shares'
+  | 'trash';
 
 export interface Mode {
   readonly id: ModeId;
+  /**
+   * Trägt dieser Bereich eine Zahl?
+   *
+   * **Am Modus und nicht in der Zeichnung**, und der Wächter in `modes.test.ts`
+   * verlangt genau das: `mode.id === 'notifications'` in einer Zeichnung wäre
+   * eine zweite Liste, und zwei Listen laufen auseinander. Mein erster Versuch
+   * schrieb es genau so hin, und der Wächter hat es gemeldet — er ist dafür
+   * gebaut.
+   */
+  readonly badge?: boolean;
   readonly label: string;
   readonly icon: import('react').ReactNode;
 }
@@ -60,9 +77,21 @@ export const MODES: readonly Mode[] = [
     icon: <WorkspacesIcon size={SIZE} />,
   },
   {
-    id: 'inbox',
-    label: 'Posteingang',
+    /*
+     * Die Glocke hieß **Posteingang** und zeigte Aufgaben ohne Projekt.
+     *
+     * Das sind zwei Fragen, und eine Glocke beantwortet nur die zweite: der
+     * Posteingang ist eine **Aufgabenansicht** (was noch nicht einsortiert
+     * ist) und steht darum jetzt zwischen „Irgendwann" und den Projekten.
+     * Benachrichtigungen sind, was *jemand anderes* getan hat und mich angeht.
+     *
+     * Gemeldet als „Benachrichtigungen haben noch kein eigenes Menü" — und der
+     * Grund, warum es keines gab, war, dass es die Sache nicht gab.
+     */
+    id: 'notifications',
+    label: 'Benachrichtigungen',
     icon: <BellIcon size={SIZE} />,
+    badge: true,
   },
   {
     id: 'shares',

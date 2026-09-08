@@ -49,7 +49,15 @@ export function FootBar({
         >
           {mode.icon}
           <span className="t">{mode.label}</span>
-          {mode.id === 'inbox' && inboxCount > 0 ? (
+          {/*
+            Die Zahl hängt am Modus (`badge`) und nicht an seinem Namen: ein
+            `mode.id === '…'` hier wäre eine zweite Liste neben `MODES`, und
+            der Wächter in `modes.test.ts` lehnt das ab.
+
+            Was sie zählt, hat sich geändert: **Ungelesene**, nicht der
+            Posteingang. Eine Zahl an einer Glocke sprach von etwas anderem.
+          */}
+          {mode.badge === true && inboxCount > 0 ? (
             <span className="badge">{inboxCount}</span>
           ) : null}
         </button>

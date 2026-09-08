@@ -67,6 +67,8 @@ export type Route =
    * ihr weitergibt.
    */
   | { readonly kind: 'shares'; readonly projectId?: string }
+  /** Was jemand anderes getan hat und mich angeht — ohne Arbeitsbereich. */
+  | { readonly kind: 'notifications' }
   /** Eine Einladung einlösen — ohne Konto, wie eine Freigabe. */
   | { readonly kind: 'invite'; readonly token: string }
   | { readonly kind: 'workspaces'; readonly section: string }
@@ -132,6 +134,8 @@ export function parseRoute(pathname: string, queryString = ''): Route {
       return { kind: 'inbox' };
     case 'freigaben':
       return { kind: 'shares' };
+    case 'benachrichtigungen':
+      return { kind: 'notifications' };
     case 'papierkorb':
       return { kind: 'mode', mode: 'trash' };
     case 'einstellungen':
@@ -164,6 +168,8 @@ export function pathOf(route: Route): string {
       return `/f/${route.token}`;
     case 'shares':
       return '/freigaben';
+    case 'notifications':
+      return '/benachrichtigungen';
     case 'invite':
       return `/einladung/${route.token}`;
     case 'project':
@@ -195,6 +201,7 @@ export function modeOfRoute(route: Route): string {
   if (route.kind === 'workspaces') return 'workspaces';
   if (route.kind === 'inbox') return 'inbox';
   if (route.kind === 'shares') return 'shares';
+  if (route.kind === 'notifications') return 'notifications';
   // Die Verwaltung ist KEIN Modus. Sie steht nicht in der Schiene, weil sie
   // kein Ort ist, an dem man arbeitet — sie steht im Kontomenue, wie in SONE.
   return route.kind === 'mode' ? route.mode : 'tasks';

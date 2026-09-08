@@ -10,6 +10,7 @@
 import type { Pool } from 'pg';
 
 import { queryOne, queryRows, withTransaction } from './db.js';
+import { notify } from './notifications.js';
 import { NotFound, OutOfOrder, keyAtEnd, type TaskRow } from './tasks.js';
 
 export interface Comment {
@@ -211,6 +212,35 @@ export async function addComment(
       [taskId, userId, clean],
     );
     if (row === undefined) throw new Error('INSERT ohne Zeile');
+
+    /*
+     * Wer die Aufgabe angelegt hat und wer daran arbeitet, erfährt davon.
+     *
+     * Beide, weil beide Antworten auf „wen geht das an" richtig sind: der
+     * Urheber hat sie geschrieben, der Zuständige arbeitet daran. Und die
+     * Liste ist eindeutig (`DISTINCT`), sonst bekäme jemand, der beides ist,
+     * zwei Meldungen über einen Kommentar.
+     *
+     * In derselben Transaktion wie der Kommentar — sonst gibt es eine Meldung
+     * über etwas, das nicht geschrieben wurde.
+     */
+    const betroffen = await queryRows<{ id: string }>(
+      client,
+      `SELECT DISTINCT x.id FROM (
+                SELECT created_by AS id FROM tasks WHERE id = $1
+         UNION   SELECT user_id AS id FROM task_assignees WHERE task_id = $1
+       ) x WHERE x.id IS NOT NULL`,
+      [taskId],
+    );
+    for (const wer of betroffen) {
+      await notify(client, {
+        userId: wer.id,
+        workspaceId,
+        kind: 'commented',
+        taskId,
+        actorId: userId,
+      });
+    }
 
     const me = await queryOne<{ display_name: string }>(
       client,

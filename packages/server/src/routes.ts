@@ -54,6 +54,7 @@ import {
   whoami,
 } from './sso.js';
 import { knownKinds } from './jobs.js';
+import { list as listNotifications, markRead, unreadCount } from './notifications.js';
 import { deleteWorkspace, exportWorkspace } from './workspace.js';
 import {
   add as addToGroup,
@@ -627,6 +628,15 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
        * verweigernd).
        */
       isAdmin: await isAdmin(ctx.pool, userId),
+      /*
+       * Die Zahl an der Glocke.
+       *
+       * Hier und nicht in einer eigenen Route: `/api/me` wird beim Laden
+       * ohnehin geholt, und eine zweite Anfrage für eine Zahl wäre ein Umlauf
+       * für etwas, das zur ersten Antwort gehört — *was gibt es über mich zu
+       * wissen*.
+       */
+      unread: await unreadCount(ctx.pool, userId),
       workspaces: spaces.map((w) => ({
         id: w.id,
         name: w.name,
@@ -763,6 +773,43 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
     json(res, 200, {
       workspace: { id: row!.id, name: row!.name, icon: readIcon(row!.icon) },
     });
+    return;
+  }
+
+  /* ── Benachrichtigungen ──────────────────────────────────────────────────
+   *
+   * **Ohne Arbeitsbereich**, und das ist der Punkt: eine Benachrichtigung
+   * betrifft mich, nicht den Bereich, in dem ich gerade stehe (wie SONE, dessen
+   * ADR-0052 dafür angeführt wird). Wer sie nur im richtigen Bereich sähe,
+   * müsste die Bereiche durchgehen, um zu wissen, ob etwas liegt — und genau
+   * das soll eine Glocke ersparen.
+   */
+  if (path === '/api/notifications' && method === 'GET') {
+    // Alles auf einmal: die Oberfläche zählt ihre Ansichten daraus. Eine
+    // Abfrage je Zahl wäre eine Abfrage je Ansicht, und die Zahlen kämen aus
+    // verschiedenen Augenblicken (SONEs `InboxPanel`).
+    json(res, 200, {
+      notifications: (await listNotifications(ctx.pool, userId)).map((n) => ({
+        id: n.id,
+        kind: n.kind,
+        taskId: n.taskId,
+        taskTitle: n.taskTitle,
+        workspaceId: n.workspaceId,
+        workspaceName: n.workspaceName,
+        actorName: n.actorName,
+        createdAt: n.createdAt.toISOString(),
+        readAt: n.readAt?.toISOString() ?? null,
+      })),
+    });
+    return;
+  }
+
+  const notifPath = /^\/api\/notifications(\/([0-9a-f-]{36}))?\/read$/.exec(path);
+  if (notifPath !== null && method === 'POST') {
+    // Ohne Id: alles. Mit Id: diese eine. Zwei Routen für dieselbe Sache wären
+    // zwei Wege, von denen einer die Begrenzung auf eigene Zeilen vergisst.
+    await markRead(ctx.pool, userId, notifPath[2]);
+    json(res, 200, { ok: true });
     return;
   }
 

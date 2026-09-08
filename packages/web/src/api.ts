@@ -85,6 +85,14 @@ export interface Me {
   displayName: string;
   /** Verwaltet diese Person die Instanz (Migration 0012)? */
   isAdmin: boolean;
+  /**
+   * Ungelesene Benachrichtigungen — die Zahl an der Glocke.
+   *
+   * Hier und nicht in einer eigenen Route: `/api/me` wird beim Laden ohnehin
+   * geholt, und eine zweite Anfrage für eine Zahl wäre ein Umlauf für etwas,
+   * das zur ersten Antwort gehört.
+   */
+  unread: number;
   workspaces: {
     id: string;
     name: string;
@@ -299,6 +307,35 @@ export const api = {
       `/api/workspace${workspace === undefined ? '' : `?workspace=${workspace}`}`,
       { method: 'PATCH', body: JSON.stringify(body) },
     ),
+  /* ── Benachrichtigungen ────────────────────────────────────────────────── */
+  /**
+   * Alles auf einmal.
+   *
+   * Die Oberfläche zählt ihre Ansichten daraus — eine Abfrage je Zahl wäre eine
+   * je Ansicht, und die Zahlen kämen aus verschiedenen Augenblicken (SONEs
+   * `InboxPanel`: *„a menu that says Mentions without saying how many is a menu
+   * you have to click to learn anything from"*).
+   */
+  notifications: () =>
+    call<{
+      notifications: {
+        id: string;
+        kind: 'assigned' | 'commented';
+        taskId: string;
+        taskTitle: string;
+        workspaceId: string;
+        workspaceName: string;
+        actorName: string | null;
+        createdAt: string;
+        readAt: string | null;
+      }[];
+    }>('/api/notifications'),
+  /** Ohne Id: alles gelesen. Mit Id: diese eine. */
+  markRead: (id?: string) =>
+    call<{ ok: true }>(`/api/notifications${id === undefined ? '' : `/${id}`}/read`, {
+      method: 'POST',
+    }),
+
   /* ── Arbeitsbereiche ───────────────────────────────────────────────────── */
   /**
    * Einen anlegen.

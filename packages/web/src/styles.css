@@ -3120,3 +3120,60 @@ a.btn {
   flex: 1 1 auto;
   min-width: 0;
 }
+
+/* Eine Benachrichtigungszeile: was, an welcher Aufgabe, wo und wann.
+   Drei Zeilen, weil es drei Auskünfte sind — auf einer Zeile bricht die
+   längste um und macht aus einer Liste eine Wand. */
+.note-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  padding: 10px 0;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.note-row:hover {
+  background: var(--sunken);
+}
+
+/* Ungelesen: ein Streifen links, wie bei der offenen Aufgabenzeile — und wie
+   dort ohne Verschiebung, damit nichts springt, wenn etwas gelesen wird. */
+.note-row[data-unread='true'] {
+  position: relative;
+}
+
+.note-row[data-unread='true']::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -8px;
+  width: 2px;
+  background: var(--accent);
+}
+
+.note-what {
+  font-size: 13.5px;
+}
+
+.note-row[data-unread='true'] .note-what {
+  font-weight: 500;
+}
+
+.note-task {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.note-where {
+  font-family: var(--sote-mono);
+  font-size: 11px;
+  color: var(--text-faint);
+}

@@ -16,6 +16,7 @@ import {
 import type { Pool } from 'pg';
 
 import { queryOne, queryRows, withTransaction, type PoolClient } from './db.js';
+import { notify } from './notifications.js';
 
 export interface TaskRow {
   id: string;
@@ -310,6 +311,21 @@ export async function createFromLine(pool: Pool, input: CreateFromLine): Promise
           'INSERT INTO task_assignees (task_id, user_id) VALUES ($1,$2) ON CONFLICT DO NOTHING',
           [row.id, people[0]!.id],
         );
+        /*
+         * In DERSELBEN Transaktion wie die Zuweisung.
+         *
+         * Sonst gibt es einen Zustand, in dem jemand zuständig ist und nichts
+         * davon erfährt — oder umgekehrt eine Meldung über eine Zuweisung, die
+         * zurückgerollt wurde. `notify` selbst schweigt, wenn jemand sich
+         * selbst zuweist.
+         */
+        await notify(client, {
+          userId: people[0]!.id,
+          workspaceId: input.workspaceId,
+          kind: 'assigned',
+          taskId: row.id,
+          actorId: input.userId,
+        });
       } else if (people.length === 0) {
         unknownAssignees.push(name);
       } else {

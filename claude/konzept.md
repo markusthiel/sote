@@ -1724,6 +1724,33 @@ Beim Bauen entschieden, weil es ohne Entscheidung keinen Code gibt:
   einem Ort nichts findet, ist ein Feld, dem man an allen Orten misstraut. In
   den Workspace-Einstellungen steht stattdessen der **Wähler** — der Bereich
   handelt von Arbeitsbereichen, also ist Wechseln dort die häufige Handlung.
+- **Eine Glocke und ein Posteingang sind zwei Dinge.** Die Glocke in der
+  Schiene hieß „Posteingang" und zeigte Aufgaben ohne Projekt — das sind zwei
+  Fragen, und eine Glocke beantwortet nur die zweite. Der Posteingang ist eine
+  **Aufgabenansicht** und steht jetzt bei „Heute" und „Irgendwann";
+  Benachrichtigungen sind, was *jemand anderes* getan hat.
+  - **Die Zahlen kommen aus der Liste, die man schon hat** (SONEs `InboxPanel`:
+    *„a menu that says Mentions without saying how many is a menu you have to
+    click to learn anything from"*). Einmal geholt, Menü und Bildschirm zählen
+    daraus — eine Abfrage je Ansicht wäre eine je Zahl, und die Zahlen kämen aus
+    verschiedenen Augenblicken.
+  - **Drei Achsen, in der Reihenfolge, in der man fragt:** ist etwas neu, welche
+    Art, wo. Die letzte gibt es, weil eine Glocke über Arbeitsbereiche hinweg
+    gilt und der Kopf keinen nennen kann — es gibt keine einzige Antwort.
+  - **Nie über sich selbst**, und die Prüfung steht im **Schreibweg**: eine
+    Zeile, die niemand sehen soll, soll nicht entstehen. Als Filter beim Lesen
+    liefe sie in jeder Zählung mit, bis jemand den Filter vergisst.
+  - **In derselben Transaktion wie das Ereignis.** Sonst gibt es einen Zustand,
+    in dem jemand zuständig ist und nichts erfährt — oder eine Meldung über eine
+    Zuweisung, die zurückgerollt wurde.
+  - **Eine weggeworfene Aufgabe verschwindet aus der Liste, nicht aus der
+    Datenbank:** der Papierkorb kann sie zurückholen, und dann soll die Meldung
+    wieder da sein.
+  - **Das Abzeichen hängt am Modus** (`badge: true`), nicht als Name in der
+    Zeichnung. Mein erster Versuch schrieb `mode.id === 'notifications'` in die
+    Schiene — der Wächter hat es gemeldet, denn das wäre eine zweite Liste
+    neben `MODES`. Zwei Wächter standen dabei kurz gegeneinander: der ältere
+    verlangte wörtlich `mode.id === 'inbox'`, also genau das Verbotene.
 - **`pnpm check` ist genau das, was die CI fährt.** Erst standen die Prüfungen
   einzeln in der Workflow-Datei, und `pnpm -r typecheck` scheiterte dort — in
   einem frischen Klon gibt es kein `dist`, und `@sote/core` zeigt mit `types`

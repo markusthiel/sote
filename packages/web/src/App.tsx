@@ -34,6 +34,12 @@ import { landingRoute, markRoute, rememberRoute } from './landing.js';
 import { AcceptInvite } from './screens/AcceptInvite.js';
 import { Accounts } from './screens/Accounts.js';
 import { Invitations } from './screens/Invitations.js';
+import {
+  Notifications,
+  NotificationsPanel,
+  useNotifications,
+  type NoteView,
+} from './screens/Notifications.js';
 import { Maintenance } from './screens/Maintenance.js';
 import { People } from './screens/People.js';
 import { Groups } from './screens/Groups.js';
@@ -83,6 +89,14 @@ export function App() {
   const sidebar = useSidebar(route);
   const panelWidth = useSidebarWidth();
   const [openTask, setOpenTask] = useState<string | null>(null);
+  /*
+   * Die Benachrichtigungen werden EINMAL geholt, für Menü und Bildschirm.
+   *
+   * Beide zählen daraus — eine Abfrage je Ansicht wäre eine je Zahl, und die
+   * Zahlen kämen aus verschiedenen Augenblicken (SONEs `InboxPanel`).
+   */
+  const { notes, reload: reloadNotes } = useNotifications();
+  const [noteView, setNoteView] = useState<NoteView>({ of: 'unread' });
   const [panelBusy, setPanelBusy] = useState(false);
   const [panelError, setPanelError] = useState<string | undefined>(undefined);
   const [now] = useState(() => new Date());
@@ -365,14 +379,16 @@ export function App() {
                 ? // Der Bereich hat jetzt einen Inhalt und ist darum eine
                   // eigene Route statt der Platzhalterseite.
                   { kind: 'workspaces', section: 'alle' }
-                : id === 'inbox'
-                  ? { kind: 'inbox' }
+                : id === 'notifications'
+                  ? { kind: 'notifications' }
                   : id === 'shares'
                     ? { kind: 'shares' }
                     : { kind: 'mode', mode: id },
           )
         }
-        inboxCount={counts.inbox}
+        // Ungelesene Benachrichtigungen, nicht der Posteingang: die Zahl an
+        // einer Glocke soll von dem sprechen, was hinter der Glocke liegt.
+        inboxCount={me.unread ?? 0}
         displayName={me.displayName}
         email={me.email}
         onSettings={() => go({ kind: 'settings', section: 'profil' })}
@@ -414,7 +430,18 @@ export function App() {
             Titel darüber wäre eine Beschriftung für etwas, das man ohnehin am
             Namen erkennt.
           */}
-          {SECTION_NAV !== null && route.kind !== 'workspaces' ? (
+          {route.kind === 'notifications' ? (
+          <div className="panel-title">
+            <strong>Benachrichtigungen</strong>
+            {/*
+              Kein Arbeitsbereich im Kopf, und das ist die Aussage: eine
+              Glocke gilt über Arbeitsbereiche hinweg, also kann hier keiner
+              stehen — es gibt keine einzige Antwort (wie in SONE, ADR-0052).
+              „Wo" ist stattdessen eine Achse im Menü darunter.
+            */}
+            <span className="panel-scope">über alle Arbeitsbereiche</span>
+          </div>
+        ) : SECTION_NAV !== null && route.kind !== 'workspaces' ? (
             <div className="panel-title">
               <strong>{SECTION_NAV.title}</strong>
               <span className="panel-scope">{SECTION_NAV.note}</span>
@@ -523,7 +550,11 @@ export function App() {
             </>
           ) : null}
 
-          {SECTION_NAV !== null ? null : (
+          {route.kind === 'notifications' ? (
+            <NotificationsPanel notes={notes} view={noteView} onPick={setNoteView} />
+          ) : null}
+
+          {SECTION_NAV !== null || route.kind === 'notifications' ? null : (
           <>
           {/* Die Zahlen kommen aus derselben Abfrage wie die Listen. Keine
               Null: eine Zahl über nichts ist Rauschen in einer ruhigen Zeile. */}
@@ -532,6 +563,16 @@ export function App() {
               ['today', 'Heute', counts.today],
               ['upcoming', 'Demnächst', counts.upcoming],
               ['someday', 'Irgendwann', counts.someday],
+              /*
+               * Der Posteingang steht hier, nicht in der Schiene.
+               *
+               * Er ist eine **Aufgabenansicht** — was noch nicht einsortiert
+               * ist —, und Aufgabenansichten stehen beieinander. In der
+               * Schiene saß er hinter einer Glocke, und eine Glocke meint
+               * Benachrichtigungen: das sind zwei Fragen, und eine Glocke
+               * beantwortet nur die zweite.
+               */
+              ['inbox', 'Posteingang', counts.inbox],
             ] as const
           ).map(([kind, label, n]) => (
             <button
@@ -731,14 +772,16 @@ export function App() {
                 ? // Der Bereich hat jetzt einen Inhalt und ist darum eine
                   // eigene Route statt der Platzhalterseite.
                   { kind: 'workspaces', section: 'alle' }
-                : id === 'inbox'
-                  ? { kind: 'inbox' }
+                : id === 'notifications'
+                  ? { kind: 'notifications' }
                   : id === 'shares'
                     ? { kind: 'shares' }
                     : { kind: 'mode', mode: id },
           )
         }
-        inboxCount={counts.inbox}
+        // Ungelesene Benachrichtigungen, nicht der Posteingang: die Zahl an
+        // einer Glocke soll von dem sprechen, was hinter der Glocke liegt.
+        inboxCount={me.unread ?? 0}
         displayName={me.displayName}
         email={me.email}
         onSettings={() => go({ kind: 'settings', section: 'profil' })}

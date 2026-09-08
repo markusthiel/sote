@@ -58,10 +58,31 @@ test('das Abzeichen hängt am Modus und steht in beiden Zeichnungen', () => {
   // auf einem Bedienelement, das ein Menü öffnet, in dem die
   // Benachrichtigungen nicht liegen (ADR-0092). Und eine Zahl, die nur eine
   // Zeichnung bekommt, ist ein Abzeichen, das ein Telefon nicht hat.
-  assert.ok(ids.includes('inbox'), 'es muss einen Posteingang geben');
+  /*
+   * Die Prüfung hängt jetzt am **Modus** und nicht an einem Namen in der
+   * Zeichnung. Vorher verlangte sie wörtlich `mode.id === 'inbox'` — und
+   * damit genau das, was der Wächter darüber verbietet: eine zweite Liste in
+   * der Zeichnung. Als der Posteingang zu den Aufgaben wanderte und die
+   * Glocke Benachrichtigungen wurde, standen die beiden Wächter gegeneinander.
+   *
+   * Jetzt: genau ein Modus trägt `badge`, und beide Zeichnungen lesen es.
+   */
+  // Im QUELLTEXT gezählt, weil diese Datei `modes.tsx` als Text liest und
+  // nicht importiert — mein erster Versuch schrieb `MODES.filter(…)` und hätte
+  // ein Modul gebraucht, das hier nicht da ist.
+  const mitBadge = [...MODES_SRC.matchAll(/^\s*badge: true,$/gm)];
+  assert.equal(mitBadge.length, 1, 'genau ein Bereich trägt eine Zahl');
+  // Und zwar der, hinter dem sie liegen: die Glocke. Geprüft über die Nähe im
+  // Text — der Eintrag steht unmittelbar nach seinem `id`.
+  const glocke = MODES_SRC.slice(MODES_SRC.indexOf("id: 'notifications'"));
+  assert.match(
+    glocke.slice(0, glocke.indexOf('},')),
+    /badge: true/,
+    'die Zahl gehört zur Glocke',
+  );
   for (const file of DRAWINGS) {
     const src = read(file);
-    assert.match(src, /mode\.id === 'inbox'/, `${file} zeigt kein Abzeichen`);
+    assert.match(src, /mode\.badge === true/, `${file} zeigt kein Abzeichen`);
     assert.match(src, /className="badge"/, `${file} zeichnet das Abzeichen nicht`);
   }
 });
