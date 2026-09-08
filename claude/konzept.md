@@ -1598,6 +1598,45 @@ Beim Bauen entschieden, weil es ohne Entscheidung keinen Code gibt:
   Papierkorb-Bearbeiter löscht über alle Arbeitsbereiche, und während er
   aufräumt, schreiben andere Dateien dieselben Tabellen.
 
+## Single-Sign-on
+
+- **SSO meldet an, es lädt nicht ein.** Der Grundsatz, der hier schon gilt
+  (SONEs ADR-0073): die Instanz lädt ein. Ein SSO, das Konten von selbst
+  anlegt, hieße, dass jeder eines bekommt, der im Verzeichnis des Anbieters
+  steht — und die Instanz hätte aufgehört zu entscheiden, wer hier existiert.
+  Eine **Einladung** lässt sich mit SSO annehmen; wer nichts von beidem hat,
+  bekommt einen Satz.
+  - **Benannt statt versteckt:** in einer Firma, in der das Verzeichnis ohnehin
+    die Wahrheit über die Belegschaft ist, ist die andere Entscheidung richtig.
+    Dann wird eine Einstellung nötig, und der Kommentar in Migration 0018 ist
+    die Stelle, an der sie beginnt.
+- **Die Verknüpfung hängt am Subjekt, nicht an der Adresse.** Eine Adresse
+  wechselt, ein Subjekt nicht. Beim ersten Anmelden wird über die Adresse
+  gefunden und das Subjekt gemerkt — genau einmal. **Dieselbe Adresse mit einem
+  anderen Subjekt wird abgelehnt:** hereinlassen hieße, ein Konto an den
+  Nächsten weiterzugeben, der eine freigewordene Adresse bekommt.
+- **Keine Prüfung der ID-Token-Signatur, und das ist eine Entscheidung.** Der
+  Code wird **vom Server** getauscht, über TLS, mit dem Client-Geheimnis — was
+  so zurückkommt, ist beglaubigt. Eine Signaturprüfung bräuchte JWKS,
+  Schlüsseldrehung und Algorithmus-Ausschlüsse (`alg: none`, `HS256` mit dem
+  öffentlichen Schlüssel als Geheimnis): lauter Ecken, an denen man es falsch
+  macht. Sie wäre nötig, wenn ein **Browser** das Token mitbrächte.
+- **`state` und PKCE liegen auf dem Server.** Ein `state`, den der Browser
+  selbst mitbringt, schützt gegen nichts. Und er gilt **genau einmal**
+  (`DELETE ... RETURNING`, nicht lesen-dann-löschen).
+- **Nur ein Pfad wird gemerkt, keine URL.** Eine URL aus der Anfrage wäre eine
+  offene Weiterleitung: wer sie setzt, schickt jemanden nach dem Anmelden auf
+  eine fremde Seite, die aussieht wie diese.
+- **Kein `http://`**, auch nicht „nur im Netz drinnen": über diese Verbindung
+  geht das Client-Geheimnis. Eine Ausnahme für Testaufbauten ist eine, die
+  jemand im Betrieb stehen lässt.
+- **Ein Konto ohne Kennwort ist ein SSO-Konto.** Kein halber Zustand: `signIn`
+  verbindet `users` mit `user_passwords` und findet es gar nicht, es gibt also
+  kein Kennwort, das darauf passen könnte — auch kein leeres. Ein erfundenes
+  wäre eines, das niemand kennt und niemand ändern kann.
+- **Ein Anbieter, der nicht antwortet, ist keine Ausnahme**, sondern eine
+  Auskunft auf der Anmeldemaske.
+
 - **`pnpm check` ist genau das, was die CI fährt.** Erst standen die Prüfungen
   einzeln in der Workflow-Datei, und `pnpm -r typecheck` scheiterte dort — in
   einem frischen Klon gibt es kein `dist`, und `@sote/core` zeigt mit `types`

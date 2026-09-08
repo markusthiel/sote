@@ -95,13 +95,35 @@ export async function signIn(
     timingSafeEqual(expected, got);
   if (!ok) return null;
 
+  return openSession(pool, row.id, now, sessionDays);
+}
+
+/**
+ * Eine Sitzung öffnen, ohne nach einem Kennwort zu fragen.
+ *
+ * Herausgezogen aus `signIn`, weil es einen zweiten Weg gibt, an dem jemand
+ * schon bewiesen hat, wer er ist: Single-Sign-on. Zwei Umsetzungen von
+ * „Sitzung anlegen" wären zwei Stellen mit einer Ablaufrechnung, und die eine
+ * hätte irgendwann eine andere Frist.
+ *
+ * **Der Aufrufer trägt die Verantwortung**, und das steht hier, weil es die
+ * ganze Gefahr dieser Funktion ist: sie prüft nichts. Wer sie ruft, hat vorher
+ * geprüft — `signIn` mit einem Kennwort, der SSO-Rückweg mit einem Code, den
+ * der Anbieter beglaubigt hat.
+ */
+export async function openSession(
+  pool: Pool,
+  userId: string,
+  now: Date,
+  sessionDays: number,
+): Promise<Session> {
   const token = randomBytes(32).toString('base64url');
   const expiresAt = new Date(now.getTime() + sessionDays * 86_400_000);
   await pool.query(
     'INSERT INTO sessions (user_id, token_hash, expires_at) VALUES ($1,$2,$3)',
-    [row.id, hashToken(token), expiresAt],
+    [userId, hashToken(token), expiresAt],
   );
-  return { token, userId: row.id, expiresAt };
+  return { token, userId, expiresAt };
 }
 
 export async function userOfToken(

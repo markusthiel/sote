@@ -2973,3 +2973,30 @@ select.target {
 .guest-body.narrow {
   max-width: 460px;
 }
+
+/* „oder" zwischen zwei Wegen hinein. Eine Linie mit einem Wort, weil zwei
+   Knöpfe übereinander nicht sagen, dass es Alternativen sind. */
+.or {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 4px 0;
+  font-size: 11.5px;
+  color: var(--text-faint);
+}
+
+.or::before,
+.or::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+
+/* Ein Link, der wie ein Knopf aussieht: der Ortswechsel gehört dem Browser. */
+a.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}

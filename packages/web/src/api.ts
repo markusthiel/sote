@@ -205,7 +205,8 @@ export interface TaskPatch {
 
 export const api = {
   /** Braucht diese Instanz noch ein erstes Konto? */
-  setupNeeded: () => call<{ needed: boolean }>('/api/setup'),
+  setupNeeded: () =>
+    call<{ needed: boolean; sso: { label: string } | null }>('/api/setup'),
   setup: (body: {
     key: string;
     email: string;

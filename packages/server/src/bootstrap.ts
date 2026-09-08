@@ -53,7 +53,19 @@ export async function userCount(pool: Pool): Promise<number> {
 export interface NewAccount {
   readonly email: string;
   readonly displayName: string;
-  readonly password: string;
+  /**
+   * Ein Kennwort — **oder keines**.
+   *
+   * Keines heißt: dieses Konto meldet sich nur über Single-Sign-on an. Das ist
+   * kein halber Zustand, sondern der richtige: wer über den Anbieter kommt,
+   * braucht hier kein zweites Geheimnis, und eines zu erfinden wäre ein
+   * Kennwort, das niemand kennt und niemand ändern kann.
+   *
+   * Und es ist sicher: `signIn` verbindet `users` mit `user_passwords`, also
+   * findet es ein Konto ohne Zeile dort gar nicht — es gibt kein Kennwort, das
+   * darauf passen könnte, auch kein leeres.
+   */
+  readonly password?: string;
   readonly workspaceName?: string;
 }
 
@@ -86,7 +98,9 @@ export async function createAccountIn(
     throw new OutOfOrder('das sieht nicht wie eine E-Mail-Adresse aus');
   }
   if (displayName === '') throw new OutOfOrder('ein Name fehlt');
-  if (input.password.length < 8) {
+  // Wenn eines dabei ist, muss es taugen. Fehlt es, meldet sich dieses Konto
+  // nur über Single-Sign-on an (siehe `NewAccount`).
+  if (input.password !== undefined && input.password.length < 8) {
     throw new OutOfOrder('das Kennwort ist kürzer als acht Zeichen');
   }
 
@@ -154,10 +168,17 @@ export async function createAccountIn(
     [workspace.id, user.id, ownerRole],
   );
 
-  // In derselben Transaktion: ein Konto ohne Kennwort ist ein Konto, in das
-  // niemand kommt, und ein halb angelegtes Konto ist ein Fall, den man nur von
-  // Hand aufräumt.
-  await setPasswordIn(client, user.id, input.password);
+  /*
+   * In derselben Transaktion — wenn es ein Kennwort gibt.
+   *
+   * Ein halb angelegtes Konto ist ein Fall, den man nur von Hand aufräumt.
+   * Und ohne Kennwort ist die Zeile **absichtlich** nicht da: `signIn`
+   * verbindet `users` mit `user_passwords`, findet dieses Konto also gar nicht
+   * und kann es mit keinem Kennwort öffnen — auch nicht mit einem leeren.
+   */
+  if (input.password !== undefined) {
+    await setPasswordIn(client, user.id, input.password);
+  }
   return user.id;
 }
 

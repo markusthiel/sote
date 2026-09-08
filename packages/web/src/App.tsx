@@ -54,6 +54,8 @@ import { Trash } from './screens/Trash.js';
 export function App() {
   const [me, setMe] = useState<Me | null | undefined>(undefined);
   const [needsSetup, setNeedsSetup] = useState(false);
+  /** Der Anmeldeknopf des Anbieters — oder `null`, wenn es keinen gibt. */
+  const [sso, setSso] = useState<{ label: string } | null>(null);
   const [route, setRoute] = useState<Route>(() => parseRoute(window.location.pathname, window.location.search));
   const [projects, setProjects] = useState<Project[]>([]);
   const [counts, setCounts] = useState<{
@@ -95,7 +97,9 @@ export function App() {
       // Erst wenn keine Sitzung da ist, wird gefragt, ob überhaupt ein Konto
       // existiert. Vorher wäre es eine Anfrage, deren Antwort niemand braucht.
       try {
-        setNeedsSetup((await api.setupNeeded()).needed);
+        const setup = await api.setupNeeded();
+        setNeedsSetup(setup.needed);
+        setSso(setup.sso);
       } catch {
         setNeedsSetup(false);
       }
@@ -265,7 +269,7 @@ export function App() {
     return needsSetup ? (
       <Setup onDone={() => void loadMe()} />
     ) : (
-      <SignIn onDone={() => void loadMe()} />
+      <SignIn sso={sso} onDone={() => void loadMe()} />
     );
   }
 

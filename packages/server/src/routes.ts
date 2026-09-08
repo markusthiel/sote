@@ -11,7 +11,7 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 import { describe as describeRecurrence, isListLevel, isZone, readIcon } from '@sote/core';
 import type { Pool } from 'pg';
 
-import { signIn, signOut, userOfToken } from './auth.js';
+import { openSession, signIn, signOut, userOfToken } from './auth.js';
 import {
   BadSetupKey,
   createAccount,
@@ -44,6 +44,14 @@ import {
   revokeInvitation,
 } from './invitations.js';
 import { mailConfig } from './mail.js';
+import {
+  begin,
+  findAccount,
+  ssoConfig,
+  sweepFlows,
+  takeFlow,
+  whoami,
+} from './sso.js';
 import { knownKinds } from './jobs.js';
 import { deleteWorkspace, exportWorkspace } from './workspace.js';
 import {
@@ -264,7 +272,21 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
    * Schlüssel.
    */
   if (path === '/api/setup' && method === 'GET') {
-    json(res, 200, { needed: (await userCount(ctx.pool)) === 0 });
+    /*
+     * Ob es SSO gibt, kommt hier mit — und nicht als eigene Route.
+     *
+     * Die Anmeldemaske fragt diese eine Antwort ohnehin, bevor sie etwas
+     * zeichnet. Eine zweite Route dafür wäre ein zweiter Umlauf für eine
+     * Auskunft, die zur ersten gehört: *was kann man hier tun, ohne
+     * angemeldet zu sein*.
+     */
+    const sso = ssoConfig();
+    json(res, 200, {
+      needed: (await userCount(ctx.pool)) === 0,
+      // Nur mit Rückkehradresse: ein Knopf ohne sie führt in einen Fehler,
+      // und ein Knopf, der in einen Fehler führt, ist schlimmer als keiner.
+      sso: sso !== undefined && baseUrl() !== undefined ? { label: sso.label } : null,
+    });
     return;
   }
 
@@ -340,6 +362,149 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
   const sharePath = /^\/api\/share\/([A-Za-z0-9_-]{20,200})(\/.*)?$/.exec(path);
   if (sharePath !== null) {
     await shareRoutes(ctx, req, res, sharePath[1]!, sharePath[2] ?? '', method, now);
+    return;
+  }
+
+  /* ── SSO: der dritte Weg ohne Konto ──────────────────────────────────────
+   *
+   * Vor der Anmeldeschranke, denn hier wird man erst angemeldet. Alle drei
+   * kontolosen Wege stehen damit an einer Stelle: Freigaben, Einladungen, SSO.
+   */
+  if (path === '/api/sso/start' && method === 'GET') {
+    const cfg = ssoConfig();
+    if (cfg === undefined) {
+      fail(res, 404, 'no_sso', 'dieser Server hat kein Single-Sign-on');
+      return;
+    }
+    const base = baseUrl();
+    if (base === undefined) {
+      /*
+       * Die Rückkehradresse muss die sein, die beim Anbieter eingetragen ist —
+       * und die kann nur der Betreiber wissen. Sie aus der Anfrage zu bauen
+       * hieße, sie vom Aufrufer nehmen: wer sie fälscht, lässt den Anbieter
+       * den Code an eine fremde Stelle schicken.
+       */
+      fail(res, 409, 'no_base', 'für Single-Sign-on fehlt SOTE_BASE_URL');
+      return;
+    }
+    await sweepFlows(ctx.pool, now);
+    const einladung = url.searchParams.get('invitation');
+    let wohin: string;
+    try {
+      wohin = await begin(ctx.pool, cfg, `${base}/api/sso/callback`, {
+        ...(url.searchParams.get('next') === null
+          ? {}
+          : { nextPath: url.searchParams.get('next')! }),
+        // Eine Einladung wird als Id mitgeführt und nicht als Token: der Token
+        // wäre auf dem Weg zum Anbieter in einer Adresse unterwegs.
+        ...(einladung !== null && /^[0-9a-f-]{36}$/.test(einladung)
+          ? { invitationId: einladung }
+          : {}),
+      });
+    } catch (e) {
+      /*
+       * **Ein Anbieter, der nicht antwortet, ist keine Ausnahme.**
+       *
+       * Vorher gab dieser Weg eine 500 — im Browser eine leere Seite mit
+       * „unerwarteter Fehler", und das ist genau die Auskunft, die niemandem
+       * hilft: der Anbieter ist unerreichbar oder falsch eingetragen, und
+       * beides gehört auf die Anmeldemaske. Gefunden mit einem erfundenen
+       * Aussteller, der nicht auflöst.
+       */
+      res.statusCode = 302;
+      res.setHeader(
+        'location',
+        `/?sso=${encodeURIComponent(
+          e instanceof OutOfOrder ? e.message : 'der Anbieter ist nicht erreichbar',
+        )}`,
+      );
+      res.end();
+      return;
+    }
+    // 302 und keine JSON-Antwort: der Browser soll gehen, nicht etwas anzeigen.
+    res.statusCode = 302;
+    res.setHeader('location', wohin);
+    res.end();
+    return;
+  }
+
+  if (path === '/api/sso/callback' && method === 'GET') {
+    const cfg = ssoConfig();
+    const base = baseUrl();
+    if (cfg === undefined || base === undefined) {
+      fail(res, 404, 'no_sso', 'dieser Server hat kein Single-Sign-on');
+      return;
+    }
+    const zurück = (grund: string): void => {
+      // Zurück zur Anmeldung, mit einem Grund in der Adresse — und nicht eine
+      // nackte Fehlerseite: wer hier landet, wollte sich anmelden.
+      res.statusCode = 302;
+      res.setHeader('location', `/?sso=${encodeURIComponent(grund)}`);
+      res.end();
+    };
+    const flow = await takeFlow(ctx.pool, url.searchParams.get('state') ?? '', now);
+    const code = url.searchParams.get('code');
+    if (flow === null || code === null) {
+      // Ein Satz für beides: „kein state" und „schon benutzt" sind für den
+      // Fremden dieselbe Auskunft.
+      zurück('abgelaufen');
+      return;
+    }
+    let userId: string | null;
+    try {
+      const who = await whoami(cfg, code, flow.verifier, `${base}/api/sso/callback`);
+      userId = await findAccount(ctx.pool, who);
+      if (userId === null && flow.invitationId !== null) {
+        /*
+         * Eine Einladung mit SSO annehmen.
+         *
+         * Kein Kennwort: wer sich über den Anbieter anmeldet, braucht keines,
+         * und eines zu verlangen wäre ein zweites Geheimnis für denselben
+         * Zugang. Die Adresse muss übereinstimmen — sonst wäre eine Einladung
+         * an eine Adresse ein Konto für jede andere.
+         */
+        const inv = await queryOne<{ email: string }>(
+          ctx.pool,
+          `SELECT email FROM invitations
+            WHERE id = $1 AND accepted_at IS NULL AND revoked_at IS NULL
+              AND expires_at > $2`,
+          [flow.invitationId, now],
+        );
+        if (inv !== undefined && inv.email === who.email) {
+          userId = await createAccount(ctx.pool, {
+            email: who.email,
+            displayName: who.name,
+            workspaceName: `${who.name}s Arbeitsbereich`,
+          });
+          await ctx.pool.query('UPDATE users SET sso_subject = $2 WHERE id = $1', [
+            userId,
+            who.subject,
+          ]);
+          await ctx.pool.query(
+            'UPDATE invitations SET accepted_at = now(), accepted_by = $2 WHERE id = $1',
+            [flow.invitationId, userId],
+          );
+        }
+      }
+    } catch (e) {
+      zurück(e instanceof OutOfOrder ? e.message : 'fehlgeschlagen');
+      return;
+    }
+    if (userId === null) {
+      // SSO meldet an, es lädt nicht ein (ADR-0073). Der Satz sagt, was fehlt.
+      zurück('kein Konto auf diesem Server — lass dich einladen');
+      return;
+    }
+    const session = await openSession(ctx.pool, userId, now, ctx.config.sessionDays);
+    res.statusCode = 302;
+    res.setHeader(
+      'set-cookie',
+      `${COOKIE}=${session}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${
+        ctx.config.sessionDays * 86_400
+      }`,
+    );
+    res.setHeader('location', flow.nextPath ?? '/');
+    res.end();
     return;
   }
 
