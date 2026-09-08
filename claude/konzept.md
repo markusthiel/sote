@@ -1293,6 +1293,20 @@ Beim Bauen entschieden, weil es ohne Entscheidung keinen Code gibt:
     der Teilaufgaben gehört ihrem Elternteil (sie lässt sich ziehen), und ein
     zweites Sortierkriterium im Server würde die gezogene Ordnung
     überschreiben, sobald jemand abhakt.
+- **Zustände durchmessen, nicht Adressen.** Nach dem 55-Pixel-Fehler habe ich
+  die ganze Oberfläche auf 390, 768 und 1320 px durchgemessen. Über **Adressen**
+  war alles sauber — und trotzdem war etwas kaputt: das offene **Kontomenü**
+  stand auf dem Telefon 180 Pixel außerhalb des Fensters (x=338 bis 570 bei
+  390 px), man sah einen Streifen und konnte „Abmelden" nicht treffen.
+  - Die Ursache war eine Regel, die für ihren **ersten Ort** richtig war: am
+    Fuß der Schiene ist links Platz, also `left: 4px`. In der Fußleiste des
+    Telefons sitzt dasselbe Konto ganz rechts.
+  - **Und der Prüfer musste selbst geprüft werden:** „scrollt die Seite" hätte
+    den Anlassfehler nicht gefunden, weil bei 55 px nichts hinausragte, sondern
+    innen abgeschnitten wurde. Gegengeprüft mit künstlich wiederhergestellter
+    Regel — der Prüfer meldet `h1 20<69`.
+  - Das Werkzeug liegt als `scripts/measure-widths.mjs` im Baum; es braucht
+    Server und Browser und läuft darum nicht in der CI.
 - **`pnpm check` ist genau das, was die CI fährt.** Erst standen die Prüfungen
   einzeln in der Workflow-Datei, und `pnpm -r typecheck` scheiterte dort — in
   einem frischen Klon gibt es kein `dist`, und `@sote/core` zeigt mit `types`

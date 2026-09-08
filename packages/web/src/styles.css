@@ -1984,6 +1984,18 @@ select.target {
 
 /* Über dem Gesicht und nach rechts: in der Schiene sitzt es unten links, und
    ein Menü, das nach unten aufgeht, hätte dort keinen Platz. */
+/*
+ * Das Menü öffnet nach rechts — am Fuß der Schiene.
+ *
+ * Dort ist links Platz. In der Fußleiste des Telefons sitzt das Konto ganz
+ * rechts, und dasselbe `left: 4px` schob das Menü 180 Pixel aus dem Fenster:
+ * gemessen auf 390 px stand es von x=338 bis x=570. Man sah einen Streifen und
+ * konnte „Abmelden" nicht lesen, geschweige denn treffen.
+ *
+ * Gefunden beim Durchmessen der Zustände, nicht der Seiten — die Seite war in
+ * Ordnung, das offene Menü nicht. Ein Durchgang, der nur Adressen abklappert,
+ * hätte es nicht gesehen.
+ */
 .account-menu {
   position: absolute;
   z-index: 40;
@@ -1996,6 +2008,18 @@ select.target {
   background: var(--raised);
   box-shadow: var(--sote-shadow-lg);
   text-align: left;
+}
+
+/*
+ * In der Fußleiste rechts ausgerichtet.
+ *
+ * `max-width` dazu, weil 232 px auf einem sehr schmalen Gerät auch von rechts
+ * nicht hineinpassen müssen: dann wird das Menü schmaler statt unerreichbar.
+ */
+.footbar .account-menu {
+  left: auto;
+  right: 4px;
+  max-width: calc(100vw - 16px);
 }
 
 /* Eine Auskunft, die man nicht drücken kann, soll nicht aussehen wie eine,

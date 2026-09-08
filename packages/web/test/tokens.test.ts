@@ -201,3 +201,27 @@ test('keine Rastervorlage schlägt die Schmal-Regel', () => {
     `mehrspaltige .app-Vorlage ohne min-width-Klammer:\n${verstoesse.join('\n')}`,
   );
 });
+
+test('ein Klappmenü am rechten Rand öffnet nach links', () => {
+  /*
+   * Gefunden beim Durchmessen der **Zustände**, nicht der Seiten: jede Adresse
+   * war auf allen drei Breiten in Ordnung, das offene Kontomenü nicht. Auf
+   * 390 px stand es von x=338 bis x=570 — 180 Pixel außerhalb. Man sah einen
+   * Streifen und konnte „Abmelden" nicht lesen, geschweige denn treffen.
+   *
+   * Die Ursache ist eine Regel, die für ihren ersten Ort richtig war: am Fuß
+   * der **Schiene** ist links Platz, also `left: 4px`. In der **Fußleiste** des
+   * Telefons sitzt dasselbe Konto ganz rechts.
+   *
+   * Geprüft wird darum die Form der Antwort: wo ein Klappmenü in der Fußleiste
+   * landet, muss es von rechts verankert sein. Das ist gröber als eine
+   * Messung, aber es hält die Regel fest, die der nächste Ort auch braucht.
+   */
+  const block = CSS.slice(CSS.indexOf('.footbar .account-menu'));
+  const regel = block.slice(0, block.indexOf('}'));
+  assert.match(regel, /right:\s*4px/, 'in der Fußleiste von rechts verankert');
+  assert.match(regel, /left:\s*auto/, 'und links losgelassen');
+  // Und schmaler werden statt unerreichbar bleiben: 232 px passen auf einem
+  // sehr engen Gerät auch von rechts nicht hinein.
+  assert.match(regel, /max-width:\s*calc\(100vw/, 'darf schmaler werden');
+});
