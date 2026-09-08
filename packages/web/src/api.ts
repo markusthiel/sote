@@ -337,6 +337,43 @@ export const api = {
       { method: 'DELETE', body: JSON.stringify({ name }) },
     ),
 
+  /* ── Einladungen ───────────────────────────────────────────────────────── */
+  invitations: () =>
+    call<{
+      mails: boolean;
+      base: string | null;
+      invitations: {
+        id: string;
+        email: string;
+        token: string | null;
+        expiresAt: string;
+        createdAt: string;
+        acceptedAt: string | null;
+      }[];
+    }>('/api/invitations'),
+  /**
+   * Nur die Adresse — **keine URL** (ADR-0126).
+   *
+   * Es gibt hier absichtlich keinen Parameter, in dem ein Link stehen könnte:
+   * eine Route, die eine übergebene URL verschickt, wäre ein kleiner offener
+   * Verteiler mit dem Namen dieser Instanz auf dem Umschlag.
+   */
+  invite: (email: string) =>
+    call<{ id: string; token: string; mailed: boolean }>('/api/invitations', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    }),
+  revokeInvitation: (id: string) =>
+    call<{ ok: true }>(`/api/invitations/${id}`, { method: 'DELETE' }),
+
+  /* ── Eine Einladung einlösen: ohne Konto ───────────────────────────────── */
+  invitation: (token: string) => call<{ email: string }>(`/api/invitation/${token}`),
+  acceptInvitation: (token: string, body: { displayName: string; password: string }) =>
+    call<{ ok: true }>(`/api/invitation/${token}`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+
   /* ── Wartung ───────────────────────────────────────────────────────────── */
   maintenance: () =>
     call<{

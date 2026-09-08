@@ -14,6 +14,7 @@ import type { Pool } from 'pg';
 import { signIn, signOut, userOfToken } from './auth.js';
 import {
   BadSetupKey,
+  createAccount,
   SetupClosed,
   setupFirstAccount,
   userCount,
@@ -35,6 +36,14 @@ import type { Config } from './env.js';
 import { cookie, fail, json, readJson } from './http/respond.js';
 import { accounts, deleteAccount, setAdmin } from './accounts.js';
 import { TRASH_DAYS } from './handlers.js';
+import {
+  baseUrl,
+  invite,
+  listInvitations,
+  openInvitation,
+  revokeInvitation,
+} from './invitations.js';
+import { mailConfig } from './mail.js';
 import { knownKinds } from './jobs.js';
 import { deleteWorkspace, exportWorkspace } from './workspace.js';
 import {
@@ -331,6 +340,75 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
   const sharePath = /^\/api\/share\/([A-Za-z0-9_-]{20,200})(\/.*)?$/.exec(path);
   if (sharePath !== null) {
     await shareRoutes(ctx, req, res, sharePath[1]!, sharePath[2] ?? '', method, now);
+    return;
+  }
+
+  /* ── Einladungen: der zweite Weg ohne Konto ──────────────────────────────
+   *
+   * Vor der Anmeldeschranke, und das ist der Sinn: wer eingeladen ist, HAT
+   * noch kein Konto. Beide Wege stehen hier zusammen, damit man nachlesen
+   * kann, was ein Fremder erreicht — wie bei den Freigaben.
+   */
+  const invitePath = /^\/api\/invitation\/([A-Za-z0-9_-]{20,200})$/.exec(path);
+  if (invitePath !== null && (method === 'GET' || method === 'POST')) {
+    const einladung = await openInvitation(ctx.pool, invitePath[1]!, now);
+    if (einladung === null) {
+      // Ein Satz für alle Fälle: „abgelaufen" gegen „zurückgenommen" gegen
+      // „gibt es nicht" wäre eine Auskunft darüber, ob ein geratener Token
+      // einmal gültig war.
+      fail(res, 404, 'no_invitation', 'diese Einladung gilt nicht mehr');
+      return;
+    }
+    if (method === 'GET') {
+      // Die Adresse, damit der Bildschirm sie zeigen kann — und sonst nichts.
+      json(res, 200, { email: einladung.email });
+      return;
+    }
+    const body = (await readJson(req)) as Record<string, unknown>;
+    const name = String(body?.['displayName'] ?? '').trim();
+    const password = String(body?.['password'] ?? '');
+    if (name === '' || password.length < 8) {
+      fail(res, 400, 'weak', 'Name und ein Kennwort mit mindestens acht Zeichen');
+      return;
+    }
+    /*
+     * Dieselbe Stelle wie die Einrichtung: `createAccount`.
+     *
+     * Zwei Umsetzungen von „ein Konto anlegen" wären zwei Rollenlisten, und
+     * die eine hätte irgendwann eine Rolle, die die andere nicht hat — das
+     * steht schon in `bootstrap.ts`, und hier gilt es wieder.
+     *
+     * Die Adresse kommt aus der EINLADUNG und nicht aus dem Formular: sonst
+     * wäre ein Einladungslink ein Konto auf beliebigen Namen.
+     */
+    const neu = await createAccount(ctx.pool, {
+      email: einladung.email,
+      displayName: name,
+      password,
+      workspaceName: `${name}s Arbeitsbereich`,
+    });
+    await ctx.pool.query(
+      'UPDATE invitations SET accepted_at = now(), accepted_by = $2 WHERE id = $1',
+      [einladung.id, neu],
+    );
+    // Reihenfolge aus der Signatur abgelesen und nicht geraten: `sessionDays`
+    // vor `now`. Der Übersetzer hat mir das gesagt, bevor es ein Fehler wurde.
+    const session = await signIn(
+      ctx.pool,
+      einladung.email,
+      password,
+      ctx.config.sessionDays,
+      now,
+    );
+    if (session !== null) {
+      res.setHeader(
+        'set-cookie',
+        `${COOKIE}=${session.token}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${
+          ctx.config.sessionDays * 86_400
+        }`,
+      );
+    }
+    json(res, 201, { ok: true });
     return;
   }
 
@@ -704,6 +782,58 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
         createdAt: a.createdAt.toISOString(),
       })),
     });
+    return;
+  }
+
+  if (path === '/api/invitations' && method === 'GET') {
+    if (!(await isAdmin(ctx.pool, userId))) {
+      fail(res, 403, 'not_allowed', 'einladen darf, wer die Instanz verwaltet');
+      return;
+    }
+    json(res, 200, {
+      // Ob eine Mail überhaupt hinausgeht — die Oberfläche soll den Grund
+      // nennen können, statt einen Link zu zeigen und Versand vorzugeben.
+      mails: mailConfig() !== undefined && baseUrl() !== undefined,
+      base: baseUrl() ?? null,
+      invitations: (await listInvitations(ctx.pool)).map((i) => ({
+        id: i.id,
+        email: i.email,
+        token: i.token,
+        expiresAt: i.expiresAt.toISOString(),
+        createdAt: i.createdAt.toISOString(),
+        acceptedAt: i.acceptedAt?.toISOString() ?? null,
+      })),
+    });
+    return;
+  }
+
+  if (path === '/api/invitations' && method === 'POST') {
+    if (!(await isAdmin(ctx.pool, userId))) {
+      fail(res, 403, 'not_allowed', 'einladen darf, wer die Instanz verwaltet');
+      return;
+    }
+    const body = (await readJson(req)) as Record<string, unknown>;
+    /*
+     * Der Browser schickt eine ADRESSE, keine URL (ADR-0126).
+     *
+     * Eine Route, die eine übergebene URL verschickt, wäre ein kleiner offener
+     * Verteiler mit dem Namen dieser Instanz auf dem Umschlag — und sie hätte
+     * ausgesehen wie der naheliegende Weg, weil der Browser den Link ohnehin
+     * anzeigt.
+     */
+    const out = await invite(ctx.pool, String(body?.['email'] ?? ''), userId, now);
+    json(res, 201, { id: out.id, token: out.token, mailed: out.mailed });
+    return;
+  }
+
+  const invRevoke = /^\/api\/invitations\/([0-9a-f-]{36})$/.exec(path);
+  if (invRevoke !== null && method === 'DELETE') {
+    if (!(await isAdmin(ctx.pool, userId))) {
+      fail(res, 403, 'not_allowed', 'einladen darf, wer die Instanz verwaltet');
+      return;
+    }
+    await revokeInvitation(ctx.pool, invRevoke[1]!);
+    json(res, 200, { ok: true });
     return;
   }
 

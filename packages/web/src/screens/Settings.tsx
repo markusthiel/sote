@@ -92,6 +92,7 @@ export const WORKSPACE_SECTIONS = [
 export const ADMIN_SECTIONS = [
   { id: 'instanz', label: 'Diese Instanz', hint: 'Vorgaben für alle' },
   { id: 'konten', label: 'Konten', hint: 'Wer auf diesem Server ist' },
+  { id: 'einladungen', label: 'Einladungen', hint: 'Neue Konten' },
   { id: 'wartung', label: 'Wartung', hint: 'Was von selbst läuft' },
 ] as const;
 

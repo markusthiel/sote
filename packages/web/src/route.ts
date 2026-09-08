@@ -60,6 +60,8 @@ export type Route =
   | { readonly kind: 'share'; readonly token: string }
   /** Was hinausgegeben ist — der letzte Platzhalter bekommt einen Inhalt. */
   | { readonly kind: 'shares' }
+  /** Eine Einladung einlösen — ohne Konto, wie eine Freigabe. */
+  | { readonly kind: 'invite'; readonly token: string }
   | { readonly kind: 'workspaces'; readonly section: string }
   /** Alles, was für jeden auf diesem Server gilt. */
   | { readonly kind: 'admin'; readonly section: string };
@@ -90,6 +92,12 @@ export function parseRoute(pathname: string, queryString = ''): Route {
   }
 
   if (parts.length === 0) return { kind: 'today' };
+
+  if (parts[0] === 'einladung' && parts[1] !== undefined) {
+    return /^[A-Za-z0-9_-]{20,200}$/.test(parts[1])
+      ? { kind: 'invite', token: parts[1] }
+      : { kind: 'today' };
+  }
 
   if (parts[0] === 'f' && parts[1] !== undefined) {
     // Nur die Zeichen, die ein Token haben kann. Alles andere ist keine
@@ -149,6 +157,8 @@ export function pathOf(route: Route): string {
       return `/f/${route.token}`;
     case 'shares':
       return '/freigaben';
+    case 'invite':
+      return `/einladung/${route.token}`;
     case 'project':
       return `/p/${route.projectId}`;
     case 'search':

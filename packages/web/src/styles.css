@@ -2968,3 +2968,8 @@ select.target {
   border-color: var(--danger);
   color: var(--danger);
 }
+
+/* Ein Formular, kein Bildschirm voll: die Einladung fragt zwei Dinge. */
+.guest-body.narrow {
+  max-width: 460px;
+}

@@ -31,7 +31,9 @@ import { TaskList } from './screens/TaskList.js';
 import { Detail } from './screens/Detail.js';
 import { Search } from './screens/Search.js';
 import { landingRoute, markRoute, rememberRoute } from './landing.js';
+import { AcceptInvite } from './screens/AcceptInvite.js';
 import { Accounts } from './screens/Accounts.js';
+import { Invitations } from './screens/Invitations.js';
 import { Maintenance } from './screens/Maintenance.js';
 import { People } from './screens/People.js';
 import { Groups } from './screens/Groups.js';
@@ -241,6 +243,22 @@ export function App() {
    * Rahmen hat: es gibt keine anderen Orte, also auch keine Liste davon.
    */
   if (route.kind === 'share') return <ShareScreen token={route.token} now={now} />;
+  /*
+   * Auch das vor jeder Anmeldeprüfung: wer eingeladen ist, HAT noch kein Konto.
+   * Nach dem Anlegen ist er angemeldet (der Server setzt das Plätzchen), also
+   * genügt `loadMe()` und ein Sprung nach Hause.
+   */
+  if (route.kind === 'invite') {
+    return (
+      <AcceptInvite
+        token={route.token}
+        onDone={() => {
+          go({ kind: 'today' });
+          void loadMe();
+        }}
+      />
+    );
+  }
 
   if (me === undefined) return <div className="signin" aria-busy="true" />;
   if (me === null) {
@@ -527,7 +545,9 @@ export function App() {
           detailOpen={openTask !== null}
           onToggleDetail={openTask === null ? undefined : () => setOpenTask(null)}
         />
-        {route.kind === 'admin' && route.section === 'wartung' ? (
+        {route.kind === 'admin' && route.section === 'einladungen' ? (
+          <Invitations />
+        ) : route.kind === 'admin' && route.section === 'wartung' ? (
           <Maintenance />
         ) : route.kind === 'admin' && route.section === 'konten' ? (
           <Accounts />

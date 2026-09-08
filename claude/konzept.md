@@ -1526,6 +1526,45 @@ Beim Bauen entschieden, weil es ohne Entscheidung keinen Code gibt:
   etwas, das niemand verlangt hat, ist eine Frage, die der Betreiber
   beantworten muss, ohne sie gestellt zu haben.
 
+## Mail und Einladungen
+
+- **Mail geht durch die Warteschlange, immer.** Eine Anfrage, die auf einen
+  fremden Server wartet, hängt, wenn der fremde Server hängt — ein Mailserver
+  ohne Antwort würde ein Einladen langsam machen. Und der Läufer bringt mit,
+  was Mail braucht: Wiederversuche mit wachsendem Abstand, und ein Fehlschlag
+  bleibt unter „Wartung" sichtbar.
+- **Mindestens einmal heißt: eine Mail kann doppelt kommen.** Trotzdem richtig:
+  die Gegenrichtung wäre eine Mail, die manchmal *nicht* kommt, und eine
+  Einladung, die nicht ankommt, ist schlimmer als eine, die zweimal ankommt.
+- **Nur Text, kein HTML.** Eine Mail von SOTE sagt einen Satz und trägt einen
+  Link. HTML dazu wäre eine zweite Fassung desselben Inhalts, die auseinander-
+  laufen kann.
+- **Der Token reist nie in der Anfrage** (SONEs ADR-0126). Der Browser schickt
+  eine **Adresse**, der Server baut den Link selbst — eine Route, die eine
+  übergebene URL verschickt, wäre ein kleiner offener Verteiler mit dem Namen
+  dieser Instanz auf dem Umschlag. In der API gibt es darum **keinen
+  Parameter**, in dem ein Link stehen könnte.
+- **Die eigene Adresse kommt aus `SOTE_BASE_URL`**, nicht aus der
+  `Host`-Kopfzeile: die ist eine Angabe des Aufrufers, und wer sie fälscht,
+  lässt diesen Server Einladungslinks auf einen fremden Namen verschicken. Fehlt
+  sie, geht **keine** Mail — die Einladung gilt trotzdem und steht mit ihrem
+  Link in der Liste. Der Vorgang ist eine Sache, die Mail eine andere.
+- **Ein Ablauf ist bei Einladungen Pflicht**, anders als bei Freigaben: eine
+  Freigabe ist ein Arbeitsmittel, das man absichtlich offen lässt, eine
+  Einladung ein einmaliger Vorgang. Eine, die drei Jahre gilt, ist ein
+  vergessenes Konto in Wartestellung.
+- **Wer schon ein Konto hat, wird nicht eingeladen** — mit dem Hinweis, wo die
+  richtige Frage steht („Leute"). Sonst wäre es ein Link, der beim Einlösen
+  fehlschlägt: ein Fehler, der eine Woche später bei jemand anderem auftritt.
+- **Die Adresse kommt aus der Einladung, nicht aus dem Formular**, sonst wäre
+  ein Einladungslink ein Konto auf beliebigen Namen. Angezeigt wird sie
+  trotzdem: wer einen Link öffnet, will wissen, für wen er gilt.
+- **`seal`/`unseal` liegen in `secretbox.ts`**, seit es zwei Aufrufer gibt.
+  Zwei Kopien derselben Verschlüsselung sind zwei Stellen, an denen ein
+  Verfahren gewechselt werden müsste — und eine wird vergessen. Der
+  Variablenname bleibt `SOTE_SHARE_KEY`: umbenennen hieße, einen laufenden
+  Server beim nächsten Neustart ohne Schlüssel dastehen zu lassen.
+
 - **`pnpm check` ist genau das, was die CI fährt.** Erst standen die Prüfungen
   einzeln in der Workflow-Datei, und `pnpm -r typecheck` scheiterte dort — in
   einem frischen Klon gibt es kein `dist`, und `@sote/core` zeigt mit `types`

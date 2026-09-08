@@ -190,6 +190,8 @@ test('jede Adresse führt dorthin, wo der Klick hinführt', () => {
     // Und ein Link ohne Konto: der Token steht in der ADRESSE, sonst ist es
     // keiner, den man weitergeben kann.
     { kind: 'share', token: 'A'.repeat(43) },
+    // Eine Einladung: auch ohne Konto erreichbar, also im Rundgang.
+    { kind: 'invite', token: 'B'.repeat(43) },
     { kind: 'mode', mode: 'trash' },
   ];
   for (const route of roundTrip) {

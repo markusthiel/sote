@@ -12,11 +12,14 @@ import type { Pool } from 'pg';
 
 import { makePool, queryOne } from '../src/db.js';
 import { migrate } from '../src/migrate.js';
+// `NoShareKey` heißt jetzt `NoKey` und liegt in `secretbox.ts`: es gibt einen
+// zweiten Aufrufer (Einladungen), und der Schlüssel ist der der Instanz und
+// nicht der der Freigaben.
+import { NoKey } from '../src/secretbox.js';
 import {
   accessByToken,
   createShare,
   listShares,
-  NoShareKey,
   revokeShare,
   shareKeyPresent,
 } from '../src/shares.js';
@@ -203,7 +206,7 @@ test('ohne Schlüssel gibt es keine Freigaben, und das wird gesagt', async () =>
     assert.equal(shareKeyPresent(), false);
     await assert.rejects(
       () => createShare(pool, { workspaceId, projectId, right: 'read', userId }),
-      (e: unknown) => e instanceof NoShareKey && /SOTE_SHARE_KEY/.test((e as Error).message),
+      (e: unknown) => e instanceof NoKey && /SOTE_SHARE_KEY/.test((e as Error).message),
     );
   } finally {
     process.env['SOTE_SHARE_KEY'] = keep;
