@@ -8,15 +8,24 @@ Aufgaben verwalten. Auf deinem Server.
 
 ## Stand
 
-Konzept und Gestaltung stehen. Der Kern, der Server und die Heute-Ansicht
-laufen; alles andere ist noch nicht gebaut. **94 Tests**, davon 26 gegen eine
-echte Datenbank.
+Benutzbar. Aufgaben, Projekte und Ordner, die vier Ansichten und der
+Posteingang, Suche, Papierkorb, Teilaufgaben und Kommentare, wiederkehrende
+Aufgaben, Freigaben per Link ohne Konto, Leute, Rollen und Gruppen, Einladungen,
+Erinnerungen, Single-Sign-on, Export und Löschen eines Arbeitsbereichs.
+
+Was noch fehlt, ist die **Kopplung an SONE** — Blockanker, `/`-Menü,
+bidirektionale Links.
 
 ```
 pnpm install
-SOTE_TEST_DATABASE_URL=postgres://… pnpm check     # Wächter, Typprüfung, 217 Tests
+SOTE_TEST_DATABASE_URL=postgres://… pnpm check     # Wächter, Typprüfung, Tests
 pnpm dev                                           # Oberfläche auf :5173
 ```
+
+Die Testzahl steht hier absichtlich **nicht**. Sie stand zweimal in diesem
+Abschnitt, mit zwei verschiedenen Werten (94 und 217), und beide waren zum
+Schluss falsch — eine Zahl, die von Hand gepflegt wird, ist eine Zahl, die
+irgendwann lügt. `pnpm check` sagt sie.
 
 `pnpm check` ist genau das, was die CI fährt — ein Befehl, damit die beiden
 Listen von Prüfungen nicht auseinanderlaufen können.
@@ -55,31 +64,57 @@ Projekt.
 
 Der Server migriert beim Start selbst und liefert die gebaute Oberfläche mit
 aus — ein Ursprung für beides, damit der Sitzungskeks ohne CORS auskommt. Er
-hört auf `SOTE_PORT`, Vorgabe 3001, weil SONE 3000 nimmt. Gebunden wird an alle
+hört im Container auf 8080; nach draußen bildet `SOTE_PORT` ab, Vorgabe 32901. Gebunden wird an alle
 Schnittstellen, wie bei SONE; davor gehört ein Reverse Proxy mit TLS, weil der
 Keks sonst im Klartext reist.
 
-### Was SOTE nicht liest
+### Was SOTE liest
 
-Wer von SONE kommt, hat eine `.env` mit siebzehn Zeilen. SOTE liest drei, und
-das ist keine Sparsamkeit, sondern der Stand: eine Variable für eine Sache, die
-es nicht gibt, ist eine Zusage, die nichts einlöst.
+Dreizehn Einstellungen, und für jede steht hier, **was ohne sie passiert** —
+das ist beim Einrichten die einzige Auskunft, die zählt.
+
+Ein Wächter im Prüflauf (`scripts/check-env-passed.mjs`) hält beide Richtungen
+fest: jede Variable, die der Server liest, steht in `docker-compose.yml`, und
+jede, die dort steht, wird gelesen. Der Grund ist eine Lehre aus SONE, die dort
+vierzehn Variablen betraf und mir hier trotzdem passiert ist:
+**Compose gibt die Umgebung des Rechners nicht weiter.** Was in `.env` steht und
+in `docker-compose.yml` nicht genannt ist, erreicht den Container nie — man
+füllt etwas aus, es wirkt nicht, und nichts sagt warum.
+
+| Variable | ohne sie |
+|---|---|
+| `POSTGRES_PASSWORD` | Start bricht ab. Pflicht. |
+| `SOTE_PORT` | Host-Port, Vorgabe 32901. Im Container hört der Server immer auf 8080. |
+| `SOTE_SESSION_DAYS` | 30 Tage. |
+| `SOTE_BASE_URL` | **Keine Einladungsmail und kein SSO.** Beide brauchen einen Rückweg, und der kann nicht aus der Anfrage kommen: wer die `Host`-Kopfzeile fälscht, lässt diesen Server Links auf einen fremden Namen verschicken. |
+| `SOTE_SHARE_KEY` | **Keine Freigaben und keine Einladungslinks.** Die Bildschirme sagen das und nennen den Befehl: `openssl rand -hex 32`. In der Umgebung und nicht in der Datenbank — läge der Schlüssel neben den Links, die er schützt, wäre er keiner. |
+| `SOTE_SMTP_HOST`, `SOTE_MAIL_FROM` | **Keine Mail.** Einladen geht trotzdem: der Link steht in der Liste zum Weitergeben. Erinnerungen laufen dann gar nicht, und der Server sagt es beim Start. |
+| `SOTE_SMTP_PORT` | 587. |
+| `SOTE_SMTP_USER`, `SOTE_SMTP_PASS` | Ohne Anmeldung beim Mailserver. |
+| `SOTE_SMTP_SECURE` | Aus dem Port abgeleitet: 465 von Anfang an verschlüsselt, sonst STARTTLS. |
+| `SOTE_OIDC_ISSUER`, `SOTE_OIDC_CLIENT_ID`, `SOTE_OIDC_CLIENT_SECRET` | **Kein Single-Sign-on** — der Knopf fehlt dann, statt in einen Fehler zu führen. Alle drei oder keines; `https` ist Pflicht. Rückkehradresse beim Anbieter: `$SOTE_BASE_URL/api/sso/callback`. |
+| `SOTE_OIDC_LABEL` | Der Knopf heißt „Single-Sign-on", was nichts über den Anbieter sagt. |
+
+Zwei stehen nur auf dem Rechner und nie im Container:
+`SOTE_TEST_DATABASE_URL` für die Testläufe und `SOTE_NEW_PASSWORD` für das
+Kennwortskript.
+
+### Was SOTE nicht liest
 
 | in SONE | in SOTE | warum |
 |---|---|---|
-| `SONE_SECRET_KEY` | **nicht nötig** | Sitzungen und Freigabelinks tragen einen Zufallswert, und die Datenbank hält nur seinen sha256. Ohne Signatur braucht es keinen Schlüssel — und keinen, dessen Verlust alle Sitzungen entwertet. |
-| `POSTGRES_PASSWORD` | gleich | |
-| `SONE_PORT` | `SOTE_PORT` | Host-Port, Vorgabe 32901. |
-| `SONE_PUBLIC_URL` | **noch nicht** | Wird gebraucht, sobald etwas eine absolute URL erzeugt: die Erinnerungsmail, der Freigabelink, der Rückverweis für SONE. Nichts davon ist gebaut, also liest es niemand. |
+| `SONE_SECRET_KEY` | **nicht nötig** | Sitzungen tragen einen Zufallswert, und die Datenbank hält nur seinen sha256. Ohne Signatur braucht es keinen Schlüssel, dessen Verlust alle Sitzungen entwertet. (Freigabe- und Einladungslinks brauchen einen — das ist `SOTE_SHARE_KEY`, und er verschlüsselt, statt zu signieren.) |
 | `SONE_LOG_LEVEL` | **noch nicht** | SOTE schreibt auf stdout, ohne Stufen. |
 | `SONE_MAX_UPLOAD_MB` | **noch nicht** | Anhänge sind entworfen (Blatt 17), nicht gebaut. Die Zahl kommt in die `.env`, wenn sie gelesen wird — und nicht vorher. |
 | `SONE_STORAGE_BACKEND` | **kommt nicht** | Ein Volume, und keine Variable für ein Backend, das es nicht gibt: genau die Falle aus ADR-0107, wo `s3` dastand, nichts es umsetzte und die Sicherung deshalb das lokale Volume übersprang. |
-| `SONE_SMTP_*` | **noch nicht** | Kein Mailweg. Entworfen ist er (Erinnerungen, Blatt 12), gebaut nicht. |
 | `SONE_IMAP_*`, `SONE_REPLY_MAILBOX` | **noch nicht** | Kein Antworten per Mail. |
 
 Eine Zeile stand hier zu Unrecht und ist wieder weg:
 `SOTE_REMINDER_MAIL_AFTER_MINUTES`. Sie war in `env.ts` gelesen und geprüft —
-und **nichts versendete Mail**. Sie kommt zurück, wenn der Mailweg da ist.
+und **nichts versendete Mail**. Sie ist auch nicht zurückgekommen, als der
+Mailweg kam: Erinnerungen sind jetzt *ein Brief am Tag zu einer Zeit, die jede
+Person selbst wählt*, und eine Instanzvariable für „nach so vielen Minuten"
+würde diese Frage zum zweiten Mal beantworten.
 
 ### Das erste Konto
 
@@ -100,8 +135,9 @@ jemand das letzte Konto löscht. Dann stünde die Kontoerstellung offen im Netz.
 Der Schlüssel liegt nur im Speicher des Prozesses, verfällt beim Neustart und
 ist mit dem ersten Konto verbraucht.
 
-Ein weiteres Konto legt bis auf Weiteres ein Skript an — Einladungen gibt es
-noch nicht:
+Weitere Konten kommen über **Einladungen** (Verwaltung › Einladungen). Ohne
+Mailweg steht der Link dort zum Weitergeben. Und es gibt weiterhin ein Skript,
+für den Fall, dass man vor dem ersten Anmelden ein zweites Konto braucht:
 
 ```
 docker compose exec server \
@@ -113,60 +149,6 @@ docker compose exec server \
 Das Kennwort kommt aus der Umgebung und nicht aus einem Argument:
 Kommandozeilen landen in der Shell-Geschichte und in `ps`. Ein bestehendes Konto
 wird nicht stillschweigend überschrieben.
-
-### Was SOTE nicht liest
-
-Wer von SONE kommt, hat eine `.env` mit siebzehn Zeilen. SOTE liest drei, und
-das ist keine Sparsamkeit, sondern der Stand: eine Variable für eine Sache, die
-es nicht gibt, ist eine Zusage, die nichts einlöst.
-
-| in SONE | in SOTE | warum |
-|---|---|---|
-| `SONE_SECRET_KEY` | **nicht nötig** | Sitzungen und Freigabelinks tragen einen Zufallswert, und die Datenbank hält nur seinen sha256. Ohne Signatur braucht es keinen Schlüssel — und keinen, dessen Verlust alle Sitzungen entwertet. |
-| `POSTGRES_PASSWORD` | gleich | |
-| `SONE_PORT` | `SOTE_PORT` | Host-Port, Vorgabe 32901. |
-| `SONE_PUBLIC_URL` | **noch nicht** | Wird gebraucht, sobald etwas eine absolute URL erzeugt: die Erinnerungsmail, der Freigabelink, der Rückverweis für SONE. Nichts davon ist gebaut, also liest es niemand. |
-| `SONE_LOG_LEVEL` | **noch nicht** | SOTE schreibt auf stdout, ohne Stufen. |
-| `SONE_MAX_UPLOAD_MB` | **noch nicht** | Anhänge sind entworfen (Blatt 17), nicht gebaut. Die Zahl kommt in die `.env`, wenn sie gelesen wird — und nicht vorher. |
-| `SONE_STORAGE_BACKEND` | **kommt nicht** | Ein Volume, und keine Variable für ein Backend, das es nicht gibt: genau die Falle aus ADR-0107, wo `s3` dastand, nichts es umsetzte und die Sicherung deshalb das lokale Volume übersprang. |
-| `SONE_SMTP_*` | **noch nicht** | Kein Mailweg. Entworfen ist er (Erinnerungen, Blatt 12), gebaut nicht. |
-| `SONE_IMAP_*`, `SONE_REPLY_MAILBOX` | **noch nicht** | Kein Antworten per Mail. |
-
-Eine Zeile stand hier zu Unrecht und ist wieder weg:
-`SOTE_REMINDER_MAIL_AFTER_MINUTES`. Sie war in `env.ts` gelesen und geprüft —
-und **nichts versendete Mail**. Sie kommt zurück, wenn der Mailweg da ist.
-
-### Das erste Konto
-
-Das erste Konto legt ein Skript an — eine Einladung gibt es noch nicht:
-
-```
-docker compose exec server \
-  env SOTE_NEW_PASSWORD='…' \
-  node packages/server/dist/scripts/createAccount.js \
-  du@example.org "Dein Name" "Mein Arbeitsbereich"
-```
-
-Das Kennwort kommt aus der Umgebung und nicht aus einem Argument:
-Kommandozeilen landen in der Shell-Geschichte und in `ps`. Ein bestehendes
-Konto wird nicht stillschweigend überschrieben.
-
-- [`claude/konzept.md`](claude/konzept.md) — die Festlegungen und die offenen
-  Punkte
-- [`design/artboards.html`](design/artboards.html) — Schale, Zeile, Erfassung
-- [`design/artboards-2.html`](design/artboards-2.html) — Wiederholung, Freigabe,
-  Papierkorb
-- [`design/artboards-3.html`](design/artboards-3.html) — Erinnerungen, CalDAV,
-  Einstellungen, Kopplung
-- [`design/artboards-4.html`](design/artboards-4.html) — Anhänge (entworfen,
-  nicht gebaut)
-- [`packages/core`](packages/core) — Schnellerfassung, Wiederholungen,
-  Sortierung. Rein und getestet.
-- [`packages/server/migrations`](packages/server/migrations) — das Schema
-- [`packages/server/src/tasks.ts`](packages/server/src/tasks.ts) — was Abhaken
-  bedeutet, und die Heute-Ansicht
-- [`packages/web/src/modes.tsx`](packages/web/src/modes.tsx) — die eine
-  Modusliste, aus der Schiene und Fußleiste gezeichnet werden
 
 ## Was SOTE werden soll
 

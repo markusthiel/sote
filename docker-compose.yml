@@ -47,6 +47,34 @@ services:
       # etwas aus, es wirkt nicht, und nichts sagt warum. Also lieber eine Zeile
       # zu viel als eine Einstellung, die stumm ins Leere geht.
       SOTE_SESSION_DAYS: ${SOTE_SESSION_DAYS:-30}
+
+      # Die eigene Adresse. Ohne sie: keine Einladungsmails und kein
+      # Single-Sign-on (beides braucht einen Rückweg, den nur der Betreiber
+      # kennt — aus der `Host`-Kopfzeile wäre er eine Angabe des Aufrufers).
+      SOTE_BASE_URL: ${SOTE_BASE_URL:-}
+
+      # Der Schlüssel für Freigabe- und Einladungslinks. Ohne ihn gibt es
+      # beides nicht, und die Bildschirme sagen das.
+      #   openssl rand -hex 32
+      SOTE_SHARE_KEY: ${SOTE_SHARE_KEY:-}
+
+      # Der Mailweg. Fehlt er, geht keine Mail — Einladen funktioniert
+      # trotzdem, der Link steht dann in der Liste.
+      SOTE_SMTP_HOST: ${SOTE_SMTP_HOST:-}
+      SOTE_SMTP_PORT: ${SOTE_SMTP_PORT:-587}
+      SOTE_SMTP_USER: ${SOTE_SMTP_USER:-}
+      SOTE_SMTP_PASS: ${SOTE_SMTP_PASS:-}
+      # Leer heißt: aus dem Port abgeleitet (465 ja, sonst STARTTLS).
+      SOTE_SMTP_SECURE: ${SOTE_SMTP_SECURE:-}
+      SOTE_MAIL_FROM: ${SOTE_MAIL_FROM:-}
+
+      # Single-Sign-on über OIDC. Alle drei oder keines.
+      SOTE_OIDC_ISSUER: ${SOTE_OIDC_ISSUER:-}
+      SOTE_OIDC_CLIENT_ID: ${SOTE_OIDC_CLIENT_ID:-}
+      SOTE_OIDC_CLIENT_SECRET: ${SOTE_OIDC_CLIENT_SECRET:-}
+      # Wie der Knopf heißt. Ohne das steht dort „Single-Sign-on", was nichts
+      # über den Anbieter sagt.
+      SOTE_OIDC_LABEL: ${SOTE_OIDC_LABEL:-Single-Sign-on}
     ports:
       # Host-Port links, der feste Port des Containers rechts.
       #

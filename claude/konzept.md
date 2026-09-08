@@ -1637,6 +1637,25 @@ Beim Bauen entschieden, weil es ohne Entscheidung keinen Code gibt:
 - **Ein Anbieter, der nicht antwortet, ist keine Ausnahme**, sondern eine
   Auskunft auf der Anmeldemaske.
 
+- **Compose gibt die Umgebung des Rechners nicht weiter.** SONEs Lehre, dort mit
+  vierzehn Variablen — und der Kommentar dazu stand in *dieser*
+  `docker-compose.yml`, während ich zehn neue Variablen baute und keine davon
+  eintrug. Was in `.env` steht und dort nicht genannt ist, erreicht den
+  Container nie: man füllt etwas aus, es wirkt nicht, und nichts sagt warum.
+  - **Ein Grundsatz, an den sich niemand hält, ist ein Grundsatz mit einer
+    Prüfung zu wenig.** `check-env-passed.mjs` hält jetzt **beide** Richtungen:
+    jede gelesene Variable steht in Compose, und jede in Compose wird gelesen —
+    die zweite Richtung ist derselbe Fehler von der anderen Seite (ADR-0112).
+    Ausnahmen stehen mit Grund im Skript, sonst ist eine Ausnahmeliste eine
+    Liste, auf die man Dinge schiebt.
+- **Eine Zahl, die von Hand gepflegt wird, lügt irgendwann.** Die README nannte
+  die Testzahl zweimal im selben Abschnitt, mit zwei Werten (94 und 217), und
+  beide waren falsch. Sie steht jetzt nirgends — `pnpm check` sagt sie.
+- **Dokumentation verrottet leiser als Code.** In der README stand derselbe
+  Abschnitt zweimal, die zweite Kopie eine ältere Fassung, und beide
+  behaupteten „Einladungen gibt es noch nicht". Für jede Variable steht jetzt
+  da, **was ohne sie passiert** — beim Einrichten die einzige Auskunft, die
+  zählt.
 - **`pnpm check` ist genau das, was die CI fährt.** Erst standen die Prüfungen
   einzeln in der Workflow-Datei, und `pnpm -r typecheck` scheiterte dort — in
   einem frischen Klon gibt es kein `dist`, und `@sote/core` zeigt mit `types`
