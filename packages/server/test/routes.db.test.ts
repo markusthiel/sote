@@ -13,7 +13,7 @@ import { after, before, test } from 'node:test';
 import type { Pool } from 'pg';
 
 import { setPassword } from '../src/auth.js';
-import { makePool, queryOne } from '../src/db.js';
+import { makePool, queryOne, queryRows } from '../src/db.js';
 import { migrate } from '../src/migrate.js';
 import { makeServer } from '../src/routes.js';
 
@@ -310,4 +310,211 @@ test('vier gleichzeitige Migrationsläufe stören sich nicht', async () => {
     await admin.query(`DROP DATABASE IF EXISTS ${name}`);
     await admin.end();
   }
+});
+
+/* ── Freigaben über HTTP ─────────────────────────────────────────────────── */
+
+/**
+ * Wieder anmelden.
+ *
+ * Ein Test weiter oben meldet sich ab, und die Sitzung liegt in einer Variablen
+ * dieser Datei — meine neuen Tests hingen hinter dem Abmelden und bekamen 401.
+ * Der Fehler steckte nicht in den Freigaben, sondern in der Reihenfolge; ein
+ * eigenes Anmelden hier macht diese Gruppe unabhängig davon, was vorher lief.
+ */
+test('für die Freigaben wieder anmelden', async () => {
+  const res = await call('/api/session', {
+    method: 'POST',
+    body: JSON.stringify({ email, password: 'ein gutes Kennwort' }),
+  });
+  assert.equal(res.status, 200);
+  sessionCookie = (res.headers.get('set-cookie') ?? '').split(';')[0]!;
+  // Und ab hier gilt derselbe Schlüssel für alle Tests dieser Gruppe.
+  process.env['SOTE_SHARE_KEY'] = Buffer.alloc(32, 3).toString('hex');
+});
+
+test('ein Link ohne Konto liest sein Projekt und sonst nichts', async () => {
+  /*
+   * Der Kern der Rechtefläche: dieser Aufruf trägt KEIN Sitzungsplätzchen.
+   * Genau das ist die Idee einer Freigabe — und genau das muss geprüft werden,
+   * denn ein Weg, der nur mit Konto funktioniert, ist keine Freigabe, und
+   * einer, der zu viel hergibt, ist ein Loch.
+   */
+  process.env['SOTE_SHARE_KEY'] = Buffer.alloc(32, 3).toString('hex');
+  const projectId = await queryOne<{ id: string }>(
+    pool,
+    `SELECT id FROM projects WHERE workspace_id = $1 AND kind = 'list' LIMIT 1`,
+    [workspaceId],
+  );
+  const antwort = await call('/api/shares', {
+    method: 'POST',
+    body: JSON.stringify({ projectId: projectId!.id, right: 'read' }),
+  });
+  // Die Antwort wird GEPRÜFT, bevor daraus gelesen wird: sonst meldet der Test
+  // „cannot read properties of undefined" und verschweigt, was der Server
+  // wirklich gesagt hat.
+  const made = (await antwort.json()) as { share?: { token: string }; error?: string };
+  assert.equal(antwort.status, 201, `Freigabe anlegen: ${JSON.stringify(made)}`);
+  const token = made.share!.token;
+
+  // Ohne Plätzchen: der Link selbst.
+  const ohne = await fetch(`${base}/api/share/${token}`);
+  assert.equal(ohne.status, 200);
+  const body = (await ohne.json()) as { project: { name: string }; right: string };
+  assert.equal(body.right, 'read');
+  assert.ok(body.project.name.length > 0);
+  // Und NICHT der Arbeitsbereich, nicht die anderen Projekte, nicht die Leute.
+  assert.equal('workspace' in body, false);
+  assert.equal('projects' in body, false);
+
+  // Schreiben darf er nicht.
+  const schreiben = await fetch(`${base}/api/share/${token}/tasks`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ line: 'geht nicht' }),
+  });
+  assert.equal(schreiben.status, 403);
+});
+
+test('ein geratener Token bekommt immer denselben Satz', async () => {
+  /*
+   * Anders begründet als ADR-0073s „no such account is said plainly": dort
+   * fragt jemand, der schon wissen darf, wer im Arbeitsbereich ist. Hier fragt
+   * ein Fremder — „gibt es nicht" gegen „abgelaufen" gegen „widerrufen" wäre
+   * eine Auskunft darüber, ob ein geratener Token einmal existiert hat, und das
+   * macht Raten lohnend.
+   */
+  const a = await fetch(`${base}/api/share/${'a'.repeat(43)}`);
+  assert.equal(a.status, 404);
+  // `error` ist ein Objekt {code, message} — mit `assert.equal` verglichen
+  // schlägt es immer an, weil zwei Objekte nie gleich sind. `deepEqual` ist
+  // hier die Frage, die gemeint war.
+  const erste = ((await a.json()) as { error: unknown }).error;
+
+  process.env['SOTE_SHARE_KEY'] = Buffer.alloc(32, 3).toString('hex');
+  const projectId = await queryOne<{ id: string }>(
+    pool,
+    `SELECT id FROM projects WHERE workspace_id = $1 AND kind = 'list' LIMIT 1`,
+    [workspaceId],
+  );
+  const made = (await (
+    await call('/api/shares', {
+      method: 'POST',
+      body: JSON.stringify({ projectId: projectId!.id, right: 'edit' }),
+    })
+  ).json()) as { share: { id: string; token: string } };
+  await call(`/api/shares/${made.share.id}`, { method: 'DELETE' });
+
+  const b = await fetch(`${base}/api/share/${made.share.token}`);
+  assert.equal(b.status, 404);
+  assert.deepEqual(((await b.json()) as { error: unknown }).error, erste, 'derselbe Satz');
+});
+
+test('ein Link darf keine fremde Aufgabe anfassen', async () => {
+  /*
+   * Eine Id in der Adresse ist eine BEHAUPTUNG des Aufrufers, nicht eine
+   * Auskunft. Ohne diese Prüfung wäre jede Freigabe eine Freigabe auf alle
+   * Aufgaben der Instanz, sobald jemand eine fremde Id einsetzt — und Ids
+   * stehen in Antworten.
+   */
+  process.env['SOTE_SHARE_KEY'] = Buffer.alloc(32, 3).toString('hex');
+  const zwei = await queryRows<{ id: string }>(
+    pool,
+    `SELECT id FROM projects WHERE workspace_id = $1 AND kind = 'list' LIMIT 1`,
+    [workspaceId],
+  );
+  const made = (await (
+    await call('/api/shares', {
+      method: 'POST',
+      body: JSON.stringify({ projectId: zwei[0]!.id, right: 'edit' }),
+    })
+  ).json()) as { share: { token: string } };
+
+  // Eine Aufgabe, die NICHT in diesem Projekt liegt.
+  const fremd = await queryOne<{ id: string }>(
+    pool,
+    `INSERT INTO tasks (workspace_id, title, sort_key) VALUES ($1,'woanders','z9')
+     RETURNING id`,
+    [workspaceId],
+  );
+  const res_ = await fetch(`${base}/api/share/${made.share.token}/tasks/${fremd!.id}/complete`, {
+    method: 'POST',
+  });
+  assert.equal(res_.status, 404);
+  // Und sie ist wirklich nicht abgehakt.
+  const row = await queryOne<{ completed_at: Date | null }>(
+    pool,
+    'SELECT completed_at FROM tasks WHERE id = $1',
+    [fremd!.id],
+  );
+  assert.equal(row!.completed_at, null);
+});
+
+test('ein Link mit edit legt an, hakt ab und öffnet wieder', async () => {
+  process.env['SOTE_SHARE_KEY'] = Buffer.alloc(32, 3).toString('hex');
+  const projectId = await queryOne<{ id: string }>(
+    pool,
+    `SELECT id FROM projects WHERE workspace_id = $1 AND kind = 'list' LIMIT 1`,
+    [workspaceId],
+  );
+  const made = (await (
+    await call('/api/shares', {
+      method: 'POST',
+      body: JSON.stringify({ projectId: projectId!.id, right: 'edit' }),
+    })
+  ).json()) as { share: { token: string } };
+  const t = made.share.token;
+
+  const angelegt = await fetch(`${base}/api/share/${t}/tasks`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ line: 'vom Gast' }),
+  });
+  assert.equal(angelegt.status, 201);
+  const id = ((await angelegt.json()) as { id: string }).id;
+
+  // Ein Gast ist niemand: `created_by` bleibt leer, und das ist der Preis der
+  // Entscheidung „ein Token, kein Konto" (Konzept 10e).
+  const wer = await queryOne<{ created_by: string | null }>(
+    pool,
+    'SELECT created_by FROM tasks WHERE id = $1',
+    [id],
+  );
+  assert.equal(wer!.created_by, null);
+
+  assert.equal((await fetch(`${base}/api/share/${t}/tasks/${id}/complete`, { method: 'POST' })).status, 200);
+  assert.equal((await fetch(`${base}/api/share/${t}/tasks/${id}/complete`, { method: 'DELETE' })).status, 200);
+});
+
+test('ein Link legt nichts in ein fremdes Projekt, auch nicht über #projekt', async () => {
+  /*
+   * Sonst wäre die Schnellerfassung ein Weg aus dem eigenen Gegenstand hinaus:
+   * „Kabel #anderes" würde eine Aufgabe dort ablegen, wo die Freigabe nicht
+   * gilt.
+   */
+  process.env['SOTE_SHARE_KEY'] = Buffer.alloc(32, 3).toString('hex');
+  const projectId = await queryOne<{ id: string }>(
+    pool,
+    `SELECT id FROM projects WHERE workspace_id = $1 AND kind = 'list' LIMIT 1`,
+    [workspaceId],
+  );
+  const made = (await (
+    await call('/api/shares', {
+      method: 'POST',
+      body: JSON.stringify({ projectId: projectId!.id, right: 'edit' }),
+    })
+  ).json()) as { share: { token: string } };
+
+  const angelegt = await fetch(`${base}/api/share/${made.share.token}/tasks`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ line: 'Kabel #Zuhause' }),
+  });
+  const id = ((await angelegt.json()) as { id: string }).id;
+  const row = await queryOne<{ project_id: string }>(
+    pool,
+    'SELECT project_id FROM tasks WHERE id = $1',
+    [id],
+  );
+  assert.equal(row!.project_id, projectId!.id, 'liegt im freigegebenen Projekt');
 });

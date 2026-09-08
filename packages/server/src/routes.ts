@@ -25,6 +25,8 @@ import { queryOne, queryRows } from './db.js';
 import { create as createProject, NameTaken, update as updateProject } from './projects.js';
 import type { Config } from './env.js';
 import { cookie, fail, json, readJson } from './http/respond.js';
+import { shareRoutes } from './shareRoutes.js';
+import { createShare, listShares, revokeShare, shareKeyPresent } from './shares.js';
 import { makeStatic } from './http/static.js';
 import {
   complete,
@@ -288,6 +290,23 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
     return;
   }
 
+  /* ── Freigaben: der eine Weg ohne Konto ──────────────────────────────────
+   *
+   * VOR der Anmeldeschranke, und das ist die ganze Idee einer Freigabe: sie
+   * gilt ohne Konto. Der Abschnitt liegt darum bewusst hier oben und nicht
+   * verstreut — wer prüfen will, was ein Fremder erreichen kann, liest diese
+   * zwanzig Zeilen und nicht die ganze Datei.
+   *
+   * Jeder Weg hier holt sein Recht aus `accessByToken` und bekommt es nicht
+   * übergeben (ADR-0087). Und jeder nennt seinen Token in der Adresse: ein
+   * Link muss sich weitergeben lassen, sonst ist er keiner.
+   */
+  const sharePath = /^\/api\/share\/([A-Za-z0-9_-]{20,200})(\/.*)?$/.exec(path);
+  if (sharePath !== null) {
+    await shareRoutes(ctx, req, res, sharePath[1]!, sharePath[2] ?? '', method, now);
+    return;
+  }
+
   const token = cookie(req.headers.cookie, COOKIE);
   const userId = token === undefined ? null : await userOfToken(ctx.pool, token, now);
   if (userId === null) {
@@ -464,6 +483,88 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
     json(res, 200, {
       workspace: { id: row!.id, name: row!.name, icon: readIcon(row!.icon) },
     });
+    return;
+  }
+
+  /* ── Freigaben verwalten (mit Konto) ─────────────────────────────────── */
+
+  if (path === '/api/shares' && method === 'GET') {
+    json(res, 200, {
+      // Ob es überhaupt geht, kommt mit: die Oberfläche soll den Grund nennen
+      // können, statt eine leere Liste zu zeigen (ADR-0112).
+      possible: shareKeyPresent(),
+      shares: (await listShares(ctx.pool, workspaceId)).map((s) => ({
+        id: s.id,
+        projectId: s.project_id,
+        projectName: s.projectName,
+        right: s.right_level,
+        // `null` heißt: mit diesem Schlüssel nicht anzeigbar. Die Freigabe
+        // bleibt sichtbar, damit man sie widerrufen kann.
+        token: s.token,
+        expiresAt: s.expires_at?.toISOString() ?? null,
+        lastUsedAt: s.last_used_at?.toISOString() ?? null,
+        createdAt: s.created_at.toISOString(),
+      })),
+    });
+    return;
+  }
+
+  if (path === '/api/shares' && method === 'POST') {
+    /*
+     * Wer schreiben darf, darf freigeben.
+     *
+     * Nicht nur Eigentümer: eine Freigabe gibt nicht mehr her als das, was der
+     * Freigebende selbst am Projekt tun kann. Und nicht jedes Mitglied: wer nur
+     * lesen darf, würde sonst ein Schreibrecht ausgeben, das er nicht hat.
+     */
+    if (!(await mayChange(ctx.pool, 'workspace', userId, workspaceId))) {
+      fail(res, 403, 'not_allowed', 'das darfst du hier nicht');
+      return;
+    }
+    const body = (await readJson(req)) as Record<string, unknown>;
+    const right = body?.['right'];
+    if (right !== 'read' && right !== 'edit') {
+      fail(res, 400, 'no_right', 'ein Link liest oder bearbeitet');
+      return;
+    }
+    const projectId = String(body?.['projectId'] ?? '');
+    if (!/^[0-9a-f-]{36}$/.test(projectId)) {
+      fail(res, 400, 'no_project', 'ein Link gilt für ein Projekt');
+      return;
+    }
+    const bis = body?.['expiresAt'];
+    const expiresAt = typeof bis === 'string' && bis !== '' ? new Date(bis) : null;
+    if (expiresAt !== null && Number.isNaN(expiresAt.getTime())) {
+      fail(res, 400, 'no_date', 'diesen Ablauf kann ich nicht lesen');
+      return;
+    }
+    const out = await createShare(ctx.pool, {
+      workspaceId,
+      projectId,
+      right,
+      userId,
+      expiresAt,
+    });
+    json(res, 201, {
+      share: {
+        id: out.share.id,
+        projectId: out.share.project_id,
+        right: out.share.right_level,
+        token: out.token,
+        expiresAt: out.share.expires_at?.toISOString() ?? null,
+      },
+    });
+    return;
+  }
+
+  const revokePath = /^\/api\/shares\/([0-9a-f-]{36})$/.exec(path);
+  if (revokePath !== null && method === 'DELETE') {
+    if (!(await mayChange(ctx.pool, 'workspace', userId, workspaceId))) {
+      fail(res, 403, 'not_allowed', 'das darfst du hier nicht');
+      return;
+    }
+    await revokeShare(ctx.pool, revokePath[1]!, workspaceId);
+    json(res, 200, { ok: true });
     return;
   }
 

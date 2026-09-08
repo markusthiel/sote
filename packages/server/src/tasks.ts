@@ -139,7 +139,16 @@ export async function keyAtEnd(
 
 export interface CreateFromLine {
   readonly workspaceId: string;
-  readonly userId: string;
+  /**
+   * Wer anlegt — oder **niemand**.
+   *
+   * `null` ist der Gast über einen Link (Konzept 10e). Die Spalte
+   * `tasks.created_by` war schon immer optional; nur der Typ hier behauptete,
+   * es gebe immer jemanden. Ein Typ, der mehr verspricht als die Datenbank,
+   * ist ein Typ, der an einer Stelle zur Lüge wird — hier an der ersten, die
+   * ihn braucht.
+   */
+  readonly userId: string | null;
   readonly line: string;
   readonly now: Date;
   /** Die Zone, in der „9 Uhr" gemeint ist. Fehlt sie: UTC, wie vorher. */
@@ -395,7 +404,8 @@ export async function reopen(pool: Pool, taskId: string, workspaceId: string): P
 export async function complete(
   pool: Pool,
   taskId: string,
-  userId: string,
+  /** `null` ist der Gast über einen Link — `completed_by` ist optional. */
+  userId: string | null,
   at: Date,
 ): Promise<Completion> {
   return retryOnOrderClash(() => withTransaction(pool, async (client) => {
