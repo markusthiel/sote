@@ -2776,3 +2776,23 @@ select.target {
   font-size: 12px;
   overflow-x: auto;
 }
+
+/* Ein Dateiwähler, der wie ein Knopf aussieht: der eingebaute Wähler bringt
+   einen Text mit („Keine Datei ausgewählt"), der neben einem Knopf steht und
+   nichts sagt. Das Feld bleibt da und wird verborgen — es ist das, was klickt. */
+.btn.as-label {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.btn.as-label input[type='file'] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

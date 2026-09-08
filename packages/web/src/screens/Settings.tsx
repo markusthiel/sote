@@ -32,8 +32,10 @@ import {
   FONTS,
   LANDINGS,
   PALETTE,
+  readThemeFile,
   resolveLanding,
   resolveLook,
+  themeFile,
   resolveSettings,
   SCHEMES,
   SURFACES,
@@ -371,6 +373,89 @@ export function Settings({
               {CORNER_LABELS[c]}
             </button>
           ))}
+        </div>
+      </div>
+
+      {/*
+        Ein Thema als Datei — und KEINE Route dafür (SONEs ADR-0125).
+        Der Browser liest die Datei und schickt sie über den Weg, der ohnehin
+        existiert. Ein zweiter Endpunkt wäre eine zweite Stelle, an der ein
+        Thema geprüft wird.
+      */}
+      <div className="set-row">
+        <span className="set-label">Als Datei</span>
+        <div className="set-value">
+          <div className="pick">
+            <button
+              type="button"
+              className="btn"
+              disabled={busy}
+              onClick={() => {
+                // `lookCard` gibt es nur für Arbeitsbereich und Instanz — die
+                // Person hat kein Thema (ADR-0028: das Aussehen gestaltet, was
+                // alle sehen). Der Zweig für 'user' war darum toter Code, und
+                // der Übersetzer hat es gesagt.
+                const level = data!.levels[scope];
+                const text = JSON.stringify(themeFile(level), null, 2);
+                const url = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `sote-thema-${scope}.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+              }}
+            >
+              Speichern
+            </button>
+            <label className="btn as-label">
+              {/*
+                „Laden und übernehmen", weil es genau das tut.
+                In SONE füllt das Laden ein Formular und „Speichern" schreibt;
+                SOTE hat kein solches Formular — hier wirkt jeder Klick sofort,
+                und ein Zwischenzustand nur für den Dateiweg wäre ein zweites
+                Bedienmodell in einem Bildschirm.
+              */}
+              Laden und übernehmen
+              <input
+                type="file"
+                accept="application/json,.json"
+                aria-label="Thema laden"
+                disabled={busy}
+                onChange={(e) => {
+                  const datei = e.target.files?.[0];
+                  // Das Feld leeren, sonst löst dieselbe Datei zweimal nichts
+                  // aus — ein Wähler, der beim zweiten Mal schweigt, sieht wie
+                  // ein Fehler aus.
+                  e.target.value = '';
+                  if (datei === undefined) return;
+                  void datei.text().then((text) => {
+                    const out = readThemeFile(text);
+                    if (!out.ok) {
+                      setNotice(
+                        out.why === 'kein_json'
+                          ? 'Das ist keine Datei dieser Art.'
+                          : 'Das ist eine Datei, aber kein Thema von SOTE.',
+                      );
+                      return;
+                    }
+                    void save(scope, {
+                      // Beides in EINEM Schreibvorgang: zwei hintereinander
+                      // wären zwei Zustände, von denen der erste kurz sichtbar
+                      // ist — und bei einem Thema ist genau das der Moment, in
+                      // dem es falsch aussieht.
+                      ...(out.theme.scheme === undefined ? {} : { scheme: out.theme.scheme }),
+                      look: out.theme.look ?? null,
+                    });
+                  });
+                }}
+              />
+            </label>
+          </div>
+          <p className="muted small">
+            Eine Datei trägt das ganze Thema: Farben, Flächen, Ecken, Schrift und
+            hell oder dunkel. Geladen wird sie sofort übernommen — eine Datei
+            kann nichts, was du hier nicht auch einstellen könntest.
+          </p>
         </div>
       </div>
 

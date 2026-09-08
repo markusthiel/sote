@@ -1331,6 +1331,31 @@ Beim Bauen entschieden, weil es ohne Entscheidung keinen Code gibt:
     Arbeitsbereich, hier je Person — die Einstellungen liegen je Person und
     nicht je Paar. Sobald jemand in zwei Arbeitsbereichen verschieden landen
     will, ist das die Stelle, die sich ändern muss.
+- **Ein Thema als Datei, und kein zweiter Weg hinein** (SONEs ADR-0125). Was
+  aus einer Datei kommt, geht durch **dieselbe** Prüfung wie das Formular und
+  der Server. Eine geladene Datei kann darum nichts, was man nicht auch tippen
+  könnte — und genau das macht es unbedenklich, eine von einem Fremden
+  anzunehmen. Deshalb gibt es **keine Route**: ein zweiter Endpunkt wäre eine
+  zweite Stelle, an der ein Thema geprüft wird.
+  - **Was keine Marke trägt, wird ganz abgelehnt.** Überall sonst gilt „Feld
+    weglassen, Rest behalten", und dort ist es richtig, weil die Eingabe ein
+    Formular ist. Hier ist sie eine **ausgewählte Datei**, und die falsche
+    auszuwählen ist der gewöhnliche Fehler: aus den Angaben eines Urlaubsfotos
+    würde ein `{}`, und das zu laden leerte das Aussehen still.
+  - **Zwei Gründe, zwei Sätze:** „keine Datei dieser Art" gegen „eine Datei,
+    aber kein Thema". Ein gemeinsamer Satz ließe jemanden nach einem
+    Tippfehler suchen, wo er die falsche Datei erwischt hat.
+  - **Die Fassungsnummer wird geschrieben und nicht gelesen.** Die Prüfung
+    wirft ohnehin weg, was sie nicht kennt; auf eine Zahl zu verweigern machte
+    eine verträgliche Datei ohne Gewinn zu einer Fehlermeldung.
+  - **Eine Ausgabe sagt, was hier gesetzt ist — nicht, was hier zu sehen ist.**
+    Wer das Aufgelöste ausgäbe, schriebe die Werte der Instanz in die Datei,
+    als wären sie die des Arbeitsbereichs.
+  - **Abweichung von SONE, begründet:** dort füllt das Laden ein Formular und
+    „Speichern" schreibt. SOTE hat kein solches Formular — jeder Klick wirkt
+    sofort. Ein Zwischenzustand nur für den Dateiweg wäre ein **zweites
+    Bedienmodell in einem Bildschirm**; der Knopf heißt darum „Laden und
+    übernehmen".
 - **`pnpm check` ist genau das, was die CI fährt.** Erst standen die Prüfungen
   einzeln in der Workflow-Datei, und `pnpm -r typecheck` scheiterte dort — in
   einem frischen Klon gibt es kein `dist`, und `@sote/core` zeigt mit `types`
