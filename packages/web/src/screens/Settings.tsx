@@ -67,6 +67,7 @@ export const SETTING_SECTIONS = [
   { id: 'aussehen', label: 'Aussehen', hint: 'Hell oder dunkel' },
   { id: 'zeit', label: 'Zeit', hint: 'Deine Zeitzone' },
   { id: 'landen', label: 'Wo du landest', hint: 'Beim Anmelden' },
+  { id: 'erinnern', label: 'Erinnerungen', hint: 'Post am Morgen' },
 ] as const;
 
 /**
@@ -726,6 +727,57 @@ export function Settings({
             Reist mit dir: wer hier dunkel wählt, bekommt am Telefon auch dunkel.
           </p>
           {schemeRow('user', data.levels.user.scheme, 'Wie der Arbeitsbereich')}
+        </section>
+      ) : null}
+
+      {section === 'erinnern' ? (
+        <section className="set-card">
+          <h2>Erinnerungen</h2>
+          <p className="muted">
+            <strong>Ein</strong> Brief am Tag, zu deiner Zeit — mit dem, was
+            heute anliegt und was überfällig ist. Nicht einer je Aufgabe: dreißig
+            Mails am Tag heißen einen Filter im Postfach, und danach erinnert
+            nichts mehr an nichts.
+          </p>
+          <div className="set-row">
+            <span className="set-label">Post am Morgen</span>
+            <div className="set-value">
+              <div className="pick">
+                <input
+                  type="time"
+                  className="set-input"
+                  aria-label="Zeit für die Erinnerung"
+                  value={data.levels.user.reminders?.at ?? ''}
+                  disabled={busy}
+                  onChange={(e) =>
+                    void save('user', {
+                      // Leer heißt aus — und das ist eine Angabe, kein
+                      // Vergessen: ein leeres Feld ist der übliche Weg, eine
+                      // Zeit zurückzunehmen.
+                      reminders: e.target.value === '' ? null : { at: e.target.value },
+                    })
+                  }
+                />
+                {data.levels.user.reminders === undefined ? (
+                  <span className="muted small">aus</span>
+                ) : (
+                  <button
+                    type="button"
+                    className="btn quiet small"
+                    disabled={busy}
+                    onClick={() => void save('user', { reminders: null })}
+                  >
+                    Abstellen
+                  </button>
+                )}
+              </div>
+              <p className="muted small">
+                Deine Ortszeit ({data.effective.zone ?? 'UTC'}). Nachgesehen wird
+                alle fünfzehn Minuten — der Brief kommt also kurz nach der
+                gewählten Zeit, nie davor.
+              </p>
+            </div>
+          </div>
         </section>
       ) : null}
 

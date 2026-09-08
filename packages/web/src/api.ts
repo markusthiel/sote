@@ -118,6 +118,8 @@ interface Level {
   zone?: string;
   look?: Look;
   landing?: Landing;
+  /** Wann eine Erinnerung kommt — nur auf der Personen-Ebene sinnvoll. */
+  reminders?: { at: string };
 }
 
 export interface SettingsAnswer {

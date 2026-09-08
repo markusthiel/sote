@@ -13,6 +13,15 @@ import type { Pool } from 'pg';
 
 import { makePool, queryOne, queryRows } from '../src/db.js';
 import { enqueue, handle, runOne, tick } from '../src/jobs.js';
+
+/**
+ * Nur die eigenen Auftragsnamen.
+ *
+ * Die Testdateien laufen parallel gegen dieselbe Datenbank, und `runOne` nimmt
+ * ohne Geltungsbereich den ältesten faelligen Auftrag -- also den einer anderen
+ * Datei. So gefunden: ein Test schlug fehl, den ich nicht angefasst hatte.
+ */
+const MEINE = ['test.ok', 'test.boom', 'test.gibtsnicht'] as const;
 import { migrate } from '../src/migrate.js';
 
 const URL_ =
@@ -33,7 +42,15 @@ before(async () => {
 });
 
 beforeEach(async () => {
-  await pool.query('DELETE FROM jobs');
+  /*
+   * Nur die EIGENEN Aufträge.
+   *
+   * `DELETE FROM jobs` räumte den anderen Testdateien die Zeilen weg — sie
+   * laufen parallel gegen dieselbe Datenbank, und der Papierkorb-Test schlug
+   * fehl, weil dieser hier seinen Folgeauftrag löschte. Der Fehler war nicht im
+   * Code, sondern in meiner Aufräumzeile.
+   */
+  await pool.query("DELETE FROM jobs WHERE kind LIKE 'test.%'");
   lief.length = 0;
 });
 
@@ -50,7 +67,7 @@ const jobRow = async (kind: string) =>
 
 test('ein fälliger Auftrag läuft und wird quittiert', async () => {
   await enqueue(pool, 'test.ok', { payload: { was: 'eins' } });
-  assert.equal(await runOne(pool, new Date()), true);
+  assert.equal(await runOne(pool, new Date(), MEINE), true);
   assert.deepEqual(lief, ['eins']);
   const row = await jobRow('test.ok');
   assert.notEqual(row!.done_at, null);
@@ -60,10 +77,10 @@ test('ein fälliger Auftrag läuft und wird quittiert', async () => {
 test('ein Auftrag in der Zukunft läuft nicht', async () => {
   const gleich = new Date(Date.now() + 3_600_000);
   await enqueue(pool, 'test.ok', { runAt: gleich });
-  assert.equal(await runOne(pool, new Date()), false);
+  assert.equal(await runOne(pool, new Date(), MEINE), false);
   assert.deepEqual(lief, []);
   // Und später schon.
-  assert.equal(await runOne(pool, new Date(gleich.getTime() + 1000)), true);
+  assert.equal(await runOne(pool, new Date(gleich.getTime() + 1000), MEINE), true);
 });
 
 test('ein Fehler wirft nicht, sondern wartet — und wird sichtbar', async () => {
@@ -74,7 +91,7 @@ test('ein Fehler wirft nicht, sondern wartet — und wird sichtbar', async () =>
    */
   await enqueue(pool, 'test.boom');
   const jetzt = new Date();
-  assert.equal(await runOne(pool, jetzt), true, 'der Läufer selbst wirft nicht');
+  assert.equal(await runOne(pool, jetzt, MEINE), true, 'der Läufer selbst wirft nicht');
   const row = await jobRow('test.boom');
   assert.equal(row!.done_at, null);
   assert.equal(row!.attempts, 1);
@@ -89,7 +106,7 @@ test('nach fünf Versuchen bleibt er liegen, statt zu verschwinden', async () =>
   for (let i = 0; i < 8; i += 1) {
     // Weit genug vorspulen, dass die Wartezeit vorbei ist.
     jetzt = new Date(jetzt.getTime() + 60 * 60_000);
-    await runOne(pool, jetzt);
+    await runOne(pool, jetzt, MEINE);
   }
   const row = await jobRow('test.boom');
   assert.equal(row!.attempts, 5, 'genau fünf Versuche');
@@ -102,7 +119,7 @@ test('ein unbekannter Name ist ein Fehler, kein Stillschweigen', async () => {
    * alten Fassung — beides will man sehen.
    */
   await enqueue(pool, 'test.gibtsnicht');
-  assert.equal(await runOne(pool, new Date()), true);
+  assert.equal(await runOne(pool, new Date(), MEINE), true);
   const row = await jobRow('test.gibtsnicht');
   assert.equal(row!.done_at, null);
   assert.match(row!.last_error ?? '', /kein Bearbeiter/);
@@ -138,9 +155,9 @@ test('ein Auftrag, den ein abgestürzter Prozess hielt, wird wieder geholt', asy
    */
   await enqueue(pool, 'test.ok');
   await pool.query("UPDATE jobs SET locked_at = now() - interval '1 minute'");
-  assert.equal(await runOne(pool, new Date()), false, 'kurz gesperrt: bleibt liegen');
+  assert.equal(await runOne(pool, new Date(), MEINE), false, 'kurz gesperrt: bleibt liegen');
   await pool.query("UPDATE jobs SET locked_at = now() - interval '10 minutes'");
-  assert.equal(await runOne(pool, new Date()), true, 'lange gesperrt: wird geholt');
+  assert.equal(await runOne(pool, new Date(), MEINE), true, 'lange gesperrt: wird geholt');
 });
 
 test('der Tick arbeitet mehrere ab und hört bei seinem Deckel auf', async () => {
@@ -149,7 +166,7 @@ test('der Tick arbeitet mehrere ab und hört bei seinem Deckel auf', async () =>
   for (let i = 0; i < 7; i += 1) {
     await enqueue(pool, 'test.ok', { payload: { was: `n${i}` } });
   }
-  assert.equal(await tick(pool, new Date(), 3), 3);
+  assert.equal(await tick(pool, new Date(), 3, MEINE), 3);
   assert.equal(lief.length, 3);
-  assert.equal(await tick(pool, new Date(), 99), 4);
+  assert.equal(await tick(pool, new Date(), 99, MEINE), 4);
 });

@@ -120,7 +120,19 @@ export async function queueMail(pool: Pool, letter: Letter): Promise<void> {
   await enqueue(pool, 'mail.send', { payload: { ...letter } });
 }
 
-async function sendMail({ job }: JobContext): Promise<void> {
+/**
+ * Der Bearbeiter selbst, und er ist **ausgeführt** und nicht nur angemeldet.
+ *
+ * Ein Test kann ihn damit direkt aufrufen, statt ihn über die Warteschlange zu
+ * holen — und das war nötig: `mail.send` benutzen drei Testdateien, die sich
+ * eine Datenbank teilen, also griff der Lauf der einen den Auftrag der anderen.
+ * Ein Geltungsbereich nach Namen half dort nicht, weil der Name derselbe ist.
+ *
+ * Es ist auch für sich richtig: ein Bearbeiter ist eine Funktion, und eine
+ * Funktion prüft man, indem man sie aufruft. Der Weg über die Schlange prüft
+ * den Läufer, und der hat seine eigenen Tests.
+ */
+export async function sendMail({ job }: JobContext): Promise<void> {
   const cfg = mailConfig();
   if (cfg === undefined) {
     /*

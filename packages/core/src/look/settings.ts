@@ -36,6 +36,7 @@
  */
 
 import { readLanding, type Landing } from './landing.js';
+import { readReminders, type Reminders } from './reminders.js';
 import { readLook, type Look } from './theme.js';
 import { isZone } from '../time/zone.js';
 
@@ -81,6 +82,15 @@ export interface Settings {
   readonly look?: Look;
   /** Wo eine Sitzung aufgeht (ADR-0072, ADR-0032). */
   readonly landing?: Landing;
+  /**
+   * Wann eine Erinnerung kommt — oder gar nicht.
+   *
+   * Nur auf der Personen-Ebene sinnvoll: wann jemand Post will, ist keine
+   * Eigenschaft eines Arbeitsbereichs und keine des Servers. Der Typ ist
+   * derselbe für alle Ebenen, weil `Settings` einer ist; der Bearbeiter liest
+   * ausschließlich die Personen-Zeile.
+   */
+  readonly reminders?: Reminders;
 }
 
 /** Liest, was in der Datenbank steht — und lässt weg, was keinen Sinn ergibt. */
@@ -91,11 +101,13 @@ export function readSettings(value: unknown): Settings {
   const zone = typeof raw['zone'] === 'string' && isZone(raw['zone']) ? raw['zone'] : undefined;
   const look = readLook(raw['look']);
   const landing = readLanding(raw['landing']);
+  const reminders = readReminders(raw['reminders']);
   return {
     ...(scheme === undefined ? {} : { scheme }),
     ...(zone === undefined ? {} : { zone }),
     ...(Object.keys(look).length === 0 ? {} : { look }),
     ...(landing === undefined ? {} : { landing }),
+    ...(reminders === undefined ? {} : { reminders }),
   };
 }
 

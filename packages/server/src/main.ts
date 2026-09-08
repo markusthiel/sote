@@ -9,6 +9,7 @@ import { makePool } from './db.js';
 import { loadConfig } from './env.js';
 import { scheduleRecurring } from './handlers.js';
 import { startRunner } from './jobs.js';
+import { scheduleReminders } from './reminders.js';
 import { migrate } from './migrate.js';
 import { makeServer } from './routes.js';
 
@@ -66,6 +67,16 @@ const server = makeServer({ pool, config, now: () => new Date(), webRoot, setup 
  */
 server.listen(config.port, () => {
   void scheduleRecurring(pool).catch((e: unknown) => console.error('Zeitplan:', e));
+  /*
+   * Erinnerungen nur, wenn dieser Server Mail verschicken kann — und wenn
+   * nicht, wird es GESAGT. Ein Bearbeiter, der ohne seinen Ausgang läuft,
+   * verbraucht die Quittungen für Briefe, die niemand zustellt.
+   */
+  void scheduleReminders(pool)
+    .then((an) => {
+      if (!an) console.log('Erinnerungen aus: dieser Server verschickt keine Mail');
+    })
+    .catch((e: unknown) => console.error('Erinnerungen:', e));
   startRunner(pool);
   console.log(`SOTE hört auf :${config.port}`);
 });

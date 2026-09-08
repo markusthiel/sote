@@ -1565,6 +1565,39 @@ Beim Bauen entschieden, weil es ohne Entscheidung keinen Code gibt:
   Variablenname bleibt `SOTE_SHARE_KEY`: umbenennen hieße, einen laufenden
   Server beim nächsten Neustart ohne Schlüssel dastehen zu lassen.
 
+## Erinnerungen
+
+- **Ein Brief am Tag, nicht einer je Aufgabe.** Dreißig Mails am Tag heißen
+  einen Filter im Postfach — und danach erinnert nichts mehr an nichts. Das ist
+  auch die Antwort auf „wie oft": einmal täglich, zu einer Zeit, die die Person
+  selbst wählt.
+- **Genau einmal je Tag**, obwohl der Läufer „mindestens einmal" zusagt: Quittung
+  und Mailauftrag entstehen **in derselben Transaktion**. Beides sind Zeilen in
+  derselben Datenbank, also ist das Einreihen wirklich genau einmal. Das
+  **Zustellen** bleibt „mindestens einmal", denn das verlässt den Server — und
+  diese Grenze ist der Unterschied zwischen einer Zusage und einer Hoffnung.
+- **Das Datum ist das der Person**, nicht UTC. Wer in Tokio um 8 Uhr erinnert
+  wird, soll seinen Brief am japanischen Dienstag bekommen — sonst gibt es einen
+  Tag mit zwei Briefen und einen ohne.
+- **Ein Fenster, kein Zeitpunkt.** Der Tick läuft alle fünfzehn Minuten,
+  geschickt wird, sobald die Zeit heute vorbei ist. Wer mittags neu startet,
+  bekommt seinen 8-Uhr-Brief mittags: spät, aber nicht gar nicht, und nicht
+  zweimal.
+- **Aus, bis jemand ja sagt.** Wer sich anmeldet, hat nicht um Mail gebeten. Und
+  eine Zeit, die keine ist, zählt als aus — nicht als Vorgabe.
+- **Auch an einem leeren Tag kommt ein Brief.** Einer, der nur bei Arbeit kommt,
+  ist einer, dessen Ausbleiben zweierlei heißen kann: nichts zu tun, oder SOTE
+  ist kaputt.
+- **Ohne Mailweg läuft der Bearbeiter nicht**, und das wird gesagt. Sonst
+  verbrauchte er die Quittungen für Briefe, die niemand zustellt: nach einem Tag
+  hätte jeder eine Quittung und niemand einen Brief.
+- **Der Läufer nimmt einen Geltungsbereich** (`only`). Im Betrieb, damit Mail
+  auf einem eigenen Prozess laufen kann; im Test, weil die Testdateien eine
+  Datenbank teilen und `runOne` sonst den Auftrag einer anderen greift.
+- **Die Servertests laufen nacheinander** (`--test-concurrency=1`): der
+  Papierkorb-Bearbeiter löscht über alle Arbeitsbereiche, und während er
+  aufräumt, schreiben andere Dateien dieselben Tabellen.
+
 - **`pnpm check` ist genau das, was die CI fährt.** Erst standen die Prüfungen
   einzeln in der Workflow-Datei, und `pnpm -r typecheck` scheiterte dort — in
   einem frischen Klon gibt es kein `dist`, und `@sote/core` zeigt mit `types`

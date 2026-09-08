@@ -14,6 +14,9 @@ import type { Pool } from 'pg';
 import { makePool, queryOne } from '../src/db.js';
 import { TRASH_DAYS } from '../src/handlers.js';
 import { enqueue, runOne } from '../src/jobs.js';
+
+/** Nur die eigenen Auftragsnamen -- die Testdateien teilen eine Datenbank. */
+const MEINE = ['trash.purge'] as const;
 import { migrate } from '../src/migrate.js';
 import { makeFolder, makeList } from './support/tree.js';
 
@@ -32,7 +35,8 @@ before(async () => {
 });
 
 beforeEach(async () => {
-  await pool.query('DELETE FROM jobs');
+  // Nur die eigenen: die Testdateien laufen parallel gegen dieselbe Datenbank.
+  await pool.query("DELETE FROM jobs WHERE kind = 'trash.purge'");
   const w = await queryOne<{ id: string }>(
     pool,
     'INSERT INTO workspaces (name) VALUES ($1) RETURNING id',
@@ -56,9 +60,38 @@ const alt = (tage: number): string => `now() - interval '${tage} days'`;
  * habe ich es nicht durch den Test, sondern durch einen Blick in die
  * Datenbank des laufenden Servers.
  */
+/**
+ * Warum die Servertests **nacheinander** laufen (`--test-concurrency=1`).
+ *
+ * Dieser Bearbeiter löscht über **alle** Arbeitsbereiche — das ist im Betrieb
+ * richtig und im Test das Problem: die Testdateien teilen eine Datenbank, und
+ * während dieser hier aufräumt, schreiben andere dieselben Tabellen. Dann
+ * scheitert das `DELETE`, der Auftrag gilt als fehlgeschlagen, und sein
+ * Nachfolger entsteht nicht.
+ *
+ * Gefunden als Wackler: einer von drei Läufen, immer derselbe Test, auch auf
+ * frischer Datenbank. Ein Geltungsbereich nach Auftragsnamen half nicht, weil
+ * die Kollision nicht in der Warteschlange liegt, sondern in den Daten.
+ *
+ * Die Alternative wäre eine Datenbank je Testdatei — sauberer, aber eine
+ * Migration je Datei, und das kostet mehr als die verlorene Nebenläufigkeit.
+ */
 async function purge(): Promise<void> {
   await enqueue(pool, 'trash.purge', { uniqueKey: 'trash.purge' });
-  assert.equal(await runOne(pool, new Date()), true);
+  assert.equal(await runOne(pool, new Date(), MEINE), true);
+  /*
+   * Und ER MUSS GELAUFEN SEIN, nicht bloß geholt worden.
+   *
+   * `runOne` gibt `true` zurück, auch wenn der Bearbeiter geworfen hat — es
+   * heißt „es gab einen Auftrag" und nicht „er hat funktioniert". Ohne diese
+   * Zeile war der Wackler eine Meldung über einen fehlenden Nachfolger, und
+   * die eigentliche Ursache stand ungelesen in `last_error`.
+   */
+  const gelaufen = await queryOne<{ done_at: Date | null; last_error: string | null }>(
+    pool,
+    "SELECT done_at, last_error FROM jobs WHERE kind = 'trash.purge' AND attempts > 0",
+  );
+  assert.notEqual(gelaufen!.done_at, null, `Bearbeiter fehlgeschlagen: ${gelaufen!.last_error}`);
 }
 
 async function taskCount(): Promise<number> {
@@ -161,9 +194,16 @@ test('die Wiederholung reisst nach dem ersten Lauf nicht ab', async () => {
   );
   assert.notEqual(erster, undefined, 'nach dem ersten Lauf liegt einer da');
 
-  // Und nach dem zweiten wieder — nicht nur einmal.
-  await pool.query("UPDATE jobs SET run_at = now() WHERE done_at IS NULL");
-  assert.equal(await runOne(pool, new Date()), true);
+  /*
+   * Und nach dem zweiten wieder — nicht nur einmal.
+   *
+   * Statt `run_at` umzuschreiben wird dem Läufer gesagt, es sei später. Zwei
+   * Gründe: die Umschreibung traf **alle** offenen Aufträge, also auch die
+   * anderer Testdateien, und sie verglich eine Zeit aus der Datenbank mit einer
+   * aus JavaScript — ein Wettlauf um Millisekunden, den ich als wandernden
+   * Wackler bezahlt habe. Die Zeit ist ein Parameter; dann benutze ich sie.
+   */
+  assert.equal(await runOne(pool, new Date(Date.now() + 7 * 3_600_000), MEINE), true);
   const zweiter = await queryOne<{ id: string }>(
     pool,
     "SELECT id FROM jobs WHERE kind = 'trash.purge' AND done_at IS NULL",

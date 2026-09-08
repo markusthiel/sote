@@ -31,6 +31,16 @@ const URL_ =
 let pool: Pool;
 let chef: string;
 
+/**
+ * Eine eigene Domäne je Prozess.
+ *
+ * Die Testdateien laufen parallel gegen dieselbe Datenbank, und drei von ihnen
+ * legen Mailaufträge. Wer sie pauschal löscht, räumt den anderen die Zeilen weg
+ * — genau das ist mir passiert, und der fehlgeschlagene Test lag in einer
+ * Datei, die ich nicht angefasst hatte.
+ */
+const DOM = `inv${process.pid}.example`;
+
 before(async () => {
   process.env['SOTE_SHARE_KEY'] = Buffer.alloc(32, 11).toString('hex');
   process.env['SOTE_BASE_URL'] = 'https://sote.example/';
@@ -47,7 +57,10 @@ before(async () => {
 
 beforeEach(async () => {
   await pool.query('DELETE FROM invitations');
-  await pool.query("DELETE FROM jobs WHERE kind = 'mail.send'");
+  await pool.query(
+    "DELETE FROM jobs WHERE kind = 'mail.send' AND payload->>'to' LIKE $1",
+    [`%@${DOM}`],
+  );
 });
 
 after(async () => {
@@ -57,7 +70,9 @@ after(async () => {
 const mails = async () =>
   queryRows<{ payload: Record<string, unknown> }>(
     pool,
-    "SELECT payload FROM jobs WHERE kind = 'mail.send' ORDER BY created_at",
+    `SELECT payload FROM jobs WHERE kind = 'mail.send'
+       AND payload->>'to' LIKE $1 ORDER BY created_at`,
+    [`%@${DOM}`],
   );
 
 test('der Server baut den Link selbst und verschickt ihn', async () => {
@@ -65,10 +80,10 @@ test('der Server baut den Link selbst und verschickt ihn', async () => {
    * ADR-0126. Der Aufruf bekommt **nur eine Adresse** — es gibt keinen
    * Parameter, in dem eine URL stehen könnte, und das ist der ganze Punkt.
    */
-  const out = await invite(pool, 'neu@example.org', chef, new Date());
+  const out = await invite(pool, `neu@${DOM}`, chef, new Date());
   assert.equal(out.mailed, true);
   const [brief] = await mails();
-  assert.equal(brief!.payload['to'], 'neu@example.org');
+  assert.equal(brief!.payload['to'], `neu@${DOM}`);
   const text = String(brief!.payload['text']);
   assert.match(text, /https:\/\/sote\.example\/einladung\/[A-Za-z0-9_-]{20,}/);
   // Und der Link im Brief trägt WIRKLICH den Token dieser Einladung.
@@ -85,7 +100,7 @@ test('ohne eigene Adresse geht keine Mail — die Einladung gilt trotzdem', asyn
   const keep = process.env['SOTE_BASE_URL'];
   delete process.env['SOTE_BASE_URL'];
   try {
-    const out = await invite(pool, 'ohnemail@example.org', chef, new Date());
+    const out = await invite(pool, `ohnemail@${DOM}`, chef, new Date());
     assert.equal(out.mailed, false);
     assert.equal((await mails()).length, 0);
     // Sie steht mit ihrem Link in der Liste, zum Weitergeben von Hand.
@@ -120,23 +135,23 @@ test('eine Adresse, die keine ist, wird abgelehnt', async () => {
 test('abgelaufen, zurückgenommen, eingelöst: alle drei führen nirgendwohin', async () => {
   const jetzt = new Date();
 
-  const a = await invite(pool, 'a@example.org', chef, jetzt);
+  const a = await invite(pool, `a@${DOM}`, chef, jetzt);
   await pool.query("UPDATE invitations SET expires_at = now() - interval '1 day' WHERE id = $1", [
     a.id,
   ]);
   assert.equal(await openInvitation(pool, a.token, jetzt), null, 'abgelaufen');
 
-  const b = await invite(pool, 'b@example.org', chef, jetzt);
+  const b = await invite(pool, `b@${DOM}`, chef, jetzt);
   await revokeInvitation(pool, b.id);
   assert.equal(await openInvitation(pool, b.token, jetzt), null, 'zurückgenommen');
 
-  const c = await invite(pool, 'c@example.org', chef, jetzt);
+  const c = await invite(pool, `c@${DOM}`, chef, jetzt);
   await pool.query('UPDATE invitations SET accepted_at = now() WHERE id = $1', [c.id]);
   assert.equal(await openInvitation(pool, c.token, jetzt), null, 'eingelöst');
 
   // Und eine gültige führt hin.
-  const d = await invite(pool, 'd@example.org', chef, jetzt);
-  assert.equal((await openInvitation(pool, d.token, jetzt))?.email, 'd@example.org');
+  const d = await invite(pool, `d@${DOM}`, chef, jetzt);
+  assert.equal((await openInvitation(pool, d.token, jetzt))?.email, `d@${DOM}`);
 });
 
 test('Unsinn als Token führt nirgendwohin und wirft nicht', async () => {
@@ -148,7 +163,7 @@ test('Unsinn als Token führt nirgendwohin und wirft nicht', async () => {
 test('zweimal zurücknehmen ist ein Fehler', async () => {
   // Wie bei Freigaben: wer aus einer Liste zurücknimmt, hat es dort gesehen —
   // und es stand nicht mehr darin.
-  const a = await invite(pool, 'e@example.org', chef, new Date());
+  const a = await invite(pool, `e@${DOM}`, chef, new Date());
   await revokeInvitation(pool, a.id);
   await assert.rejects(() => revokeInvitation(pool, a.id), NotFound);
 });
@@ -156,7 +171,7 @@ test('zweimal zurücknehmen ist ein Fehler', async () => {
 test('mit dem falschen Schlüssel bleibt die Einladung sichtbar', async () => {
   // Der Fall, den ein Betreiber erlebt. Nur der Klartext fehlt — und
   // zurücknehmen muss man sie können, das ist die Funktion, auf die es ankommt.
-  const a = await invite(pool, 'f@example.org', chef, new Date());
+  const a = await invite(pool, `f@${DOM}`, chef, new Date());
   const keep = process.env['SOTE_SHARE_KEY'];
   process.env['SOTE_SHARE_KEY'] = Buffer.alloc(32, 12).toString('hex');
   try {

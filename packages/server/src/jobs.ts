@@ -119,7 +119,21 @@ const MAX_ATTEMPTS = 5;
  * Gibt zurück, ob es einen gab — der Aufrufer kann dann sofort den nächsten
  * holen, statt auf den nächsten Tick zu warten.
  */
-export async function runOne(pool: Pool, now: Date): Promise<boolean> {
+export async function runOne(
+  pool: Pool,
+  now: Date,
+  /**
+   * Nur diese Namen — oder alles.
+   *
+   * Zwei Gründe, und der erste ist echter Betrieb: wer Mail auf einem eigenen
+   * Prozess laufen lassen will (weil ein hängender Mailserver dann nichts
+   * anderes aufhält), startet einen Läufer mit `['mail.send']`. Der zweite ist
+   * der Test: die Testdateien teilen eine Datenbank, und ohne Geltungsbereich
+   * greift jede in die Aufträge der anderen. Das ist mir passiert — der
+   * fehlgeschlagene Test lag in einer Datei, die ich nicht angefasst hatte.
+   */
+  only?: readonly string[],
+): Promise<boolean> {
   const job = await withTransaction(pool, async (client) => {
     const row = await queryOne<{
       id: string;
@@ -143,10 +157,11 @@ export async function runOne(pool: Pool, now: Date): Promise<boolean> {
           AND run_at <= $1
           AND attempts < $3
           AND (locked_at IS NULL OR locked_at < $2)
+          AND ($4::text[] IS NULL OR kind = ANY($4))
         ORDER BY run_at
         LIMIT 1
         FOR UPDATE SKIP LOCKED`,
-      [now, new Date(now.getTime() - STUCK_AFTER_MS), MAX_ATTEMPTS],
+      [now, new Date(now.getTime() - STUCK_AFTER_MS), MAX_ATTEMPTS, only ?? null],
     );
     if (row === undefined) return undefined;
     /*
@@ -213,10 +228,15 @@ export async function runOne(pool: Pool, now: Date): Promise<boolean> {
  * hängt — und einer, der einen Auftrag nach dem anderen nachschiebt, blockiert
  * die Anfragen des Servers im selben Prozess.
  */
-export async function tick(pool: Pool, now: Date, max = 20): Promise<number> {
+export async function tick(
+  pool: Pool,
+  now: Date,
+  max = 20,
+  only?: readonly string[],
+): Promise<number> {
   let n = 0;
   while (n < max) {
-    if (!(await runOne(pool, now))) break;
+    if (!(await runOne(pool, now, only))) break;
     n += 1;
   }
   return n;

@@ -14,8 +14,7 @@ import { after, before, beforeEach, test } from 'node:test';
 import type { Pool } from 'pg';
 
 import { makePool, queryOne } from '../src/db.js';
-import { runOne } from '../src/jobs.js';
-import { mailConfig, queueMail } from '../src/mail.js';
+import { mailConfig, queueMail, sendMail } from '../src/mail.js';
 import { migrate } from '../src/migrate.js';
 
 const URL_ =
@@ -23,13 +22,20 @@ const URL_ =
 
 let pool: Pool;
 
+/** Eine eigene Domäne je Prozess — die Testdateien teilen sich eine Datenbank. */
+const DOM = `mail${process.pid}.example`;
+
 before(async () => {
   pool = makePool(URL_);
   await migrate(pool);
 });
 
 beforeEach(async () => {
-  await pool.query('DELETE FROM jobs');
+  // Nur die eigenen: die Testdateien teilen sich eine Datenbank.
+  await pool.query(
+    "DELETE FROM jobs WHERE kind = 'mail.send' AND payload->>'to' LIKE $1",
+    [`%@${DOM}`],
+  );
 });
 
 after(async () => {
@@ -42,13 +48,14 @@ test('eine Mail geht in die Warteschlange und nicht sofort hinaus', async () => 
    * der fremde Server hängt — ein Mailserver ohne Antwort würde damit ein
    * Einladen langsam machen.
    */
-  await queueMail(pool, { to: 'a@example.org', subject: 'Hallo', text: 'Text' });
+  await queueMail(pool, { to: `a@${DOM}`, subject: 'Hallo', text: 'Text' });
   const job = await queryOne<{ kind: string; payload: Record<string, unknown> }>(
     pool,
-    'SELECT kind, payload FROM jobs',
+    "SELECT kind, payload FROM jobs WHERE payload->>'to' LIKE $1",
+    [`%@${DOM}`],
   );
   assert.equal(job!.kind, 'mail.send');
-  assert.equal(job!.payload['to'], 'a@example.org');
+  assert.equal(job!.payload['to'], `a@${DOM}`);
 });
 
 test('ohne Einstellungen bleibt der Auftrag liegen und sagt, was fehlt', async () => {
@@ -62,15 +69,24 @@ test('ohne Einstellungen bleibt der Auftrag liegen und sagt, was fehlt', async (
   delete process.env['SOTE_MAIL_FROM'];
   try {
     assert.equal(mailConfig(), undefined);
-    await queueMail(pool, { to: 'a@example.org', subject: 'Hallo', text: 'Text' });
-    assert.equal(await runOne(pool, new Date()), true, 'der Läufer selbst wirft nicht');
-    const job = await queryOne<{ done_at: Date | null; last_error: string | null }>(
-      pool,
-      'SELECT done_at, last_error FROM jobs',
+    /*
+     * Der Bearbeiter DIREKT aufgerufen und nicht über die Schlange geholt:
+     * `mail.send` benutzen drei Testdateien, die sich eine Datenbank teilen,
+     * also griff der Lauf der einen den Auftrag der anderen. Was hier zählt,
+     * ist ohnehin die Ausnahme — dass der Läufer sie in `last_error` schreibt,
+     * prüfen seine eigenen Tests.
+     */
+    await assert.rejects(
+      () =>
+        sendMail({
+          pool,
+          now: new Date(),
+          job: { id: 'x', kind: 'mail.send', payload: { to: 'a@x', subject: 's', text: 't' }, attempts: 1 },
+        }),
+      (e: unknown) =>
+        /SOTE_SMTP_HOST/.test((e as Error).message) &&
+        /SOTE_MAIL_FROM/.test((e as Error).message),
     );
-    assert.equal(job!.done_at, null, 'nicht quittiert');
-    assert.match(job!.last_error ?? '', /SOTE_SMTP_HOST/);
-    assert.match(job!.last_error ?? '', /SOTE_MAIL_FROM/);
   } finally {
     if (keep.h !== undefined) process.env['SOTE_SMTP_HOST'] = keep.h;
     if (keep.f !== undefined) process.env['SOTE_MAIL_FROM'] = keep.f;
@@ -109,10 +125,13 @@ test('ein unmöglicher Port zählt als keine Einstellung', async () => {
 test('eine Mail ohne Empfänger ist ein Fehler', async () => {
   process.env['SOTE_SMTP_HOST'] = 'mail.example';
   process.env['SOTE_MAIL_FROM'] = 'sote@example';
-  await pool.query(
-    `INSERT INTO jobs (kind, payload) VALUES ('mail.send', '{"subject":"x","text":"y"}')`,
+  await assert.rejects(
+    () =>
+      sendMail({
+        pool,
+        now: new Date(),
+        job: { id: 'x', kind: 'mail.send', payload: { subject: 'x', text: 'y' }, attempts: 1 },
+      }),
+    /Empfänger/,
   );
-  await runOne(pool, new Date());
-  const job = await queryOne<{ last_error: string | null }>(pool, 'SELECT last_error FROM jobs');
-  assert.match(job!.last_error ?? '', /Empfänger/);
 });
