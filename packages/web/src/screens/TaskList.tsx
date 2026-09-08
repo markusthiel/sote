@@ -13,6 +13,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
+import { useNudge } from '../hooks/useNudge.js';
 import { api, ApiError, type Project, type Task, type TaskPatch } from '../api.js';
 import { HandleMenu } from '../components/HandleMenu.js';
 import { QuickAdd } from '../components/QuickAdd.js';
@@ -83,6 +84,23 @@ export function TaskList({
     setRows(data.tasks);
     setLoaded(true);
   }, [view, workspace, projectId, showDone]);
+
+  /*
+   * Die Türklingel für Aufgaben.
+   *
+   * Hier und nicht in der Hülle: die Liste weiß, welche Ansicht sie zeigt, und
+   * `load` ist ihr eigener Weg. In der Hülle bräuchte es eine zweite Stelle,
+   * die dasselbe kann — und die eine wäre irgendwann die falsche.
+   *
+   * Gemeldet war der Fall, der das nötig machte: „wenn ich per Link teile und
+   * dort arbeite, wird das beim Hauptuser nicht live aktualisiert."
+   */
+  useNudge('/api/stream', 'tasks', () => {
+    // Ohne `setLoaded(false)`: ein Anstoß soll die Liste austauschen, nicht
+    // durch einen leeren Zustand blinken. Sie steht schon da und ist bloß
+    // veraltet.
+    void load().catch(() => undefined);
+  });
 
   useEffect(() => {
     setLoaded(false);

@@ -55,6 +55,7 @@ import {
 } from './sso.js';
 import { knownKinds } from './jobs.js';
 import { list as listNotifications, markRead, unreadCount } from './notifications.js';
+import { stream } from './nudge.js';
 import { deleteWorkspace, exportWorkspace } from './workspace.js';
 import {
   add as addToGroup,
@@ -784,6 +785,18 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
    * müsste die Bereiche durchgehen, um zu wissen, ob etwas liegt — und genau
    * das soll eine Glocke ersparen.
    */
+  if (path === '/api/stream' && method === 'GET') {
+    /*
+     * Der Strom eines Mitglieds.
+     *
+     * Auf seinen Arbeitsbereich gefiltert — und das ist die ganze Prüfung, die
+     * hier nötig ist: die Klingel nennt nur einen Scope. Was er dann sieht,
+     * entscheidet die Route, die die Liste liefert.
+     */
+    stream(req, res, (ws) => ws === workspaceId);
+    return;
+  }
+
   if (path === '/api/notifications' && method === 'GET') {
     // Alles auf einmal: die Oberfläche zählt ihre Ansichten daraus. Eine
     // Abfrage je Zahl wäre eine Abfrage je Ansicht, und die Zahlen kämen aus

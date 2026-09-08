@@ -22,6 +22,14 @@
  * wurde. Gegengeprueft mit kuenstlich wiederhergestellter alter Regel -- der
  * Pruefer meldet 'h1 20<69'.
  *
+ * ## Warum 'domcontentloaded' und nicht 'networkidle'
+ *
+ * Seit es die Tuerklingel gibt (SSE), haelt der Browser einen Strom offen --
+ * das Netz wird also NIE ruhig, und 'networkidle' laeuft in einen Timeout.
+ * Gefunden beim ersten Live-Test: das Skript blieb an einer Navigation haengen,
+ * die vorher immer ging. Wer hier wieder 'networkidle' schreibt, sucht eine
+ * halbe Stunde nach einem Fehler in der Anwendung.
+ *
  * ZUSTAENDE, nicht Adressen: ein Durchgang ueber Adressen fand nach dem ersten
  * Fehler nichts, und trotzdem war das offene Kontomenue kaputt.
  */
@@ -85,47 +93,47 @@ const messen = () => {
 };
 
 const ZUSTAENDE = [
-  ['Heute', async (p) => { await p.goto('http://127.0.0.1:8180/', { waitUntil: 'networkidle' }); }],
+  ['Heute', async (p) => { await p.goto('http://127.0.0.1:8180/', { waitUntil: 'domcontentloaded' }); }],
   ['Heute, Leiste zu', async (p) => {
-    await p.goto('http://127.0.0.1:8180/', { waitUntil: 'networkidle' }); await p.waitForTimeout(900);
+    await p.goto('http://127.0.0.1:8180/', { waitUntil: 'domcontentloaded' }); await p.waitForTimeout(900);
     const t = p.getByRole('button', { name: /Seitenleiste (aus|ein)blenden/ });
     if (await t.count() > 0) await t.click();
   }],
   ['Aufgabe offen', async (p) => {
-    await p.goto('http://127.0.0.1:8180/', { waitUntil: 'networkidle' }); await p.waitForTimeout(1100);
+    await p.goto('http://127.0.0.1:8180/', { waitUntil: 'domcontentloaded' }); await p.waitForTimeout(1100);
     await p.locator('.task-title').first().click();
   }],
   ['Aufgabe offen, Leiste zu', async (p) => {
-    await p.goto('http://127.0.0.1:8180/', { waitUntil: 'networkidle' }); await p.waitForTimeout(1100);
+    await p.goto('http://127.0.0.1:8180/', { waitUntil: 'domcontentloaded' }); await p.waitForTimeout(1100);
     await p.locator('.task-title').first().click(); await p.waitForTimeout(900);
     const t = p.getByRole('button', { name: /Seitenleiste (aus|ein)blenden/ });
     if (await t.count() > 0) await t.click();
   }],
   ['Erledigte eingeblendet', async (p) => {
-    await p.goto('http://127.0.0.1:8180/', { waitUntil: 'networkidle' }); await p.waitForTimeout(1000);
+    await p.goto('http://127.0.0.1:8180/', { waitUntil: 'domcontentloaded' }); await p.waitForTimeout(1000);
     const t = p.getByRole('button', { name: 'Erledigte einblenden' });
     if (await t.count() > 0) await t.click();
   }],
   ['Zeilenmenue offen', async (p) => {
-    await p.goto('http://127.0.0.1:8180/', { waitUntil: 'networkidle' }); await p.waitForTimeout(1100);
+    await p.goto('http://127.0.0.1:8180/', { waitUntil: 'domcontentloaded' }); await p.waitForTimeout(1100);
     const m = p.locator('.task .handle, .task button[aria-label*="Menü"]').first();
     if (await m.count() > 0) await m.click();
   }],
   ['Projektmenue offen', async (p) => {
-    await p.goto('http://127.0.0.1:8180/', { waitUntil: 'networkidle' }); await p.waitForTimeout(1100);
+    await p.goto('http://127.0.0.1:8180/', { waitUntil: 'domcontentloaded' }); await p.waitForTimeout(1100);
     const m = p.getByRole('button', { name: /Menü für/ }).first();
     if (await m.count() > 0) await m.click();
   }],
   ['Zeichenwaehler offen', async (p) => {
-    await p.goto('http://127.0.0.1:8180/workspaces/name', { waitUntil: 'networkidle' }); await p.waitForTimeout(1600);
+    await p.goto('http://127.0.0.1:8180/workspaces/name', { waitUntil: 'domcontentloaded' }); await p.waitForTimeout(1600);
   }],
   ['Workspace-Wechsler offen', async (p) => {
-    await p.goto('http://127.0.0.1:8180/', { waitUntil: 'networkidle' }); await p.waitForTimeout(1000);
+    await p.goto('http://127.0.0.1:8180/', { waitUntil: 'domcontentloaded' }); await p.waitForTimeout(1000);
     const t = p.getByRole('button', { name: /Workspace .* wechseln/ });
     if (await t.count() > 0) await t.click();
   }],
   ['Kontomenue offen', async (p) => {
-    await p.goto('http://127.0.0.1:8180/', { waitUntil: 'networkidle' }); await p.waitForTimeout(1000);
+    await p.goto('http://127.0.0.1:8180/', { waitUntil: 'domcontentloaded' }); await p.waitForTimeout(1000);
     const t = p.getByRole('button', { name: /Konto$/ });
     if (await t.count() > 0) await t.click();
   }],
@@ -133,7 +141,7 @@ const ZUSTAENDE = [
 
 for (const [wname, w, h] of [['iPhone 390', 390, 780], ['iPad 768', 768, 1024], ['weit 1320', 1320, 860]]) {
   const page = await b.newPage({ viewport: { width: w, height: h }, locale: 'de-DE' });
-  await page.goto('http://127.0.0.1:8180/', { waitUntil: 'networkidle' });
+  await page.goto('http://127.0.0.1:8180/', { waitUntil: 'domcontentloaded' });
   await page.getByLabel(/E-Mail/i).fill('m@example.org');
   await page.getByLabel(/Kennwort/i).fill('ein gutes Kennwort');
   await page.getByRole('button', { name: /Anmelden/i }).click();

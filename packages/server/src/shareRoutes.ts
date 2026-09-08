@@ -27,6 +27,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { Pool } from 'pg';
 
 import { queryOne } from './db.js';
+import { stream } from './nudge.js';
 import { fail, json, readJson } from './http/respond.js';
 import { accessByToken, type RightLevel } from './shares.js';
 import { complete, NotFound, OutOfOrder, patch, reopen, createFromLine } from './tasks.js';
@@ -84,6 +85,26 @@ export async function shareRoutes(
   const nurLesen = (): void => {
     fail(res, 403, 'read_only', 'dieser Link darf nur lesen');
   };
+
+  /*
+   * Die Türklingel für einen Gast.
+   *
+   * **Hier** und nicht als eigene Route neben dem Gast-Zweig: mein erster
+   * Versuch legte sie in `routes.ts`, und der Zweig oben fängt
+   * `/api/share/:token/…` vorher ab — sie war **unerreichbar** und antwortete
+   * 404, was im Browser als stiller `EventSource`-Fehler ankam. Die Regel
+   * dieser Datei („eine Datei für alle Gast-Wege") ist genau dagegen da.
+   *
+   * Gefiltert wird auf dem Server, weil nur er den Zugang kennt. Der Preis
+   * steht in `nudge.ts`: ein Gast erfährt, *dass* im Arbeitsbereich etwas
+   * passiert ist, auch wenn es ein anderes Projekt war — ein Zeitsignal. Was
+   * er **sieht**, entscheidet weiter seine `/tasks`-Route, und die kennt nur
+   * sein Projekt.
+   */
+  if (rest === '/stream' && method === 'GET') {
+    stream(req, res, (ws, scope) => ws === access.workspaceId && scope === 'tasks');
+    return;
+  }
 
   /* ── Was es zu sehen gibt ──────────────────────────────────────────────── */
 

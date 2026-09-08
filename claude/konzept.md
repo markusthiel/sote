@@ -1751,6 +1751,48 @@ Beim Bauen entschieden, weil es ohne Entscheidung keinen Code gibt:
     Schiene — der Wächter hat es gemeldet, denn das wäre eine zweite Liste
     neben `MODES`. Zwei Wächter standen dabei kurz gegeneinander: der ältere
     verlangte wörtlich `mode.id === 'inbox'`, also genau das Verbotene.
+## Die Türklingel (live)
+
+Übernommen aus SONE (`claude/live-aktualisierung.md`, dessen ADR-0093 bis
+ADR-0100). Die Regeln dort sind teuer erarbeitet; ich habe sie nicht neu
+erfunden.
+
+- **Der Rahmen ist eine Türklingel, kein Brief.** Die Nutzlast nennt einen
+  Arbeitsbereich und einen Scope, sonst nichts. Drei Gründe: eine NOTIFY-Nutzlast
+  erreicht *jede* lauschende Instanz; eine Zahl auf der Leitung wäre eine zweite
+  Antwort auf die Frage, die die Liste schon beantwortet; und bei einem Löschen
+  ließe sich gar nicht sagen, wen es angeht.
+- **Die Spaltenliste ist das Design.** Die Update-Trigger vergleichen
+  vorher/nachher über genau die Spalten, die die betroffene Liste zeichnet. Die
+  **Notiz** steht in keiner (sie lebt in der Detailspalte, die die Aufgabe schon
+  offen hat), `updated_at` in keiner, und **„zuletzt benutzt" an einer Freigabe**
+  in keiner — sonst läutet das Arbeiten eines Gasts die Liste des Eigentümers im
+  Sekundentakt.
+- **Für jede „läutet nicht"-Entscheidung gibt es einen Test für die
+  Abwesenheit.** Sonst ist der ganze Aufwand mit der Spaltenliste unbelegt.
+- **Statement-level über Transition Tables, immer**, plus die drei
+  Postgres-Grenzen aus SONE: keine Spaltenliste und kein Mehrfach-Ereignis neben
+  Transition Tables, und ein Statement, das nichts trifft, sendet nichts.
+- **Eine lauschende Verbindung, außerhalb des Pools.** `LISTEN` bindet sie
+  dauerhaft — aus dem Pool genommen käme sie nie zurück.
+- **SSE und nicht WebSocket.** Eine Klingel geht in *eine* Richtung; ein
+  WebSocket wäre der Aufbau ohne den Anlass. SONE hat einen, aber dort fließen
+  Dokumentänderungen in beide Richtungen. `EventSource` bringt den Wiederaufbau
+  mitgeliefert — und darum gibt es hier **kein** `close()` im Fehlerfall: das
+  wäre die Klinke, die klemmt.
+- **Gefiltert wird auf dem Server**, weil nur er den Zugang kennt. Der Preis,
+  benannt: ein Gast erfährt, *dass* im Arbeitsbereich etwas passiert ist, auch
+  wenn es ein anderes Projekt war — ein Zeitsignal.
+- **Der Fokus bleibt.** Ein Push sagt, was passierte, *während man zuhörte*.
+- **Ein offener Strom heißt, das Netz wird nie ruhig.** `waitUntil:
+  'networkidle'` läuft seitdem in einen Timeout — 86 Prüfskripte und
+  `measure-widths.mjs` sind auf `domcontentloaded` umgestellt, mit dem Grund im
+  Werkzeug.
+- **Eine Route hinter einer, die sie verschluckt, ist still.** Die Gast-Klingel
+  lag hinter dem Zweig, der `/api/share/:token/…` abfängt: 404, im Browser ein
+  stiller `EventSource`-Fehler. `check-routes-reachable.mjs` prüft das jetzt und
+  nennt die verschluckende Zeile.
+
 - **`pnpm check` ist genau das, was die CI fährt.** Erst standen die Prüfungen
   einzeln in der Workflow-Datei, und `pnpm -r typecheck` scheiterte dort — in
   einem frischen Klon gibt es kein `dist`, und `@sote/core` zeigt mit `types`

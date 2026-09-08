@@ -9,6 +9,7 @@ import { makePool } from './db.js';
 import { loadConfig } from './env.js';
 import { scheduleRecurring } from './handlers.js';
 import { startRunner } from './jobs.js';
+import { startListening } from './nudge.js';
 import { scheduleReminders } from './reminders.js';
 import { migrate } from './migrate.js';
 import { makeServer } from './routes.js';
@@ -78,6 +79,14 @@ server.listen(config.port, () => {
     })
     .catch((e: unknown) => console.error('Erinnerungen:', e));
   startRunner(pool);
+  /*
+   * Die lauschende Verbindung, außerhalb des Pools.
+   *
+   * `LISTEN` bindet eine Verbindung dauerhaft — aus dem Pool genommen wäre sie
+   * eine, die nie zurückkommt, und der Pool würde bei genug Neustarts
+   * verhungern.
+   */
+  startListening(config.databaseUrl);
   console.log(`SOTE hört auf :${config.port}`);
 });
 

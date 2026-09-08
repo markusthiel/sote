@@ -33,6 +33,7 @@ import { Search } from './screens/Search.js';
 import { landingRoute, markRoute, rememberRoute } from './landing.js';
 import { AcceptInvite } from './screens/AcceptInvite.js';
 import { Accounts } from './screens/Accounts.js';
+import { useNudge } from './hooks/useNudge.js';
 import { Invitations } from './screens/Invitations.js';
 import {
   Notifications,
@@ -149,6 +150,20 @@ export function App() {
       setProjects([]);
     }
   }, [workspace]);
+
+  /*
+   * Zwei Klingeln für die Leiste, und zwei mit Grund.
+   *
+   * `projects` läutet, wenn der Baum anders aussieht — ein Umbenennen, ein
+   * neues Projekt, eine andere Reihenfolge. `tasks` läutet für die **Zahlen**
+   * daneben: sie kommen aus derselben Abfrage wie die Listen, also ändern sie
+   * sich, wenn Aufgaben sich ändern.
+   *
+   * Getrennt, weil ein Umbenennen im Baum nicht die Aufgabenliste neu holen
+   * soll und ein Abhaken nicht den Baum — *die Spaltenliste ist das Design.*
+   */
+  useNudge('/api/stream', 'projects', () => void loadPanel());
+  useNudge('/api/stream', 'tasks', () => void loadPanel());
 
   /**
    * Ein Ort wird betreten, nicht ein Zustand gesetzt.

@@ -21,6 +21,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 
+import { useNudge } from '../hooks/useNudge.js';
 import { api, ApiError } from '../api.js';
 import { SoteMark } from '../components/Logo.js';
 import { QuickAdd } from '../components/QuickAdd.js';
@@ -50,6 +51,19 @@ export function ShareScreen({ token, now }: { token: string; now: Date }) {
     setHead({ name: oben.project.name, right: oben.right });
     setTasks(liste.tasks);
   }, [token, showDone]);
+
+  /*
+   * Auch der Gast bekommt eine Klingel.
+   *
+   * Sein Strom hängt an seinem Token, und **der Server filtert** — nur er
+   * kennt den Zugang. Der Preis steht in `nudge.ts`: ein Gast erfährt damit,
+   * *dass* im Arbeitsbereich etwas passiert ist, auch wenn es ein anderes
+   * Projekt war. Was er **sieht**, entscheidet weiter seine Route, und die
+   * kennt nur sein Projekt.
+   */
+  useNudge(`/api/share/${token}/stream`, 'tasks', () => {
+    void load().catch(() => undefined);
+  });
 
   useEffect(() => {
     void load().catch((e: unknown) => {
