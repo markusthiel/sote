@@ -15,6 +15,7 @@ import { after, before, test } from 'node:test';
 import type { Pool } from 'pg';
 
 import { makePool, queryOne } from '../src/db.js';
+import { makeList } from './support/tree.js';
 import { migrate } from '../src/migrate.js';
 import { complete, createFromLine, recurrenceOf } from '../src/tasks.js';
 import { list, splitOverdue } from '../src/views.js';
@@ -61,13 +62,8 @@ async function scratch(name: string): Promise<{ workspaceId: string; projectId: 
      VALUES ($1,$2,$3,true)`,
     [w!.id, userId, r!.id],
   );
-  const p = await queryOne<{ id: string }>(
-    pool,
-    `INSERT INTO projects (workspace_id, name, sort_key) VALUES ($1,'Haus','a0')
-     RETURNING id`,
-    [w!.id],
-  );
-  return { workspaceId: w!.id, projectId: p!.id };
+  const projectId = await makeList(pool, w!.id, 'Haus');
+  return { workspaceId: w!.id, projectId };
 }
 
 const utc = (y: number, m: number, d: number, h = 0, min = 0) =>
@@ -121,7 +117,11 @@ test('ein unbekanntes #projekt wird gemeldet und nicht angelegt', async () => {
     'SELECT count(*) AS n FROM projects WHERE workspace_id = $1',
     [workspaceId],
   );
-  assert.equal(count!.n, '1', 'es darf kein Projekt dazugekommen sein');
+  // Zwei: der Ordner „Haus" und das Projekt „Haus" darin — die Form, die
+  // `makeList` anlegt und die Migration 0009 herstellt. Entscheidend ist, dass
+  // es NICHT drei sind: ein gemeldetes #projekt wird nicht stillschweigend
+  // angelegt.
+  assert.equal(count!.n, '2', 'es darf kein Projekt dazugekommen sein');
 });
 
 test('eine unbekannte Person wird gemeldet, eine bekannte zugewiesen', async () => {

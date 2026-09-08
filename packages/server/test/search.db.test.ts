@@ -162,8 +162,10 @@ test('ein fremder Arbeitsbereich wird nicht durchsucht', async () => {
 
 test('nach Projekt, auch über die Kurzform', async () => {
   const ws = await space('s-project');
-  await create(pool, ws, { name: 'Haus' });
-  await create(pool, ws, { name: 'Büro' });
+  const o1 = await create(pool, ws, { name: 'Ordner Haus' });
+  await create(pool, ws, { name: 'Haus', parentId: o1.id });
+  const o2 = await create(pool, ws, { name: 'Ordner Büro' });
+  await create(pool, ws, { name: 'Büro', parentId: o2.id });
   await add(ws, 'Kabel messen #haus');
   await add(ws, 'Kabel bestellen #büro');
 
@@ -233,7 +235,8 @@ test('nach Frist: heute, diese Woche, überfällig', async () => {
 
 test('Text und Facetten zusammen', async () => {
   const ws = await space('s-mixed');
-  await create(pool, ws, { name: 'Haus' });
+  const o3 = await create(pool, ws, { name: 'Ordner Haus' });
+  await create(pool, ws, { name: 'Haus', parentId: o3.id });
   await add(ws, 'Kabel messen #haus !!');
   await add(ws, 'Kabel bestellen #haus');
   await add(ws, 'Kabel messen');

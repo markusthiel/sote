@@ -50,6 +50,8 @@ import { colorValue } from '@sote/core';
 import type * as lucideTypes from 'lucide-react';
 import { useEffect, useState } from 'react';
 
+import { FolderIcon, ListIcon } from './icons.js';
+
 /*
  * Der geladene Satz, oder `null`.
  *
@@ -193,10 +195,19 @@ export const hasIcon = (name: string | undefined): boolean =>
  */
 export function ProjectMark({
   icon,
+  kind,
   name,
   color,
 }: {
   icon: string | undefined;
+  /**
+   * Woraus die Vorgabe kommt, wenn niemand ein Zeichen gewaehlt hat.
+   *
+   * Aus dem **Rahmensatz** und nicht aus Lucide: waere die Vorgabe ein
+   * Lucide-Name, wuerde jede Zeile im Baum den ganzen Satz nachladen — und die
+   * 1018 KB waeren durch die Hintertuer wieder im Startpfad.
+   */
+  kind: 'folder' | 'list';
   name: string;
   /** Schon durch `colorValue` gegangen, oder `undefined`. */
   color: string | undefined;
@@ -211,7 +222,11 @@ export function ProjectMark({
       {...(color === undefined ? {} : { style: { color } })}
     >
       {Chosen === null ? (
-        (name.trim().charAt(0).toUpperCase() || '?')
+        kind === 'folder' ? (
+          <FolderIcon size={15} />
+        ) : (
+          <ListIcon size={15} />
+        )
       ) : (
         <Chosen
           // Passt zu den Zeichen daneben statt zu Lucides eigener Vorgabe,

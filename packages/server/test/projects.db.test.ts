@@ -184,8 +184,11 @@ test('umbenennen und umfärben ändern nur das Genannte', async () => {
 });
 
 test('umbenennen lässt die Aufgaben, wo sie sind', async () => {
+  // `#haus` meint ein PROJEKT und nicht den Ordner darueber (Konzept 10d),
+  // also braucht der Test beides — und genau das prueft die Zeile darunter.
   const ws = await space('p-rename-tasks');
-  const p = await create(pool, ws, { name: 'Haus' });
+  const ordner = await create(pool, ws, { name: 'Zuhause' });
+  const p = await create(pool, ws, { name: 'Haus', parentId: ordner.id });
   const t = await createFromLine(pool, {
     workspaceId: ws,
     userId,
@@ -193,7 +196,7 @@ test('umbenennen lässt die Aufgaben, wo sie sind', async () => {
     now: NOW,
   });
   assert.equal(t.task.project_id, p.id);
-  await update(pool, p.id, ws, { name: 'Zuhause' });
+  await update(pool, p.id, ws, { name: 'Wohnung' });
   const still = await queryOne<{ project_id: string | null }>(
     pool,
     'SELECT project_id FROM tasks WHERE id = $1',
@@ -214,12 +217,23 @@ test('ein Projekt unter ein anderes hängen', async () => {
   assert.equal(moved.sort_key, 'a0');
 });
 
-test('und wieder nach oben', async () => {
+test('ein Ordner darf nach oben, ein Projekt nicht', async () => {
+  // Seit Konzept 10d liegt ein Projekt IMMER in einem Ordner. „Wieder nach
+  // oben" ist damit fuer einen Ordner richtig und fuer ein Projekt eine
+  // Eingabe, die abgelehnt gehoert — der Test prueft jetzt beides, statt das
+  // eine zu erlauben und das andere nicht zu erwaehnen.
   const ws = await space('p-out');
   const haus = await create(pool, ws, { name: 'Haus' });
+  const keller = await create(pool, ws, { name: 'Keller', parentId: haus.id, kind: 'folder' });
   const kabel = await create(pool, ws, { name: 'Kabel', parentId: haus.id });
-  const moved = await update(pool, kabel.id, ws, { parentId: null });
-  assert.equal(moved.parent_id, null);
+
+  const moved = await update(pool, keller.id, ws, { parentId: null });
+  assert.equal(moved.parent_id, null, 'ein Ordner darf ganz oben stehen');
+
+  await assert.rejects(
+    () => update(pool, kabel.id, ws, { parentId: null }),
+    (e: unknown) => e instanceof OutOfOrder && /immer in einem Ordner/.test((e as Error).message),
+  );
 });
 
 test('ein Projekt kann nicht in sich selbst liegen', async () => {
@@ -234,10 +248,12 @@ test('ein Projekt kann nicht in sich selbst liegen', async () => {
 test('ein Projekt kann nicht unter seinen eigenen Nachfahren', async () => {
   // Der Kreis. Ohne diese Prüfung wären beide aus dem Baum verschwunden und
   // eine rekursive Abfrage würde nicht enden.
+  // Alle drei Ordner: nur Ordner verschachteln, also kann nur unter ihnen ein
+  // Kreis entstehen.
   const ws = await space('p-cycle');
   const a = await create(pool, ws, { name: 'A' });
-  const b = await create(pool, ws, { name: 'B', parentId: a.id });
-  const c = await create(pool, ws, { name: 'C', parentId: b.id });
+  const b = await create(pool, ws, { name: 'B', parentId: a.id, kind: 'folder' });
+  const c = await create(pool, ws, { name: 'C', parentId: b.id, kind: 'folder' });
 
   await assert.rejects(
     () => update(pool, a.id, ws, { parentId: c.id }),

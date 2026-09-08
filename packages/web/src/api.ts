@@ -121,6 +121,8 @@ export interface Project {
   color: string | null;
   /** Dieselbe Form wie SONEs `pages.icon`. `null`, wenn nichts gewählt ist. */
   icon: { icon?: string; iconColor?: string } | null;
+  /** Ordner ordnen, Projekte halten (Konzept 10d). */
+  kind: 'folder' | 'list';
   /** Tiefe im Baum, vom Server gerechnet. */
   depth?: number;
   /** `null` und nicht 0 — eine Zahl über nichts ist Rauschen. */
@@ -249,7 +251,20 @@ export const api = {
       `/api/projects${workspace === undefined ? '' : `?workspace=${workspace}`}`,
     ),
   createProject: (
-    body: { name: string; parentId?: string | null; color?: string | null },
+    body: {
+      name: string;
+      parentId?: string | null;
+      color?: string | null;
+      /**
+       * Ordner oder Projekt.
+       *
+       * Fehlt sie, entscheidet der Server nach dem Ort: ganz oben ein Ordner,
+       * darunter ein Projekt. Die Oberfläche gibt sie trotzdem immer mit —
+       * „Unterordner anlegen" und „Projekt anlegen" sind zwei Einträge im
+       * Menü, und keiner davon soll auf eine Vermutung angewiesen sein.
+       */
+      kind?: 'folder' | 'list';
+    },
     workspace?: string,
   ) =>
     call<{ project: Project }>(

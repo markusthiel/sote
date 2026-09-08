@@ -56,13 +56,23 @@ export function ProjectTree({
   activeId: string | null;
   busy: boolean;
   onOpen: (id: string) => void;
-  onCreate: (name: string, parentId: string | null) => void;
+  onCreate: (name: string, parentId: string | null, kind: 'folder' | 'list') => void;
   onRename: (id: string, name: string) => void;
   onColor: (id: string, color: string | null) => void;
   onIcon: (id: string, icon: { icon?: string; iconColor?: string } | null) => void;
   onTrash: (id: string) => void;
 }) {
-  const [adding, setAdding] = useState<{ parentId: string | null } | null>(null);
+  /*
+   * Was gerade angelegt wird — und als was.
+   *
+   * Die Art gehoert in den Zustand und nicht in eine Vermutung beim
+   * Abschicken: „Unterordner anlegen" und „Projekt anlegen" sind zwei
+   * Eintraege im Menue, und der Platzhalter im Feld soll sagen, welcher von
+   * beiden gedrueckt wurde.
+   */
+  const [adding, setAdding] = useState<
+    { parentId: string | null; kind: 'folder' | 'list' } | null
+  >(null);
   const [renaming, setRenaming] = useState<string | null>(null);
   const [menu, setMenu] = useState<string | null>(null);
   /*
@@ -185,15 +195,25 @@ export function ProjectTree({
                * Vorleseansage fällt das sofort auf; im Bild sieht man es nie.
                */
               aria-label={
-                p.open === null
-                  ? `Projekt ${p.name}`
-                  : `Projekt ${p.name}, ${p.open} offen`
+                // Die Art gehoert in den Namen: „Ordner Haus" und „Projekt
+                // Haus" sind nach der Migration zwei Zeilen mit demselben
+                // Wort, und einer Vorleseansage waeren sie ohne die Art nicht
+                // zu unterscheiden.
+                `${p.kind === 'folder' ? 'Ordner' : 'Projekt'} ${p.name}` +
+                (p.open === null ? '' : `, ${p.open} offen`)
               }
               aria-current={activeId === p.id}
               onClick={() => onOpen(p.id)}
             >
               <ProjectMark
                 icon={p.icon?.icon}
+                // Ohne gewaehltes Zeichen unterscheidet die VORGABE die Arten,
+                // und sie kommt aus dem RAHMENSATZ (`icons.tsx`) und nicht aus
+                // Lucide. Mein erster Wurf setzte hier 'folder'/'list' als
+                // Lucide-Namen ein — damit haette JEDE Zeile den Satz
+                // nachgeladen, und die 1018 KB waeren durch die Hintertuer
+                // wieder im Startpfad. Zwei Saetze, zwei Zwecke.
+                kind={p.kind}
                 name={p.name}
                 color={colorValue(p.icon?.iconColor ?? p.color)}
               />
@@ -224,16 +244,37 @@ export function ProjectTree({
             }}>
               Umbenennen
             </button>
-            <button
-              className="menu-item"
-              role="menuitem"
-              onClick={() => {
-                setMenu(null);
-                setAdding({ parentId: p.id });
-              }}
-            >
-              Unterprojekt anlegen
-            </button>
+            {/*
+              Zwei Eintraege statt einem, und nur bei einem Ordner.
+              Ein Projekt haelt Aufgaben und keine Unterpunkte (Konzept 10d) —
+              ein Eintrag „Unterprojekt anlegen" an einem Projekt waere ein
+              Angebot, das die Datenbank ablehnt. Abwesend statt anwesend und
+              verweigernd (SONEs ADR-0027).
+            */}
+            {p.kind === 'folder' ? (
+              <>
+                <button
+                  className="menu-item"
+                  role="menuitem"
+                  onClick={() => {
+                    setMenu(null);
+                    setAdding({ parentId: p.id, kind: 'list' });
+                  }}
+                >
+                  Projekt anlegen
+                </button>
+                <button
+                  className="menu-item"
+                  role="menuitem"
+                  onClick={() => {
+                    setMenu(null);
+                    setAdding({ parentId: p.id, kind: 'folder' });
+                  }}
+                >
+                  Unterordner anlegen
+                </button>
+              </>
+            ) : null}
             <div className="menu-label sep">Zeichen</div>
             {/*
               Ein Suchfeld statt einer Auswahl.
@@ -350,13 +391,14 @@ export function ProjectTree({
               key={`add-${p.id}`}
               className="p-rename"
               autoFocus
-              placeholder="Name des Unterprojekts"
-              aria-label="Name des Unterprojekts"
+              placeholder={adding.kind === 'folder' ? 'Name des Unterordners' : 'Name des Projekts'}
+              aria-label={adding.kind === 'folder' ? 'Name des Unterordners' : 'Name des Projekts'}
               style={{ marginInlineStart: (depth + 1) * 14 }}
               onBlur={(e) => {
                 const name = e.target.value.trim();
+                const kind = adding.kind;
                 setAdding(null);
-                if (name !== '') onCreate(name, p.id);
+                if (name !== '') onCreate(name, p.id, kind);
               }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') e.currentTarget.blur();
@@ -386,12 +428,13 @@ export function ProjectTree({
         <input
           className="p-rename"
           autoFocus
-          placeholder="Name des Projekts"
-          aria-label="Name des Projekts"
+          placeholder="Name des Ordners"
+          aria-label="Name des Ordners"
           onBlur={(e) => {
             const name = e.target.value.trim();
             setAdding(null);
-            if (name !== '') onCreate(name, null);
+            // Ganz oben kann nur ein Ordner stehen (Konzept 10d).
+            if (name !== '') onCreate(name, null, 'folder');
           }}
           onKeyDown={(e) => {
             if (e.key === 'Enter') e.currentTarget.blur();
@@ -404,13 +447,20 @@ export function ProjectTree({
       ) : (
         <button
           className="p-item add"
-          onClick={() => setAdding({ parentId: null })}
+          onClick={() => setAdding({ parentId: null, kind: 'folder' })}
           disabled={busy}
         >
           <span className="plus" aria-hidden="true">
             +
           </span>
-          Projekt anlegen
+          {/*
+            „Ordner" und nicht „Projekt": ganz oben kann nur ein Ordner stehen
+            (Konzept 10d). Der Knopf sagte „Projekt anlegen" und legte einen
+            Ordner an — im Bild aufgefallen. Eine Beschriftung, die etwas
+            anderes verspricht als sie tut, ist schlimmer als eine, die nichts
+            verspricht.
+          */}
+          Ordner anlegen
         </button>
       )}
     </>

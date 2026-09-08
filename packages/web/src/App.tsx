@@ -351,8 +351,8 @@ export function App() {
             activeId={route.kind === 'project' ? route.projectId : null}
             busy={panelBusy}
             onOpen={(id) => go({ kind: 'project', projectId: id })}
-            onCreate={(name, parentId) =>
-              void panelWrite(() => api.createProject({ name, parentId }, workspace))
+            onCreate={(name, parentId, kind) =>
+              void panelWrite(() => api.createProject({ name, parentId, kind }, workspace))
             }
             onRename={(id, name) =>
               void panelWrite(() => api.patchProject(id, { name }, workspace))

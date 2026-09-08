@@ -431,28 +431,29 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
       name: string;
       color: string | null;
       icon: unknown;
+      kind: 'folder' | 'list';
       depth: number;
       open: string;
     }>(
       ctx.pool,
       `WITH RECURSIVE walk AS (
-         SELECT p.id, p.parent_id, p.name, p.color, p.icon, p.sort_key,
+         SELECT p.id, p.parent_id, p.name, p.color, p.icon, p.kind, p.sort_key,
                 0 AS depth, ARRAY[p.sort_key] AS path
            FROM projects p
           WHERE p.workspace_id = $1 AND p.parent_id IS NULL AND p.trashed_at IS NULL
          UNION ALL
-         SELECT c.id, c.parent_id, c.name, c.color, c.icon, c.sort_key,
+         SELECT c.id, c.parent_id, c.name, c.color, c.icon, c.kind, c.sort_key,
                 w.depth + 1, w.path || c.sort_key
            FROM projects c JOIN walk w ON c.parent_id = w.id
           WHERE c.workspace_id = $1 AND c.trashed_at IS NULL
        )
-       SELECT w.id, w.parent_id, w.name, w.color, w.icon, w.depth,
+       SELECT w.id, w.parent_id, w.name, w.color, w.icon, w.kind, w.depth,
               count(t.id) FILTER (
                 WHERE t.completed_at IS NULL AND t.trashed_at IS NULL
               ) AS open
          FROM walk w
          LEFT JOIN tasks t ON t.project_id = w.id
-        GROUP BY w.id, w.parent_id, w.name, w.color, w.icon, w.depth, w.path
+        GROUP BY w.id, w.parent_id, w.name, w.color, w.icon, w.kind, w.depth, w.path
         ORDER BY w.path`,
       [workspaceId],
     );
@@ -463,7 +464,9 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
         name: r.name,
         color: r.color,
         icon: readIcon(r.icon),
+        kind: r.kind,
         depth: r.depth,
+
         // Keine Null: eine Zahl über nichts ist Rauschen in einer ruhigen
         // Zeile (SONE, ADR-0092).
         open: Number(r.open) === 0 ? null : Number(r.open),
@@ -484,12 +487,14 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
     name: string;
     color: string | null;
     icon: unknown;
+    kind: 'folder' | 'list';
   }) => ({
     id: row.id,
     parentId: row.parent_id,
     name: row.name,
     color: row.color,
     icon: readIcon(row.icon),
+    kind: row.kind,
     depth: 0,
     open: null,
   });
@@ -505,6 +510,9 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
         ? { color: body['color'] === null ? null : String(body['color']) }
         : {}),
       ...('icon' in (body ?? {}) ? { icon: body['icon'] } : {}),
+      ...(body?.['kind'] === 'folder' || body?.['kind'] === 'list'
+        ? { kind: body['kind'] }
+        : {}),
     });
     json(res, 201, { project: projectView(row) });
     return;
@@ -548,6 +556,8 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
       // steuer2025 gibt es nicht — anlegen?"
       unknownProject: out.unknownProject ?? null,
       ambiguousProject: out.ambiguousProject ?? null,
+      // Die fuenfte Meldung: der Name gehoert einem Ordner (Konzept 10d).
+      folderProject: out.folderProject ?? null,
       unknownAssignees: out.unknownAssignees,
       ambiguousAssignees: out.ambiguousAssignees,
     });

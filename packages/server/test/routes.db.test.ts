@@ -56,7 +56,17 @@ before(async () => {
     [workspaceId, u!.id, r!.id],
   );
   await pool.query(
-    `INSERT INTO projects (workspace_id, name, sort_key) VALUES ($1,'Haus','a0')`,
+    `INSERT INTO projects (workspace_id, name, kind, sort_key)
+     VALUES ($1,'Zuhause','folder','a0')`,
+    [workspaceId],
+  );
+  // Ein Projekt darin, denn `#haus` meint ein Projekt und keinen Ordner
+  // (Konzept 10d). Der Ordner heisst anders, damit der Test sichtbar macht,
+  // welche der beiden Zeilen die Aufgaben traegt.
+  await pool.query(
+    `INSERT INTO projects (workspace_id, parent_id, name, kind, sort_key)
+     SELECT $1, id, 'Haus', 'list', 'a0' FROM projects
+      WHERE workspace_id = $1 AND name = 'Zuhause'`,
     [workspaceId],
   );
 
@@ -216,7 +226,8 @@ test('Projekte zählen offene Aufgaben und lassen die Null weg', async () => {
   assert.ok(haus.open !== null && haus.open > 0, 'Haus hat offene Aufgaben');
 
   await pool.query(
-    `INSERT INTO projects (workspace_id, name, sort_key) VALUES ($1,'Leer','a5')`,
+    `INSERT INTO projects (workspace_id, name, kind, sort_key)
+     VALUES ($1,'Leer','folder','a5')`,
     [workspaceId],
   );
   const after_ = (await (await call('/api/projects')).json()) as {

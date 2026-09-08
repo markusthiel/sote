@@ -161,6 +161,15 @@ export interface Created {
    * `ambiguousAssignees`.
    */
   readonly ambiguousProject: string | undefined;
+  /**
+   * Der Name gehoert einem ORDNER.
+   *
+   * Getrennt von „unbekannt", weil der Unterschied fuer den Menschen zaehlt:
+   * unbekannt heisst vertippt, dies heisst falsche Ebene gemeint. Eine
+   * Meldung, die beides zusammenwirft, schickt jemanden auf die Suche nach
+   * einem Tippfehler, den es nicht gibt.
+   */
+  readonly folderProject: string | undefined;
   readonly unknownAssignees: readonly string[];
   /**
    * Ein `+name`, auf den **mehrere** passen.
@@ -191,17 +200,49 @@ export async function createFromLine(pool: Pool, input: CreateFromLine): Promise
     let projectId = input.projectId ?? null;
     let unknownProject: string | undefined;
     let ambiguousProject: string | undefined;
+    /** Der Name gehört einem Ordner — er trägt keine Aufgaben. */
+    let folderProject: string | undefined;
     if (q.project !== undefined) {
+      /*
+       * `#name` meint ein **Projekt**, keinen Ordner (Konzept 10d).
+       *
+       * Ohne `kind = 'list'` fand die Abfrage nach der Migration zwei Zeilen —
+       * den Ordner „Haus" und das Projekt „Haus" darin — und meldete
+       * Mehrdeutigkeit. Die Aufgabe entstand dann ohne Projekt: angelegt,
+       * gemeldet, und trotzdem nicht dort, wo sie hin sollte. Genau der Fehler,
+       * den die Trennung eigentlich beseitigt.
+       *
+       * Und der ganze Pfad muss leben: ein Projekt unter einem weggeworfenen
+       * Ordner ist kein Ziel, auch wenn es selbst unberührt ist.
+       */
       const found = await queryRows<{ id: string }>(
         client,
         `SELECT id FROM projects
-          WHERE workspace_id = $1 AND lower(name) = lower($2) AND trashed_at IS NULL
+          WHERE workspace_id = $1 AND lower(name) = lower($2)
+            AND kind = 'list' AND NOT project_in_trash(id)
           LIMIT 2`,
         [input.workspaceId, q.project],
       );
       if (found.length === 1) projectId = found[0]!.id;
-      else if (found.length === 0) unknownProject = q.project;
-      else ambiguousProject = q.project;
+      else if (found.length === 0) {
+        /*
+         * Nichts gefunden — aber vielleicht gibt es einen ORDNER mit dem Namen.
+         * Dann ist „gibt es nicht" die falsche Auskunft: der Name existiert,
+         * er trägt nur keine Aufgaben. Das ist die fünfte Meldung aus dem
+         * Konzept, und sie ist der Unterschied zwischen „vertippt" und
+         * „falsche Ebene gemeint".
+         */
+        const folder = await queryOne<{ id: string }>(
+          client,
+          `SELECT id FROM projects
+            WHERE workspace_id = $1 AND lower(name) = lower($2)
+              AND kind = 'folder' AND NOT project_in_trash(id)
+            LIMIT 1`,
+          [input.workspaceId, q.project],
+        );
+        if (folder === undefined) unknownProject = q.project;
+        else folderProject = q.project;
+      } else ambiguousProject = q.project;
     }
 
     const rec = q.recurrence;
@@ -285,7 +326,14 @@ export async function createFromLine(pool: Pool, input: CreateFromLine): Promise
       }
     }
 
-    return { task: row, unknownProject, ambiguousProject, unknownAssignees, ambiguousAssignees };
+    return {
+      task: row,
+      unknownProject,
+      ambiguousProject,
+      folderProject,
+      unknownAssignees,
+      ambiguousAssignees,
+    };
   }));
 }
 
@@ -639,13 +687,26 @@ export async function restore(
         );
       }
       if (target !== null) {
-        const ok = await queryOne<{ id: string }>(
+        /*
+         * Nicht nur das Projekt selbst muss leben, sondern der ganze Pfad.
+         *
+         * Seit Ordner und Projekte getrennt sind, kann ein Ordner über einem
+         * unberührten Projekt im Korb liegen. Etwas dorthin zurückzuholen
+         * hieße, es an einen Ort zu legen, den man nicht sieht — und das ist
+         * schlimmer als eine Fehlermeldung.
+         *
+         * Und die Art zählt: ein Ordner ist kein Ziel für Aufgaben.
+         */
+        const ok = await queryOne<{ kind: string }>(
           client,
-          `SELECT id FROM projects
-            WHERE id = $1 AND workspace_id = $2 AND trashed_at IS NULL`,
+          `SELECT kind FROM projects
+            WHERE id = $1 AND workspace_id = $2 AND NOT project_in_trash(id)`,
           [target, workspaceId],
         );
         if (ok === undefined) throw new NotFound(`Projekt ${target} gibt es nicht`);
+        if (ok.kind !== 'list') {
+          throw new OutOfOrder('ein Ordner hält keine Aufgaben');
+        }
       }
       projectId = target;
     } else if (target !== undefined) {

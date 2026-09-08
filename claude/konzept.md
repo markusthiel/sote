@@ -1014,6 +1014,30 @@ Beim Bauen entschieden, weil es ohne Entscheidung keinen Code gibt:
   - Festgehalten in `test/weight.test.ts` — als **Dateiinhalt**, nicht als
     Absicht: ein Kommentar über „nur bei Bedarf" ist beim nächsten `import` von
     oben still wieder falsch.
+- **Ordner ordnen, Projekte halten** (Konzept 10d, Migration 0009). Drei Regeln
+  liegen in der **Datenbank** und nicht nur im Code: ein CHECK („ein Projekt
+  liegt immer in einem Ordner") und zwei Trigger („ein Projekt hält Aufgaben und
+  keine Unterpunkte", „ein Ordner hält keine Aufgaben"). Eine Regel, die nur im
+  Anwendungscode steht, kennt der nächste Schreibweg nicht.
+  - **`#name` meint ein Projekt**, und wenn der Name einem **Ordner** gehört,
+    ist das eine eigene Meldung (`folderProject`). Unbekannt heißt vertippt,
+    dies heißt falsche Ebene gemeint — eine Meldung, die beides zusammenwirft,
+    schickt jemanden auf die Suche nach einem Tippfehler, den es nicht gibt.
+  - **Eine rekursive CTE in einer korrelierten Unterabfrage sieht die äußere
+    Zeile nicht.** So stand die Pfadprüfung im Papierkorb zuerst in `ALIVE`:
+    lief ohne Fehler, lieferte nie eine Zeile, und damit galt jede Aufgabe als
+    lebendig — auch unter einem weggeworfenen Ordner. Die Rekursion liegt jetzt
+    in `project_in_trash()`.
+  - **Die Vorgabe für das Zeichen kommt aus dem Rahmensatz**, nicht aus Lucide.
+    Mein erster Wurf setzte `'folder'`/`'list'` als Lucide-Namen ein — damit
+    hätte jede Zeile im Baum den ganzen Satz nachgeladen und die 1018 KB wären
+    durch die Hintertür wieder im Startpfad.
+  - **Abwesend statt anwesend und verweigernd:** „Projekt anlegen" und
+    „Unterordner anlegen" stehen nur im Menü eines **Ordners**. An einem
+    Projekt wären sie ein Angebot, das die Datenbank ablehnt.
+  - Ein Testhelfer (`test/support/tree.ts`) legt Ordner und Projekt in genau
+    der Form an, die die Migration herstellt — damit Tests dieselbe Gestalt
+    vorfinden wie eine migrierte Instanz und nicht eine aufgeräumtere.
 - **`pnpm check` ist genau das, was die CI fährt.** Erst standen die Prüfungen
   einzeln in der Workflow-Datei, und `pnpm -r typecheck` scheiterte dort — in
   einem frischen Klon gibt es kein `dist`, und `@sote/core` zeigt mit `types`
@@ -1209,7 +1233,7 @@ eine Entscheidung ist und nicht eine Lücke:
 
 ## 10d. Ordner statt Projekte — die Grundform, neu geschnitten
 
-**Status: vorgeschlagen, nicht gebaut.** Aufgeschrieben vor dem Bau, weil bei
+**Status: gebaut** (Migration 0009). Aufgeschrieben vor dem Bau, weil bei
 einer Änderung an der Grundform eine halbe Stunde Nachdenken billiger ist als
 die Migration danach.
 
@@ -1297,13 +1321,23 @@ Liste in eine Liste stecken will, will einen Ordner.
 Jedes bestehende Projekt wird zu genau einem von beiden. Drei Fälle sind
 eindeutig, einer nicht:
 
-- **Nur Aufgaben, keine Kinder** → Liste.
-- **Nur Kinder, keine Aufgaben** → Ordner.
-- **Weder noch** (leer) → Liste. Ein leeres Blatt ist häufiger eine gerade
-  angelegte Liste als ein Ordner auf Vorrat.
-- **Beides — Aufgaben UND Kinder** → **wird aufgeteilt**: der Ordner behält
-  Namen, Zeichen und Platz, und darunter entsteht eine Liste mit demselben
-  Namen, in die die Aufgaben umziehen.
+Alle vier Fälle haben **dieselbe Form**: aus einem Projekt wird ein **Ordner**
+mit dem Namen, und wo Aufgaben hingen, entsteht darunter ein gleichnamiges
+**Projekt**, in das sie umziehen.
+
+- **Nur Aufgaben** → Ordner + Projekt darin.
+- **Aufgaben und Kinder** → Ordner + Projekt darin; die Kinder bleiben Kinder
+  des Ordners.
+- **Nur Kinder** → Ordner.
+- **Leer** → Ordner.
+
+**Der letzte Fall stand hier zuerst anders** („leer → Liste, ein leeres Blatt
+ist häufiger eine gerade angelegte Liste"), und das war falsch, sobald Punkt 3
+entschieden war: ein leeres Projekt ganz oben *kann* keine Liste sein, es
+bräuchte einen Ordner über sich. Und für ein leeres Blatt gibt es ohnehin kein
+Zeugnis, wofür es gedacht war. Ein Ordner kann später ein Projekt bekommen; ein
+Projekt kann später keine Kinder bekommen. Die Umwandlung, die offen bleibt,
+ist die richtige.
 
 Der letzte Fall ist der, der eine Entscheidung enthält, und ich schreibe die
 Alternative dazu: man könnte die Aufgaben auch in den Posteingang schieben. Das
@@ -1320,16 +1354,34 @@ behauptet.
 - **Rollen und Rechte je Ordner** kommen nicht mit. Heute gilt alles pro
   Arbeitsbereich, und das bleibt so, bis es einen Grund gibt.
 
-### Offen, und zwar für Markus
+### Entschieden
 
-1. Der vierte Migrationsfall: Aufteilen (mein Vorschlag) oder Aufgaben in den
-   Posteingang?
-2. Heißt es in der Oberfläche „Liste" oder weiter „Projekt"? *Projekt* ist das
-   Wort, das Leute aus Todoist mitbringen; *Liste* ist genauer. Ich neige zu
-   **Projekt** für die Liste und **Ordner** für den Behälter — dann ändert sich
-   für niemanden ein Wort, und die neue Ebene heißt, wie sie in SONE heißt.
-3. Dürfen Ordner ganz oben liegen wie Listen, oder muss eine Liste immer in
-   einem Ordner sitzen? Ich neige zu **beides frei** — wie SONE.
+1. **Ein Projekt mit Aufgaben und Kindern wird aufgeteilt** (nicht: Aufgaben in
+   den Posteingang).
+2. **Die Liste heißt weiter „Projekt", der Behälter heißt „Ordner".** Damit
+   ändert sich für niemanden ein Wort, und die neue Ebene heißt, wie sie in
+   SONE heißt.
+3. **Ein Projekt liegt immer in einem Ordner.** Wörtlich: *„Bei SONE haben wir
+   Seiten nur in Ordnern. Ohne Ordner geht nichts. Aber darunter kann beides
+   liegen, untergeordnet und Aufgaben."* Also: ganz oben nur Ordner; unter einem
+   Ordner beides — weitere Ordner **und** Projekte.
+
+### Was Punkt 3 für die Migration bedeutet
+
+Der Fall, der dadurch erst entsteht: ein heutiges Projekt **ganz oben, nur mit
+Aufgaben**. Es wird ein Projekt, und ein Projekt braucht einen Ordner über sich.
+Also entsteht einer — mit demselben Namen, demselben Zeichen und demselben
+Platz, und das Projekt darin heißt ebenso.
+
+Das liest sich einen Moment lang doppelt („Haus ▸ Haus"), und die Alternative
+ist schlechter: ein Sammelordner „Projekte", in den alles wandert, erfindet eine
+Ordnung, die niemand gewählt hat. Ein Ordner, der genau eine Sache enthält und
+so heißt wie sie, behauptet nichts — und wer ihn nicht will, benennt oder
+verschiebt, was er ohnehin wollte.
+
+Damit haben **alle vier** Migrationsfälle dieselbe Form: aus einem Projekt wird
+ein Ordner mit dem Namen, und die Aufgaben ziehen in ein gleichnamiges Projekt
+darin. Nur wo es keine Aufgaben gibt, entfällt das Projekt.
 
 ## 11. Was aus SONE mitkommt, ohne neu entschieden zu werden
 

@@ -13,6 +13,7 @@ import { after, before, test } from 'node:test';
 import type { Pool } from 'pg';
 
 import { makePool, queryOne } from '../src/db.js';
+import { makeList } from './support/tree.js';
 import { migrate } from '../src/migrate.js';
 import {
   complete,
@@ -68,19 +69,9 @@ async function scratch(name: string) {
      VALUES ($1,$2,$3,true)`,
     [w!.id, userId, r!.id],
   );
-  const haus = await queryOne<{ id: string }>(
-    pool,
-    `INSERT INTO projects (workspace_id, name, sort_key) VALUES ($1,'Haus','a0')
-     RETURNING id`,
-    [w!.id],
-  );
-  const buero = await queryOne<{ id: string }>(
-    pool,
-    `INSERT INTO projects (workspace_id, name, sort_key) VALUES ($1,'Büro','a1')
-     RETURNING id`,
-    [w!.id],
-  );
-  return { workspaceId: w!.id, haus: haus!.id, buero: buero!.id };
+  const haus = await makeList(pool, w!.id, 'Haus', 'a0');
+  const buero = await makeList(pool, w!.id, 'Büro', 'a1');
+  return { workspaceId: w!.id, haus, buero };
 }
 
 const add = (workspaceId: string, line: string) =>

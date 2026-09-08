@@ -36,20 +36,36 @@ const COLUMNS = `
 /**
  * Immer wahr für jede Zeile, die überhaupt in einer Ansicht auftauchen darf.
  *
- * **Auch das Projekt muss leben.** Ein Projekt in den Papierkorb zu werfen
+ * **Auch der ganze Pfad muss leben.** Ein Projekt in den Papierkorb zu werfen
  * nimmt seine Aufgaben mit (Konzept, Abschnitt 8a) — ohne diese Bedingung
  * blieben sie in Heute stehen, während das Projekt aus dem Panel verschwunden
  * ist, und niemand fände den Ort, an dem man sie loswird.
+ *
+ * **Seit Ordner und Projekte getrennt sind** (Konzept 10d), reicht das Projekt
+ * nicht: über ihm liegt mindestens ein Ordner, und der kann im Korb liegen,
+ * während das Projekt selbst unberührt ist. Das war im Konzept als die
+ * heikelste Stelle der Umstellung benannt, und sie ist keine Zeile — es wird
+ * eine Prüfung **entlang des Pfades**.
+ *
+ * Rekursiv und nicht mit einer Pfadspalte: eine gespeicherte Pfadspalte müsste
+ * bei jedem Umhängen für den ganzen Teilbaum nachgezogen werden, und ein
+ * vergessenes Nachziehen zeigt Aufgaben aus einem weggeworfenen Ordner. Die
+ * Rekursion kann nichts vergessen.
+ *
+ * **Als Funktion und nicht als CTE hier im Text**, und das ist kein Stil: eine
+ * rekursive CTE in einer korrelierten Unterabfrage **sieht die äußere Zeile
+ * nicht**. Genau so stand es hier zuerst, lief ohne Fehler und lieferte nie
+ * eine Zeile — also galt jede Aufgabe als lebendig, auch unter einem
+ * weggeworfenen Ordner. Aufgefallen ist es an neun sichtbaren Aufgaben, nachdem
+ * der oberste Ordner im Korb lag; ein Test hätte es gemeldet, ein Blick auf den
+ * Code nicht.
  *
  * Als NOT EXISTS und nicht als JOIN: ein JOIN müsste `LEFT` sein, weil
  * `project_id` NULL sein darf, und ein vergessenes `LEFT` verliert genau die
  * Aufgaben ohne Projekt.
  */
 const ALIVE = `completed_at IS NULL AND trashed_at IS NULL
-  AND NOT EXISTS (
-    SELECT 1 FROM projects p
-     WHERE p.id = tasks.project_id AND p.trashed_at IS NOT NULL
-  )`;
+  AND (tasks.project_id IS NULL OR NOT project_in_trash(tasks.project_id))`;
 
 export interface Bounds {
   readonly startOfDay: Date;
