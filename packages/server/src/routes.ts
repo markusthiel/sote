@@ -34,6 +34,8 @@ import { create as createProject, NameTaken, update as updateProject } from './p
 import type { Config } from './env.js';
 import { cookie, fail, json, readJson } from './http/respond.js';
 import { accounts, deleteAccount, setAdmin } from './accounts.js';
+import { TRASH_DAYS } from './handlers.js';
+import { knownKinds } from './jobs.js';
 import { deleteWorkspace, exportWorkspace } from './workspace.js';
 import {
   add as addToGroup,
@@ -700,6 +702,50 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
         isAdmin: a.isAdmin,
         workspaces: a.workspaces,
         createdAt: a.createdAt.toISOString(),
+      })),
+    });
+    return;
+  }
+
+  if (path === '/api/maintenance' && method === 'GET') {
+    if (!(await isAdmin(ctx.pool, userId))) {
+      fail(res, 403, 'not_allowed', 'das darf nur, wer die Instanz verwaltet');
+      return;
+    }
+    /*
+     * Was dieser Server von selbst tut, und wo es klemmt.
+     *
+     * Der Grund für diesen Bildschirm: ein Läufer, dessen Aufträge liegen
+     * bleiben, ist eine Anwendung, die still weniger tut als versprochen.
+     * „Nichts wird still weggeworfen" (Migration 0015) hilft nur, wenn es
+     * irgendwo zu sehen ist.
+     */
+    const offen = await queryRows<{
+      kind: string;
+      run_at: Date;
+      attempts: number;
+      last_error: string | null;
+    }>(
+      ctx.pool,
+      `SELECT kind, run_at, attempts, last_error FROM jobs
+        WHERE done_at IS NULL ORDER BY run_at LIMIT 50`,
+    );
+    const fertig = await queryOne<{ n: string; letzte: Date | null }>(
+      ctx.pool,
+      'SELECT count(*) AS n, max(done_at) AS letzte FROM jobs WHERE done_at IS NOT NULL',
+    );
+    json(res, 200, {
+      kinds: knownKinds(),
+      trashDays: TRASH_DAYS,
+      done: { count: Number(fertig?.n ?? 0), last: fertig?.letzte?.toISOString() ?? null },
+      open: offen.map((j) => ({
+        kind: j.kind,
+        runAt: j.run_at.toISOString(),
+        attempts: j.attempts,
+        // Aufgegeben heißt: liegt da, läuft nicht mehr von selbst. Die Zahl
+        // allein sagt das nicht, also sagt es ein Feld.
+        givenUp: j.attempts >= 5,
+        lastError: j.last_error,
       })),
     });
     return;

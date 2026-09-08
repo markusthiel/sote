@@ -1488,6 +1488,44 @@ Beim Bauen entschieden, weil es ohne Entscheidung keinen Code gibt:
   - **Eine Optimierung, die sich nicht messen lässt, fliegt raus.** Ich hatte
     ein Anwärmen beim Zeigen eingebaut; mit 0/300/1500/3000 ms Zeigeabstand
     ergab es 894/623/1523/1385 ms — kein Trend, nur Rauschen. Wieder heraus.
+## Aufträge, die später laufen
+
+- **Eine Tabelle, kein zweiter Dienst.** SOTE wird selbst betrieben, in einem
+  Prozess; ein eigener Läuferdienst wäre ein zweites Ding zum Ausrollen,
+  Überwachen und Neustarten. Geholt wird mit `FOR UPDATE SKIP LOCKED`, also
+  bleibt es auch mit mehreren Prozessen richtig.
+- **Mindestens einmal, nicht genau einmal.** Stirbt der Prozess zwischen Arbeit
+  und Quittung, läuft der Auftrag wieder. Genau einmal wäre nur mit einer
+  Quittung *in derselben Transaktion wie die Arbeit* zu haben, und das geht
+  nicht, sobald die Arbeit den Server verlässt (Mail). Jeder Bearbeiter muss
+  mehrfaches Laufen aushalten — das ist die Bedingung, unter der er aufgerufen
+  wird.
+- **Nichts wird still weggeworfen.** Nach fünf Versuchen bleibt ein Auftrag
+  liegen, mit seinem letzten Fehler, und steht unter „Wartung". Einer, der
+  still verschwindet, ist einer, von dem der Betreiber nie erfährt, dass er
+  nötig war. **Ein unbekannter Name ist ein Fehler**, kein Stillschweigen.
+- **Der Versuch wird vor der Arbeit gezählt.** Danach zu zählen heißt: ein
+  Auftrag, der den Prozess umbringt, wird beim Neustart erneut geholt, mit
+  derselben Zahl — für immer.
+- **`locked_at` ist eine Zeit und kein Flag**: ein Flag, das ein abgestürzter
+  Prozess gesetzt hat, bleibt für immer gesetzt.
+- **Der Schlüssel gilt nur für offene Aufträge**, und er wird beim **Holen**
+  frei — nicht beim Quittieren. Er antwortet auf „wartet diese Arbeit schon?",
+  und ein laufender Auftrag wartet nicht mehr. Nötig, weil ein Bearbeiter
+  seinen Nachfolger einreiht, *während seine eigene Zeile noch läuft*. Der
+  Preis, benannt: ein fehlgeschlagener Auftrag hält den Schlüssel nicht, also
+  können zwei Zeilen derselben Arbeit liegen — tragbar, weil die Zusage
+  ohnehin „mindestens einmal" ist.
+- **Die Wiederholung liegt im Auftrag**, nicht in einem Zeitplan daneben: so
+  gibt es genau einen Ort, an dem steht, wie oft etwas läuft.
+- **Der Papierkorb leert sich nach dreißig Tagen** — gerechnet vom Wegwerfen,
+  nicht vom Anlegen. Aufgaben vor Projekten, und ein Projekt bleibt, solange
+  darunter etwas liegt, dessen Frist noch läuft: sonst holt jemand ein Projekt
+  aus dem Korb und findet es leer.
+- **Dreißig Tage sind eine Zahl und keine Einstellung.** Eine Einstellung für
+  etwas, das niemand verlangt hat, ist eine Frage, die der Betreiber
+  beantworten muss, ohne sie gestellt zu haben.
+
 - **`pnpm check` ist genau das, was die CI fährt.** Erst standen die Prüfungen
   einzeln in der Workflow-Datei, und `pnpm -r typecheck` scheiterte dort — in
   einem frischen Klon gibt es kein `dist`, und `@sote/core` zeigt mit `types`

@@ -337,6 +337,21 @@ export const api = {
       { method: 'DELETE', body: JSON.stringify({ name }) },
     ),
 
+  /* ── Wartung ───────────────────────────────────────────────────────────── */
+  maintenance: () =>
+    call<{
+      kinds: string[];
+      trashDays: number;
+      done: { count: number; last: string | null };
+      open: {
+        kind: string;
+        runAt: string;
+        attempts: number;
+        givenUp: boolean;
+        lastError: string | null;
+      }[];
+    }>('/api/maintenance'),
+
   /* ── Rollen ────────────────────────────────────────────────────────────── */
   roles: (workspace?: string) =>
     call<{

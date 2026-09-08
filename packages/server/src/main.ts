@@ -7,6 +7,8 @@ import { fileURLToPath } from 'node:url';
 import { SetupKey } from './bootstrap.js';
 import { makePool } from './db.js';
 import { loadConfig } from './env.js';
+import { scheduleRecurring } from './handlers.js';
+import { startRunner } from './jobs.js';
 import { migrate } from './migrate.js';
 import { makeServer } from './routes.js';
 
@@ -50,7 +52,21 @@ if (key !== null) {
 }
 
 const server = makeServer({ pool, config, now: () => new Date(), webRoot, setup });
+/*
+ * Der Läufer für Aufträge, die später laufen.
+ *
+ * Im Serverprozess und nicht als eigener Dienst (Migration 0015 begründet es):
+ * SOTE wird selbst betrieben, und ein zweites Ding zum Ausrollen und
+ * Überwachen wäre für eine Handvoll Leute mit Aufgabenlisten die falsche
+ * Rechnung.
+ *
+ * Nach `listen` und nicht davor: ein Läufer, der beim Start eine Datenbank
+ * belegt, verzögert den ersten Anfragedienst — und der ist das, wofür der
+ * Prozess da ist.
+ */
 server.listen(config.port, () => {
+  void scheduleRecurring(pool).catch((e: unknown) => console.error('Zeitplan:', e));
+  startRunner(pool);
   console.log(`SOTE hört auf :${config.port}`);
 });
 

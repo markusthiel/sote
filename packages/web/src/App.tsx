@@ -32,6 +32,7 @@ import { Detail } from './screens/Detail.js';
 import { Search } from './screens/Search.js';
 import { landingRoute, markRoute, rememberRoute } from './landing.js';
 import { Accounts } from './screens/Accounts.js';
+import { Maintenance } from './screens/Maintenance.js';
 import { People } from './screens/People.js';
 import { Groups } from './screens/Groups.js';
 import { Roles } from './screens/Roles.js';
@@ -526,7 +527,9 @@ export function App() {
           detailOpen={openTask !== null}
           onToggleDetail={openTask === null ? undefined : () => setOpenTask(null)}
         />
-        {route.kind === 'admin' && route.section === 'konten' ? (
+        {route.kind === 'admin' && route.section === 'wartung' ? (
+          <Maintenance />
+        ) : route.kind === 'admin' && route.section === 'konten' ? (
           <Accounts />
         ) : route.kind === 'shares' ? (
           <Shares workspace={workspace} projects={projects} />
