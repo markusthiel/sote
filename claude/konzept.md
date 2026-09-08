@@ -1095,6 +1095,40 @@ Beim Bauen entschieden, weil es ohne Entscheidung keinen Code gibt:
   - „Aussehen" gibt es **zweimal** — für dich und für den Arbeitsbereich. Der
     Bereich entscheidet, welcher gemeint ist, statt zwei gleich benannte
     Abschnitte in einen Namensraum zu zwingen.
+- **SONEs späte ADRs korrigieren die frühen — und zwei davon betrafen mich.**
+  Gemeldet: „wir haben alte ADR bei sone teilweise später überarbeitet."
+  - **ADR-0131 (korrigiert ADR-0122):** eine behandelte Fläche ist ein
+    **kleines Schema**, nicht ein Grund plus eine Textfarbe. Ich hatte
+    `background` und `color` gesetzt und dann von Hand nachgeflickt, was
+    drinnen noch falsch aussah. SONEs Satz dazu trifft genau meine Tests:
+    **„Two lists agreeing with each other is not a check."** Jetzt
+    überschreibt jede Behandlung die semantischen Token auf der Fläche selbst
+    — alles darin liest sie ohnehin, also folgt es ohne Liste.
+    - Auf einer **Akzentfläche tauschen die beiden Plätze**: Akzent auf Akzent
+      ist nichts.
+    - Auf einer **umgekehrten Fläche gilt der Akzent des anderen Schemas** —
+      sie ist dessen Grund, der in diesem steht.
+  - **ADR-0135:** *Kontrast wird gerechnet, nicht geglaubt, und als Test
+    gehalten.* In SOTE stand die Regel nicht einmal auf dem Papier. Der
+    gerechnete Test fand beim ersten Lauf **zwei echte Fehler** — und in SONEs
+    heller Palette liegen Orange (2,72), Gelb (2,51) und Grün (2,82) unter den
+    3:1, die AA für Nichttext verlangt, gemessen auf der vertieften Fläche, wo
+    die Ordnerzeichen stehen. SOTE hat dort die kleinsten Werte, die auf beiden
+    Gründen reichen, als **Skalierung der Kanäle** (hält den Farbton exakt,
+    ADR-0136). Die eine Stelle, an der SOTEs Palette bewusst nicht Ziffer für
+    Ziffer SONEs ist.
+- **Ein doppelter `case` im `switch` ist toter Code, den niemand meldet.** In
+  `parseRoute` standen zwei `case 'workspaces'` — der alte gewann, der neue war
+  tot, und `/workspaces/aussehen` landete beim Platzhalter. Weder Übersetzer
+  noch Lint noch Test sagten etwas, und **mein Browser-Test fand es nicht, weil
+  er geklickt hat**: ein Klick setzt den Zustand direkt, nur ein Neuladen geht
+  durch `parseRoute`. Jetzt ein Rundgang über alle Adressen und ein Wächter
+  gegen doppelte Fälle.
+- **In CSS ist es ein Kreis, `--accent` im selben Block zu lesen und
+  umzudefinieren.** Beide Werte werden ungültig, und ungültig heißt
+  durchsichtig: der Grund der Schiene war `rgba(0,0,0,0)` und das Signet
+  unsichtbar. Gelesen wird darum `--accent-base`, eine Kopie, die kein
+  Flächenblock überschreibt.
 - **`pnpm check` ist genau das, was die CI fährt.** Erst standen die Prüfungen
   einzeln in der Workflow-Datei, und `pnpm -r typecheck` scheiterte dort — in
   einem frischen Klon gibt es kein `dist`, und `@sote/core` zeigt mit `types`

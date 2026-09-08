@@ -84,8 +84,6 @@ export function parseRoute(pathname: string, queryString = ''): Route {
       return { kind: 'upcoming' };
     case 'irgendwann':
       return { kind: 'someday' };
-    case 'workspaces':
-      return { kind: 'mode', mode: 'workspaces' };
     case 'posteingang':
       return { kind: 'mode', mode: 'inbox' };
     case 'freigaben':

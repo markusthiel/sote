@@ -9,3 +9,4 @@ export * from './time/zone.js';
 export * from './look/color.js';
 export * from './look/settings.js';
 export * from './look/theme.js';
+export * from './look/contrast.js';

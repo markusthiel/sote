@@ -1,5 +1,8 @@
 import { strict as assert } from 'node:assert';
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { test } from 'node:test';
+import { fileURLToPath } from 'node:url';
 
 import { neighboursFor, neighboursForStep, reordered } from '../src/reorder.js';
 import { modeOfRoute, parseRoute, pathOf, viewOf, type Route } from '../src/route.js';
@@ -154,5 +157,60 @@ test('die Vorschau stimmt mit den gemeldeten Nachbarn überein', () => {
         `von ${from} nach ${to}: rechter Nachbar`,
       );
     }
+  }
+});
+
+test('jede Adresse führt dorthin, wo der Klick hinführt', () => {
+  /*
+   * Der Fehler, den es gibt: in `parseRoute` standen ZWEI `case 'workspaces'`
+   * im selben `switch` — der alte gab die Platzhalterseite zurück, der neue
+   * war toter Code. Ein doppelter Fall ist in JavaScript erlaubt, also sagte
+   * niemand etwas: nicht der Übersetzer, nicht das Lint, nicht die Tests.
+   *
+   * Und mein Test im Browser fand es nicht, weil er GEKLICKT hat. Ein Klick
+   * setzt den Zustand direkt; nur ein Neuladen geht durch `parseRoute`. Beides
+   * muss dasselbe ergeben, sonst ist eine Adresse eine Sackgasse — genau die
+   * Eigenschaft, wegen der die Einstellungen überhaupt Adressen haben.
+   */
+  const roundTrip: readonly Route[] = [
+    { kind: 'today' },
+    { kind: 'upcoming' },
+    { kind: 'someday' },
+    { kind: 'search', q: 'kabel' },
+    { kind: 'settings', section: 'profil' },
+    { kind: 'settings', section: 'aussehen' },
+    { kind: 'workspaces', section: 'alle' },
+    { kind: 'workspaces', section: 'aussehen' },
+    { kind: 'admin', section: 'instanz' },
+    { kind: 'mode', mode: 'inbox' },
+    { kind: 'mode', mode: 'shares' },
+    { kind: 'mode', mode: 'trash' },
+  ];
+  for (const route of roundTrip) {
+    const path = pathOf(route);
+    const [pathname, query] = path.split('?');
+    assert.deepEqual(
+      parseRoute(pathname!, query ?? ''),
+      route,
+      `${path} kommt nicht als dieselbe Route zurück`,
+    );
+  }
+});
+
+test('kein Fall steht zweimal im switch', () => {
+  // Direkt am Dateiinhalt, weil die Sprache es erlaubt und der Übersetzer
+  // schweigt. Ein Test über das Verhalten oben hätte den Fall gefunden — dieser
+  // findet auch den, den noch niemand als Route benutzt.
+  const src = readFileSync(
+    join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'route.ts'),
+    'utf8',
+  );
+  const cases = [...src.matchAll(/^\s*case '([a-z-]+)':/gm)].map((m) => m[1]!);
+  const seen = new Map<string, number>();
+  for (const c of cases) seen.set(c, (seen.get(c) ?? 0) + 1);
+  // Zweimal ist erlaubt, wenn es zwei switch-Blöcke sind (lesen und schreiben);
+  // dreimal ist es nie.
+  for (const [name, n] of seen) {
+    assert.ok(n <= 2, `„${name}" steht ${n}-mal — mindestens einer ist toter Code`);
   }
 });

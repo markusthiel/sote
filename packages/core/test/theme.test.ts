@@ -80,13 +80,19 @@ test('der Akzent ist die Ausnahme und geht als Wert hinaus', () => {
   // Eine gewählte Farbe hat kein Gegenstück im Entwurf, das man benennen
   // könnte — also ein Wert. Ein NAME wird trotzdem zum Token, damit er der
   // Palette folgt.
+  // Dreimal derselbe Wert, und `--accent-base` ist kein Versehen: eine
+  // Akzentfläche muss die Farbe lesen und `--accent` gleichzeitig umdefinieren,
+  // und beides im selben CSS-Block ist ein Kreis. Die Begründung steht in
+  // `theme.ts`.
   assert.deepEqual(lookAttributes({ accent: 'blue' }).properties, {
     '--accent': 'var(--sote-palette-blue)',
     '--accent-line': 'var(--sote-palette-blue)',
+    '--accent-base': 'var(--sote-palette-blue)',
   });
   assert.deepEqual(lookAttributes({ accent: '#2b6398' }).properties, {
     '--accent': '#2b6398',
     '--accent-line': '#2b6398',
+    '--accent-base': '#2b6398',
   });
 });
 

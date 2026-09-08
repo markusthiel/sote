@@ -139,6 +139,22 @@ export function lookAttributes(look: Look): {
       : `var(--sote-palette-${look.accent})`;
     properties['--accent'] = value;
     properties['--accent-line'] = value;
+    /*
+     * Dieselbe Farbe unter einem zweiten Namen, der nie überschrieben wird.
+     *
+     * Eine Akzentfläche muss die Akzentfarbe LESEN und gleichzeitig `--accent`
+     * für ihre Kinder umdefinieren (Akzent auf Akzent ist nichts, ADR-0131).
+     * Beides im selben Block ist in CSS ein **Kreis**: `--surface:
+     * var(--accent)` und `--accent: var(--accent-on)` machen einander
+     * ungültig, und ungültig heißt hier durchsichtig. Im Browser war der Grund
+     * der Schiene `rgba(0,0,0,0)` und das Signet unsichtbar — genau der
+     * Fehlschlag, den ADR-0131 in SONE behoben hat, nur mit einer anderen
+     * Ursache.
+     *
+     * `--accent-base` ist die Kopie, die außerhalb jedes Flächenblocks steht
+     * und darum immer noch die gewählte Farbe trägt.
+     */
+    properties['--accent-base'] = value;
   }
   return { attributes, properties };
 }

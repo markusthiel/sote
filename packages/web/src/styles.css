@@ -54,9 +54,29 @@
      ist gemeldet. Bis er dort aufgelöst ist, hält SOTE sich an das, was
      der Record sagt, und nicht an das, was die Datei tut. */
   --palette-red-light: #d64545;
-  --palette-orange-light: #d97706;
-  --palette-yellow-light: #ca8a04;
-  --palette-green-light: #16a34a;
+  /*
+   * Drei Werte sind gerechnet und nicht abgeschrieben.
+   *
+   * SONEs helle Palette hat Orange #d97706, Gelb #ca8a04 und Grün #16a34a.
+   * Gemessen auf der VERTIEFTEN Fläche: 2,72 / 2,51 / 2,82 — alle drei unter
+   * den 3:1, die AA für Nichttext verlangt und die SONEs eigenes ADR-0135 zur
+   * Regel macht („computed, not believed, and kept as a test"). Auf der Seite
+   * reichen sie knapp, in der Seitenleiste nicht, und dort stehen die
+   * Ordnerzeichen.
+   *
+   * Hier stehen darum die kleinsten Werte, die auf BEIDEN Gründen 3:1
+   * erreichen — als Skalierung der Kanäle, weil das den Farbton exakt hält
+   * (ADR-0136: „Down is a scale of the channels, which keeps the hue
+   * exactly."). 94 %, 90 %, 96 %; das Ergebnis ist von SONEs Ton nicht zu
+   * unterscheiden und messbar lesbar.
+   *
+   * Gemeldet ist es, damit SONE dasselbe rechnen kann. Bis dahin ist das die
+   * einzige Stelle, an der SOTEs Palette bewusst nicht Ziffer für Ziffer
+   * SONEs ist — und ein unlesbares Zeichen wäre die schlechtere Treue.
+   */
+  --palette-orange-light: #cc7006;
+  --palette-yellow-light: #b67c04;
+  --palette-green-light: #159c47;
   --palette-blue-light: #2563eb;
   --palette-purple-light: #7c3aed;
   --palette-pink-light: #db2777;
@@ -86,6 +106,9 @@
   --text-faint: var(--ink-350);
   --accent: var(--accent-500);
   --accent-line: var(--accent-500);
+  /* Die Kopie, die kein Flächenblock überschreibt — siehe `theme.ts`. */
+  --accent-base: var(--accent-500);
+  --accent-base-on: var(--accent-on);
   --accent-on: var(--page);
   --danger: var(--danger-500);
   --warning: var(--warning-500);
@@ -102,6 +125,10 @@
   --inverse-muted: #a8a29a;
   --inverse-line: #3b3a36;
   --inverse-hover: #32302c;
+  --inverse-faint: #7d786f;
+  /* Der Akzent, den das DUNKLE Thema benutzt — eine umgekehrte Fläche ist im
+     hellen Thema dessen Grund und nimmt dessen Akzent mit (ADR-0131). */
+  --inverse-accent: var(--accent-300);
 
   --sote-palette-grey: var(--text-muted);
   --sote-palette-red: var(--palette-red-light);
@@ -147,6 +174,8 @@
   --text-faint: var(--ink-400);
   --accent: var(--accent-300);
   --accent-line: var(--accent-300);
+  --accent-base: var(--accent-300);
+  --accent-base-on: var(--accent-on);
   --accent-on: #161615;
   --danger: var(--danger-300);
   --warning: var(--warning-300);
@@ -156,9 +185,12 @@
   /* Im dunklen Thema ist „umgekehrt" hell — dasselbe Wort, andere Töne. */
   --inverse-bg: #f4f1ea;
   --inverse-ink: #1c1b19;
-  --inverse-muted: #6a675f;
+  /* 4,45:1 auf dem Hover-Ton — knapp unter AA, gerechnet und korrigiert. */
+  --inverse-muted: #69665e;
   --inverse-line: #ddd8cd;
   --inverse-hover: #e8e4d9;
+  --inverse-faint: #8a857b;
+  --inverse-accent: var(--accent-500);
 
   --sote-palette-red: var(--palette-red-dark);
   --sote-palette-orange: var(--palette-orange-dark);
@@ -2218,68 +2250,100 @@ select.target {
 
 
 /* ── Die Flächen eines Arbeitsbereichs ─────────────────────────────────────
-   Fünf Beziehungen für drei Flächen. Die Zuordnung „umgekehrt → diese Töne"
-   steht HIER und nicht im Kern: hier sind beide Themen ohnehin definiert, und
-   gäbe es sie zweimal, gäbe es zwei Orte, an denen steht, was dunkel bedeutet.
+   Eine behandelte Fläche ist ein KLEINES SCHEMA und nicht ein Grund plus eine
+   Textfarbe (SONEs ADR-0131, das ADR-0122 korrigiert).
 
-   Je Fläche ein eigener Block statt einer gemeinsamen Regel: Schiene,
-   Seitenleiste und Detailspalte haben verschiedene Kinder, und ein
-   `[data-surface-*]`-Selektor, der auf alle passt, träfe auch den Inhalt der
-   Seite. */
+   Meine erste Fassung setzte `background` und `color` und flickte dann von
+   Hand nach, was drinnen noch falsch aussah: gedämpfter Text, die Zahl in der
+   Zeile, der Hover. Das ist genau der Fehler, den ADR-0131 beschreibt — und
+   SONEs Satz dazu trifft auch meine Tests: „Two lists agreeing with each other
+   is not a check." Meine Liste der Nachflickungen und die Liste der Stellen,
+   die es brauchen, waren zwei Listen, und die zweite kannte ich nicht.
 
-.app[data-surface-rail="raised"] .rail { background: var(--raised); }
-.app[data-surface-rail="sunken"] .rail { background: var(--sunken); }
-.app[data-surface-rail="accent"] .rail {
-  background: var(--accent);
-  color: var(--accent-on);
-  border-right-color: transparent;
-}
-.app[data-surface-rail="inverted"] .rail {
-  background: var(--inverse-bg);
-  color: var(--inverse-ink);
-  border-right-color: var(--inverse-line);
+   Jetzt überschreibt jede Behandlung die SEMANTISCHEN TOKEN auf der Fläche
+   selbst. Alles darin liest ohnehin `var(--text-muted)`, `var(--sunken)`,
+   `var(--accent)` — also folgt es, ohne dass eine Liste es aufzählt. Neue
+   Bauteile in der Leiste sind damit von vornherein richtig.
+
+   Auf einer AKZENTFLÄCHE tauschen die beiden Plätze: Akzent auf Akzent ist
+   nichts — ein Signet, das verschwindet, und ein Knopf, der ein Rechteck aus
+   Grund ist. Vertauscht sind es dieselben zwei Farben andersherum, und die
+   sind lesbar, weil die Kontrastfarbe dafür gemacht ist.
+
+   Auf einer UMGEKEHRTEN Fläche gilt der Akzent des ANDEREN Schemas: eine
+   umgekehrte Fläche ist der Grund des anderen Schemas, der in diesem steht,
+   und nimmt dessen Akzent mit. */
+
+.app[data-surface-rail="raised"] .rail,
+.app[data-surface-sidebar="raised"] .panel,
+.app[data-surface-detail="detail"] .detail,
+.app[data-surface-detail="raised"] .detail {
+  --surface: var(--raised);
+  --sunken: var(--raised);
+  background: var(--raised);
 }
 
-.app[data-surface-sidebar="raised"] .panel { background: var(--raised); }
-.app[data-surface-sidebar="sunken"] .panel { background: var(--sunken); }
-.app[data-surface-sidebar="accent"] .panel {
-  background: var(--accent);
-  color: var(--accent-on);
-}
-.app[data-surface-sidebar="inverted"] .panel {
-  background: var(--inverse-bg);
-  color: var(--inverse-ink);
-  border-right-color: var(--inverse-line);
+.app[data-surface-rail="sunken"] .rail,
+.app[data-surface-sidebar="sunken"] .panel,
+.app[data-surface-detail="sunken"] .detail {
+  --surface: var(--sunken);
+  background: var(--sunken);
 }
 
-.app[data-surface-detail="raised"] .detail { background: var(--raised); }
-.app[data-surface-detail="sunken"] .detail { background: var(--sunken); }
-.app[data-surface-detail="accent"] .detail {
-  background: var(--accent);
-  color: var(--accent-on);
-}
+.app[data-surface-rail="inverted"] .rail,
+.app[data-surface-sidebar="inverted"] .panel,
 .app[data-surface-detail="inverted"] .detail {
+  --surface: var(--inverse-bg);
+  --text: var(--inverse-ink);
+  --text-muted: var(--inverse-muted);
+  --text-faint: var(--inverse-faint);
+  --line: var(--inverse-line);
+  --line-strong: var(--inverse-line);
+  --sunken: var(--inverse-hover);
+  --raised: var(--inverse-hover);
+  /* Der Akzent des anderen Schemas — sonst steht das dunkle Grün auf
+     Fast-Schwarz, das das dunkle Thema selbst schon ersetzt. */
+  --accent: var(--inverse-accent);
+  --accent-line: var(--inverse-accent);
   background: var(--inverse-bg);
   color: var(--inverse-ink);
-  border-left-color: var(--inverse-line);
 }
 
-/* Innerhalb einer umgekehrten oder akzentuierten Fläche muss auch das Leise
-   mitkommen. Ohne diese Zeilen bleibt gedämpfter Text in seiner alten Farbe
-   und verschwindet — das ist der Fehler, der bei einem Flächenwechsel als
-   Erstes auffällt, und zwar erst im Bild. */
-.app[data-surface-rail="inverted"] .rail .n,
-.app[data-surface-sidebar="inverted"] .panel .n,
-.app[data-surface-sidebar="inverted"] .panel .group-label,
-.app[data-surface-sidebar="inverted"] .panel .p-mark,
-.app[data-surface-detail="inverted"] .detail .fl {
-  color: var(--inverse-muted);
+.app[data-surface-rail="accent"] .rail,
+.app[data-surface-sidebar="accent"] .panel,
+.app[data-surface-detail="accent"] .detail {
+  /* Gelesen wird `--accent-base`, nicht `--accent`: dieser Block definiert
+     `--accent` gleich um, und beides zusammen wäre ein Kreis — der macht in
+     CSS beide Werte ungültig, und der Grund wird durchsichtig. Im Browser
+     gemessen: rgba(0,0,0,0) und ein unsichtbares Signet. */
+  --surface: var(--accent-base);
+  --text: var(--accent-base-on);
+  --text-muted: color-mix(in srgb, var(--accent-base-on) 72%, var(--accent-base));
+  --text-faint: color-mix(in srgb, var(--accent-base-on) 55%, var(--accent-base));
+  --line: color-mix(in srgb, var(--accent-base-on) 22%, var(--accent-base));
+  --line-strong: color-mix(in srgb, var(--accent-base-on) 34%, var(--accent-base));
+  --sunken: color-mix(in srgb, var(--accent-base-on) 14%, var(--accent-base));
+  --raised: color-mix(in srgb, var(--accent-base-on) 10%, var(--accent-base));
+  /* Getauscht: Akzent auf Akzent ist nichts (ADR-0131). */
+  --accent: var(--accent-base-on);
+  --accent-on: var(--accent-base);
+  --accent-line: var(--accent-base-on);
+  background: var(--accent-base);
+  color: var(--accent-base-on);
 }
 
-.app[data-surface-sidebar="inverted"] .p-item:hover,
-.app[data-surface-sidebar="inverted"] .p-item[aria-current="true"],
-.app[data-surface-rail="inverted"] .rail-slot:hover {
-  background: var(--inverse-hover);
+/* Der Rand zur Seite hin gehört zur Fläche und nicht zur Seite. */
+.app[data-surface-rail="inverted"] .rail,
+.app[data-surface-rail="accent"] .rail {
+  border-right-color: var(--line);
+}
+.app[data-surface-sidebar="inverted"] .panel,
+.app[data-surface-sidebar="accent"] .panel {
+  border-right-color: var(--line);
+}
+.app[data-surface-detail="inverted"] .detail,
+.app[data-surface-detail="accent"] .detail {
+  border-left-color: var(--line);
 }
 
 /* ── Ecken ─────────────────────────────────────────────────────────────────
