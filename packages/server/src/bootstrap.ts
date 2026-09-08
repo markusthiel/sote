@@ -86,6 +86,77 @@ export async function createAccount(pool: Pool, input: NewAccount): Promise<stri
  * Getrennt, damit die Einrichtung sie **innerhalb** ihres Advisory Locks
  * aufrufen kann. Zwei Umsetzungen wären zwei Rollenlisten.
  */
+/**
+ * Ein Arbeitsbereich mit seinen vier Systemrollen und seinem Eigentümer.
+ *
+ * **Eine Stelle**, und die Begründung stand schon da, als es nur einen
+ * Aufrufer gab: *zwei Umsetzungen wären zwei Rollenlisten, und die eine hätte
+ * irgendwann eine Rolle, die die andere nicht hat.* Jetzt gibt es zwei
+ * Aufrufer — die Einrichtung und „Neuer Arbeitsbereich" —, also ist aus der
+ * Vorsorge eine Notwendigkeit geworden.
+ *
+ * Die vier Rollen sind SONEs, mit gleicher Bedeutung: `list_level = NULL` heißt
+ * wirklich nichts — wer eine Rolle ohne Stufe bekommt, ist Gast (ADR-0110).
+ *
+ * `groups.manage` fehlte hier eine Zeit lang, weil es keine Gruppen gab, und
+ * `workspace.settings` gab es als Sache, aber nicht als Namen: geprüft wurde
+ * `roles.manage`, also bewachte ein Recht drei Dinge, von denen es nur eines
+ * heißt (ADR-0087). Beides ist berichtigt.
+ */
+export async function createWorkspaceIn(
+  client: PoolClient,
+  input: { name: string; ownerId: string },
+): Promise<string> {
+  const name = input.name.trim();
+  if (name === '') throw new OutOfOrder('ein Arbeitsbereich braucht einen Namen');
+
+  const workspace = await queryOne<{ id: string }>(
+    client,
+    'INSERT INTO workspaces (name) VALUES ($1) RETURNING id',
+    [name.slice(0, 80)],
+  );
+  if (workspace === undefined) throw new Error('INSERT ohne Zeile');
+
+  const roles: [name: string, level: string | null, rights: string[]][] = [
+    ['owner', 'admin', ['people.manage', 'roles.manage', 'workspace.settings', 'groups.manage']],
+    ['admin', 'admin', ['people.manage', 'roles.manage', 'workspace.settings', 'groups.manage']],
+    ['member', 'editor', []],
+    ['guest', null, []],
+  ];
+  let ownerRole: string | undefined;
+  for (const [rolle, level, rights] of roles) {
+    const row = await queryOne<{ id: string }>(
+      client,
+      `INSERT INTO roles (workspace_id, name, list_level, rights)
+       VALUES ($1,$2,$3,$4) RETURNING id`,
+      [workspace.id, rolle, level, rights],
+    );
+    if (rolle === 'owner') ownerRole = row?.id;
+  }
+  if (ownerRole === undefined) throw new Error('owner-Rolle fehlt');
+
+  await client.query(
+    `INSERT INTO workspace_members (workspace_id, user_id, role_id, is_owner)
+     VALUES ($1,$2,$3,true)`,
+    [workspace.id, input.ownerId, ownerRole],
+  );
+  return workspace.id;
+}
+
+/**
+ * Einen Arbeitsbereich anlegen — für jemanden, der schon ein Konto hat.
+ *
+ * In einer Transaktion, weil ein Arbeitsbereich ohne seine Rollen einer ist, in
+ * dem niemand etwas darf: der Eigentümer bekommt seine Rolle im letzten
+ * Schritt, und bricht der ab, wäre der Bereich verwaist.
+ */
+export async function createWorkspace(
+  pool: Pool,
+  input: { name: string; ownerId: string },
+): Promise<string> {
+  return withTransaction(pool, (client) => createWorkspaceIn(client, input));
+}
+
 export async function createAccountIn(
   client: PoolClient,
   input: NewAccount,
@@ -122,51 +193,7 @@ export async function createAccountIn(
   );
   if (user === undefined) throw new Error('INSERT ohne Zeile');
 
-  const workspace = await queryOne<{ id: string }>(
-    client,
-    'INSERT INTO workspaces (name) VALUES ($1) RETURNING id',
-    [workspaceName],
-  );
-  if (workspace === undefined) throw new Error('INSERT ohne Zeile');
-
-  // Die vier Systemrollen aus SONE, gleiche Bedeutung: `list_level = NULL`
-  // heißt wirklich nichts — wer eine Rolle ohne Stufe bekommt, ist Gast
-  // (ADR-0110).
-  /*
-   * `groups.manage` ist **weg**, und `workspace.settings` ist dazugekommen.
-   *
-   * Es gibt keine Gruppen, also bewachte der Name nichts — und ein Recht, das
-   * nichts bewacht, ist ein Schalter, bei dem jemand etwas glaubt, wenn er ihn
-   * ausschaltet (ADR-0087). Es kommt zurück, wenn Gruppen kommen, im selben
-   * Commit wie die Wege, die es prüfen.
-   *
-   * `workspace.settings` gab es umgekehrt als Sache, aber nicht als Namen:
-   * geprüft wurde `roles.manage`, also bewachte ein Recht drei Dinge, von denen
-   * es nur eines heißt.
-   */
-  const roles: [name: string, level: string | null, rights: string[]][] = [
-    ['owner', 'admin', ['people.manage', 'roles.manage', 'workspace.settings']],
-    ['admin', 'admin', ['people.manage', 'roles.manage', 'workspace.settings']],
-    ['member', 'editor', []],
-    ['guest', null, []],
-  ];
-  let ownerRole: string | undefined;
-  for (const [name, level, rights] of roles) {
-    const row = await queryOne<{ id: string }>(
-      client,
-      `INSERT INTO roles (workspace_id, name, list_level, rights)
-       VALUES ($1,$2,$3,$4) RETURNING id`,
-      [workspace.id, name, level, rights],
-    );
-    if (name === 'owner') ownerRole = row?.id;
-  }
-  if (ownerRole === undefined) throw new Error('owner-Rolle fehlt');
-
-  await client.query(
-    `INSERT INTO workspace_members (workspace_id, user_id, role_id, is_owner)
-     VALUES ($1,$2,$3,true)`,
-    [workspace.id, user.id, ownerRole],
-  );
+  await createWorkspaceIn(client, { name: workspaceName, ownerId: user.id });
 
   /*
    * In derselben Transaktion — wenn es ein Kennwort gibt.

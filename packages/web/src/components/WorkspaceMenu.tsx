@@ -24,12 +24,15 @@
 
 import { useEffect, useRef, useState } from 'react';
 
+import { api, ApiError } from '../api.js';
+import { PlusIcon } from './icons.js';
 import { ProjectMark } from './ProjectMark.js';
 
 export function WorkspaceMenu({
   workspaces,
   current,
   onPick,
+  onCreated,
 }: {
   workspaces: readonly {
     id: string;
@@ -38,8 +41,43 @@ export function WorkspaceMenu({
   }[];
   current: string | undefined;
   onPick: (id: string) => void;
+  /**
+   * Ein neuer ist da.
+   *
+   * Der Aufrufer lädt seine Liste neu **und** wechselt hinein — beides, weil
+   * einen Arbeitsbereich anzulegen und ihn dann suchen zu müssen zwei Schritte
+   * für einen Vorgang wären.
+   */
+  onCreated: (id: string) => void;
 }) {
   const [open, setOpen] = useState(false);
+  const [creating, setCreating] = useState(false);
+  // `neuerName`, nicht `name`: `name` ist schon der Name des AKTUELLEN
+  // Arbeitsbereichs, ein paar Zeilen weiter unten. Der Übersetzer hat es
+  // gemeldet, bevor daraus eine Verwechslung wurde.
+  const [neuerName, setNeuerName] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [fehler, setFehler] = useState<string | undefined>(undefined);
+
+  async function create(): Promise<void> {
+    const wie = neuerName.trim();
+    if (wie === '' || busy) return;
+    setBusy(true);
+    setFehler(undefined);
+    try {
+      const out = await api.createWorkspace(wie);
+      setOpen(false);
+      setCreating(false);
+      setNeuerName('');
+      onCreated(out.id);
+    } catch (e) {
+      // Im Menü und nicht als Balken über der Seite: der Fehler gehört zu dem
+      // Feld, in dem gerade etwas stand.
+      setFehler(e instanceof ApiError ? e.message : 'Anlegen ging nicht.');
+    } finally {
+      setBusy(false);
+    }
+  }
   const box = useRef<HTMLDivElement | null>(null);
   const knob = useRef<HTMLButtonElement | null>(null);
 
@@ -133,11 +171,62 @@ export function WorkspaceMenu({
               {mark(w)}
             </button>
           ))}
-          {workspaces.length <= 1 ? (
-            <p className="ws-none">
-              Nur einer. Weitere anzulegen gibt es noch nicht.
-            </p>
-          ) : null}
+          {/*
+            Der Fuß, wie in SONEs `WorkspaceMenu`: ein Eintrag „Neuer
+            Arbeitsbereich", der zu einem Namensfeld wird — kein Bildschirm, den
+            man aufsucht, um ein Wort einzutippen.
+
+            SONEs Kommentar dazu gilt hier genauso: *„Nothing else. This menu
+            answers one question — which workspace."* Einstellungen und „Alle
+            Workspaces" sind Orte und gehören in die Schiene, nicht hierher.
+
+            Hier stand vorher: „Nur einer. Weitere anzulegen gibt es noch
+            nicht." Das war ehrlich und ist jetzt falsch.
+          */}
+          <div className="ws-foot">
+            {creating ? (
+              <div className="ws-create">
+                <input
+                  className="set-input"
+                  autoFocus
+                  aria-label="Name des neuen Arbeitsbereichs"
+                  placeholder="Name"
+                  value={neuerName}
+                  disabled={busy}
+                  onChange={(e) => setNeuerName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      void create();
+                    } else if (e.key === 'Escape') {
+                      e.preventDefault();
+                      setCreating(false);
+                      setNeuerName('');
+                    }
+                  }}
+                />
+                <button
+                  type="button"
+                  className="btn"
+                  disabled={busy || neuerName.trim() === ''}
+                  onClick={() => void create()}
+                >
+                  {busy ? 'Einen Moment…' : 'Anlegen'}
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                role="menuitem"
+                className="ws-item"
+                onClick={() => setCreating(true)}
+              >
+                <PlusIcon size={15} />
+                Neuer Arbeitsbereich
+              </button>
+            )}
+            {fehler === undefined ? null : <p className="ws-none">{fehler}</p>}
+          </div>
         </div>
       ) : null}
     </div>

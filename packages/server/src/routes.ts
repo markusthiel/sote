@@ -15,6 +15,7 @@ import { openSession, signIn, signOut, userOfToken } from './auth.js';
 import {
   BadSetupKey,
   createAccount,
+  createWorkspace,
   SetupClosed,
   setupFirstAccount,
   userCount,
@@ -762,6 +763,29 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
     json(res, 200, {
       workspace: { id: row!.id, name: row!.name, icon: readIcon(row!.icon) },
     });
+    return;
+  }
+
+  if (path === '/api/workspaces' && method === 'POST') {
+    /*
+     * Einen Arbeitsbereich anlegen darf **jedes Konto**, und das ist eine
+     * Entscheidung.
+     *
+     * Nicht der Instanzadministrator: ein Arbeitsbereich ist der Ort, an dem
+     * jemand seine eigene Arbeit führt, und ihn beantragen zu müssen macht aus
+     * einer Notiz einen Vorgang. Wer auf diesem Server ein Konto hat, hat es
+     * bekommen (ADR-0073: die Instanz lädt ein) — die Entscheidung, wer hier
+     * sein darf, ist damit schon getroffen.
+     *
+     * Die Grenze, falls sie einmal nötig wird, ist eine Zahl je Konto und kein
+     * Recht: „darf anlegen" wäre ein Schalter, der bei allen aus ist.
+     */
+    const body = (await readJson(req)) as Record<string, unknown>;
+    const id = await createWorkspace(ctx.pool, {
+      name: String(body?.['name'] ?? ''),
+      ownerId: userId,
+    });
+    json(res, 201, { id });
     return;
   }
 

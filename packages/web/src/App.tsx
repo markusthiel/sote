@@ -87,11 +87,27 @@ export function App() {
   const [panelError, setPanelError] = useState<string | undefined>(undefined);
   const [now] = useState(() => new Date());
 
-  const loadMe = useCallback(async () => {
+  const loadMe = useCallback(async (keep?: string) => {
     try {
       const data = await api.me();
       setMe(data);
-      setWorkspace(data.workspaces[0]?.id);
+      /*
+       * Der erste Arbeitsbereich — **oder der genannte**.
+       *
+       * `keep` gibt es, weil „einen anlegen" beides tut: die Liste neu laden
+       * und hineinwechseln. Ohne das setzte `loadMe` gleich danach wieder auf
+       * den ersten, und der neue Bereich war angelegt, in der Liste, und man
+       * stand im alten. So gemessen: `POST 201`, Name in `me.workspaces`, und
+       * oben stand weiter der alte.
+       *
+       * `keep` wird geprüft und nicht geglaubt: eine Id, die es nicht (mehr)
+       * gibt, wäre ein Arbeitsbereich, in dem jede Anfrage fehlschlägt.
+       */
+      const bleibt =
+        keep !== undefined && data.workspaces.some((w) => w.id === keep)
+          ? keep
+          : data.workspaces[0]?.id;
+      setWorkspace(bleibt);
     } catch {
       setMe(null);
       // Erst wenn keine Sitzung da ist, wird gefragt, ob überhaupt ein Konto
@@ -388,7 +404,17 @@ export function App() {
           />
         ) : null}
         <div className="panel-head">
-          {SECTION_NAV !== null ? (
+          {/*
+            In den Workspace-Einstellungen steht der WÄHLER, nicht nur ein
+            Titel — gemeldet: „Workspaces im Menü: hier ist ein Suchfeld, das
+            kann raus. Dafür muss oben der Workspace Wähler rein."
+
+            Und das ist auch die richtige Stelle: dieser Bereich handelt VON
+            Arbeitsbereichen, also ist Wechseln hier die häufige Handlung. Der
+            Titel darüber wäre eine Beschriftung für etwas, das man ohnehin am
+            Namen erkennt.
+          */}
+          {SECTION_NAV !== null && route.kind !== 'workspaces' ? (
             <div className="panel-title">
               <strong>{SECTION_NAV.title}</strong>
               <span className="panel-scope">{SECTION_NAV.note}</span>
@@ -405,10 +431,29 @@ export function App() {
               // man rückgängig machen will.
               go({ kind: 'today' });
             }}
+            /*
+              Angelegt heißt: Liste neu laden UND hineinwechseln. Beides, weil
+              einen Arbeitsbereich anzulegen und ihn dann suchen zu müssen zwei
+              Schritte für einen Vorgang wären.
+            */
+            onCreated={(id) => {
+              go({ kind: 'today' });
+              // Die Id mitgeben: `loadMe` setzte sonst gleich wieder auf den
+              // ersten Arbeitsbereich zurück.
+              void loadMe(id);
+            }}
           />
           )}
         </div>
 
+        {/*
+          Das Suchfeld sucht AUFGABEN — also steht es nur, wo es welche gibt.
+          Gemeldet für die Workspaces; es stand in jedem Bereich, auch in der
+          Verwaltung und in den Einstellungen, und suchte dort nichts. Ein Feld,
+          das an einem Ort nichts findet, ist ein Feld, dem man an allen Orten
+          misstraut.
+        */}
+        {SECTION_NAV === null ? (
         <div className="seek">
           <svg
             width="14"
@@ -433,6 +478,7 @@ export function App() {
             onChange={(e) => go({ kind: 'search', q: e.target.value }, true)}
           />
         </div>
+        ) : null}
 
         <div className="panel-list">
           {/*

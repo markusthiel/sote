@@ -1704,6 +1704,26 @@ Beim Bauen entschieden, weil es ohne Entscheidung keinen Code gibt:
     bekam `sortKey`, die Liste baut ihre Zeilen aber selbst — der Baum bekam
     keine Schlüssel, `siblings` verglich `undefined` mit `undefined`, und alle
     Verschieben-Knöpfe waren gesperrt.
+- **Ein Arbeitsbereich kommt nie ohne seine Rollen.** `createWorkspaceIn` ist
+  aus `createAccountIn` herausgezogen, weil es jetzt zwei Aufrufer gibt — die
+  Einrichtung und „Neuer Arbeitsbereich". Die Begründung stand dort schon, als
+  es einen gab: *zwei Umsetzungen wären zwei Rollenlisten.*
+  - **Jedes Konto darf einen anlegen**, nicht nur der Administrator: ein
+    Arbeitsbereich ist der Ort, an dem jemand seine eigene Arbeit führt, und ihn
+    beantragen zu müssen macht aus einer Notiz einen Vorgang. Wer hier ein Konto
+    hat, hat es bekommen (ADR-0073) — die Entscheidung ist schon getroffen.
+  - **Der Wähler bekommt einen Fuß**, wie SONEs `switcher-footer`: ein Eintrag,
+    der zu einem Namensfeld wird, kein Bildschirm für ein Wort. Und sonst
+    nichts — *„this menu answers one question: which workspace."*
+  - **Anlegen heißt hineinwechseln.** `loadMe` setzte sonst gleich wieder auf
+    den ersten Bereich zurück: `POST 201`, Name in der Liste, und man stand im
+    alten. Die Id wird dabei **geprüft und nicht geglaubt** — eine, die es nicht
+    mehr gibt, wäre ein Bereich, in dem jede Anfrage fehlschlägt.
+- **Das Aufgaben-Suchfeld steht nur, wo es Aufgaben gibt.** Es stand in jedem
+  Bereich, auch in der Verwaltung, und suchte dort nichts. Ein Feld, das an
+  einem Ort nichts findet, ist ein Feld, dem man an allen Orten misstraut. In
+  den Workspace-Einstellungen steht stattdessen der **Wähler** — der Bereich
+  handelt von Arbeitsbereichen, also ist Wechseln dort die häufige Handlung.
 - **`pnpm check` ist genau das, was die CI fährt.** Erst standen die Prüfungen
   einzeln in der Workflow-Datei, und `pnpm -r typecheck` scheiterte dort — in
   einem frischen Klon gibt es kein `dist`, und `@sote/core` zeigt mit `types`

@@ -3099,3 +3099,24 @@ a.btn {
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
+
+/* Der Fuß des Workspace-Wählers: „Neuer Arbeitsbereich", der zu einem Feld
+   wird — kein Bildschirm, den man aufsucht, um ein Wort einzutippen (SONEs
+   `switcher-footer`). */
+.ws-foot {
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px solid var(--line);
+}
+
+.ws-create {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px;
+}
+
+.ws-create .set-input {
+  flex: 1 1 auto;
+  min-width: 0;
+}

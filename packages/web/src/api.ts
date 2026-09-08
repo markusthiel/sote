@@ -299,6 +299,20 @@ export const api = {
       `/api/workspace${workspace === undefined ? '' : `?workspace=${workspace}`}`,
       { method: 'PATCH', body: JSON.stringify(body) },
     ),
+  /* ── Arbeitsbereiche ───────────────────────────────────────────────────── */
+  /**
+   * Einen anlegen.
+   *
+   * Jedes Konto darf das: ein Arbeitsbereich ist der Ort, an dem jemand seine
+   * eigene Arbeit führt, und ihn beantragen zu müssen macht aus einer Notiz
+   * einen Vorgang.
+   */
+  createWorkspace: (name: string) =>
+    call<{ id: string }>('/api/workspaces', {
+      method: 'POST',
+      body: JSON.stringify({ name }),
+    }),
+
   /* ── Gruppen ───────────────────────────────────────────────────────────── */
   groups: (workspace?: string) =>
     call<{
