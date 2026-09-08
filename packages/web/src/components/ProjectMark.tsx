@@ -144,40 +144,30 @@ export function iconNames(): string[] {
 }
 
 /**
- * Was ohne Suchbegriff im Gitter steht.
+ * Die Zeichen für das Gitter: **der ganze Satz**.
  *
- * **Die eine Stelle, an der ich SONE nicht genau abschreibe**, und der Grund
- * steht im Bild: der Satz ist alphabetisch, also zeigt ein ungefiltertes
- * Gitter hundertzwanzig Mal `align-…`, `a-arrow-…` und `alarm-…`. Wer den
- * Wähler öffnet, sieht dann eine Wand aus Ausrichtungssymbolen und schließt
- * ihn wieder.
+ * Hier stand eine Vorauswahl von dreißig Zeichen für den leeren Suchbegriff,
+ * mit meinem Grund: der Satz ist alphabetisch, also beginnt ein ungefiltertes
+ * Gitter mit einer Wand aus `a-arrow-…`, `alarm-…` und `align-…`.
  *
- * SONEs Entscheidung bleibt unangetastet: **der ganze Satz ist durchsuchbar**,
- * und niemand wählt für jemanden aus. Diese Liste ist keine Auswahl, sondern
- * ein Anfang — sobald ein Zeichen getippt wird, gilt wieder der ganze Satz.
- */
-const SUGGESTED = [
-  'house', 'briefcase', 'shopping-cart', 'car', 'plane', 'wallet',
-  'graduation-cap', 'heart-pulse', 'wrench', 'sprout', 'users', 'star',
-  'book-open', 'calendar', 'camera', 'code', 'coffee', 'dumbbell',
-  'file-text', 'gift', 'globe', 'hammer', 'key', 'lightbulb',
-  'map-pin', 'music', 'package', 'phone', 'palette', 'shield',
-];
-
-/**
- * Die Zeichen für das Gitter: entweder der Anfang oder der gefilterte Satz.
+ * **Markus hat sie zurückgenommen** („Ich hätte gerne auch wieder das volle
+ * Set an Icons, das war schon ok so"), und das ist die richtige Entscheidung
+ * aus einem Grund, den ich hätte sehen können: eine Vorauswahl ist eine
+ * Behauptung darüber, was jemand braucht. Wer ein Projekt „Ausrichtung" nennt,
+ * will die Wand aus Ausrichtungssymbolen. Und der Ärger, den ich vermeiden
+ * wollte, kostet einen Wisch; der Ärger, den ich verursachte, kostet das
+ * Erraten des richtigen Suchworts für ein Zeichen, dessen Namen man nicht
+ * kennt.
  *
- * Der Deckel ist nicht Vorsicht: über tausend Knöpfe in einem Klappzettel sind
- * eine Sekunde Zeichnen für eine Liste, die niemand durchsieht. Wer weiter
- * unten sucht, tippt weiter.
+ * Auch der Deckel von 120 Treffern ist weg. Er war aus demselben Holz: wer
+ * „arrow" tippt, will die Pfeile sehen und nicht die ersten hundertzwanzig.
  */
 export function iconsFor(query: string): string[] {
   const needle = query.trim().toLowerCase();
   const all = iconNames();
   // Vor dem Laden gibt es nichts zu zeigen; der Wähler sagt das selbst.
   if (all.length === 0) return [];
-  if (needle === '') return SUGGESTED.filter((n) => componentFor(n) !== null);
-  return all.filter((n) => n.includes(needle)).slice(0, 120);
+  return needle === '' ? all : all.filter((n) => n.includes(needle));
 }
 
 export const hasIcon = (name: string | undefined): boolean =>

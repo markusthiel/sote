@@ -1963,11 +1963,22 @@ select.target {
 /* Der Zeichenwähler: ein Gitter mit eigenem Rollbereich.
    Der Satz hat über tausend Zeichen; ohne Deckel und ohne Rollen wäre der
    Klappzettel höher als das Fenster. */
+/*
+ * Ein größeres Fenster, weil der ganze Satz darin steckt.
+ *
+ * 132 Pixel waren fünf Reihen — richtig für die dreißig Zeichen, die hier
+ * einmal standen, und zu klein für 2080: durch zweitausend Zeichen in einem
+ * Fünf-Reihen-Fenster zu blättern ist eine Aufgabe und kein Blick.
+ *
+ * `min()` mit einer Fensterhöhe, damit es auf dem Telefon nicht das Menü
+ * sprengt — dort ist das Menü selbst schon auf `100vh` begrenzt, und zwei
+ * Deckel, die einander nicht kennen, ergeben einen, der zu spät greift.
+ */
 .swatches.marks {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   gap: 2px;
-  max-height: 132px;
+  max-height: min(300px, 45vh);
   overflow-y: auto;
   scrollbar-width: thin;
 }

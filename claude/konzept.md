@@ -1471,6 +1471,23 @@ Beim Bauen entschieden, weil es ohne Entscheidung keinen Code gibt:
 - **Keine Einstellung „wer ein Konto anlegen darf".** SOTE hat keinen Weg, sich
   selbst anzumelden — eine Einstellung dafür wäre der Fehler aus ADR-0112, nur
   von mir selbst gebaut.
+- **Eine Vorauswahl ist eine Behauptung darüber, was jemand braucht.** Ich hatte
+  im Zeichenwähler dreißig Zeichen vorausgewählt, weil ein alphabetisches
+  Gitter mit einer Wand aus `a-arrow-…`, `alarm-…`, `align-…` beginnt. Markus
+  hat das zurückgenommen („das war schon ok so"), und er hat recht: wer ein
+  Projekt „Ausrichtung" nennt, will die Wand. Der Ärger, den ich vermeiden
+  wollte, kostet einen Wisch; der, den ich verursachte, kostet das Erraten des
+  richtigen Suchworts für ein Zeichen, dessen Namen man nicht kennt. Auch der
+  Deckel von 120 Treffern ist weg.
+  - **Die Antwort auf die Langsamkeit darf nichts weglassen.** 2080 Knöpfe
+    kosteten gemessen 877 ms (1690 ms auf einem vierfach gedrosselten Gerät).
+    `useProgressive` zeichnet den ganzen Satz in Schritten: erstes Bild 181 ms
+    statt 877. Gedrosselt bleibt es bei ~1,3 s, und das ist **nicht** das
+    Zeichnen, sondern das Auspacken des Zeichensatzes — der Preis dafür, den
+    Satz überhaupt zu haben, einmal je Sitzung.
+  - **Eine Optimierung, die sich nicht messen lässt, fliegt raus.** Ich hatte
+    ein Anwärmen beim Zeigen eingebaut; mit 0/300/1500/3000 ms Zeigeabstand
+    ergab es 894/623/1523/1385 ms — kein Trend, nur Rauschen. Wieder heraus.
 - **`pnpm check` ist genau das, was die CI fährt.** Erst standen die Prüfungen
   einzeln in der Workflow-Datei, und `pnpm -r typecheck` scheiterte dort — in
   einem frischen Klon gibt es kein `dist`, und `@sote/core` zeigt mit `types`

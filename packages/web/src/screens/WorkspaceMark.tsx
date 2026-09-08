@@ -24,6 +24,7 @@ import { useEffect, useMemo, useState } from 'react';
 
 import { api, ApiError } from '../api.js';
 import { iconsFor, IconPreview, loadIcons, ProjectMark } from '../components/ProjectMark.js';
+import { useProgressive } from '../hooks/useProgressive.js';
 
 export function WorkspaceMark({
   name,
@@ -48,7 +49,15 @@ export function WorkspaceMark({
   useEffect(() => {
     void loadIcons().then(() => setReady(true));
   }, []);
-  const shown = useMemo(() => (ready ? iconsFor(find) : []), [find, ready]);
+  const alle = useMemo(() => (ready ? iconsFor(find) : []), [find, ready]);
+  /*
+   * Der ganze Satz, aber stückweise gezeichnet.
+   *
+   * 2080 Knöpfe auf einmal waren gemessen 1690 ms auf einem gedrosselten
+   * Gerät. Weggelassen wird nichts — `useProgressive` erklärt, warum die
+   * Antwort auf die Langsamkeit nicht wieder eine Vorauswahl sein durfte.
+   */
+  const shown = useProgressive(alle);
 
   async function save(body: Parameters<typeof api.patchWorkspace>[0]) {
     setBusy(true);

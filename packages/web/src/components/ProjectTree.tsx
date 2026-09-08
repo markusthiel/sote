@@ -21,6 +21,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { colorValue, PALETTE } from '@sote/core';
 
 import type { Project } from '../api.js';
+import { useProgressive } from '../hooks/useProgressive.js';
 import { iconsFor, IconPreview, loadIcons, ProjectMark } from './ProjectMark.js';
 
 /**
@@ -91,8 +92,8 @@ export function ProjectTree({
   const [closed, setClosed] = useState<ReadonlySet<string>>(new Set());
   const [find, setFind] = useState('');
 
-  /* Ohne Suchbegriff ein Anfang, mit Suchbegriff der ganze Satz — `iconsFor`
-     erklärt, warum das nicht dasselbe ist wie eine Auswahl. */
+  /* Der ganze Satz, mit und ohne Suchbegriff — `iconsFor` erklärt, warum die
+     Vorauswahl, die hier einmal stand, wieder weg ist. */
   /*
    * Der Zeichensatz kommt, wenn ein Menü aufgeht.
    *
@@ -106,7 +107,15 @@ export function ProjectTree({
     void loadIcons().then(() => setReady(true));
   }, [menu]);
 
-  const shown = useMemo(() => (ready ? iconsFor(find) : []), [find, ready]);
+  const alle = useMemo(() => (ready ? iconsFor(find) : []), [find, ready]);
+  /*
+   * Der ganze Satz, aber stückweise gezeichnet.
+   *
+   * 2080 Knöpfe auf einmal waren gemessen 1690 ms auf einem gedrosselten
+   * Gerät. Weggelassen wird nichts — `useProgressive` erklärt, warum die
+   * Antwort auf die Langsamkeit nicht wieder eine Vorauswahl sein durfte.
+   */
+  const shown = useProgressive(alle);
   const box = useRef<HTMLDivElement>(null);
 
   // Ein neues Menü beginnt ohne Suchbegriff: der vom letzten Projekt ist eine
@@ -231,6 +240,16 @@ export function ProjectTree({
               className="p-dots"
               aria-label={`Menü für ${p.name}`}
               aria-haspopup="menu"
+              /*
+                Hier stand ein Anwärmen beim Zeigen (`onPointerEnter`), das den
+                Zeichensatz vor dem Klick laden sollte.
+                **Wieder heraus, weil ich es nicht belegen konnte.** Gemessen
+                mit 0, 300, 1500 und 3000 ms zwischen Zeigen und Klicken auf
+                einem vierfach gedrosselten Gerät: 894, 623, 1523, 1385 ms bis
+                zum ersten Bild — kein Trend, nur Rauschen. Eine Optimierung,
+                die sich nicht messen lässt, ist eine, die man nicht
+                verteidigen kann, und sie kostet einen Codepfad.
+              */
               /*
                 Die Stelle wird beim Öffnen gemerkt, nicht beim Zeichnen
                 gerechnet: ein `fixed`-Menü hat keinen Vorfahren, an dem es
