@@ -30,7 +30,13 @@ import { SignIn } from './screens/SignIn.js';
 import { TaskList } from './screens/TaskList.js';
 import { Detail } from './screens/Detail.js';
 import { Search } from './screens/Search.js';
-import { Settings, SETTING_SECTIONS } from './screens/Settings.js';
+import { WorkspaceOverview } from './screens/WorkspaceOverview.js';
+import {
+  ADMIN_SECTIONS,
+  Settings,
+  SETTING_SECTIONS,
+  WORKSPACE_SECTIONS,
+} from './screens/Settings.js';
 import { Trash } from './screens/Trash.js';
 
 export function App() {
@@ -231,6 +237,40 @@ export function App() {
   };
   const wsName = me.workspaces.find((w) => w.id === workspace)?.name ?? 'Kein Workspace';
 
+  /**
+   * Was die Seitenleiste zeigt, wenn man in einem Einstellungsbereich ist.
+   *
+   * `null` heisst: der gewoehnliche Baum. Eine Struktur statt dreier
+   * Verzweigungen im Markup, weil die drei Bereiche sich nur in Titel, Liste
+   * und Ziel unterscheiden — und drei fast gleiche Bloecke laufen auseinander.
+   */
+  const SECTION_NAV =
+    route.kind === 'settings'
+      ? {
+          title: 'Einstellungen',
+          note: 'Nur für dich',
+          entries: SETTING_SECTIONS,
+          active: route.section,
+          go: (id: string) => go({ kind: 'settings', section: id }),
+        }
+      : route.kind === 'workspaces'
+        ? {
+            title: 'Workspaces',
+            note: wsName,
+            entries: WORKSPACE_SECTIONS,
+            active: route.section,
+            go: (id: string) => go({ kind: 'workspaces', section: id }),
+          }
+        : route.kind === 'admin'
+          ? {
+              title: 'Verwaltung',
+              note: 'Für alle auf diesem Server',
+              entries: ADMIN_SECTIONS,
+              active: route.section,
+              go: (id: string) => go({ kind: 'admin', section: id }),
+            }
+          : null;
+
   return (
     <div
       className="app"
@@ -240,11 +280,22 @@ export function App() {
     >
       <IconRail
         active={modeOfRoute(route) as ModeId}
-        onPick={(id) => go(id === 'tasks' ? { kind: 'today' } : { kind: 'mode', mode: id })}
+        onPick={(id) =>
+          go(
+            id === 'tasks'
+              ? { kind: 'today' }
+              : id === 'workspaces'
+                ? // Der Bereich hat jetzt einen Inhalt und ist darum eine
+                  // eigene Route statt der Platzhalterseite.
+                  { kind: 'workspaces', section: 'alle' }
+                : { kind: 'mode', mode: id },
+          )
+        }
         inboxCount={0}
         displayName={me.displayName}
         email={me.email}
-        onSettings={() => go({ kind: 'settings', section: 'du' })}
+        onSettings={() => go({ kind: 'settings', section: 'profil' })}
+        onAdmin={() => go({ kind: 'admin', section: 'instanz' })}
         onSignOut={signOut}
       />
 
@@ -319,16 +370,24 @@ export function App() {
             zweiten Rahmen: der Weg zurück ist das Signet, das Konto steht
             unten, und die Bereiche sind Gruppen in einer Liste.
           */}
-          {route.kind === 'settings' ? (
+          {/*
+            Drei Bereiche, eine Zeichnung.
+            Die Leiste zeigt die Abschnitte dessen, wo man ist — und die
+            Ueberschrift sagt, wessen Einstellungen es sind. Vorher lagen alle
+            drei auf einem Bildschirm, und jeder Kasten musste selbst sagen,
+            wen er angeht: eine Notloesung dafuer, dass der Ort es nicht sagte.
+          */}
+          {SECTION_NAV !== null ? (
             <>
-              <div className="group-label">Einstellungen</div>
-              {SETTING_SECTIONS.map((entry) => (
+              <div className="group-label">{SECTION_NAV.title}</div>
+              <p className="nav-note">{SECTION_NAV.note}</p>
+              {SECTION_NAV.entries.map((entry) => (
                 <button
                   key={entry.id}
                   className="p-item set-nav"
-                  aria-current={route.section === entry.id}
+                  aria-current={SECTION_NAV.active === entry.id}
                   aria-label={`${entry.label} — ${entry.hint}`}
-                  onClick={() => go({ kind: 'settings', section: entry.id })}
+                  onClick={() => SECTION_NAV.go(entry.id)}
                 >
                   <span className="p-name">{entry.label}</span>
                   <span className="set-nav-hint">{entry.hint}</span>
@@ -337,7 +396,7 @@ export function App() {
             </>
           ) : null}
 
-          {route.kind === 'settings' ? null : (
+          {SECTION_NAV !== null ? null : (
           <>
           {/* Die Zahlen kommen aus derselben Abfrage wie die Listen. Keine
               Null: eine Zahl über nichts ist Rauschen in einer ruhigen Zeile. */}
@@ -409,9 +468,17 @@ export function App() {
           detailOpen={openTask !== null}
           onToggleDetail={openTask === null ? undefined : () => setOpenTask(null)}
         />
-        {route.kind === 'settings' ? (
+        {route.kind === 'workspaces' && route.section === 'alle' ? (
+          <WorkspaceOverview workspaces={me.workspaces} current={workspace} />
+        ) : SECTION_NAV !== null ? (
           <Settings
-            section={route.section}
+            section={
+              // Den Abschnitt „Aussehen" gibt es zweimal — einmal fuer dich,
+              // einmal fuer den Arbeitsbereich. Der Bereich entscheidet,
+              // welcher gemeint ist, statt zwei gleich benannte Abschnitte in
+              // einen Namensraum zu zwingen.
+              route.kind === 'workspaces' ? `ws-${SECTION_NAV.active}` : SECTION_NAV.active
+            }
             workspaceName={wsName}
             displayName={me.displayName}
             email={me.email}
@@ -476,11 +543,22 @@ export function App() {
 
       <FootBar
         active={modeOfRoute(route) as ModeId}
-        onPick={(id) => go(id === 'tasks' ? { kind: 'today' } : { kind: 'mode', mode: id })}
+        onPick={(id) =>
+          go(
+            id === 'tasks'
+              ? { kind: 'today' }
+              : id === 'workspaces'
+                ? // Der Bereich hat jetzt einen Inhalt und ist darum eine
+                  // eigene Route statt der Platzhalterseite.
+                  { kind: 'workspaces', section: 'alle' }
+                : { kind: 'mode', mode: id },
+          )
+        }
         inboxCount={0}
         displayName={me.displayName}
         email={me.email}
-        onSettings={() => go({ kind: 'settings', section: 'du' })}
+        onSettings={() => go({ kind: 'settings', section: 'profil' })}
+        onAdmin={() => go({ kind: 'admin', section: 'instanz' })}
         onSignOut={signOut}
       />
     </div>

@@ -32,7 +32,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 
-import { PersonIcon, SettingsIcon, SignOutIcon } from './icons.js';
+import { PersonIcon, SettingsIcon, SignOutIcon, SlidersIcon } from './icons.js';
 
 export function AccountMenu({
   displayName,
@@ -48,12 +48,21 @@ export function AccountMenu({
   label,
   email,
   onSettings,
+  onAdmin,
   onSignOut,
 }: {
   displayName: string;
   label?: string | undefined;
   email: string;
   onSettings: () => void;
+  /**
+   * Die Verwaltung — alles, was fuer jeden auf diesem Server gilt.
+   *
+   * Im Kontomenue und nicht in der Schiene, wie in SONE: die Schiene ist die
+   * Liste der Orte, an denen man arbeitet. Ein Server ist kein Ort, an dem man
+   * arbeitet.
+   */
+  onAdmin: () => void;
   onSignOut: () => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -122,7 +131,19 @@ export function AccountMenu({
             }}
           >
             <SettingsIcon size={15} />
-            Einstellungen
+            Deine Einstellungen
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            className="account-item"
+            onClick={() => {
+              setOpen(false);
+              onAdmin();
+            }}
+          >
+            <SlidersIcon size={15} />
+            Verwaltung
           </button>
           {/* Zuletzt und abgesetzt: das eine hier, was man nicht durch
               nochmaliges Drücken zurücknimmt. */}

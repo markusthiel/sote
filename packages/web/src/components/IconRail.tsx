@@ -16,6 +16,7 @@ export function IconRail({
   displayName,
   email,
   onSettings,
+  onAdmin,
   onSignOut,
 }: {
   active: ModeId;
@@ -24,6 +25,7 @@ export function IconRail({
   displayName: string;
   email: string;
   onSettings: () => void;
+  onAdmin: () => void;
   onSignOut: () => void;
 }) {
   return (
@@ -47,6 +49,7 @@ export function IconRail({
       {/* Kein Wort unter dem Gesicht: in einer Spalte ist Platz, und der Name
           steht im Menü. Die Fußleiste gibt „Du" mit — siehe AccountMenu. */}
       <AccountMenu displayName={displayName} email={email} onSettings={onSettings}
+        onAdmin={onAdmin}
         onSignOut={onSignOut} />
     </nav>
   );

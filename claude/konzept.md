@@ -1079,6 +1079,22 @@ Beim Bauen entschieden, weil es ohne Entscheidung keinen Code gibt:
   - **Attribute werden gesetzt UND aufgeräumt.** Nur zu setzen ist der Fehler,
     bei dem eine Einstellung sich nicht mehr zurücknehmen lässt — und den sieht
     man erst beim Zurücknehmen.
+- **Drei Bereiche statt dreier Kästen auf einem Bildschirm** — SONEs
+  Aufteilung: *die Einstellungen sind deine, ein Arbeitsbereich gehört allen
+  darin, die Verwaltung gilt für jeden auf dem Server.*
+  - Vorher lagen alle drei Ebenen auf einem Bildschirm, und die Überschrift
+    jedes Kastens musste sagen, wen er angeht. Das war eine **Notlösung dafür,
+    dass der Ort es nicht sagte** — wer sein Dunkelgrau sucht und dabei über
+    die Farben eines Teams stolpert, hat den falschen Bereich gefunden.
+  - **Die Verwaltung ist kein Modus.** Sie steht im Kontomenü und nicht in der
+    Schiene, weil die Schiene die Liste der Orte ist, an denen man *arbeitet* —
+    und ein Server ist kein Ort, an dem man arbeitet.
+  - **Eine Zeichnung für drei Bereiche**, als Struktur und nicht als drei
+    Verzweigungen im Markup: sie unterscheiden sich nur in Titel, Liste und
+    Ziel, und drei fast gleiche Blöcke laufen auseinander.
+  - „Aussehen" gibt es **zweimal** — für dich und für den Arbeitsbereich. Der
+    Bereich entscheidet, welcher gemeint ist, statt zwei gleich benannte
+    Abschnitte in einen Namensraum zu zwingen.
 - **`pnpm check` ist genau das, was die CI fährt.** Erst standen die Prüfungen
   einzeln in der Workflow-Datei, und `pnpm -r typecheck` scheiterte dort — in
   einem frischen Klon gibt es kein `dist`, und `@sote/core` zeigt mit `types`

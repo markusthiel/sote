@@ -2315,3 +2315,43 @@ select.target {
   outline: 2px solid var(--text);
   outline-offset: 1px;
 }
+
+/* ── Die Übersicht der Arbeitsbereiche ── */
+
+.nav-note {
+  margin: -2px 8px 6px;
+  font-family: var(--sote-mono);
+  font-size: 10px;
+  color: var(--text-faint);
+}
+
+.ws-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+}
+
+.ws-table th {
+  text-align: left;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--line);
+  font-family: var(--sote-mono);
+  font-size: 10px;
+  font-weight: 400;
+  color: var(--text-faint);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.ws-table td {
+  padding: 9px 8px;
+  border-bottom: 1px solid var(--line);
+}
+
+.ws-table tr[aria-current='true'] {
+  background: var(--sunken);
+}
+
+.ws-here {
+  color: var(--text-faint);
+}

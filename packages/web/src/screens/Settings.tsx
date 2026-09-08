@@ -57,9 +57,27 @@ import { applyScheme } from '../appearance.js';
  * than who may change them".
  */
 export const SETTING_SECTIONS = [
-  { id: 'du', label: 'Du', hint: 'Reist mit dir' },
-  { id: 'workspace', label: 'Dieser Workspace', hint: 'Für alle Mitglieder' },
-  { id: 'instanz', label: 'Diese Instanz', hint: 'Für alle auf diesem Server' },
+  { id: 'profil', label: 'Profil', hint: 'Name und Adresse' },
+  { id: 'aussehen', label: 'Aussehen', hint: 'Hell oder dunkel' },
+  { id: 'zeit', label: 'Zeit', hint: 'Deine Zeitzone' },
+] as const;
+
+/**
+ * Was unter „Workspaces" steht, und was unter „Verwaltung".
+ *
+ * Drei Bereiche statt einer Liste mit drei Kästen, und die Aufteilung ist
+ * SONEs: **die Einstellungen sind deine, ein Arbeitsbereich gehört allen darin,
+ * die Verwaltung gilt für jeden auf dem Server.** Vorher lagen alle drei auf
+ * einem Bildschirm, und die Überschrift jedes Kastens musste sagen, wen er
+ * angeht — das war eine Notlösung dafür, dass der Ort es nicht sagte.
+ */
+export const WORKSPACE_SECTIONS = [
+  { id: 'alle', label: 'Alle Workspaces', hint: 'Übersicht' },
+  { id: 'aussehen', label: 'Farben und Flächen', hint: 'Für alle Mitglieder' },
+] as const;
+
+export const ADMIN_SECTIONS = [
+  { id: 'instanz', label: 'Diese Instanz', hint: 'Vorgaben für alle' },
 ] as const;
 
 /** Wie die Flächen und Beziehungen heißen — SONEs Worte, auf Deutsch. */
@@ -372,14 +390,40 @@ export function Settings({
         Sache (SONEs ADR-0032).
       */}
 
-      {section === 'du' ? (
+      {section === 'profil' ? (
         <section className="set-card">
-          <h2>Du</h2>
+          <h2>Profil</h2>
+          <div className="set-row">
+            <span className="set-label">Name</span>
+            <div className="set-value">{displayName}</div>
+          </div>
+          <div className="set-row">
+            <span className="set-label">E-Mail</span>
+            <div className="set-value">
+              {email}
+              <p className="muted small">
+                Sie erkennt das Konto beim Anmelden. Sie zu ändern braucht einen
+                Weg, die neue Adresse als eigene zu belegen — den hat diese
+                Instanz noch nicht.
+              </p>
+            </div>
+          </div>
+        </section>
+      ) : null}
+
+      {section === 'aussehen' ? (
+        <section className="set-card">
+          <h2>Aussehen</h2>
           <p className="muted">
-            {displayName} — {email}. Diese Einstellungen reisen mit dir; wer hier
-            dunkel wählt, bekommt am Telefon auch dunkel.
+            Reist mit dir: wer hier dunkel wählt, bekommt am Telefon auch dunkel.
           </p>
           {schemeRow('user', data.levels.user.scheme, 'Wie der Arbeitsbereich')}
+        </section>
+      ) : null}
+
+      {section === 'zeit' ? (
+        <section className="set-card">
+          <h2>Zeit</h2>
           <div className="set-row">
             <span className="set-label">Zeitzone</span>
             <div className="set-value">
@@ -408,7 +452,8 @@ export function Settings({
         </section>
       ) : null}
 
-      {section === 'workspace' ? (
+      {/* ── Unter „Workspaces" ── */}
+      {section === 'ws-aussehen' ? (
         <>
           <section className="set-card">
             <h2>{workspaceName}</h2>
@@ -418,18 +463,11 @@ export function Settings({
             </p>
             {schemeRow('workspace', data.levels.workspace.scheme, 'Wie die Instanz')}
           </section>
-
-          {/*
-            Flächen, Ecken und Akzent — und die Überschrift sagt, dass es alle
-            angeht. Das ist SONEs Grenze aus ADR-0028: das Aussehen des
-            Arbeitsbereichs gestaltet den INHALT und gehört ihm, hell oder
-            dunkel gehört der Person. Beides zu vermischen hieße, dass die
-            Vorliebe einer Person ändert, was eine andere sieht.
-          */}
           {lookCard('workspace', data.levels.workspace.look ?? {})}
         </>
       ) : null}
 
+      {/* ── Unter „Verwaltung" ── */}
       {section === 'instanz' ? (
         <>
           <section className="set-card">
