@@ -15,11 +15,17 @@
  *
  * ## Was geprüft wird
  *
- * Beide Richtungen, und die zweite ist die interessantere:
+ * **Drei** Stellen, die zusammenpassen müssen — und die dritte hatte ich beim
+ * ersten Anlauf vergessen, worauf Markus zu Recht hinwies: `.env.example` ist
+ * die Datei, die der Betreiber kopiert. Ein Wächter, der sie nicht kennt,
+ * lässt genau die Stelle offen, an der jemand nachsieht.
  *
  * 1. Jede `SOTE_*`, die der Servercode liest, steht in `docker-compose.yml`.
  * 2. Jede, die dort steht, wird auch gelesen — sonst ist es ein Schalter, der
  *    nichts tut, und das ist derselbe Fehler von der anderen Seite.
+ * 3. Jede, die dort steht, kommt in `.env.example` vor. Nicht umgekehrt: dort
+ *    stehen auch Werte, die nur Compose selbst liest (`SOTE_IMAGE`) — die
+ *    erreichen den Server nie und sollen es nicht.
  *
  * Kommentare werden vorher entfernt. Eine Variable, die nur in einer Erklärung
  * vorkommt, ist nicht gesetzt — und ein Test, der Prosa prüft, prüft die
@@ -74,7 +80,29 @@ const genannt = new Set([...compose.matchAll(/^\s{6}(SOTE_[A-Z_]+):/gm)].map((m)
  */
 const nurLokal = new Set(['SOTE_TEST_DATABASE_URL', 'SOTE_NEW_PASSWORD', 'SOTE_PORT']);
 
+/*
+ * `.env.example` mit Kommentaren, aber **absichtlich ohne** die Prüfung auf
+ * gesetzte Werte: eine Variable darf dort auskommentiert stehen
+ * (`# SOTE_SMTP_SECURE=`), wenn ihre Vorgabe erklärt ist. Was zählt, ist, dass
+ * sie **vorkommt** — wer die Datei kopiert, soll von ihr erfahren.
+ */
+const beispiel = readFileSync(join(root, '.env.example'), 'utf8');
+const beschrieben = new Set(
+  [...beispiel.matchAll(/(SOTE_[A-Z_]+)\s*=/g)].map((m) => m[1]),
+);
+
 const fehlt = [...gelesen].filter((v) => !genannt.has(v) && !nurLokal.has(v)).sort();
+/*
+ * `SOTE_DATABASE_URL` steht absichtlich nicht in `.env.example`.
+ *
+ * Compose setzt sie aus `POSTGRES_PASSWORD` zusammen, und der Grund steht dort
+ * als Kommentar: eine URL, die das Kennwort enthält, wäre eine zweite Stelle,
+ * an der es steht — und die beiden laufen beim ersten Ändern auseinander.
+ */
+const zusammengesetzt = new Set(['SOTE_DATABASE_URL']);
+const unerklaert = [...genannt]
+  .filter((v) => !beschrieben.has(v) && !zusammengesetzt.has(v))
+  .sort();
 const wirkungslos = [...genannt].filter((v) => !gelesen.has(v)).sort();
 
 if (fehlt.length > 0) {
@@ -93,6 +121,16 @@ if (wirkungslos.length > 0) {
       'Betreiber beantwortet, ohne dass sie wirkt.',
   );
 }
-if (fehlt.length > 0 || wirkungslos.length > 0) process.exit(1);
+if (unerklaert.length > 0) {
+  console.error(
+    'check-env-passed: docker-compose gibt diese weiter, .env.example nennt sie nicht:\n  ' +
+      unerklaert.join('\n  ') +
+      '\n\n.env.example ist die Datei, die der Betreiber kopiert. Was dort fehlt,\n' +
+      'erfaehrt er nur, wenn er den Code liest.',
+  );
+}
+if (fehlt.length > 0 || wirkungslos.length > 0 || unerklaert.length > 0) process.exit(1);
 
-console.log(`check-env-passed: ${gelesen.size - nurLokal.size} Einstellungen, alle weitergegeben`);
+console.log(
+  `check-env-passed: ${genannt.size} Einstellungen weitergegeben und erklaert`,
+);

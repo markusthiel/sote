@@ -1648,6 +1648,13 @@ Beim Bauen entschieden, weil es ohne Entscheidung keinen Code gibt:
     die zweite Richtung ist derselbe Fehler von der anderen Seite (ADR-0112).
     Ausnahmen stehen mit Grund im Skript, sonst ist eine Ausnahmeliste eine
     Liste, auf die man Dinge schiebt.
+  - **Und drei Stellen, nicht zwei.** `.env.example` hatte ich beim ersten
+    Anlauf vergessen — Markus hat es gemeldet, und er hatte recht: das ist die
+    Datei, die der Betreiber **kopiert**. Ein Wächter, der sie nicht kennt,
+    lässt genau die Stelle offen, an der jemand nachsieht. Nicht umgekehrt
+    geprüft: dort stehen auch Werte, die nur Compose selbst liest
+    (`SOTE_IMAGE`), und `SOTE_DATABASE_URL` wird dort zusammengesetzt, weil
+    eine URL mit dem Kennwort darin eine zweite Stelle wäre, an der es steht.
 - **Eine Zahl, die von Hand gepflegt wird, lügt irgendwann.** Die README nannte
   die Testzahl zweimal im selben Abschnitt, mit zwei Werten (94 und 217), und
   beide waren falsch. Sie steht jetzt nirgends — `pnpm check` sagt sie.
