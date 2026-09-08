@@ -2116,3 +2116,66 @@ select.target {
 .settings {
   padding-top: 8px;
 }
+
+/* ── Der Workspace-Wechsler ────────────────────────────────────────────────
+   Der dritte tote Knopf dieser Art: er stand mit Pfeil und ohne onClick da.
+   Vorher der Kontoknopf und die Schublade. */
+
+.ws-menu {
+  position: relative;
+}
+
+.ws-caret {
+  color: var(--text-faint);
+  font-size: 10px;
+}
+
+.ws-pop {
+  position: absolute;
+  z-index: 40;
+  top: calc(100% + 2px);
+  left: 8px;
+  right: 8px;
+  min-width: 200px;
+  padding: 5px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--sote-radius-lg);
+  background: var(--raised);
+  box-shadow: var(--sote-shadow-lg);
+}
+
+.ws-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  min-height: 32px;
+  padding: 7px 9px;
+  border: 0;
+  border-radius: var(--sote-radius-md);
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 13.5px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ws-item:hover {
+  background: var(--sunken);
+}
+
+.ws-item[aria-current='true'] {
+  background: var(--sunken);
+  font-weight: 500;
+}
+
+/* Sagt, warum die Liste kurz ist — statt eines Eintrags, der nirgendwo
+   hinführt (SONEs ADR-0027). */
+.ws-none {
+  margin: 0;
+  padding: 6px 9px 4px;
+  border-top: 1px solid var(--line);
+  color: var(--text-faint);
+  font-size: 11.5px;
+}

@@ -298,6 +298,8 @@ export const api = {
       task: Task;
       unknownProject: string | null;
       ambiguousProject: string | null;
+    /** Der Name gehört einem Ordner — der trägt keine Aufgaben. */
+    folderProject: string | null;
       unknownAssignees: string[];
       ambiguousAssignees: string[];
     }>(`/api/tasks${workspace === undefined ? '' : `?workspace=${workspace}`}`, {

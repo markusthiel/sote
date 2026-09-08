@@ -20,6 +20,7 @@ import { FootBar } from './components/FootBar.js';
 import { IconRail } from './components/IconRail.js';
 import { ProjectTree } from './components/ProjectTree.js';
 import { TopBar } from './components/TopBar.js';
+import { WorkspaceMenu } from './components/WorkspaceMenu.js';
 import { modeOf, type ModeId } from './modes.js';
 import { modeOfRoute, parseRoute, pathOf, type Route } from './route.js';
 import { Setup } from './screens/Setup.js';
@@ -248,13 +249,18 @@ export function App() {
           />
         ) : null}
         <div className="panel-head">
-          <button className="ws" aria-label="Workspace wechseln">
-            <span className="ws-dot" aria-hidden="true" />
-            <span className="ws-name">{wsName}</span>
-            <span aria-hidden="true" style={{ color: 'var(--text-faint)', fontSize: 10 }}>
-              ▾
-            </span>
-          </button>
+          <WorkspaceMenu
+            workspaces={me.workspaces}
+            current={workspace}
+            onPick={(id) => {
+              setWorkspace(id);
+              // Zurück nach Heute: die alte Adresse konnte ein Projekt sein,
+              // und das gibt es im neuen Arbeitsbereich nicht. Ein Wechsel,
+              // der auf „Projekt gibt es nicht" landet, ist ein Wechsel, den
+              // man rückgängig machen will.
+              go({ kind: 'today' });
+            }}
+          />
         </div>
 
         <div className="seek">

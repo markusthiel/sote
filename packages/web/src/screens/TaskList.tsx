@@ -82,8 +82,34 @@ export function TaskList({
     });
   }, [load]);
 
-  const nameOf = (id: string | null) =>
-    id === null ? undefined : projects.find((p) => p.id === id)?.name;
+  /**
+   * Der Pfad zum Projekt, nicht nur sein Name.
+   *
+   * „Kabel" allein reicht nicht: seit Ordner und Projekte getrennt sind, kann
+   * dasselbe Wort in zwei Ordnern stehen — die Migration erzeugt sogar
+   * regelmäßig „Haus ▸ Haus". Eine Zeile in Heute, die nur „Haus" zeigt, sagt
+   * dann nicht, welches gemeint ist.
+   *
+   * Aus dem Baum gerechnet und nicht vom Server geholt: die Liste ist ohnehin
+   * da, und eine zweite Quelle für denselben Pfad wären zwei Antworten auf
+   * eine Frage. Der oberste Ordner bleibt weg — der ist bei allen gleich,
+   * solange man in einem Arbeitsbereich steht, und trägt darum nichts bei.
+   */
+  const nameOf = (id: string | null): string | undefined => {
+    if (id === null) return undefined;
+    const teile: string[] = [];
+    let at = projects.find((p) => p.id === id);
+    // Gedeckelt, damit ein Kreis in den Daten die Oberfläche nicht anhält.
+    for (let i = 0; at !== undefined && i < 12; i += 1) {
+      teile.unshift(at.name);
+      const parentId: string | null = at.parentId;
+      at = parentId === null ? undefined : projects.find((p) => p.id === parentId);
+    }
+    if (teile.length === 0) return undefined;
+    // Zwei Ebenen reichen: „Ordner ▸ Projekt". Der ganze Pfad in einer Zeile,
+    // die vor allem die Aufgabe zeigen soll, wäre mehr Weg als Ziel.
+    return teile.slice(-2).join(' ▸ ');
+  };
 
   const errorOf = (id: string) => pending.find((p) => p.id === id)?.error;
   const isPending = (id: string) => pending.some((p) => p.id === id);
@@ -107,6 +133,19 @@ export function TaskList({
         setUnknownProject(out.unknownProject);
         setNotice(
           `Das Projekt „${out.unknownProject}“ gibt es hier nicht — die Aufgabe liegt ohne Projekt.`,
+        );
+      } else if (out.folderProject !== null) {
+        /*
+         * Die fünfte Meldung (Konzept 10d).
+         *
+         * Der Unterschied zu „gibt es nicht" zählt für den Menschen:
+         * unbekannt heißt vertippt, dies heißt falsche Ebene gemeint. Ohne
+         * eigene Meldung schickt „gibt es nicht" jemanden auf die Suche nach
+         * einem Tippfehler in einem Namen, den es gibt.
+         */
+        setUnknownProject(null);
+        setNotice(
+          `„${out.folderProject}“ ist ein Ordner — Aufgaben liegen in Projekten. Die Aufgabe liegt ohne Projekt.`,
         );
       } else if (out.ambiguousProject !== null) {
         setUnknownProject(out.ambiguousProject);

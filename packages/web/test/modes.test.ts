@@ -95,3 +95,53 @@ test('jeder Eintrag der Schiene hat eine Beschriftung für Vorleseprogramme', ()
   // namenloser Knöpfe.
   assert.match(read('components/IconRail.tsx'), /aria-label=\{mode\.label\}/);
 });
+
+test('kein Knopf im Rahmen ohne Wirkung', () => {
+  /*
+   * Der Test, den es nach dem dritten Mal geben muss.
+   *
+   * Drei Bedienelemente sahen aus wie welche und waren keine: der Kontoknopf
+   * (`onAccount={() => void 0}`), die Schublade (ein Flag, das nirgends auf
+   * `true` gesetzt wurde) und der Workspace-Wechsler (ein Knopf mit Pfeil und
+   * ohne `onClick`). Jedes einzelne fand nur ein Klick im Browser.
+   *
+   * Geprüft wird darum die **Wirkung an der Quelle**: jeder Knopf in den
+   * Rahmenbauteilen trägt ein `onClick`. Das ist gröber als ein Klick, aber es
+   * läuft bei jedem Commit — und es hätte alle drei gefunden.
+   *
+   * Was es nicht findet: ein `onClick`, das auf eine leere Funktion zeigt.
+   * Deshalb steht `() => void 0` ausdrücklich als verbotenes Muster dabei.
+   */
+  /*
+   * Kommentare weg, bevor gesucht wird.
+   *
+   * Zum ZWEITEN Mal derselbe Fehler von mir: die erste Fassung schlug am
+   * Kommentar an, der `onAccount={() => void 0}` als alten Fehler beschreibt.
+   * Vorher hatte schon `weight.test.ts` das Wort „lucide" in einer Prosa-Zeile
+   * getroffen. Ein Test, der Prosa prüft, prüft die falsche Sache — und ein
+   * Code, der seine Fehler dokumentiert, wird sonst dafür bestraft.
+   */
+  const ohneKommentare = (src: string): string =>
+    src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+
+  for (const file of [
+    'components/IconRail.tsx',
+    'components/FootBar.tsx',
+    'components/AccountMenu.tsx',
+    'components/WorkspaceMenu.tsx',
+    'components/TopBar.tsx',
+  ]) {
+    const src = ohneKommentare(read(file));
+    const knoepfe = (src.match(/<button/g) ?? []).length;
+    const klicks = (src.match(/onClick=/g) ?? []).length;
+    assert.ok(
+      klicks >= knoepfe,
+      `${file}: ${knoepfe} Knöpfe, aber nur ${klicks} onClick`,
+    );
+    assert.doesNotMatch(
+      src,
+      /=\{\(\)\s*=>\s*void 0\}/,
+      `${file} hat einen Knopf, der nichts tut`,
+    );
+  }
+});

@@ -1038,6 +1038,22 @@ Beim Bauen entschieden, weil es ohne Entscheidung keinen Code gibt:
   - Ein Testhelfer (`test/support/tree.ts`) legt Ordner und Projekt in genau
     der Form an, die die Migration herstellt — damit Tests dieselbe Gestalt
     vorfinden wie eine migrierte Instanz und nicht eine aufgeräumtere.
+- **Ein Knopf, der aussieht wie einer, ist fertig genug, um beim Durchsehen
+  nicht aufzufallen.** Dreimal dasselbe Muster: der Kontoknopf (`() => void 0`),
+  die Schublade (ein Flag, das nirgends auf `true` gesetzt wurde), der
+  Workspace-Wechsler (Pfeil, kein `onClick`). Jedes einzelne fand nur ein Klick
+  im Browser. Seit dem dritten Mal gibt es einen Wächter in `modes.test.ts`:
+  jeder Knopf in den Rahmenbauteilen trägt ein `onClick`, und `() => void 0` ist
+  als Muster verboten. Gröber als ein Klick, läuft aber bei jedem Commit — und
+  hätte alle drei gefunden.
+- **Ein Test, der Prosa prüft, prüft die falsche Sache.** Zweimal passiert:
+  `/lucide/i` traf eine Kommentarzeile, und das Verbot `() => void 0` traf den
+  Kommentar, der den alten Fehler beschreibt. Wer seine Fehler dokumentiert,
+  wird sonst dafür bestraft. Beide Wächter entfernen jetzt erst die Kommentare.
+- **Die Zeile zeigt den Pfad, nicht nur den Namen.** Seit der Trennung kann
+  dasselbe Wort in zwei Ordnern stehen — die Migration erzeugt regelmäßig
+  „Haus ▸ Haus". Zwei Ebenen, aus dem vorhandenen Baum gerechnet: eine zweite
+  Quelle für denselben Pfad wären zwei Antworten auf eine Frage.
 - **`pnpm check` ist genau das, was die CI fährt.** Erst standen die Prüfungen
   einzeln in der Workflow-Datei, und `pnpm -r typecheck` scheiterte dort — in
   einem frischen Klon gibt es kein `dist`, und `@sote/core` zeigt mit `types`
