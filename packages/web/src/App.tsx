@@ -35,6 +35,7 @@ import { AcceptInvite } from './screens/AcceptInvite.js';
 import { Accounts } from './screens/Accounts.js';
 import { useNudge } from './hooks/useNudge.js';
 import { Invitations } from './screens/Invitations.js';
+import { SearchPanel } from './screens/SearchPanel.js';
 import {
   Notifications,
   NotificationsPanel,
@@ -90,6 +91,15 @@ export function App() {
   const sidebar = useSidebar(route);
   const panelWidth = useSidebarWidth();
   const [openTask, setOpenTask] = useState<string | null>(null);
+  /*
+   * Die letzte Abfrage, damit das Symbol in der Schiene zurückführt.
+   *
+   * Im Zustand und nicht in der Adresse: es ist kein Ort, sondern ein
+   * Gedächtnis. Und nicht im Speicher des Browsers — eine Suche von letzter
+   * Woche beim Aufschlagen wieder vorzufinden wäre ein Ort, an dem man nicht
+   * stehen geblieben ist.
+   */
+  const [letzteSuche, setLetzteSuche] = useState('');
   /*
    * Die Benachrichtigungen werden EINMAL geholt, für Menü und Bildschirm.
    *
@@ -394,11 +404,27 @@ export function App() {
                 ? // Der Bereich hat jetzt einen Inhalt und ist darum eine
                   // eigene Route statt der Platzhalterseite.
                   { kind: 'workspaces', section: 'alle' }
-                : id === 'notifications'
-                  ? { kind: 'notifications' }
-                  : id === 'shares'
-                    ? { kind: 'shares' }
-                    : { kind: 'mode', mode: id },
+                : id === 'search'
+                  ? /*
+                     * Zur SUCHE, nicht auf eine Platzhalterseite.
+                     *
+                     * Gemeldet als „Suche: diesen Bereich gibt es noch nicht" —
+                     * und das stand da, weil die Schiene auf
+                     * `{kind:'mode'}` zeigte, während es die Suche als Ort
+                     * längst gab.
+                     *
+                     * SONE sagt, was das Symbol bedeutet: *„Das Symbol in der
+                     * Schiene heißt nicht ‚Suche starten'. Es ist der Weg
+                     * ZURÜCK zu einer."* Niemand navigiert hierher, um zu
+                     * suchen — man tippt oben ins Feld. Darum die letzte
+                     * Abfrage, wenn es eine gibt.
+                     */
+                    { kind: 'search', q: route.kind === 'search' ? route.q : letzteSuche }
+                  : id === 'notifications'
+                    ? { kind: 'notifications' }
+                    : id === 'shares'
+                      ? { kind: 'shares' }
+                      : { kind: 'mode', mode: id },
           )
         }
         // Ungelesene Benachrichtigungen, nicht der Posteingang: die Zahl an
@@ -445,7 +471,19 @@ export function App() {
             Titel darüber wäre eine Beschriftung für etwas, das man ohnehin am
             Namen erkennt.
           */}
-          {route.kind === 'notifications' ? (
+          {route.kind === 'search' ? (
+          <div className="panel-title">
+            <strong>Suche</strong>
+            {/*
+              Was gefunden wurde, sagt der Inhalt — hier steht, wo gesucht
+              wird. Eine Trefferzahl an zwei Stellen wären zwei Antworten auf
+              dieselbe Frage.
+            */}
+            <span className="panel-scope">
+              {route.q.trim() === '' ? 'tippe oben' : wsName}
+            </span>
+          </div>
+        ) : route.kind === 'notifications' ? (
           <div className="panel-title">
             <strong>Benachrichtigungen</strong>
             {/*
@@ -517,7 +555,10 @@ export function App() {
             /* Das Feld IST der Eingang. Tippen bringt einen in die Suche,
                mitsamt dem Getippten — kein Knopf, der einen Bildschirm mit
                einem Feld öffnet. */
-            onChange={(e) => go({ kind: 'search', q: e.target.value }, true)}
+            onChange={(e) => {
+              setLetzteSuche(e.target.value);
+              go({ kind: 'search', q: e.target.value }, true);
+            }}
           />
         </div>
         ) : null}
@@ -569,7 +610,25 @@ export function App() {
             <NotificationsPanel notes={notes} view={noteView} onPick={setNoteView} />
           ) : null}
 
-          {SECTION_NAV !== null || route.kind === 'notifications' ? null : (
+          {/*
+            Die Filter der Suche stehen in der LEISTE: eine Suche einzugrenzen
+            ist Navigation innerhalb dieser Suche (SONEs ADR-0069, angewandt und
+            nicht gebogen). Gemeldet als „Menü im Baum ebenfalls".
+          */}
+          {route.kind === 'search' ? (
+            <SearchPanel
+              q={route.q}
+              projects={projects}
+              onQuery={(next) => {
+                setLetzteSuche(next);
+                go({ kind: 'search', q: next }, true);
+              }}
+            />
+          ) : null}
+
+          {SECTION_NAV !== null ||
+        route.kind === 'notifications' ||
+        route.kind === 'search' ? null : (
           <>
           {/* Die Zahlen kommen aus derselben Abfrage wie die Listen. Keine
               Null: eine Zahl über nichts ist Rauschen in einer ruhigen Zeile. */}
@@ -737,7 +796,11 @@ export function App() {
             workspace={workspace}
             projects={projects}
             now={now}
-            onQuery={(next) => go({ kind: 'search', q: next }, true)}
+            onQuery={(next) => {
+              // Gemerkt, damit das Symbol in der Schiene zurückführt.
+              setLetzteSuche(next);
+              go({ kind: 'search', q: next }, true);
+            }}
             openTask={openTask}
             onOpenTask={setOpenTask}
           />
@@ -788,11 +851,27 @@ export function App() {
                 ? // Der Bereich hat jetzt einen Inhalt und ist darum eine
                   // eigene Route statt der Platzhalterseite.
                   { kind: 'workspaces', section: 'alle' }
-                : id === 'notifications'
-                  ? { kind: 'notifications' }
-                  : id === 'shares'
-                    ? { kind: 'shares' }
-                    : { kind: 'mode', mode: id },
+                : id === 'search'
+                  ? /*
+                     * Zur SUCHE, nicht auf eine Platzhalterseite.
+                     *
+                     * Gemeldet als „Suche: diesen Bereich gibt es noch nicht" —
+                     * und das stand da, weil die Schiene auf
+                     * `{kind:'mode'}` zeigte, während es die Suche als Ort
+                     * längst gab.
+                     *
+                     * SONE sagt, was das Symbol bedeutet: *„Das Symbol in der
+                     * Schiene heißt nicht ‚Suche starten'. Es ist der Weg
+                     * ZURÜCK zu einer."* Niemand navigiert hierher, um zu
+                     * suchen — man tippt oben ins Feld. Darum die letzte
+                     * Abfrage, wenn es eine gibt.
+                     */
+                    { kind: 'search', q: route.kind === 'search' ? route.q : letzteSuche }
+                  : id === 'notifications'
+                    ? { kind: 'notifications' }
+                    : id === 'shares'
+                      ? { kind: 'shares' }
+                      : { kind: 'mode', mode: id },
           )
         }
         // Ungelesene Benachrichtigungen, nicht der Posteingang: die Zahl an

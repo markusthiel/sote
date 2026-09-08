@@ -1840,6 +1840,29 @@ erfunden.
     und ein grauer Umriss eines Menschen ist eine Behauptung über jemanden.
   - **Ein Zähler in der Adresse** (`picStand`): die Adresse bleibt gleich, und
     `max-age` gilt auch für den, der das Bild gerade gewechselt hat.
+- **Die Filter der Suche stehen in der Leiste.** SONEs ADR-0069, angewandt und
+  nicht gebogen (`claude/suche-als-ort.md`): *eine Suche einzugrenzen ist
+  Navigation innerhalb dieser Suche.* Sechs Facetten gab es, und der einzige Weg
+  dorthin war, die Syntax zu kennen — *eine Suche, die Leute belohnt, die die
+  Dokumentation gelesen haben, in einer Anwendung, deren übrige Bildschirme das
+  nicht tun.*
+  - **Die Abfrage steht in der Adresse**, nicht im Zustand: ein Text, drei
+    Schreiber (das Feld über dem Baum, das Feld im Bildschirm, jedes
+    Bedienelement). Eine Kopie wäre eine zweite Antwort auf „wonach wird
+    gesucht", und die beiden liefen beim ersten Gebrauch auseinander.
+  - **Der Freitext bleibt stehen.** `buildTaskQuery` ersetzt oder entfernt eine
+    Facette und lässt den Text in Ruhe — niemand tippt gern in ein Feld, das
+    sich selbst umschreibt. „Filter zurücknehmen" nimmt darum die Filter und
+    nicht das Wort.
+  - **Derselbe Klick nimmt zurück**: ein Filter, den man nur setzen kann,
+    braucht einen zweiten Weg zum Entfernen — und der wäre die Syntax, die
+    dieses Panel gerade ersetzt.
+  - **Das Symbol in der Schiene heißt nicht „Suche starten", sondern ist der
+    Weg zurück** zu einer Suche. Es zeigte auf eine Platzhalterseite, während es
+    die Suche als Ort längst gab.
+- **Es gibt zwei Panels: eines für den Bildschirm, eines für das Telefon.** Ein
+  Prüfskript, das `.panel-list` ohne `.first()` benutzt, trifft zwei Knöpfe und
+  bricht mit „strict mode violation" ab — kein Fehler in der Anwendung.
 - **`pnpm check` ist genau das, was die CI fährt.** Erst standen die Prüfungen
   einzeln in der Workflow-Datei, und `pnpm -r typecheck` scheiterte dort — in
   einem frischen Klon gibt es kein `dist`, und `@sote/core` zeigt mit `types`

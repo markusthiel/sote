@@ -3269,3 +3269,9 @@ a.btn {
 label.btn {
   cursor: pointer;
 }
+
+/* Eine Filterzeile, die zurückgenommen wird: leiser als die Filter selbst,
+   weil sie nichts findet, sondern etwas aufhebt. */
+.panel-row.quiet {
+  color: var(--text-muted);
+}
