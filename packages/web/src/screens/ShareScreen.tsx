@@ -23,6 +23,7 @@ import { useCallback, useEffect, useState } from 'react';
 
 import { useNudge } from '../hooks/useNudge.js';
 import { api, ApiError } from '../api.js';
+import { Detail, guestIO } from './Detail.js';
 import { SoteMark } from '../components/Logo.js';
 import { QuickAdd } from '../components/QuickAdd.js';
 
@@ -41,6 +42,8 @@ export function ShareScreen({ token, now }: { token: string; now: Date }) {
   const [notice, setNotice] = useState<string | undefined>(undefined);
   const [gone, setGone] = useState(false);
   const [showDone, setShowDone] = useState(false);
+  /** Welche Aufgabe offen ist — ein Zustand, kein Ort: ein Gast hat keine Adresse. */
+  const [offenAufgabe, setOffenAufgabe] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
@@ -153,13 +156,26 @@ export function ShareScreen({ token, now }: { token: string; now: Date }) {
         </svg>
       </button>
       <div className="task-mid">
-        <div className="task-title">{t.title}</div>
+        {/*
+          Der Titel öffnet die Detailspalte — wie beim Mitglied.
+          Gemeldet: „Die Seitenleiste mit Aufgabendetails braucht ein geteilter
+          User auch." Ein Knopf und kein `div`: was man drücken kann, muss auch
+          mit der Tastatur erreichbar sein.
+        */}
+        <button
+          type="button"
+          className="task-title as-link"
+          aria-expanded={offenAufgabe === t.id}
+          onClick={() => setOffenAufgabe(offenAufgabe === t.id ? null : t.id)}
+        >
+          {t.title}
+        </button>
       </div>
     </div>
   );
 
   return (
-    <div className="guest">
+    <div className="guest" data-detail={offenAufgabe !== null}>
       <div className="guest-head">
         <SoteMark size={22} />
         <span className="guest-right">
@@ -226,6 +242,32 @@ export function ShareScreen({ token, now }: { token: string; now: Date }) {
           </>
         ) : null}
       </div>
+
+      {/*
+        DIESELBE Spalte wie beim Mitglied, über eine andere Anbindung.
+        Sie zweimal zu bauen wäre zweimal derselbe Bildschirm, und der eine
+        hätte irgendwann ein Feld, das der andere nicht hat.
+
+        Die Spalte holt ihre Projektliste selbst und bekommt sie nicht übergeben
+        — beim Gast liefert `/api/projects` nichts, weil er keine Sitzung hat,
+        und dann fehlt der Ortswechsler von selbst. Ein Gast verschiebt nichts:
+        das wäre ein Weg aus der Freigabe hinaus, und der Server lehnt es
+        ohnehin ab.
+      */}
+      {offenAufgabe === null ? null : (
+        <Detail
+          taskId={offenAufgabe}
+          workspace={undefined}
+          io={guestIO(token, offenAufgabe)}
+          // Ohne Schreibrecht sind die Felder ABWESEND, nicht deaktiviert:
+          // der Server lehnt mit 403 ab, und ein Feld, in das man tippen kann
+          // und das dann ablehnt, ist schlimmer als keines.
+          canWrite={darfSchreiben}
+          now={new Date()}
+          onClose={() => setOffenAufgabe(null)}
+          onChanged={() => void load().catch(() => undefined)}
+        />
+      )}
     </div>
   );
 }

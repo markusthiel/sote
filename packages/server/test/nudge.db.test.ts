@@ -177,6 +177,20 @@ test('„zuletzt benutzt" an einer Freigabe klingelt nicht', async () => {
     [ws, p!.id, `hash-${process.pid}`],
   );
 
+  /*
+   * Erst abwarten, was das ANLEGEN geläutet hat.
+   *
+   * Ein `INSERT` in `shares` klingelt selbst (`shares`), und unter Last kam
+   * diese Klingel erst im Messfenster des nächsten Schritts an — dann sah der
+   * Test dort ein `['shares']`, das er dem Benutzen zuschrieb. Im vollen Lauf
+   * rot, allein grün: die Sorte Wackler, die man nur mit einem zweiten Lauf
+   * findet.
+   *
+   * Eine leere Messung ist genau der richtige Weg zu warten: sie räumt das
+   * Fenster leer und braucht keine geratene Pause.
+   */
+  await horch(async () => undefined);
+
   const beim_benutzen = await horch(() =>
     pool.query('UPDATE shares SET last_used_at = now() WHERE id = $1', [sh!.id]),
   );

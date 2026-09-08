@@ -122,6 +122,39 @@ function readPatch(body: Record<string, unknown>): import('./tasks.js').Patch {
 }
 
 /** Was die Oberfläche von einer Aufgabe braucht. Nicht die Zeile. */
+/**
+ * Eine Aufgabe **und ihr Umfeld**, wie die Detailspalte sie braucht.
+ *
+ * Herausgezogen, weil es zwei Türen gibt: ein Mitglied ruft `/api/tasks/:id`,
+ * ein Gast `/api/share/:token/tasks/:id`. Mein erster Gast-Zweig gab die
+ * **innere** Form zurück — Daten statt ISO-Zeichenketten und `recurrence:
+ * undefined` statt `null` —, und die Spalte prüfte `!== null`, fand `undefined`
+ * und griff auf `.says` zu: ein JS-Fehler beim Gast und eine leere Spalte.
+ *
+ * Zwei Abbildungen für eine Ansicht sind zwei Wahrheiten über eine Aufgabe. Ich
+ * habe das im Kommentar über `DetailIO` selbst geschrieben und es einen Zweig
+ * weiter falsch gemacht.
+ */
+export function detailView(d: Awaited<ReturnType<typeof detail>>) {
+  return {
+    task: taskView(d.task),
+    projectName: d.projectName,
+    children: d.children.map(taskView),
+    comments: d.comments.map((c) => ({ ...c, createdAt: c.createdAt.toISOString() })),
+    assignees: d.assignees,
+    // Kein Feld „Herkunft: keine".
+    ...(d.origin === undefined
+      ? {}
+      : {
+          origin: {
+            url: d.origin.url,
+            pageTitle: d.origin.pageTitle,
+            seenAt: d.origin.seenAt.toISOString(),
+          },
+        }),
+  };
+}
+
 function taskView(row: TaskRow) {
   const rec = recurrenceOf(row);
   return {
@@ -1623,27 +1656,7 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
 
   const one = /^\/api\/tasks\/([0-9a-f-]{36})$/.exec(path);
   if (one && method === 'GET') {
-    const d = await detail(ctx.pool, one[1]!, workspaceId);
-    json(res, 200, {
-      task: taskView(d.task),
-      projectName: d.projectName,
-      children: d.children.map(taskView),
-      comments: d.comments.map((c) => ({
-        ...c,
-        createdAt: c.createdAt.toISOString(),
-      })),
-      assignees: d.assignees,
-      // Kein Feld „Herkunft: keine".
-      ...(d.origin === undefined
-        ? {}
-        : {
-            origin: {
-              url: d.origin.url,
-              pageTitle: d.origin.pageTitle,
-              seenAt: d.origin.seenAt.toISOString(),
-            },
-          }),
-    });
+    json(res, 200, detailView(await detail(ctx.pool, one[1]!, workspaceId)));
     return;
   }
 

@@ -1793,6 +1793,26 @@ erfunden.
   stiller `EventSource`-Fehler. `check-routes-reachable.mjs` prüft das jetzt und
   nennt die verschluckende Zeile.
 
+- **Eine Ansicht, zwei Türen: eine austauschbare Anbindung.** Die Detailspalte
+  braucht vier Wege (lesen, ändern, Teilaufgabe, Kommentar); ein Mitglied ruft
+  `/api/tasks/…`, ein Gast `/api/share/:token/tasks/…`. `DetailIO` mit
+  `memberIO` und `guestIO` — sie zweimal zu bauen wäre zweimal derselbe
+  Bildschirm, und der eine hätte irgendwann ein Feld, das der andere nicht hat.
+  - **Und die Abbildung gehört dazu.** Mein Gast-Zweig gab erst die *innere*
+    Form zurück (Daten statt ISO-Zeichenketten, `recurrence: undefined` statt
+    `null`), die Spalte prüfte `!== null` und griff auf `.says` zu: JS-Fehler
+    beim Gast, leere Spalte. `detailView` ist jetzt eine Stelle für beide — ich
+    hatte die Regel im Kommentar darüber selbst geschrieben und einen Zweig
+    weiter gebrochen.
+  - **Lesen zuerst.** Die Schreibprüfung stand ganz oben in `/tasks/:id` und
+    hätte jedem Lese-Link eine Detailspalte gegeben, die 403 sagt. Sie sitzt
+    jetzt an jedem schreibenden Zweig.
+  - **Ohne Schreibrecht sind die Felder abwesend, nicht deaktiviert** — die
+    Notiz bleibt lesbar, denn ein Lese-Link soll Inhalt sehen. Ein Feld, in das
+    man tippen kann und das dann ablehnt, war hier schon sechs Mal der Fehler.
+  - **Ein Gast kommentiert als „über einen Link".** Ein CHECK aus Migration 0001
+    verlangt genau eines von beiden — Konto **oder** Name; mit `author_id = NULL`
+    allein bricht der Einfügeversuch.
 - **`pnpm check` ist genau das, was die CI fährt.** Erst standen die Prüfungen
   einzeln in der Workflow-Datei, und `pnpm -r typecheck` scheiterte dort — in
   einem frischen Klon gibt es kein `dist`, und `@sote/core` zeigt mit `types`

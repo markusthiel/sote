@@ -610,6 +610,31 @@ export const api = {
   shareReopen: (token: string, id: string) =>
     call<{ ok: true }>(`/api/share/${token}/tasks/${id}/complete`, { method: 'DELETE' }),
 
+  /*
+   * Die Detailspalte eines Gasts — vier Wege, dieselben wie beim Mitglied.
+   *
+   * Ohne Arbeitsbereich: der Token sagt schon, worum es geht. Und was ein Gast
+   * ändern darf, entscheidet der Server (eine Auswahlliste in `shareRoutes`) —
+   * ein Client, der seine Rechte selbst kennt, ist keine Rechteprüfung.
+   */
+  shareDetail: (token: string, id: string) =>
+    call<Detail>(`/api/share/${token}/tasks/${id}`),
+  sharePatch: (token: string, id: string, fields: Record<string, unknown>) =>
+    call<{ ok: true }>(`/api/share/${token}/tasks/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(fields),
+    }),
+  shareAddChild: (token: string, id: string, title: string) =>
+    call<unknown>(`/api/share/${token}/tasks/${id}/children`, {
+      method: 'POST',
+      body: JSON.stringify({ title }),
+    }),
+  shareAddComment: (token: string, id: string, body: string) =>
+    call<unknown>(`/api/share/${token}/tasks/${id}/comments`, {
+      method: 'POST',
+      body: JSON.stringify({ body }),
+    }),
+
   settings: () => call<SettingsAnswer>('/api/settings'),
   /** `null` bei einem Feld heißt „nichts gesagt" — die Ebene darüber gilt. */
   patchSettings: (

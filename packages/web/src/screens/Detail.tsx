@@ -27,19 +27,85 @@ import { whenLabel } from '../dates.js';
 
 const PRIORITY_NAMES = ['', 'Dringend', 'Wichtig', 'Normal', 'Später'] as const;
 
+/**
+ * Die vier Wege, über die diese Spalte mit dem Server spricht.
+ *
+ * **Als austauschbare Anbindung und nicht als vier Aufrufe von `api`**, weil es
+ * zwei Türen zu derselben Ansicht gibt: ein Mitglied ruft `/api/tasks/…`, ein
+ * Gast `/api/share/:token/tasks/…`. Gemeldet war der Anlass — „die Seitenleiste
+ * mit Aufgabendetails braucht ein geteilter User auch."
+ *
+ * Die Spalte zweimal zu bauen wäre zweimal derselbe Bildschirm, und der eine
+ * hätte irgendwann ein Feld, das der andere nicht hat. Genau dieselbe
+ * Begründung wie beim Herausziehen von `createWorkspaceIn`.
+ */
+export interface DetailIO {
+  load: () => Promise<DetailData>;
+  patch: (fields: Record<string, unknown>) => Promise<unknown>;
+  addChild: (title: string) => Promise<unknown>;
+  addComment: (body: string) => Promise<unknown>;
+}
+
+/** Die Anbindung eines Mitglieds. */
+export const memberIO = (taskId: string, workspace: string | undefined): DetailIO => ({
+  load: () => api.detail(taskId, workspace),
+  patch: (fields) => api.patch(taskId, fields as never, workspace),
+  addChild: (title) => api.addChild(taskId, title, workspace),
+  addComment: (body) => api.addComment(taskId, body, workspace),
+});
+
+/**
+ * Die Anbindung eines Gasts.
+ *
+ * Derselbe Satz von vier Wegen, andere Adresse — und **kein** Arbeitsbereich:
+ * der Token sagt schon, worum es geht. Was der Gast ändern darf, entscheidet
+ * der Server (eine Auswahlliste in `shareRoutes`), nicht diese Datei: ein
+ * Client, der seine Rechte selbst kennt, ist keine Rechteprüfung.
+ */
+export const guestIO = (token: string, taskId: string): DetailIO => ({
+  load: () => api.shareDetail(token, taskId),
+  patch: (fields) => api.sharePatch(token, taskId, fields),
+  addChild: (title) => api.shareAddChild(token, taskId, title),
+  addComment: (body) => api.shareAddComment(token, taskId, body),
+});
+
 export function Detail({
   taskId,
   workspace,
+  io,
+  canWrite,
   now,
   onClose,
   onChanged,
 }: {
   taskId: string;
   workspace: string | undefined;
+  /**
+   * Wie diese Spalte mit dem Server spricht.
+   *
+   * Ohne Angabe die Anbindung eines Mitglieds — damit die vorhandenen Aufrufer
+   * unverändert bleiben und der Gast der einzige ist, der etwas mitgibt.
+   */
+  io?: DetailIO;
+  /**
+   * Darf hier geschrieben werden?
+   *
+   * `false` heißt: die Felder sind **abwesend**, nicht deaktiviert. Gefunden am
+   * Lese-Link: die Spalte bot Notiz und Kommentar an, der Server lehnte mit 403
+   * ab — ein Knopf, der aussieht wie einer und nichts tut, war in diesem
+   * Projekt schon sechs Mal der Fehler.
+   *
+   * Ein Mitglied hat immer Schreibrecht (die Rechteprüfung sitzt am
+   * Arbeitsbereich), darum ist die Vorgabe `true` und nur der Gast gibt etwas
+   * mit.
+   */
+  canWrite?: boolean;
   now: Date;
   onClose: () => void;
   onChanged: () => void;
 }) {
+  const anbindung = io ?? memberIO(taskId, workspace);
+  const darfSchreiben = canWrite !== false;
   const [data, setData] = useState<DetailData | undefined>(undefined);
   const [notice, setNotice] = useState<string | undefined>(undefined);
   const [busy, setBusy] = useState(false);
@@ -58,7 +124,7 @@ export function Detail({
 
   const load = useCallback(async () => {
     try {
-      setData(await api.detail(taskId, workspace));
+      setData(await anbindung.load());
     } catch (e) {
       setNotice(e instanceof ApiError ? e.message : 'Laden ging nicht.');
     }
@@ -142,7 +208,7 @@ export function Detail({
         onBlur={(e) => {
           const next = e.target.value.trim();
           if (next !== '' && next !== task.title) {
-            void save(() => api.patch(task.id, { title: next }, workspace));
+            void save(() => anbindung.patch({ title: next }));
           } else {
             e.target.value = task.title;
           }
@@ -178,7 +244,7 @@ export function Detail({
               disabled={task.projectId === null}
               onClick={() => {
                 close();
-                void save(() => api.patch(task.id, { projectId: null }, workspace));
+                void save(() => anbindung.patch({ projectId: null }));
               }}
             >
               <span className="empty-value">ohne Projekt</span>
@@ -195,7 +261,7 @@ export function Detail({
                   aria-current={p.id === task.projectId}
                   onClick={() => {
                     close();
-                    void save(() => api.patch(task.id, { projectId: p.id }, workspace));
+                    void save(() => anbindung.patch({ projectId: p.id }));
                   }}
                 >
                   <span
@@ -232,11 +298,10 @@ export function Detail({
                 onClick={() => {
                   close();
                   void save(() =>
-                    api.patch(
-                      task.id,
-                      { planned: o.at.toISOString(), plannedAllDay: o.allDay },
-                      workspace,
-                    ),
+                    anbindung.patch({
+                      planned: o.at.toISOString(),
+                      plannedAllDay: o.allDay,
+                    }),
                   );
                 }}
               >
@@ -256,7 +321,7 @@ export function Detail({
               disabled={task.planned === null}
               onClick={() => {
                 close();
-                void save(() => api.patch(task.id, { planned: null }, workspace));
+                void save(() => anbindung.patch({ planned: null }));
               }}
             >
               <span className="empty-value">kein Datum</span>
@@ -266,11 +331,7 @@ export function Detail({
               onPick={(at) => {
                 close();
                 void save(() =>
-                  api.patch(
-                    task.id,
-                    { planned: at.toISOString(), plannedAllDay: true },
-                    workspace,
-                  ),
+                  anbindung.patch({ planned: at.toISOString(), plannedAllDay: true }),
                 );
               }}
             />
@@ -300,7 +361,7 @@ export function Detail({
               disabled={task.due === null}
               onClick={() => {
                 close();
-                void save(() => api.patch(task.id, { due: null }, workspace));
+                void save(() => anbindung.patch({ due: null }));
               }}
             >
               <span className="empty-value">keine Frist</span>
@@ -310,7 +371,7 @@ export function Detail({
               onPick={(at) => {
                 close();
                 void save(() =>
-                  api.patch(task.id, { due: at.toISOString(), dueAllDay: true }, workspace),
+                  anbindung.patch({ due: at.toISOString(), dueAllDay: true }),
                 );
               }}
             />
@@ -341,7 +402,7 @@ export function Detail({
               aria-current={level === task.priority}
               onClick={() => {
                 close();
-                void save(() => api.patch(task.id, { priority: level }, workspace));
+                void save(() => anbindung.patch({ priority: level }));
               }}
             >
               <span className="fpop-dot" data-priority={level} aria-hidden="true" />
@@ -375,6 +436,15 @@ export function Detail({
 
       <div className="detail-section">
         <div className="group-label">Notiz</div>
+        {!darfSchreiben ? (
+          // Lesbar bleibt sie: eine Notiz ist Inhalt, und ein Lese-Link soll
+          // Inhalt sehen. Nur das Feld, in das man tippt, fehlt.
+          task.note === '' ? (
+            <p className="muted small">Keine Notiz.</p>
+          ) : (
+            <p className="note-read">{task.note}</p>
+          )
+        ) : (
         <textarea
           className="note"
           ref={noteBox}
@@ -385,10 +455,11 @@ export function Detail({
           placeholder="Was man wissen muss, um das zu tun."
           onBlur={(e) => {
             if (e.target.value !== task.note) {
-              void save(() => api.patch(task.id, { note: e.target.value }, workspace));
+              void save(() => anbindung.patch({ note: e.target.value }));
             }
           }}
         />
+        )}
       </div>
 
       <div className="detail-section">
@@ -448,6 +519,7 @@ export function Detail({
             ) : null}
           </div>
         ))}
+        {!darfSchreiben ? null : (
         <div className="child add">
           <span className="plus" aria-hidden="true">
             +
@@ -463,10 +535,11 @@ export function Detail({
               const value = childLine.trim();
               if (value === '') return;
               setChildLine('');
-              void save(() => api.addChild(task.id, value, workspace));
+              void save(() => anbindung.addChild(value));
             }}
           />
         </div>
+        )}
       </div>
 
       <div className="detail-section">
@@ -480,6 +553,7 @@ export function Detail({
             <div className="bd">{c.body}</div>
           </div>
         ))}
+        {!darfSchreiben ? null : (
         <textarea
           className="note"
           rows={2}
@@ -494,9 +568,13 @@ export function Detail({
             const value = commentLine.trim();
             if (value === '') return;
             setCommentLine('');
-            void save(() => api.addComment(task.id, value, workspace));
+            void save(() => anbindung.addComment(value));
           }}
         />
+        )}
+        {darfSchreiben || data.comments.length > 0 ? null : (
+          <p className="muted small">Noch kein Gespräch.</p>
+        )}
       </div>
 
       {notice !== undefined ? <p className="note-error">{notice}</p> : null}

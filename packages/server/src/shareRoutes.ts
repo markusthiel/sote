@@ -27,8 +27,10 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { Pool } from 'pg';
 
 import { queryOne } from './db.js';
+import { addChild, addComment, detail } from './detail.js';
 import { stream } from './nudge.js';
 import { fail, json, readJson } from './http/respond.js';
+import { detailView } from './routes.js';
 import { accessByToken, type RightLevel } from './shares.js';
 import { complete, NotFound, OutOfOrder, patch, reopen, createFromLine } from './tasks.js';
 import { list } from './views.js';
@@ -193,16 +195,71 @@ export async function shareRoutes(
     return;
   }
 
-  const taskPath = /^\/tasks\/([0-9a-f-]{36})(\/complete)?$/.exec(rest);
+  const taskPath = /^\/tasks\/([0-9a-f-]{36})(\/complete|\/children|\/comments)?$/.exec(rest);
   if (taskPath !== null) {
-    if (!darfSchreiben()) return nurLesen();
-    const taskId = taskPath[1]!;
-    // Die Prüfung steht VOR jeder Verzweigung: eine Id in der Adresse ist eine
-    // Behauptung des Aufrufers, nicht eine Auskunft.
-    if (!(await inProject(ctx.pool, taskId, access.projectId))) {
+    /*
+     * **Lesen zuerst**, denn ein Link, der nur lesen darf, darf die Aufgabe
+     * ansehen.
+     *
+     * Vorher stand `darfSchreiben()` ganz oben und verweigerte jeden Weg unter
+     * `/tasks/:id` — dann hätte ein Lese-Link eine Detailspalte, die 403 sagt.
+     * Die Schreibprüfung sitzt jetzt an jedem schreibenden Zweig, und das ist
+     * die Reihenfolge, die die Sache selbst hat.
+     */
+    const taskIdVor = taskPath[1]!;
+    if (!(await inProject(ctx.pool, taskIdVor, access.projectId))) {
       fail(res, 404, 'no_task', 'diese Aufgabe gehört nicht zu diesem Link');
       return;
     }
+
+    if (taskPath[2] === undefined && method === 'GET') {
+      /*
+       * Die Detailspalte eines Gasts — dieselbe Abfrage wie beim Mitglied.
+       *
+       * Gemeldet: „Die Seitenleiste mit Aufgabendetails braucht ein geteilter
+       * User auch." Zwei Abfragen für dieselbe Ansicht wären zwei Wahrheiten
+       * über eine Aufgabe, und die eine hätte irgendwann ein Feld weniger.
+       */
+      // DIESELBE Abbildung wie beim Mitglied: `detailView`. Die innere Form
+      // hier durchzureichen war mein Fehler — sie trägt Daten statt
+      // Zeichenketten und `undefined` statt `null`.
+      json(res, 200, detailView(await detail(ctx.pool, taskIdVor, access.workspaceId)));
+      return;
+    }
+
+    if (taskPath[2] === '/children' && method === 'POST') {
+      if (!darfSchreiben()) return nurLesen();
+      const body = (await readJson(req)) as { title?: unknown };
+      const titel = String(body?.title ?? '').trim();
+      if (titel === '') {
+        fail(res, 400, 'no_title', 'ohne Titel keine Teilaufgabe');
+        return;
+      }
+      // `null` als Urheber: ein Gast ist niemand (Konzept 10e).
+      const kind = await addChild(ctx.pool, taskIdVor, access.workspaceId, null, titel);
+      json(res, 201, kind);
+      return;
+    }
+
+    if (taskPath[2] === '/comments' && method === 'POST') {
+      if (!darfSchreiben()) return nurLesen();
+      const body = (await readJson(req)) as { body?: unknown };
+      const text = String(body?.body ?? '').trim();
+      if (text === '') {
+        fail(res, 400, 'empty', 'ein leerer Kommentar ist keiner');
+        return;
+      }
+      /*
+       * Ein Gast kommentiert als **niemand**, und das erscheint als „über einen
+       * Link". Ehrlicher als ein erfundener Name — und die Benachrichtigung
+       * daran (Migration 0019) trägt `actor_id = NULL` genau dafür.
+       */
+      json(res, 201, await addComment(ctx.pool, taskIdVor, access.workspaceId, null, text));
+      return;
+    }
+
+    if (!darfSchreiben()) return nurLesen();
+    const taskId = taskIdVor;
 
     try {
       if (taskPath[2] === '/complete' && method === 'POST') {
@@ -218,7 +275,7 @@ export async function shareRoutes(
       if (taskPath[2] === undefined && method === 'PATCH') {
         const body = (await readJson(req)) as Record<string, unknown>;
         /*
-         * **Nur Titel und Zeitpunkt.** Nicht das Projekt (das wäre ein Weg aus
+         * **Titel, Notiz, Zeitpunkte, Priorität.** Nicht das Projekt (das wäre ein Weg aus
          * der Freigabe hinaus), nicht der Papierkorb (der ist ein Ort des
          * Arbeitsbereichs), nicht die Zuweisung (es gibt hier niemanden, dem
          * man etwas zuweist).
@@ -228,7 +285,15 @@ export async function shareRoutes(
          * versehentlich zu einem Recht des Gasts.
          */
         const erlaubt: Record<string, unknown> = {};
-        for (const feld of ['title', 'plannedAt', 'plannedAllDay', 'dueAt', 'dueAllDay', 'priority']) {
+        for (const feld of [
+          'title',
+          'note',
+          'planned',
+          'plannedAllDay',
+          'due',
+          'dueAllDay',
+          'priority',
+        ]) {
           if (feld in (body ?? {})) erlaubt[feld] = body[feld];
         }
         if (Object.keys(erlaubt).length === 0) {

@@ -3177,3 +3177,54 @@ a.btn {
   font-size: 11px;
   color: var(--text-faint);
 }
+
+/* Die Detailspalte beim Gast.
+   Derselbe Aufbau wie beim Mitglied: die Liste schrumpft, die Spalte kommt
+   rechts daneben — und erst ab 800px, weil darunter zwei Spalten aus einer
+   Liste eine Wand machen. */
+@media (min-width: 800px) {
+  .guest[data-detail='true'] {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 340px;
+    grid-template-rows: auto 1fr;
+    align-items: start;
+  }
+
+  .guest[data-detail='true'] .guest-head {
+    grid-column: 1 / -1;
+  }
+
+  .guest[data-detail='true'] .detail {
+    position: sticky;
+    top: 0;
+    max-height: 100vh;
+    overflow-y: auto;
+    border-left: 1px solid var(--line);
+  }
+}
+
+/* Ein Titel, der ein Knopf ist: wie Text aussehen, wie ein Knopf funktionieren.
+   Ohne das trägt er die Vorgaben des Browsers (Rahmen, Mittelsatz, kleinere
+   Schrift) und fällt aus der Zeile. */
+.task-title.as-link {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+/* Eine Notiz, die nur gelesen wird: dieselbe Breite und derselbe Zeilenfall wie
+   im Feld, damit ein Lese-Link nicht anders aussieht als ein Schreib-Link —
+   nur ohne die Einladung zu tippen. */
+.note-read {
+  margin: 0;
+  white-space: pre-wrap;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--text);
+}

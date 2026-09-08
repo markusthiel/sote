@@ -518,3 +518,179 @@ test('ein Link legt nichts in ein fremdes Projekt, auch nicht über #projekt', a
   );
   assert.equal(row!.project_id, projectId!.id, 'liegt im freigegebenen Projekt');
 });
+
+/* ── Die Detailspalte eines Gasts ────────────────────────────────────────────
+ *
+ * Gemeldet: „Die Seitenleiste mit Aufgabendetails braucht ein geteilter User
+ * auch." Geprüft wird hier über HTTP, weil genau die **Verzweigung** in
+ * `shareRoutes` die Sache ist — welcher Weg bei welchem Recht antwortet.
+ */
+
+/**
+ * Ein Link auf ein Projekt, über die Route des Eigentümers.
+ *
+ * Projekt und Ordner werden **einmal** angelegt und dann wiederverwendet:
+ * `projects_sibling_name` verbietet zwei Geschwister gleichen Namens, und mein
+ * erster Helfer legte sie bei jedem Aufruf neu an — vier Tests, drei
+ * Schlüsselverletzungen. Die Aufgabe ist neu je Aufruf, damit die Tests sich
+ * nicht gegenseitig die Kommentare und Teilaufgaben zählen.
+ */
+let gastProjekt: string | undefined;
+let gastZaehler = 0;
+async function linkAuf(right: 'read' | 'edit'): Promise<{ token: string; taskId: string }> {
+  /*
+   * Ohne Schlüssel gibt es keine Freigaben — und dann antwortet jeder Gast-Weg
+   * 404, was aussieht wie ein Fehler in der Route. Genau so ist es mir
+   * passiert: sechs Tests rot, und der Grund war eine fehlende Variable in
+   * dieser Datei.
+   */
+  process.env['SOTE_SHARE_KEY'] ??= Buffer.alloc(32, 7).toString('hex');
+  if (gastProjekt === undefined) {
+    const ordner = await pool.query(
+      `INSERT INTO projects (workspace_id, name, kind, sort_key)
+       VALUES ($1,'Gast-Ordner','folder','zz1') RETURNING id`,
+      [workspaceId],
+    );
+    const projekt = await pool.query(
+      `INSERT INTO projects (workspace_id, parent_id, name, kind, sort_key)
+       VALUES ($1,$2,'Gast-Projekt','list','zz2') RETURNING id`,
+      [workspaceId, ordner.rows[0].id],
+    );
+    gastProjekt = projekt.rows[0].id as string;
+  }
+  /*
+   * Ein eigener Sortierschlüssel je Aufruf.
+   *
+   * `tasks_sibling_order` verbietet zwei Geschwister mit demselben Schlüssel,
+   * und mein Helfer nahm jedes Mal `'a'` im **selben** Projekt — der zweite
+   * Test scheiterte am Anlegen, nicht an der Sache. Die Regel gilt auch für
+   * Tests, und das ist ihr Sinn.
+   */
+  gastZaehler += 1;
+  const aufgabe = await pool.query(
+    `INSERT INTO tasks (workspace_id, project_id, title, sort_key)
+     VALUES ($1,$2,'Dach dichten','a' || $3) RETURNING id`,
+    [workspaceId, gastProjekt, String(gastZaehler)],
+  );
+  const res = await call('/api/shares', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ projectId: gastProjekt, right }),
+  });
+  if (res.status !== 201) {
+    // Die Auskunft, die mir gefehlt hat: sechs Tests waren rot mit „404", und
+    // der Grund lag im Anlegen des Links, nicht im Lesen.
+    throw new Error(`Link anlegen: ${res.status} ${await res.text()}`);
+  }
+  /*
+   * Der Token steht unter `share`, nicht oben.
+   *
+   * Mein erster Helfer las `body.token` und bekam `undefined` — die Adresse
+   * hieß dann `/api/share/undefined/…` und der Server antwortete
+   * ehrlicherweise „gibt es nicht". Sechs Tests rot, und die Ursache war ein
+   * Feldname, den ich geraten statt nachgesehen habe. Zum dritten Mal in
+   * diesem Projekt.
+   */
+  const body = (await res.json()) as { share: { token: string } };
+  return { token: body.share.token, taskId: aufgabe.rows[0].id };
+}
+
+test('ein Lese-Link darf die Aufgabe ANSEHEN', async () => {
+  /*
+   * Die Reihenfolge, die die Sache selbst hat: lesen zuerst.
+   *
+   * Vorher stand die Schreibprüfung ganz oben in `/tasks/:id` und verweigerte
+   * jeden Weg darunter — ein Lese-Link hätte eine Detailspalte gehabt, die 403
+   * sagt. Gefunden beim Bauen, nicht durch einen Test: darum steht er jetzt da.
+   */
+  const { token, taskId } = await linkAuf('read');
+  const res = await call(`/api/share/${token}/tasks/${taskId}`);
+  const text = await res.text();
+  assert.equal(res.status, 200, `Antwort: ${res.status} ${text}`);
+  const body = JSON.parse(text) as { task: { title: string } };
+  assert.equal(body.task.title, 'Dach dichten');
+});
+
+test('ein Lese-Link darf nichts daran ändern', async () => {
+  const { token, taskId } = await linkAuf('read');
+  for (const [weg, art, koerper] of [
+    [`/tasks/${taskId}`, 'PATCH', { title: 'anders' }],
+    [`/tasks/${taskId}/children`, 'POST', { title: 'Teil' }],
+    [`/tasks/${taskId}/comments`, 'POST', { body: 'hallo' }],
+  ] as const) {
+    const res = await call(`/api/share/${token}${weg}`, {
+      method: art,
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(koerper),
+    });
+    assert.equal(res.status, 403, `${art} ${weg}`);
+  }
+});
+
+test('ein Gast kommentiert als „über einen Link"', async () => {
+  /*
+   * Ein CHECK in Migration 0001 (`comment_author_is_one_kind`) verlangt genau
+   * eines von beiden: ein Konto ODER ein Name. Mit `author_id = NULL` allein
+   * bricht der Einfügeversuch — die Sorte Regel, die man beim ersten
+   * Gast-Kommentar findet, und besser dort als später in einer Zeile ohne
+   * Urheber.
+   */
+  const { token, taskId } = await linkAuf('edit');
+  const res = await call(`/api/share/${token}/tasks/${taskId}/comments`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ body: 'Regen kommt' }),
+  });
+  assert.equal(res.status, 201);
+  const frisch = (await res.json()) as { authorName: string | null; authorGuest: string | null };
+  assert.equal(frisch.authorName, null, 'kein Konto');
+  assert.match(frisch.authorGuest ?? '', /Link/, 'und ein ehrlicher Name');
+
+  // Und beim Neuladen dasselbe: sonst zeigt die Oberfläche direkt nach dem
+  // Schreiben einen Kommentar ohne Urheber und danach einen mit.
+  const wieder = await call(`/api/share/${token}/tasks/${taskId}`);
+  const gelesen = (await wieder.json()) as { comments: { authorGuest: string | null }[] };
+  assert.match(gelesen.comments[0]?.authorGuest ?? '', /Link/);
+});
+
+test('ein Gast legt eine Teilaufgabe an, und sie zählt zur Aufgabe', async () => {
+  const { token, taskId } = await linkAuf('edit');
+  const res = await call(`/api/share/${token}/tasks/${taskId}/children`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ title: 'Ziegel holen' }),
+  });
+  assert.equal(res.status, 201);
+  const wieder = await call(`/api/share/${token}/tasks/${taskId}`);
+  const gelesen = (await wieder.json()) as { children: { title: string }[] };
+  assert.equal(gelesen.children.length, 1);
+  assert.equal(gelesen.children[0]?.title, 'Ziegel holen');
+});
+
+test('eine fremde Aufgabe bleibt fremd, auch für die Detailspalte', async () => {
+  // Die Prüfung sitzt VOR jeder Verzweigung: eine Id in der Adresse ist eine
+  // Behauptung des Aufrufers, nicht eine Auskunft.
+  const { token } = await linkAuf('edit');
+  const fremd = await pool.query(
+    `INSERT INTO tasks (workspace_id, title, sort_key) VALUES ($1,'Fremd','zz') RETURNING id`,
+    [workspaceId],
+  );
+  const res = await call(`/api/share/${token}/tasks/${fremd.rows[0].id}`);
+  assert.equal(res.status, 404);
+});
+
+test('ein Gast darf das Projekt einer Aufgabe nicht ändern', async () => {
+  /*
+   * Das wäre ein Weg aus der Freigabe hinaus. Als **Auswahlliste** geprüft und
+   * nicht als Sperrliste: was nicht in der Liste steht, geht nicht — und ein
+   * neues Feld an der Aufgabe wird damit nicht versehentlich zu einem Recht
+   * des Gasts.
+   */
+  const { token, taskId } = await linkAuf('edit');
+  const res = await call(`/api/share/${token}/tasks/${taskId}`, {
+    method: 'PATCH',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ projectId: null }),
+  });
+  assert.equal(res.status, 400, 'nichts Erlaubtes dabei');
+});

@@ -156,7 +156,14 @@ export async function addChild(
   pool: Pool,
   parentId: string,
   workspaceId: string,
-  userId: string,
+  /**
+   * Wer — oder **niemand**.
+   *
+   * `null` ist ein Gast über einen Link (Konzept 10e). Er erscheint als „über
+   * einen Link" und nicht als jemand, und das ist ehrlicher als ein erfundener
+   * Name. Die Spalte lässt es zu, weil der Fall vorgesehen ist.
+   */
+  userId: string | null,
   title: string,
 ): Promise<TaskRow> {
   const clean = title.trim();
@@ -191,8 +198,19 @@ export async function addComment(
   pool: Pool,
   taskId: string,
   workspaceId: string,
-  userId: string,
+  /** `null` ist ein Gast über einen Link — siehe `addChild`. */
+  userId: string | null,
   body: string,
+  /**
+   * Wie ein Gast heißt, wenn er keinen Namen hat.
+   *
+   * Die Spalte `author_guest` ist dafür vorgesehen, und ein CHECK in Migration
+   * 0001 verlangt **genau eines von beiden** (`comment_author_is_one_kind`):
+   * mit `author_id = NULL` allein bricht der Einfügeversuch. Das ist die Sorte
+   * Regel, die man beim ersten Gast-Kommentar findet — und besser dort als
+   * später in einer Zeile ohne Urheber.
+   */
+  guestName = 'über einen Link',
 ): Promise<Comment> {
   const clean = body.trim();
   if (clean === '') throw new OutOfOrder('ein leerer Kommentar ist keiner');
@@ -207,9 +225,11 @@ export async function addComment(
 
     const row = await queryOne<{ id: string; created_at: Date }>(
       client,
-      `INSERT INTO task_comments (task_id, author_id, body) VALUES ($1,$2,$3)
+      `INSERT INTO task_comments (task_id, author_id, author_guest, body)
+       VALUES ($1,$2,$3,$4)
        RETURNING id, created_at`,
-      [taskId, userId, clean],
+      // Genau eines von beiden, wie der CHECK verlangt: ein Konto ODER ein Name.
+      [taskId, userId, userId === null ? guestName : null, clean],
     );
     if (row === undefined) throw new Error('INSERT ohne Zeile');
 
@@ -242,17 +262,25 @@ export async function addComment(
       });
     }
 
-    const me = await queryOne<{ display_name: string }>(
-      client,
-      'SELECT display_name FROM users WHERE id = $1',
-      [userId],
-    );
+    // Nur nachfragen, wenn es jemanden gibt: `WHERE id = NULL` trifft nie und
+    // wäre eine Abfrage, deren Antwort schon feststeht.
+    const me =
+      userId === null
+        ? undefined
+        : await queryOne<{ display_name: string }>(
+            client,
+            'SELECT display_name FROM users WHERE id = $1',
+            [userId],
+          );
     return {
       id: row.id,
       body: clean,
       createdAt: row.created_at,
       authorName: me?.display_name ?? null,
-      authorGuest: null,
+      // Zurückgegeben, wie es in der Zeile steht — sonst zeigt die Oberfläche
+      // direkt nach dem Schreiben einen Kommentar ohne Urheber und nach dem
+      // Neuladen einen mit.
+      authorGuest: userId === null ? guestName : null,
     };
   });
 }
