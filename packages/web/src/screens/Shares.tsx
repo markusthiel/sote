@@ -20,11 +20,14 @@
 import { useCallback, useEffect, useState } from 'react';
 
 import { api, ApiError, type Project } from '../api.js';
+import { matchesShare, type ShareRow, type SharesView } from './SharesPanel.js';
 
 export function Shares({
   workspace,
   projects,
   preselect,
+  view,
+  onList,
 }: {
   workspace: string | undefined;
   projects: readonly Project[];
@@ -37,8 +40,38 @@ export function Shares({
    * hierher führt und nicht still einen Link anlegt (Konzept 10e).
    */
   preselect?: string | undefined;
+  /**
+   * Welche Ansicht das Menü gewählt hat.
+   *
+   * Die Liste kommt **einmal** und wird hier gefiltert — dieselbe Regel wie
+   * beim Posteingang: eine Abfrage je Ansicht wäre eine je Zahl, und die Zahlen
+   * kämen aus verschiedenen Augenblicken.
+   */
+  view: SharesView;
+  /**
+   * Die geladene Liste nach oben melden.
+   *
+   * **Ein** Abruf, zwei Leser: das Menü zählt aus derselben Liste, die dieser
+   * Bildschirm zeigt. Ein zweiter Abruf in der Hülle wäre genau das, was ich
+   * beim Posteingang vermieden habe — zwei Zahlen aus verschiedenen
+   * Augenblicken.
+   *
+   * Nach oben gemeldet und nicht oben geholt, weil das Laden hierher gehört:
+   * dieser Bildschirm legt an und widerruft, also weiß nur er, wann die Liste
+   * neu zu holen ist.
+   */
+  onList: (shares: readonly ShareRow[]) => void;
 }) {
   const [data, setData] = useState<Awaited<ReturnType<typeof api.shares>> | undefined>(undefined);
+
+  /*
+   * Was die gewählte Ansicht übrig lässt.
+   *
+   * Gefiltert hier und nicht im Server: die Liste kommt einmal, und Menü und
+   * Bildschirm zählen daraus. Zwei Wege wären zwei Wahrheiten über dieselbe
+   * Liste (SONEs `InboxPanel`).
+   */
+  const gezeigt = (data?.shares ?? []).filter((s) => matchesShare(s, view, new Date()));
   const [notice, setNotice] = useState<string | undefined>(undefined);
   const [busy, setBusy] = useState(false);
   const [frisch, setFrisch] = useState<string | undefined>(undefined);
@@ -49,7 +82,10 @@ export function Shares({
   const [ablauf, setAblauf] = useState('');
 
   const load = useCallback(async () => {
-    setData(await api.shares(workspace));
+    const out = await api.shares(workspace);
+    setData(out);
+    // Ein Abruf, zwei Leser: das Menü zählt aus dieser Liste.
+    onList(out.shares);
   }, [workspace]);
 
   useEffect(() => {
@@ -223,7 +259,7 @@ export function Shares({
               </tr>
             </thead>
             <tbody>
-              {data.shares.map((s) => (
+              {gezeigt.map((s) => (
                 <tr key={s.id}>
                   <td>
                     {s.projectName}

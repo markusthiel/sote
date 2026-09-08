@@ -1863,6 +1863,23 @@ erfunden.
 - **Es gibt zwei Panels: eines für den Bildschirm, eines für das Telefon.** Ein
   Prüfskript, das `.panel-list` ohne `.first()` benutzt, trifft zwei Knöpfe und
   bricht mit „strict mode violation" ab — kein Fehler in der Anwendung.
+- **Das Menü der Freigaben, mit SONEs Begründung und einer anderen Achse.** Dort
+  sind es *Links, von mir, für mich* — drei Arten von Freigabe. SOTE hat nur
+  **eine** Art, einen Link; die Achse, die es hier gibt, ist der **Zustand**:
+  aktiv, alle, nie benutzt, abgelaufen.
+  - **„Nie benutzt" ist die nützlichste Zeile:** einen Link, den niemand
+    geöffnet hat, kann man ohne Rückfrage zurückziehen — bei einem benutzten
+    muss man jemanden fragen.
+  - **Ein Abruf, zwei Leser.** Der Bildschirm lädt und meldet seine Liste nach
+    oben; das Menü zählt daraus. Nach oben gemeldet und nicht oben geholt, weil
+    das Laden dorthin gehört, wo angelegt und widerrufen wird — und ein zweiter
+    Abruf wären zwei Zahlen aus verschiedenen Augenblicken.
+- **Am falschen Element gemessen, dreimal in einer Sitzung.** Ein Klick auf der
+  ganzen Seite statt in der Leiste; `.panel-list` ohne `.first()` (es gibt zwei
+  Panels); und `main .set-row` statt `main tbody tr`, was die Formularzeilen
+  traf und „nichts gefiltert" meldete, während die Liste sich geändert hatte.
+  **Ein grüner Test ohne Gegenprobe ist eine Behauptung** — und eine
+  Textersetzung ohne `assert` tut still nichts.
 - **`pnpm check` ist genau das, was die CI fährt.** Erst standen die Prüfungen
   einzeln in der Workflow-Datei, und `pnpm -r typecheck` scheiterte dort — in
   einem frischen Klon gibt es kein `dist`, und `@sote/core` zeigt mit `types`

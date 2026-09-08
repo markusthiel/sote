@@ -36,6 +36,7 @@ import { Accounts } from './screens/Accounts.js';
 import { useNudge } from './hooks/useNudge.js';
 import { Invitations } from './screens/Invitations.js';
 import { SearchPanel } from './screens/SearchPanel.js';
+import { SharesPanel, type ShareRow, type SharesView } from './screens/SharesPanel.js';
 import {
   Notifications,
   NotificationsPanel,
@@ -108,6 +109,22 @@ export function App() {
    */
   const { notes, reload: reloadNotes } = useNotifications();
   const [noteView, setNoteView] = useState<NoteView>({ of: 'unread' });
+  /*
+   * Welche Freigaben gezeigt werden.
+   *
+   * „Aktiv" als Vorgabe: was gilt, ist die Frage, mit der man diesen Bereich
+   * aufsucht — abgelaufene sucht man erst, wenn man aufräumt.
+   */
+  const [shareView, setShareView] = useState<SharesView>({ of: 'active' });
+  /*
+   * Die Liste, die der Freigaben-Bildschirm geladen hat.
+   *
+   * Sie kommt von dort nach oben und wird nicht hier geholt: das Laden gehört
+   * zum Bildschirm, der anlegt und widerruft — nur er weiß, wann neu zu holen
+   * ist. Und ein zweiter Abruf wären zwei Zahlen aus verschiedenen
+   * Augenblicken.
+   */
+  const [shareList, setShareList] = useState<readonly ShareRow[]>([]);
   const [panelBusy, setPanelBusy] = useState(false);
   const [panelError, setPanelError] = useState<string | undefined>(undefined);
   const [now] = useState(() => new Date());
@@ -615,6 +632,20 @@ export function App() {
             ist Navigation innerhalb dieser Suche (SONEs ADR-0069, angewandt und
             nicht gebogen). Gemeldet als „Menü im Baum ebenfalls".
           */}
+          {/*
+            Das Menü der Freigaben. Gemeldet wie bei SONE: „auch hier fehlt ein
+            Menü im Baum." Die Achse ist hier der ZUSTAND und nicht die Art —
+            SOTE hat nur eine Art von Freigabe, einen Link.
+          */}
+          {route.kind === 'shares' ? (
+            <SharesPanel
+              shares={shareList}
+              view={shareView}
+              now={now}
+              onPick={setShareView}
+            />
+          ) : null}
+
           {route.kind === 'search' ? (
             <SearchPanel
               q={route.q}
@@ -628,6 +659,7 @@ export function App() {
 
           {SECTION_NAV !== null ||
         route.kind === 'notifications' ||
+        route.kind === 'shares' ||
         route.kind === 'search' ? null : (
           <>
           {/* Die Zahlen kommen aus derselben Abfrage wie die Listen. Keine
@@ -733,6 +765,8 @@ export function App() {
             projects={projects}
             // Vorgewählt, wenn man über den Teilen-Knopf im Baum kommt.
             preselect={route.projectId}
+            view={shareView}
+            onList={setShareList}
           />
         ) : route.kind === 'workspaces' && route.section === 'alle' ? (
           <WorkspaceOverview workspaces={me.workspaces} current={workspace} />
