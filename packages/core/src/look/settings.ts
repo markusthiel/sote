@@ -113,12 +113,29 @@ export function readSettings(value: unknown): Settings {
 export function resolveLook(workspace: Settings, instance: Settings): Look {
   const w = workspace.look ?? {};
   const i = instance.look ?? {};
+  /*
+   * Feld für Feld, und das ist die Stelle, an der ein neues Feld vergessen
+   * wird.
+   *
+   * Genau passiert: `tint` war im Typ, in `readLook` und in
+   * `lookAttributes` — und hier nicht. Der Server speicherte die Tönung
+   * korrekt und antwortete mit `effective.look = {}`; im Browser änderte sich
+   * nichts, und die Tests waren grün, weil sie `readLook` und
+   * `lookAttributes` prüften und nicht diese Funktion.
+   *
+   * Ein `{...i, ...w}` wäre kürzer und würde neue Felder mitnehmen — es wäre
+   * aber falsch: eine Angabe des Arbeitsbereichs würde alle Angaben der
+   * Instanz verdrängen, statt nur die eigene zu setzen. Die Ausführlichkeit
+   * ist der Preis für „gefüllt statt ersetzt", und der Test unten ist der
+   * Preis für die Ausführlichkeit.
+   */
   return {
     ...(w.surfaces !== undefined || i.surfaces !== undefined
       ? { surfaces: { ...i.surfaces, ...w.surfaces } }
       : {}),
     ...(w.corners ?? i.corners ? { corners: (w.corners ?? i.corners)! } : {}),
     ...(w.accent ?? i.accent ? { accent: (w.accent ?? i.accent)! } : {}),
+    ...(w.tint ?? i.tint ? { tint: (w.tint ?? i.tint)! } : {}),
   };
 }
 

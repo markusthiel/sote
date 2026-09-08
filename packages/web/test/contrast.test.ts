@@ -21,7 +21,7 @@ import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 
-import { AA, contrastRatio } from '@sote/core';
+import { AA, contrastRatio, mixSrgb, toHex } from '@sote/core';
 
 const CSS = readFileSync(
   join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'styles.css'),
@@ -29,14 +29,19 @@ const CSS = readFileSync(
 );
 
 /**
- * Löst einen Tokennamen im Themenblock auf.
+ * Löst einen Tokennamen im Themenblock auf — inklusive `color-mix`.
  *
- * Nur `var(--x)`-Ketten und Hex-Werte, kein `color-mix` — die Töne, die hier
- * geprüft werden, sind alle direkt geschrieben. Was `color-mix` benutzt (die
- * Akzentfläche), braucht die Auflösung eines Browsers und ist unten benannt
- * statt stillschweigend übersprungen.
+ * `color-mix(in srgb, …)` ist **linear in sRGB**, auf genau den Hex-Ziffern,
+ * ohne Linearisierung; die Leuchtdichte ist es nicht. Deshalb ist das Mischen
+ * `mixSrgb` und nicht Teil der Kontrastrechnung (SONEs ADR-0135). Genau so
+ * löst ein Browser es auf, und nur so kann dieser Test etwas über das
+ * behaupten, was jemand sieht.
+ *
+ * `tint` ist absichtlich **nicht** gesetzt: der ungetönte Fall ist der, der
+ * für jede Instanz ohne eigene Farbe gilt, und der Test unten prüft
+ * ausdrücklich, dass er exakt der Grundton ist.
  */
-function resolve(name: string, scheme: 'light' | 'dark'): string {
+function resolve(name: string, scheme: 'light' | 'dark', tint?: string): string {
   const block =
     scheme === 'light'
       ? CSS.slice(CSS.indexOf(':root[data-theme="light"]'), CSS.indexOf(':root[data-theme="dark"]'))
@@ -48,13 +53,31 @@ function resolve(name: string, scheme: 'light' | 'dark'): string {
     return m === null ? null : m[1]!.trim();
   };
 
+  const step = (value: string): string => {
+    const plain = /^var\(--([a-z0-9-]+)\)$/.exec(value);
+    if (plain !== null) {
+      const next = look(block, plain[1]!) ?? look(root, plain[1]!);
+      assert.ok(next !== null, `--${plain[1]} (${scheme}) gibt es nicht`);
+      return step(next);
+    }
+
+    // var(--tint, RÜCKFALL) — ohne Tönung gilt der Rückfall.
+    const withFallback = /^var\(--tint,\s*(.+)\)$/.exec(value);
+    if (withFallback !== null) return step(tint ?? withFallback[1]!.trim());
+
+    const mix = /^color-mix\(in srgb,\s*(.+?)\s+(\d+)%,\s*(.+)\)$/.exec(value);
+    if (mix !== null) {
+      const top = step(mix[1]!);
+      const bottom = step(mix[3]!);
+      return toHex(mixSrgb(top, Number(mix[2]), bottom));
+    }
+    return value;
+  };
+
   let value = look(block, name) ?? look(root, name);
-  for (let i = 0; value !== null && i < 8; i += 1) {
-    const m = /^var\(--([a-z0-9-]+)\)$/.exec(value);
-    if (m === null) break;
-    value = look(block, m[1]!) ?? look(root, m[1]!);
-  }
-  assert.ok(value !== null && value.startsWith('#'), `--${name} (${scheme}) löst nicht auf: ${value}`);
+  assert.ok(value !== null, `--${name} (${scheme}) gibt es nicht`);
+  value = step(value);
+  assert.ok(value.startsWith('#'), `--${name} (${scheme}) löst nicht auf: ${value}`);
   return value;
 }
 
@@ -100,6 +123,55 @@ for (const scheme of ['light', 'dark'] as const) {
     }
   });
 }
+
+test('ohne Tönung ist jede Fläche exakt ihr Grundton', () => {
+  /*
+   * Die Korrektur aus dem Status von SONEs ADR-0028, hier als Rechnung.
+   *
+   * Der Rückfall jeder Mischung war dort `transparent`, und `transparent` ist
+   * `rgb(0 0 0 / 0)` — eine Instanz ohne Tönung mischte also nicht *nichts*
+   * bei, sondern vierzehn Prozent von *gar nichts*, und jede Fläche kam leicht
+   * durchsichtig heraus. Unsichtbar auf einer Spalte, unübersehbar auf der
+   * Schublade eines Telefons.
+   *
+   * Eine Farbe mit sich selbst gemischt ist sie selbst. Das prüft dieser Test,
+   * und er prüft es an den Werten und nicht an der Absicht.
+   */
+  const grounds: readonly [string, 'light' | 'dark', string][] = [
+    ['page', 'light', '#faf8f4'],
+    ['surface', 'light', '#f7f5f0'],
+    ['sunken', 'light', '#f0ede5'],
+    ['page', 'dark', '#161615'],
+    ['surface', 'dark', '#1e1d1b'],
+    ['sunken', 'dark', '#121211'],
+  ];
+  for (const [name, scheme, base] of grounds) {
+    assert.equal(
+      resolve(name, scheme).toLowerCase(),
+      base,
+      `--${name} (${scheme}) ist ungetönt nicht sein Grundton`,
+    );
+  }
+});
+
+test('auch mit einer kräftigen Tönung bleibt leiser Text lesbar', () => {
+  // Eine Tönung ist ein RAUM und kein Wert (ADR-0135). Geprüft wird darum
+  // nicht „eine schöne Farbe", sondern die Ecken: volles Rot, volles Blau,
+  // Schwarz und Weiß, in beiden Themen und auf der Fläche, die am meisten
+  // Farbton nimmt.
+  for (const scheme of ['light', 'dark'] as const) {
+    for (const tint of ['#ff0000', '#0000ff', '#000000', '#ffffff']) {
+      const ground = resolve('sunken', scheme, tint);
+      for (const ink of ['text', 'text-muted']) {
+        const ratio = contrastRatio(resolve(ink, scheme), ground);
+        assert.ok(
+          ratio >= AA.text,
+          `--${ink} auf getönter Fläche ${tint} (${scheme}): ${ratio.toFixed(2)}:1`,
+        );
+      }
+    }
+  }
+});
 
 test('was hier NICHT gerechnet wird, steht als Lücke da', () => {
   /*

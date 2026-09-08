@@ -1171,6 +1171,32 @@ Beim Bauen entschieden, weil es ohne Entscheidung keinen Code gibt:
     wäre ein zweiter Ort für dieselbe Rechteprüfung.
   - Die **Lücke von vorhin ist zu**: die Rolle in der Übersicht kam als fest
     eingetragenes „Eigentümer" und kommt jetzt aus `/api/me`.
+- **Die Tönung: eine Farbe für die Möblierung, und der Rückfall ist der
+  Grundton.** Das ist die Korrektur aus dem **Status** von SONEs ADR-0028, nicht
+  aus seinem Text: der Rückfall war dort `transparent`, und `transparent` ist
+  `rgb(0 0 0 / 0)` — eine Instanz ohne Tönung mischte also nicht *nichts* bei,
+  sondern vierzehn Prozent von *gar nichts*. Jede Fläche kam leicht durchsichtig
+  heraus, unsichtbar auf einer Spalte und unübersehbar auf der Schublade eines
+  Telefons. Eine Farbe mit sich selbst gemischt ist sie selbst; ein Test rechnet
+  das nach.
+  - Die Tönung ist ein **Hex-Wert und kein Palettenname**: sie ist jemandes
+    Hausfarbe, und ein Name soll der Palette folgen — die Tönung folgt
+    niemandem.
+  - **Eine Tönung ist ein Raum und kein Wert** (ADR-0135), also wird sie an
+    ihren Ecken geprüft: volles Rot, Blau, Grün, Gelb, Schwarz, Weiß. Dabei
+    fiel leiser Text auf 3,82:1 — `--text-muted` ist jetzt `#595750`, der
+    hellste Wert, der gegen alle davon 4,5:1 hält. Gerechnet, nicht geschätzt.
+  - **Die Tönung gehört an `<html>`, alles andere an die Hülle.** Die
+    Ersetzung einer CSS-Eigenschaft passiert dort, wo sie **deklariert** ist:
+    `--surface` steht in `:root` und liest `var(--tint, …)`, also sieht es eine
+    Tönung an `.app` nicht. Im Browser blieb die Seitenleiste ihr Grundton,
+    obwohl `--tint` sichtbar am Element stand.
+- **Ein neues Feld wird an der Stelle vergessen, die entscheidet.** `tint` war
+  im Typ, in `readLook` und in `lookAttributes` — und nicht in `resolveLook`.
+  Der Server speicherte korrekt und antwortete mit `effective.look = {}`; alle
+  Tests waren grün, weil sie die anderen drei Stellen prüften. Der Test dazu
+  prüft jetzt **jedes Feld eines vollständig gesetzten Aussehens** und nicht
+  „die, die ich kenne".
 - **`pnpm check` ist genau das, was die CI fährt.** Erst standen die Prüfungen
   einzeln in der Workflow-Datei, und `pnpm -r typecheck` scheiterte dort — in
   einem frischen Klon gibt es kein `dist`, und `@sote/core` zeigt mit `types`

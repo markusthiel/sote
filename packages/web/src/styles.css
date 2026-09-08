@@ -95,14 +95,41 @@
   --warning-300: #c9a05a;
 
   /* ── Semantisch ── */
-  --page: var(--paper);
-  --surface: #f7f5f0;
-  --raised: var(--paper-raised);
-  --sunken: var(--ink-50);
+  /* ── Die Tönung, in die Möblierung gemischt ───────────────────────────
+     EINE Farbe für Seitenleiste, Bereiche und Menüs, nicht eine pro Fläche:
+     sie sollen weiter zusammengehören. Die Anteile stehen hier, weil hier die
+     Verhältnisse der Rampe leben — die vertiefte Fläche nimmt am meisten
+     Farbton, die Seite fast keinen.
+
+     DER RÜCKFALL IST DER EIGENE GRUNDTON, NICHT `transparent`. Das ist die
+     Korrektur aus dem Status von SONEs ADR-0028: `transparent` ist
+     `rgb(0 0 0 / 0)`, also mischte eine Instanz ohne Tönung nicht *nichts*
+     bei, sondern vierzehn Prozent von *gar nichts* — jede Fläche kam bei 0,86
+     Alpha heraus und war leicht durchsichtig. Eine Farbe mit sich selbst
+     gemischt ist sie selbst, also ist der ungetönte Fall genau der Grundton. */
+  --page: color-mix(in srgb, var(--tint, var(--paper)) 3%, var(--paper));
+  --surface: color-mix(in srgb, var(--tint, #f7f5f0) 8%, #f7f5f0);
+  --raised: color-mix(in srgb, var(--tint, var(--paper-raised)) 3%, var(--paper-raised));
+  --sunken: color-mix(in srgb, var(--tint, var(--ink-50)) 14%, var(--ink-50));
   --line: var(--ink-100);
   --line-strong: var(--ink-200);
   --text: var(--ink-900);
-  --text-muted: var(--ink-500);
+  /*
+   * Dunkler als der Rampenwert, und zwar gerechnet.
+   *
+   * `--ink-500` reicht auf einer ungetönten Fläche (5,4:1) und fällt auf
+   * 3,82:1, sobald ein Arbeitsbereich eine kräftige Tönung setzt — vierzehn
+   * Prozent Rot auf der vertieften Fläche ergeben `#f2ccc5`, und darauf ist
+   * jedes leise Etikett unter AA.
+   *
+   * Eine Tönung ist ein RAUM und kein Wert (ADR-0135), also wird nicht die
+   * eine schöne Farbe geprüft, sondern die Ecken: volles Rot, Blau, Grün,
+   * Gelb, Schwarz, Weiß. `#595750` ist der hellste Wert, der gegen alle davon
+   * 4,5:1 hält — 84 % von `--ink-500`, gerechnet und nicht geschätzt. Genau
+   * das, was SONEs Kommentar mit „4.54:1 against the worst tint any workspace
+   * can set" meint.
+   */
+  --text-muted: #595750;
   --text-faint: var(--ink-350);
   --accent: var(--accent-500);
   --accent-line: var(--accent-500);
@@ -163,10 +190,12 @@
 :root[data-theme="dark"] {
   color-scheme: dark;
 
-  --page: #161615;
-  --surface: #1e1d1b;
-  --raised: #262522;
-  --sunken: #121211;
+  /* Das dunkle Thema nimmt WENIGER Farbton als das helle, weil ein Farbton
+     gegen Schwarz stärker liest (SONEs Verhältnis, übernommen). */
+  --page: color-mix(in srgb, var(--tint, #161615) 2%, #161615);
+  --surface: color-mix(in srgb, var(--tint, #1e1d1b) 6%, #1e1d1b);
+  --raised: color-mix(in srgb, var(--tint, #262522) 4%, #262522);
+  --sunken: color-mix(in srgb, var(--tint, #121211) 8%, #121211);
   --line: #302e2a;
   --line-strong: #403d38;
   --text: #f7f5f0;
@@ -2460,4 +2489,22 @@ select.target {
   align-items: center;
   gap: 8px;
   font-size: 15px;
+}
+
+/* Farbwähler und Zurücksetzen in einer Zeile. */
+.pick {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.pick input[type='color'] {
+  width: 44px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--sote-radius-md);
+  background: none;
+  cursor: pointer;
 }

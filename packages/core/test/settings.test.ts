@@ -9,7 +9,13 @@
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 
-import { isScheme, readSettings, resolveSettings, SCHEMES } from '../src/look/settings.js';
+import {
+  isScheme,
+  readSettings,
+  resolveLook,
+  resolveSettings,
+  SCHEMES,
+} from '../src/look/settings.js';
 
 test('die Person schlägt den Arbeitsbereich schlägt die Instanz', () => {
   assert.equal(
@@ -60,4 +66,46 @@ test('drei Schemata, und „auto" ist keines davon', () => {
   assert.deepEqual([...SCHEMES], ['system', 'light', 'dark']);
   assert.equal(isScheme('system'), true);
   assert.equal(isScheme('auto'), false, 'ein zweites Wort für dieselbe Sache wäre zwei Wahrheiten');
+});
+
+test('jedes Feld des Aussehens wird wirklich aufgelöst', () => {
+  /*
+   * Der Test, den es nach dem Fehler geben muss.
+   *
+   * `tint` war im Typ, in `readLook` und in `lookAttributes` — und nicht in
+   * `resolveLook`. Der Server speicherte die Tönung korrekt und antwortete mit
+   * `effective.look = {}`; im Browser änderte sich nichts. Alle Tests waren
+   * grün, weil sie die anderen drei Stellen prüften.
+   *
+   * Geprüft wird darum nicht „die Felder, die ich kenne", sondern **jedes Feld
+   * eines vollständig gesetzten Aussehens**. Ein neues Feld, das hier vergessen
+   * wird, fällt beim ersten Lauf auf.
+   */
+  const alles = {
+    surfaces: { rail: 'inverted' as const },
+    corners: 'round' as const,
+    accent: 'blue' as const,
+    tint: '#3355cc' as const,
+  };
+  // Vom Arbeitsbereich gesetzt.
+  assert.deepEqual(resolveLook({ look: alles }, {}), alles);
+  // Von der Instanz gesetzt, Arbeitsbereich sagt nichts.
+  assert.deepEqual(resolveLook({}, { look: alles }), alles);
+  // Und wirklich jedes Feld — nicht „die drei, die ich getippt habe".
+  for (const key of Object.keys(alles)) {
+    assert.ok(
+      key in resolveLook({ look: alles }, {}),
+      `„${key}" wird nicht aufgelöst`,
+    );
+  }
+});
+
+test('der Arbeitsbereich setzt sein Feld, ohne die anderen der Instanz zu verdrängen', () => {
+  // „Gefüllt statt ersetzt": wer nur die Ecken setzt, behält den Akzent der
+  // Instanz. Ein `{...i, ...w}` wäre kürzer und würde das brechen.
+  const out = resolveLook(
+    { look: { corners: 'sharp' } },
+    { look: { accent: 'red', tint: '#112233', corners: 'round' } },
+  );
+  assert.deepEqual(out, { corners: 'sharp', accent: 'red', tint: '#112233' });
 });

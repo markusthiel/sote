@@ -68,6 +68,21 @@ export interface Look {
    * wollen.
    */
   readonly accent?: ChosenColor;
+  /**
+   * Die Tönung, die in die Möblierung gemischt wird.
+   *
+   * **Eine** Farbe für Seitenleiste, Bereiche und Menüs, nicht eine pro
+   * Fläche: sie sollen weiter zusammengehören. Die Anteile stehen im
+   * Stylesheet, weil dort die Verhältnisse der Rampe leben — die vertiefte
+   * Fläche nimmt am meisten Farbton, die Seite fast keinen, und das dunkle
+   * Thema weniger als das helle, weil ein Farbton gegen Schwarz stärker liest.
+   *
+   * Ein **Hex-Wert** und kein Palettenname: eine Tönung ist die Hausfarbe von
+   * jemandem, und die ist selten eine von acht. Ein Name wäre hier auch
+   * inhaltlich falsch — er soll der Palette folgen, und die Tönung folgt
+   * niemandem.
+   */
+  readonly tint?: `#${string}`;
 }
 
 const isTreatment = (v: unknown): v is StoredTreatment =>
@@ -101,11 +116,14 @@ export function readLook(value: unknown): Look {
 
   const corners = raw['corners'];
   const accent = readColor(raw['accent']);
+  const tint = readColor(raw['tint']);
 
   return {
     ...(Object.keys(surfaces).length === 0 ? {} : { surfaces }),
     ...(corners === 'sharp' || corners === 'round' ? { corners } : {}),
     ...(accent === null ? {} : { accent }),
+    // Nur ein Hex-Wert: ein Palettenname wäre hier inhaltlich falsch.
+    ...(tint === null || !tint.startsWith('#') ? {} : { tint: tint as `#${string}` }),
   };
 }
 
@@ -155,6 +173,24 @@ export function lookAttributes(look: Look): {
      * und darum immer noch die gewählte Farbe trägt.
      */
     properties['--accent-base'] = value;
+  }
+  if (look.tint !== undefined) {
+    /*
+     * Gesetzt wird die Tönung, **nicht** die getönten Flächen.
+     *
+     * Die Anteile — drei Prozent auf der Seite, vierzehn auf der vertieften
+     * Fläche — stehen im Stylesheet. Und dort ist der Rückfall jeder Mischung
+     * **der eigene Grundton der Fläche** und nicht `transparent`: das ist die
+     * Korrektur, die im Status von SONEs ADR-0028 steht. `transparent` ist
+     * `rgb(0 0 0 / 0)`, also mischte eine Instanz ohne Tönung nicht *nichts*
+     * bei, sondern sechzehn Prozent von *gar nichts* — jede Fläche kam bei
+     * 0,84 Alpha heraus und war leicht durchsichtig. Auf einer Spalte gegen die
+     * Seite sieht man das nicht, auf der Schublade des Telefons unübersehbar.
+     *
+     * Eine Farbe mit sich selbst gemischt ist sie selbst, also ist der
+     * ungetönte Fall jetzt genau der Grundton.
+     */
+    properties['--tint'] = look.tint;
   }
   return { attributes, properties };
 }

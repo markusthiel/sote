@@ -306,30 +306,84 @@ export function Settings({
       </div>
 
       <div className="set-row">
-        <span className="set-label">Akzent</span>
-        <div className="set-choice" role="radiogroup" aria-label="Akzent">
-          <button
-            type="button"
-            role="radio"
-            aria-checked={look.accent === undefined}
-            disabled={busy}
-            onClick={() => saveLook(scope, look, { accent: undefined })}
-          >
-            Wie entworfen
-          </button>
-          {PALETTE.map((name) => (
+        <span className="set-label">Tönung</span>
+        <div className="set-value">
+          <div className="pick">
+            {/*
+              Ein freier Wähler und keine Palette: eine Tönung ist die
+              Hausfarbe von jemandem, und die ist selten eine von acht. Ein
+              Palettenname wäre hier auch inhaltlich falsch — er soll der
+              Palette folgen, und die Tönung folgt niemandem.
+            */}
+            <input
+              type="color"
+              aria-label="Tönung"
+              disabled={busy}
+              value={look.tint ?? '#f0ede5'}
+              onChange={(e) => saveLook(scope, look, { tint: e.target.value as `#${string}` })}
+            />
             <button
-              key={name}
+              type="button"
+              className="btn"
+              disabled={busy || look.tint === undefined}
+              onClick={() => saveLook(scope, look, { tint: undefined })}
+            >
+              Zurücksetzen
+            </button>
+          </div>
+          <p className="muted small">
+            Wird in Seitenleiste, Bereiche und Menüs gemischt — eine Farbe statt
+            einer pro Fläche, damit sie weiter zusammengehören. Die Seite bleibt
+            fast unberührt.
+          </p>
+        </div>
+      </div>
+
+      <div className="set-row">
+        <span className="set-label">Akzent</span>
+        <div className="set-value">
+          <div className="set-choice" role="radiogroup" aria-label="Akzent">
+            <button
               type="button"
               role="radio"
-              className="swatch-btn"
-              aria-label={name}
-              aria-checked={look.accent === name}
+              aria-checked={look.accent === undefined}
               disabled={busy}
-              style={{ background: `var(--sote-palette-${name})` }}
-              onClick={() => saveLook(scope, look, { accent: name })}
+              onClick={() => saveLook(scope, look, { accent: undefined })}
+            >
+              Wie entworfen
+            </button>
+            {PALETTE.map((name) => (
+              <button
+                key={name}
+                type="button"
+                role="radio"
+                className="swatch-btn"
+                aria-label={name}
+                aria-checked={look.accent === name}
+                disabled={busy}
+                style={{ background: `var(--sote-palette-${name})` }}
+                onClick={() => saveLook(scope, look, { accent: name })}
+              />
+            ))}
+          </div>
+          <div className="pick">
+            {/*
+              Beides ist erlaubt, und der Unterschied ist keine Bequemlichkeit:
+              ein NAME folgt der Palette und ist damit in beiden Themen richtig,
+              ein HEX-WERT ist in beiden derselbe. Wer genau diesen einen Ton
+              will, nimmt den Wähler.
+            */}
+            <input
+              type="color"
+              aria-label="Eigene Akzentfarbe"
+              disabled={busy}
+              value={look.accent?.startsWith('#') === true ? look.accent : '#2f7d6f'}
+              onChange={(e) => saveLook(scope, look, { accent: e.target.value as `#${string}` })}
             />
-          ))}
+            <span className="muted small">
+              Eigene Farbe — ein Name folgt der Palette, ein Wert bleibt er selbst.
+            </span>
+          </div>
         </div>
       </div>
     </section>

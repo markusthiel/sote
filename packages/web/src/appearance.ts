@@ -123,11 +123,36 @@ export function useLook(look: Look | undefined, node: HTMLElement | null): void 
   useEffect(() => {
     if (node === null) return undefined;
     const { attributes, properties } = lookAttributes(look ?? {});
+
+    /*
+     * Die Tönung gehört an `<html>`, alles andere an die Hülle.
+     *
+     * Der Grund ist eine CSS-Regel, die ich nicht bedacht hatte: **die
+     * Ersetzung einer Eigenschaft passiert dort, wo sie DEKLARIERT ist, nicht
+     * wo sie benutzt wird.** `--surface` steht in `:root[data-theme=…]` und
+     * liest `var(--tint, …)`; setzt man `--tint` an `.app`, sieht die
+     * Deklaration in `:root` davon nichts und nimmt den Rückfall. Im Browser
+     * blieb die Seitenleiste exakt ihr Grundton, obwohl `--tint` sichtbar am
+     * Element stand.
+     *
+     * `--accent` ist davon nicht betroffen: es wird an `.app` überschrieben
+     * und in Regeln BENUTZT, die für Elemente darin gelten — da greift die
+     * Vererbung.
+     *
+     * Die Alternative wäre, die ganze Flächenrampe ein drittes Mal an `.app`
+     * zu deklarieren. Das wären dann drei Orte, an denen steht, was eine
+     * Fläche ist.
+     */
+    const root = document.documentElement;
     for (const [key, value] of Object.entries(attributes)) node.setAttribute(key, value);
-    for (const [key, value] of Object.entries(properties)) node.style.setProperty(key, value);
+    for (const [key, value] of Object.entries(properties)) {
+      (key === '--tint' ? root : node).style.setProperty(key, value);
+    }
     return () => {
       for (const key of Object.keys(attributes)) node.removeAttribute(key);
-      for (const key of Object.keys(properties)) node.style.removeProperty(key);
+      for (const key of Object.keys(properties)) {
+        (key === '--tint' ? root : node).style.removeProperty(key);
+      }
     };
   }, [look, node]);
 }
