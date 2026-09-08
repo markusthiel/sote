@@ -48,6 +48,7 @@ import { useEffect, useState } from 'react';
 
 import { api, ApiError, type SettingsAnswer } from '../api.js';
 import { applyScheme } from '../appearance.js';
+import { avatarVariant } from '../imageVariant.js';
 
 /**
  * Die Abschnitte, und wessen Einstellungen sie sind.
@@ -173,12 +174,93 @@ function zoneChoices(): string[] {
   ];
 }
 
+/**
+ * Was ein Profilbild in dieser Datei braucht.
+ *
+ * Als eigener Haken, weil drei Zustände zusammengehören: ob eines da ist, ob
+ * gerade etwas läuft, und ein Zähler, der den Browser zum Neuholen zwingt.
+ * Einzeln im Bildschirm verstreut wären sie drei Dinge, die man einzeln
+ * vergisst.
+ */
+function useAvatar(userId: string): {
+  hatBild: boolean;
+  picStand: number;
+  picBusy: boolean;
+  picNotice: string | undefined;
+  bildHoch: (datei: File) => Promise<void>;
+  bildWeg: () => Promise<void>;
+} {
+  const [hatBild, setHatBild] = useState(false);
+  const [picStand, setPicStand] = useState(0);
+  const [picBusy, setPicBusy] = useState(false);
+  const [picNotice, setPicNotice] = useState<string | undefined>(undefined);
+
+  useEffect(() => {
+    let lebt = true;
+    // Ein HEAD statt eines GET: die Frage ist „gibt es eines", nicht „gib es
+    // mir" — das Bild holt gleich danach das `img`-Element selbst.
+    void fetch(`/api/users/${userId}/picture`, { method: 'HEAD' })
+      .then((r) => {
+        if (lebt) setHatBild(r.ok);
+      })
+      .catch(() => undefined);
+    return () => {
+      lebt = false;
+    };
+  }, [userId]);
+
+  async function bildHoch(datei: File): Promise<void> {
+    setPicBusy(true);
+    setPicNotice(undefined);
+    try {
+      const klein = await avatarVariant(datei);
+      if (klein === undefined) {
+        /*
+         * Kein Rückfall auf das Original.
+         *
+         * Bei SONE lädt der Aufrufer dann die große Datei hoch; hier wäre das
+         * das Handyfoto in der Datenbank, und der Deckel lehnt es ohnehin ab.
+         * Ein Satz ist die richtige Antwort — und er sagt, was zu tun ist.
+         */
+        setPicNotice('Dieses Bild lässt sich nicht verkleinern. Ein JPEG oder PNG geht.');
+        return;
+      }
+      await api.setPicture(klein);
+      setHatBild(true);
+      // Der Zähler zwingt den Browser zum Neuholen: die Adresse bleibt
+      // dieselbe, und `cache-control` gilt auch für den, der es geändert hat.
+      setPicStand((n) => n + 1);
+    } catch (e) {
+      setPicNotice(e instanceof ApiError ? e.message : 'Hochladen ging nicht.');
+    } finally {
+      setPicBusy(false);
+    }
+  }
+
+  async function bildWeg(): Promise<void> {
+    setPicBusy(true);
+    setPicNotice(undefined);
+    try {
+      await api.deletePicture();
+      setHatBild(false);
+      setPicStand((n) => n + 1);
+    } catch (e) {
+      setPicNotice(e instanceof ApiError ? e.message : 'Entfernen ging nicht.');
+    } finally {
+      setPicBusy(false);
+    }
+  }
+
+  return { hatBild, picStand, picBusy, picNotice, bildHoch, bildWeg };
+}
+
 export function Settings({
   section,
   projects,
   workspaceName,
   displayName,
   email,
+  userId,
   onEffective,
 }: {
   section: string;
@@ -187,6 +269,8 @@ export function Settings({
   workspaceName: string;
   displayName: string;
   email: string;
+  /** Für die Adresse des eigenen Bildes: `/api/users/:id/picture`. */
+  userId: string;
   /**
    * Sagt der Hülle, was jetzt gilt.
    *
@@ -203,6 +287,7 @@ export function Settings({
   const [data, setData] = useState<SettingsAnswer | undefined>(undefined);
   const [notice, setNotice] = useState<string | undefined>(undefined);
   const [busy, setBusy] = useState(false);
+  const { hatBild, picStand, picBusy, picNotice, bildHoch, bildWeg } = useAvatar(userId);
 
   const load = async () => {
     try {
@@ -702,6 +787,82 @@ export function Settings({
       {section === 'profil' ? (
         <section className="set-card">
           <h2>Profil</h2>
+          <div className="set-row">
+            <span className="set-label">Bild</span>
+            <div className="set-value">
+              <div className="pic-row">
+                {/*
+                  Der Schlüssel `picStand` zwingt den Browser, neu zu holen.
+                  Ohne ihn zeigt er nach dem Hochladen das alte Bild — die
+                  Adresse ist dieselbe, und ein `cache-control` von einer Minute
+                  gilt auch für den, der es gerade geändert hat.
+                */}
+                {hatBild ? (
+                  <img
+                    className="pic"
+                    src={`/api/users/${userId}/picture?v=${picStand}`}
+                    alt=""
+                    width={64}
+                    height={64}
+                  />
+                ) : (
+                  // Kein Platzhalterbild: wer keines hat, hat keines, und die
+                  // Initialen kennt die Oberfläche schon.
+                  <div className="pic initials" aria-hidden="true">
+                    {displayName
+                      .split(/\s+/)
+                      .slice(0, 2)
+                      .map((w) => w[0] ?? '')
+                      .join('')
+                      .toUpperCase()}
+                  </div>
+                )}
+                <div className="pic-do">
+                  <label className="btn">
+                    {picBusy ? 'Einen Moment…' : hatBild ? 'Anderes wählen' : 'Bild wählen'}
+                    {/*
+                      Ein `label` um ein verstecktes Feld: ein Knopf, der ein
+                      `input` anklickt, braucht JavaScript für etwas, das das
+                      Formularelement selbst kann.
+                    */}
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      aria-label="Profilbild wählen"
+                      disabled={picBusy}
+                      style={{ display: 'none' }}
+                      onChange={(e) => {
+                        const datei = e.target.files?.[0];
+                        // Das Feld leeren: wer dieselbe Datei zweimal wählt,
+                        // löst sonst kein `change` aus, und dann sieht es aus,
+                        // als wäre der Knopf kaputt.
+                        e.target.value = '';
+                        if (datei !== undefined) void bildHoch(datei);
+                      }}
+                    />
+                  </label>
+                  {hatBild ? (
+                    <button
+                      type="button"
+                      className="btn quiet"
+                      disabled={picBusy}
+                      onClick={() => void bildWeg()}
+                    >
+                      Entfernen
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+              <p className="muted small">
+                Wird im Browser auf 512 Pixel verkleinert, bevor es hochgeht —
+                das Original bleibt auf deinem Gerät. Ein Profilbild wird
+                zweiundzwanzig Pixel breit gezeichnet.
+              </p>
+              {picNotice === undefined ? null : (
+                <p className="note-error">{picNotice}</p>
+              )}
+            </div>
+          </div>
           <div className="set-row">
             <span className="set-label">Name</span>
             <div className="set-value">{displayName}</div>

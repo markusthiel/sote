@@ -1813,6 +1813,33 @@ erfunden.
   - **Ein Gast kommentiert als „über einen Link".** Ein CHECK aus Migration 0001
     verlangt genau eines von beiden — Konto **oder** Name; mit `author_id = NULL`
     allein bricht der Einfügeversuch.
+- **Profilbilder: verkleinert im Browser, ohne Original.** SONEs ADR-0029, und
+  für Profilbilder gilt dort die Abweichung, die hier die ganze Regel ist: ein
+  Profilbild wird 22 Pixel breit gezeichnet, also ist ein Handyfoto mit
+  viertausend Pixeln Speicher für einen Fall, der nicht vorkommt.
+  - **Im Browser**, weil serverseitig eine Bildbibliothek im Container hieße —
+    mit eigenen Sicherheitsausgaben und einem Bau, der sich je Architektur
+    unterscheidet. Und das Netz trägt die große Datei einmal statt zweimal.
+  - **Der Deckel steht an drei Stellen**, und das ist Absicht: die
+    Verkleinerung im Browser ist eine *Zusage des Aufrufers*, die Route prüft
+    sie, und der CHECK in Migration 0021 gilt auch für ein Skript. Die Route
+    bricht **während** des Empfangs ab — ein Deckel, der erst nach dem Schaden
+    gilt, ist keiner.
+  - **Auch ein kleines Bild wird neu gezeichnet** (Abweichung von SONE): der
+    Deckel gilt für *Bytes*, nicht für Pixel, und ein PNG mit 300 Pixeln kann
+    ein Megabyte haben.
+  - **JPEG, außer bei einem kleinen PNG.** SONE behält PNG, weil Text in einem
+    Diagramm Höfe bekommt; ein Profilbild ist kein Diagramm. Die Ausnahme ist
+    die Durchsichtigkeit — ein PNG mit Alpha würde als JPEG grau hinterlegt.
+  - **In der Datenbank, nicht im Dateisystem**: ein Bild je Konto, wenige
+    Kilobyte. Ein Volume wäre ein zweiter Ort, den die Sicherung kennen muss —
+    genau daran ist SONEs ADR-0107 aufgelaufen. Bei Anhängen (Megabyte je
+    Zeile) gilt das nicht mehr, und der Kommentar in der Migration ist die
+    Stelle, an der die Entscheidung neu ansteht.
+  - **Keine Platzhalterfigur, sondern Initialen**: wer keines hat, hat keines,
+    und ein grauer Umriss eines Menschen ist eine Behauptung über jemanden.
+  - **Ein Zähler in der Adresse** (`picStand`): die Adresse bleibt gleich, und
+    `max-age` gilt auch für den, der das Bild gerade gewechselt hat.
 - **`pnpm check` ist genau das, was die CI fährt.** Erst standen die Prüfungen
   einzeln in der Workflow-Datei, und `pnpm -r typecheck` scheiterte dort — in
   einem frischen Klon gibt es kein `dist`, und `@sote/core` zeigt mit `types`

@@ -307,6 +307,22 @@ export const api = {
       `/api/workspace${workspace === undefined ? '' : `?workspace=${workspace}`}`,
       { method: 'PATCH', body: JSON.stringify(body) },
     ),
+  /* ── Profilbild ────────────────────────────────────────────────────────── */
+  /**
+   * Das eigene Bild setzen.
+   *
+   * Die Datei als **Körper** und nicht in einem `FormData`: es ist ein Bild und
+   * kein Formular, und ein `multipart`-Rahmen wäre ein Umschlag um genau eine
+   * Sache. Der Typ steht in der Kopfzeile, wo der Server ihn ohnehin liest.
+   */
+  setPicture: (file: File) =>
+    call<{ ok: true }>('/api/me/picture', {
+      method: 'PUT',
+      headers: { 'content-type': file.type },
+      body: file,
+    }),
+  deletePicture: () => call<{ ok: true }>('/api/me/picture', { method: 'DELETE' }),
+
   /* ── Benachrichtigungen ────────────────────────────────────────────────── */
   /**
    * Alles auf einmal.

@@ -8,7 +8,7 @@
 
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 
-import { describe as describeRecurrence, isListLevel, isZone, readIcon } from '@sote/core';
+import { AVATAR_MAX_BYTES, isAvatarType, describe as describeRecurrence, isListLevel, isZone, readIcon } from '@sote/core';
 import type { Pool } from 'pg';
 
 import { openSession, signIn, signOut, userOfToken } from './auth.js';
@@ -856,6 +856,113 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
     // zwei Wege, von denen einer die Begrenzung auf eigene Zeilen vergisst.
     await markRead(ctx.pool, userId, notifPath[2]);
     json(res, 200, { ok: true });
+    return;
+  }
+
+  /* ── Profilbilder ────────────────────────────────────────────────────────
+   *
+   * Verkleinert wird im **Browser** (ADR-0029): serverseitig hieße eine
+   * Bildbibliothek im Container, mit eigenen Sicherheitsausgaben und einem Bau,
+   * der sich je Architektur unterscheidet — für Arbeit, die die hochladende
+   * Maschine hinter einem Fortschrittsbalken tun kann.
+   *
+   * Der Server **prüft** trotzdem, denn eine Verkleinerung im Browser ist eine
+   * Zusage des Aufrufers: Typ und Größe stehen hier, und der CHECK in Migration
+   * 0021 steht noch einmal darunter. Was er nicht prüft, ist die Kantenlänge —
+   * dafür bräuchte er die Bibliothek, die er gerade nicht haben will, und der
+   * Deckel in Bytes fängt denselben Missbrauch.
+   */
+  if (path === '/api/me/picture' && method === 'PUT') {
+    const typ = (req.headers['content-type'] ?? '').split(';')[0]!.trim();
+    if (!isAvatarType(typ)) {
+      fail(res, 415, 'bad_type', 'nur JPEG, PNG oder WebP');
+      return;
+    }
+    const stücke: Buffer[] = [];
+    let größe = 0;
+    let zuGroß = false;
+    for await (const stück of req) {
+      größe += (stück as Buffer).length;
+      if (größe > AVATAR_MAX_BYTES) {
+        /*
+         * Abbrechen, **während** es kommt, und nicht danach messen.
+         *
+         * Sonst hält der Server erst ein Gigabyte im Speicher und sagt dann,
+         * dass es zu groß war — ein Deckel, der erst nach dem Schaden gilt,
+         * ist keiner.
+         */
+        zuGroß = true;
+        break;
+      }
+      stücke.push(stück as Buffer);
+    }
+    if (zuGroß) {
+      req.destroy();
+      fail(res, 413, 'too_big', 'das Bild ist zu groß — es sollte verkleinert ankommen');
+      return;
+    }
+    if (größe === 0) {
+      fail(res, 400, 'empty', 'kein Bild dabei');
+      return;
+    }
+    await ctx.pool.query(
+      `INSERT INTO user_avatars (user_id, content_type, bytes)
+       VALUES ($1,$2,$3)
+       ON CONFLICT (user_id) DO UPDATE
+         SET content_type = EXCLUDED.content_type,
+             bytes = EXCLUDED.bytes,
+             updated_at = now()`,
+      [userId, typ, Buffer.concat(stücke)],
+    );
+    json(res, 200, { ok: true });
+    return;
+  }
+
+  if (path === '/api/me/picture' && method === 'DELETE') {
+    await ctx.pool.query('DELETE FROM user_avatars WHERE user_id = $1', [userId]);
+    json(res, 200, { ok: true });
+    return;
+  }
+
+  const bildPath = /^\/api\/users\/([0-9a-f-]{36})\/picture$/.exec(path);
+  if (bildPath !== null && method === 'GET') {
+    /*
+     * Das Bild eines **anderen** — hinter der Anmeldeschranke.
+     *
+     * Es gehört in Listen (Leute, Konten, Kommentare), also muss es zu einer
+     * fremden Kennung abrufbar sein. Ohne Prüfung, welchen Arbeitsbereich man
+     * teilt: ein Profilbild ist das, was jemand über sich zeigt, und die Frage
+     * „darf ich dein Bild sehen" wäre eine Rechtefläche für etwas, das man
+     * ohnehin neben seinem Namen sieht.
+     */
+    const row = await queryOne<{ content_type: string; bytes: Buffer; updated_at: Date }>(
+      ctx.pool,
+      'SELECT content_type, bytes, updated_at FROM user_avatars WHERE user_id = $1',
+      [bildPath[1]!],
+    );
+    if (row === undefined) {
+      // 404 und kein Platzhalterbild: wer keines hat, hat keines, und die
+      // Oberfläche zeichnet dann ihre Initialen — die kennt sie schon.
+      fail(res, 404, 'no_picture', 'kein Bild');
+      return;
+    }
+    const etag = `"${row.updated_at.getTime()}"`;
+    if (req.headers['if-none-match'] === etag) {
+      // Ein Bild ändert sich selten. Ohne ETag holt ein Browser es bei jedem
+      // Zeichnen neu — bei einer Liste mit zwanzig Leuten zwanzigmal.
+      res.statusCode = 304;
+      res.end();
+      return;
+    }
+    res.writeHead(200, {
+      'content-type': row.content_type,
+      'content-length': String(row.bytes.length),
+      etag,
+      // Kurz, aber nicht null: wer sein Bild wechselt, will es sehen, und die
+      // Liste daneben soll nicht eine Minute lang das alte zeigen.
+      'cache-control': 'private, max-age=60, must-revalidate',
+    });
+    res.end(row.bytes);
     return;
   }
 

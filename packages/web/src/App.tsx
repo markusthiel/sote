@@ -714,6 +714,7 @@ export function App() {
             }
             workspaceName={wsName}
             displayName={me.displayName}
+            userId={me.id}
             email={me.email}
             onEffective={(out) => {
               setScheme(out.scheme);

@@ -694,3 +694,78 @@ test('ein Gast darf das Projekt einer Aufgabe nicht ändern', async () => {
   });
   assert.equal(res.status, 400, 'nichts Erlaubtes dabei');
 });
+
+/* ── Profilbilder ──────────────────────────────────────────────────────────── */
+
+/** Ein winziges gültiges PNG — 1×1 Pixel, damit der Inhalt echt ist. */
+const EIN_PNG = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg==',
+  'base64',
+);
+
+test('ein Bild setzen, holen und wegnehmen', async () => {
+  const setzen = await call('/api/me/picture', {
+    method: 'PUT',
+    headers: { 'content-type': 'image/png' },
+    body: EIN_PNG,
+  });
+  assert.equal(setzen.status, 200);
+
+  const meineId = await queryOne<{ id: string }>(pool, 'SELECT id FROM users WHERE email = $1', [
+    email,
+  ]);
+  const holen = await call(`/api/users/${meineId!.id}/picture`);
+  assert.equal(holen.status, 200);
+  assert.equal(holen.headers.get('content-type'), 'image/png');
+  assert.ok((holen.headers.get('etag') ?? '').length > 2, 'ein ETag, sonst holt der Browser neu');
+
+  // Und mit dem ETag: 304. Ohne das holt ein Browser das Bild bei jedem
+  // Zeichnen neu — bei einer Liste mit zwanzig Leuten zwanzigmal.
+  const nochmal = await call(`/api/users/${meineId!.id}/picture`, {
+    headers: { 'if-none-match': holen.headers.get('etag') ?? '' },
+  });
+  assert.equal(nochmal.status, 304);
+
+  const weg = await call('/api/me/picture', { method: 'DELETE' });
+  assert.equal(weg.status, 200);
+  const danach = await call(`/api/users/${meineId!.id}/picture`);
+  assert.equal(danach.status, 404, 'wer keines hat, hat keines');
+});
+
+test('nur Bilder, die sich verkleinern lassen', async () => {
+  for (const typ of ['image/gif', 'image/svg+xml', 'application/pdf', 'text/html']) {
+    const res = await call('/api/me/picture', {
+      method: 'PUT',
+      headers: { 'content-type': typ },
+      body: EIN_PNG,
+    });
+    // SVG besonders: es ist ein Dokument, das Skripte tragen kann, und ein
+    // Profilbild ist der letzte Ort, an dem man das haben will.
+    assert.equal(res.status, 415, typ);
+  }
+});
+
+test('ein zu großes Bild wird abgewiesen, nicht angenommen', async () => {
+  /*
+   * Der Deckel steht an drei Stellen, und das ist Absicht: im Browser (die
+   * Verkleinerung), hier in der Route, und als CHECK in Migration 0021. Die
+   * Verkleinerung im Browser ist eine **Zusage des Aufrufers** — und eine
+   * Zusage prüft man.
+   */
+  const zuGroß = Buffer.alloc(300_000, 7);
+  const res = await call('/api/me/picture', {
+    method: 'PUT',
+    headers: { 'content-type': 'image/jpeg' },
+    body: zuGroß,
+  });
+  assert.equal(res.status, 413);
+});
+
+test('ein Bild ohne Inhalt ist keines', async () => {
+  const res = await call('/api/me/picture', {
+    method: 'PUT',
+    headers: { 'content-type': 'image/png' },
+    body: Buffer.alloc(0),
+  });
+  assert.equal(res.status, 400);
+});
