@@ -49,6 +49,17 @@ export type Route =
    * und die Platzhalterseite hatte keinen.
    */
   | { readonly kind: 'inbox' }
+  /**
+   * Ein Link auf ein Projekt, ohne Konto (Konzept 10e).
+   *
+   * Der Token steht in der Adresse und nicht in einem Kopf: ein Link muss sich
+   * weitergeben lassen, sonst ist er keiner. Der Preis steht im Konzept — er
+   * liegt damit im Verlauf des Browsers und in jedem Protokoll, das Adressen
+   * mitschreibt, und darum ist der Widerruf die wichtigste Funktion.
+   */
+  | { readonly kind: 'share'; readonly token: string }
+  /** Was hinausgegeben ist — der letzte Platzhalter bekommt einen Inhalt. */
+  | { readonly kind: 'shares' }
   | { readonly kind: 'workspaces'; readonly section: string }
   /** Alles, was für jeden auf diesem Server gilt. */
   | { readonly kind: 'admin'; readonly section: string };
@@ -80,6 +91,15 @@ export function parseRoute(pathname: string, queryString = ''): Route {
 
   if (parts.length === 0) return { kind: 'today' };
 
+  if (parts[0] === 'f' && parts[1] !== undefined) {
+    // Nur die Zeichen, die ein Token haben kann. Alles andere ist keine
+    // Freigabe, und ein Token, das die Oberfläche erst an den Server schickt,
+    // um es abgelehnt zu bekommen, ist ein Weg mehr, den es nicht braucht.
+    return /^[A-Za-z0-9_-]{20,200}$/.test(parts[1])
+      ? { kind: 'share', token: parts[1] }
+      : { kind: 'today' };
+  }
+
   if (parts[0] === 'p' && parts[1] !== undefined) {
     // Eine unbekannte Id ist kein Projekt. Sonst fragt die Oberfläche den
     // Server nach etwas, das sie sich selbst ausgedacht hat.
@@ -96,7 +116,7 @@ export function parseRoute(pathname: string, queryString = ''): Route {
     case 'posteingang':
       return { kind: 'inbox' };
     case 'freigaben':
-      return { kind: 'mode', mode: 'shares' };
+      return { kind: 'shares' };
     case 'papierkorb':
       return { kind: 'mode', mode: 'trash' };
     case 'einstellungen':
@@ -125,6 +145,10 @@ export function pathOf(route: Route): string {
       return '/irgendwann';
     case 'inbox':
       return '/posteingang';
+    case 'share':
+      return `/f/${route.token}`;
+    case 'shares':
+      return '/freigaben';
     case 'project':
       return `/p/${route.projectId}`;
     case 'search':
@@ -143,7 +167,6 @@ export function pathOf(route: Route): string {
 const MODE_PATHS: Record<string, string> = {
   search: 'suche',
   inbox: 'posteingang',
-  shares: 'freigaben',
   trash: 'papierkorb',
 };
 
@@ -154,6 +177,7 @@ export function modeOfRoute(route: Route): string {
   // mehr: sie haben einen Inhalt, und die Platzhalterseite hat keinen.
   if (route.kind === 'workspaces') return 'workspaces';
   if (route.kind === 'inbox') return 'inbox';
+  if (route.kind === 'shares') return 'shares';
   // Die Verwaltung ist KEIN Modus. Sie steht nicht in der Schiene, weil sie
   // kein Ort ist, an dem man arbeitet — sie steht im Kontomenue, wie in SONE.
   return route.kind === 'mode' ? route.mode : 'tasks';

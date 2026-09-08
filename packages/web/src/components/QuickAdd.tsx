@@ -24,11 +24,14 @@ export function QuickAdd({
   onSubmit,
   busy,
   unknownProject,
+  hint,
 }: {
   now: Date;
   onSubmit: (line: string) => void;
   busy: boolean;
   unknownProject: string | null;
+  /** Ein anderer Platzhalter, wo ein anderes Versprechen gilt. */
+  hint?: string;
 }) {
   const [line, setLine] = useState('');
 
@@ -98,7 +101,17 @@ export function QuickAdd({
               setLine('');
             }
           }}
-          placeholder="Aufgabe hinzufügen — „morgen 9 Uhr #haus !!“"
+          /*
+           * Der Platzhalter ist ein VERSPRECHEN, und es muss stimmen.
+           *
+           * Er nannte `#haus` — und über eine Freigabe gilt `#projekt` nicht:
+           * dort ist das Projekt gesetzt, sonst wäre die Schnellerfassung ein
+           * Weg aus dem eigenen Gegenstand hinaus (Konzept 10e). Im Bild
+           * stand also eine Anleitung für etwas, das der Server absichtlich
+           * ignoriert — dieselbe Sorte Fehler wie ein Knopf, der nichts tut,
+           * nur in Worten.
+           */
+          placeholder={hint ?? 'Aufgabe hinzufügen — „morgen 9 Uhr #haus !!“'}
           aria-label="Aufgabe hinzufügen"
           enterKeyHint="done"
         />

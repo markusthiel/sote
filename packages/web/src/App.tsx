@@ -31,6 +31,8 @@ import { TaskList } from './screens/TaskList.js';
 import { Detail } from './screens/Detail.js';
 import { Search } from './screens/Search.js';
 import { landingRoute, markRoute, rememberRoute } from './landing.js';
+import { ShareScreen } from './screens/ShareScreen.js';
+import { Shares } from './screens/Shares.js';
 import { WorkspaceMark } from './screens/WorkspaceMark.js';
 import { WorkspaceOverview } from './screens/WorkspaceOverview.js';
 import {
@@ -223,6 +225,17 @@ export function App() {
   useScheme(scheme);
   useLook(look, shell);
 
+  /*
+   * Eine Freigabe braucht kein Konto — und wird darum VOR jeder Anmeldeprüfung
+   * gezeichnet (Konzept 10e).
+   *
+   * Eine Anmeldemaske vor einem Link zu zeigen wäre die Aufforderung, sich
+   * etwas anzulegen, um etwas zu sehen, das man geschickt bekommen hat. Und es
+   * steht hier oben und nicht in der Hülle, weil dieser Bildschirm keinen
+   * Rahmen hat: es gibt keine anderen Orte, also auch keine Liste davon.
+   */
+  if (route.kind === 'share') return <ShareScreen token={route.token} now={now} />;
+
   if (me === undefined) return <div className="signin" aria-busy="true" />;
   if (me === null) {
     return needsSetup ? (
@@ -310,7 +323,9 @@ export function App() {
                   { kind: 'workspaces', section: 'alle' }
                 : id === 'inbox'
                   ? { kind: 'inbox' }
-                  : { kind: 'mode', mode: id },
+                  : id === 'shares'
+                    ? { kind: 'shares' }
+                    : { kind: 'mode', mode: id },
           )
         }
         inboxCount={counts.inbox}
@@ -504,7 +519,9 @@ export function App() {
           detailOpen={openTask !== null}
           onToggleDetail={openTask === null ? undefined : () => setOpenTask(null)}
         />
-        {route.kind === 'workspaces' && route.section === 'alle' ? (
+        {route.kind === 'shares' ? (
+          <Shares workspace={workspace} projects={projects} />
+        ) : route.kind === 'workspaces' && route.section === 'alle' ? (
           <WorkspaceOverview workspaces={me.workspaces} current={workspace} />
         ) : route.kind === 'workspaces' && route.section === 'name' ? (
           <WorkspaceMark
@@ -606,7 +623,9 @@ export function App() {
                   { kind: 'workspaces', section: 'alle' }
                 : id === 'inbox'
                   ? { kind: 'inbox' }
-                  : { kind: 'mode', mode: id },
+                  : id === 'shares'
+                    ? { kind: 'shares' }
+                    : { kind: 'mode', mode: id },
           )
         }
         inboxCount={counts.inbox}

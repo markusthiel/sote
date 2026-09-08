@@ -185,7 +185,11 @@ test('jede Adresse führt dorthin, wo der Klick hinführt', () => {
     // Der Posteingang ist seit dem Bau eine ANSICHT und kein Modus mehr — er
     // hat einen Inhalt, und die Platzhalterseite hatte keinen.
     { kind: 'inbox' },
-    { kind: 'mode', mode: 'shares' },
+    // Freigaben sind seit dem Bau ein Ort mit Inhalt und kein Platzhalter.
+    { kind: 'shares' },
+    // Und ein Link ohne Konto: der Token steht in der ADRESSE, sonst ist es
+    // keiner, den man weitergeben kann.
+    { kind: 'share', token: 'A'.repeat(43) },
     { kind: 'mode', mode: 'trash' },
   ];
   for (const route of roundTrip) {

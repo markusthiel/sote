@@ -286,6 +286,62 @@ export const api = {
       `/api/workspace${workspace === undefined ? '' : `?workspace=${workspace}`}`,
       { method: 'PATCH', body: JSON.stringify(body) },
     ),
+  /* ── Freigaben verwalten (mit Konto) ───────────────────────────────────── */
+  shares: (workspace?: string) =>
+    call<{
+      possible: boolean;
+      shares: {
+        id: string;
+        projectId: string;
+        projectName: string;
+        right: 'read' | 'edit';
+        /** `null` heißt: mit diesem Schlüssel nicht anzeigbar. */
+        token: string | null;
+        expiresAt: string | null;
+        lastUsedAt: string | null;
+        createdAt: string;
+      }[];
+    }>(`/api/shares${workspace === undefined ? '' : `?workspace=${workspace}`}`),
+  createShare: (
+    body: { projectId: string; right: 'read' | 'edit'; expiresAt?: string | null },
+    workspace?: string,
+  ) =>
+    call<{ share: { id: string; token: string } }>(
+      `/api/shares${workspace === undefined ? '' : `?workspace=${workspace}`}`,
+      { method: 'POST', body: JSON.stringify(body) },
+    ),
+  revokeShare: (id: string, workspace?: string) =>
+    call<{ ok: true }>(
+      `/api/shares/${id}${workspace === undefined ? '' : `?workspace=${workspace}`}`,
+      { method: 'DELETE' },
+    ),
+
+  /* ── Was ein Gast ruft: ohne Arbeitsbereich, ohne Konto ─────────────────── */
+  shareHead: (token: string) =>
+    call<{ project: { name: string; icon: unknown }; right: 'read' | 'edit' }>(
+      `/api/share/${token}`,
+    ),
+  shareTasks: (token: string, done: boolean) =>
+    call<{
+      tasks: {
+        id: string;
+        title: string;
+        completed: string | null;
+        plannedAt: string | null;
+        dueAt: string | null;
+        priority: number;
+      }[];
+    }>(`/api/share/${token}/tasks${done ? '?done=1' : ''}`),
+  shareAdd: (token: string, line: string) =>
+    call<{ id: string; title: string }>(`/api/share/${token}/tasks`, {
+      method: 'POST',
+      body: JSON.stringify({ line }),
+    }),
+  shareComplete: (token: string, id: string) =>
+    call<{ ok: true }>(`/api/share/${token}/tasks/${id}/complete`, { method: 'POST' }),
+  shareReopen: (token: string, id: string) =>
+    call<{ ok: true }>(`/api/share/${token}/tasks/${id}/complete`, { method: 'DELETE' }),
+
   settings: () => call<SettingsAnswer>('/api/settings'),
   /** `null` bei einem Feld heißt „nichts gesagt" — die Ebene darüber gilt. */
   patchSettings: (

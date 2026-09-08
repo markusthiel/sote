@@ -1678,9 +1678,9 @@ darin. Nur wo es keine Aufgaben gibt, entfällt das Projekt.
 
 ## 10e. Freigaben — ein Link auf ein Projekt
 
-**Status: vorgeschlagen, nicht gebaut.** Aufgeschrieben vor dem Bau, weil eine
-Rechtefläche der eine Ort ist, an dem ein Irrtum nicht nur hässlich, sondern
-gefährlich ist.
+**Status: gebaut** (Migration 0011, `shares.ts`, `shareRoutes.ts`, `/f/:token`).
+Aufgeschrieben vor dem Bau, weil eine Rechtefläche der eine Ort ist, an dem ein
+Irrtum nicht nur hässlich, sondern gefährlich ist.
 
 ### Was aus SONEs ADRs mitkommt
 
@@ -1778,19 +1778,35 @@ abarbeiten soll, braucht die Liste und nichts darüber.
 - **Keine Freigabe eines Ordners** und keine des ganzen Arbeitsbereichs. Das
   Zweite ist eine Einladung und gehört zu „Leute".
 
-### Offen, und zwar für Markus
+### Beim Bauen dazugekommen
 
-1. **Verschlüsselt oder gehasht?** Verschlüsselt heißt: der Link lässt sich
+- **Der Schlüssel liegt in der Umgebung** (`SOTE_SHARE_KEY`), nicht in der
+  Datenbank. Das stand in der Abwägung nicht drin und ist der Punkt, an dem sie
+  gekippt wäre: läge er neben den Tokens, die er schützt, wäre die
+  Verschlüsselung Theater. So ist sagbar, wogegen sie schützt — gegen
+  Sicherungen, Auszüge, Protokolle — und wogegen nicht.
+- **Ohne Schlüssel gibt es keine Freigaben, und der Bildschirm nennt den Grund
+  samt Befehl.** Nicht still keine (ADR-0112).
+- **Ein geratener Token bekommt immer denselben Satz.** Anders als ADR-0073s
+  „no such account is said plainly": dort fragt jemand, der schon wissen darf,
+  wer im Arbeitsbereich ist. Hier fragt ein Fremder.
+- **Eine Id in der Adresse ist eine Behauptung, nicht eine Auskunft.** Jede
+  Aufgabe wird gegen das Projekt der Freigabe geprüft, Teilaufgaben über ihren
+  Elternteil.
+- **Der Platzhalter der Schnellerfassung ist ein Versprechen.** Er nannte
+  `#haus`, und über eine Freigabe gilt `#projekt` nicht — im Bild stand eine
+  Anleitung für etwas, das der Server absichtlich ignoriert.
+
+### Entschieden (war offen)
+
+1. **Verschlüsselt**, wie SONE. Verschlüsselt heißt: der Link lässt sich
    wieder anzeigen (SONEs ADR-0113), und ein Schlüssel in der Umgebung kann
    alle Freigaben aufdecken. Gehasht heißt: sicherer, aber „einmal kopieren
    oder neu anlegen" — und neu angelegte Links, deren Vorgänger noch gilt, sind
-   genau der Schaden, um den es geht. Ich neige zu **verschlüsselt**, wie SONE.
-2. **Darf ein Gast mit `edit` auch löschen?** Ich neige zu **nein**: eine Zeile
-   wegzuwerfen, die man nicht wiederherstellen kann, weil der Papierkorb ein
-   Ort des Arbeitsbereichs ist, ist mehr Recht als „mitarbeiten".
-3. **Ablauf pflicht oder freiwillig?** Ich neige zu **freiwillig, mit einem
-   Vorschlag** — eine Pflicht macht Leute erfinderisch (ein Jahr), und ein
-   Vorschlag macht den Ablauf zur Gewohnheit.
+   genau der Schaden, um den es geht.
+2. **Ein Gast löscht nicht**: der Papierkorb ist ein Ort des Arbeitsbereichs.
+3. **Der Ablauf ist freiwillig, mit einem Vorschlag** — eine Pflicht macht
+   Leute erfinderisch (ein Jahr), ein Vorschlag macht ihn zur Gewohnheit.
 
 ## 11. Was aus SONE mitkommt, ohne neu entschieden zu werden
 

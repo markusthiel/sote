@@ -2695,3 +2695,84 @@ select.target {
   font-size: 11.5px;
   color: var(--text-faint);
 }
+
+/* ── Der Bildschirm eines Gasts ────────────────────────────────────────────
+   Kein Rahmen: keine Schiene, keine Seitenleiste, kein Kontomenü. Es gibt
+   keine anderen Orte, also auch keine Liste davon. */
+
+.guest {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--page);
+  overflow: auto;
+}
+
+.guest-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--line);
+  color: var(--text-muted);
+}
+
+/* Das Recht steht oben und nicht in einer Fußnote: „darf ich hier etwas
+   ändern" ist die erste Frage, die jemand an eine geteilte Liste hat. */
+.guest-right {
+  font-family: var(--sote-mono);
+  font-size: 11px;
+  color: var(--text-faint);
+}
+
+.guest-body {
+  width: 100%;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 22px 18px 60px;
+}
+
+.guest-body h1 {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 300;
+  letter-spacing: -0.02em;
+}
+
+.guest-toggle {
+  position: static;
+  margin-top: 18px;
+}
+
+.share-link code {
+  display: inline-block;
+  margin-top: 3px;
+  font-family: var(--sote-mono);
+  font-size: 11px;
+  color: var(--text-faint);
+  word-break: break-all;
+}
+
+.fresh-link {
+  margin-top: 10px;
+  padding: 9px 11px;
+  border: 1px solid var(--accent-line);
+  border-radius: var(--sote-radius-md);
+}
+
+.fresh-link code {
+  font-family: var(--sote-mono);
+  font-size: 12px;
+  word-break: break-all;
+}
+
+.hint-code {
+  margin: 6px 0;
+  padding: 8px 10px;
+  border-radius: var(--sote-radius-md);
+  background: var(--sunken);
+  font-family: var(--sote-mono);
+  font-size: 12px;
+  overflow-x: auto;
+}
