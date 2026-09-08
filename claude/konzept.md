@@ -1382,6 +1382,31 @@ Beim Bauen entschieden, weil es ohne Entscheidung keinen Code gibt:
     heilen.
   - Einladungen stehen als **Satz** da und nicht als Feld: ein Feld, das nichts
     tut, ist der Fehler, den SONE vierzehn Mal hatte (ADR-0112).
+- **Die Instanz gehört keinem Arbeitsbereich** (Migration 0012). Vorher durfte
+  Instanzeinstellungen ändern, wer irgendeinen Arbeitsbereich **besitzt** — also
+  konnte jeder Eigentümer Vorgaben für alle anderen setzen. Die Grobheit stand
+  seit ihrer Entstehung als Kommentar in `settings.ts` („das ist zu grob, und es
+  steht hier statt in einem Bugtracker"), und dieser Bildschirm war der Moment,
+  sie zu schließen.
+  - Das Recht ist eine **Spalte am Konto**, keine Rolle in einer Tabelle: es
+    gilt über alle Arbeitsbereiche, hat keine Stufen und gehört keinem — dieselbe
+    Bauart wie `is_owner` (ADR-0102).
+  - **Zwei Rechte, zwei Fragen:** ein Administrator verwaltet nicht automatisch
+    fremde Arbeitsbereiche, und ein Eigentümer nicht die Instanz.
+  - **Wer die Instanz eingerichtet hat, verwaltet sie**: die Migration setzt das
+    älteste Konto. Niemanden zu setzen hätte den Server verwaist zurückgelassen
+    — eine Migration, die eine Annahme trifft und sie hinschreibt, ist besser als
+    eine, die niemandem mehr Zugriff lässt.
+  - **Der letzte kann nicht gehen**, zweimal: kein letzter Administrator gibt
+    sein Recht ab, keiner wird gelöscht. Die Prüfung **zählt** statt zu fragen
+    „bist du das" — sonst wäre der gewöhnliche Weg, ein Recht abzugeben,
+    verboten.
+  - **Ein Konto, das noch mitarbeitet, wird nicht gelöscht.** Es zu löschen
+    hieße zu entscheiden, was mit seinen Aufgaben passiert, und das ist eine
+    Frage an den Arbeitsbereich. Bewusst unbequem: die bequeme Fassung ließe
+    Aufgaben still verwaisen, und still ist bei Löschen das falsche Wort.
+  - **„Verwaltung" fehlt im Menü, wenn man nicht verwaltet** — und `onAdmin` ist
+    darum im Typ eine Möglichkeit und kein Flag daneben.
 - **`pnpm check` ist genau das, was die CI fährt.** Erst standen die Prüfungen
   einzeln in der Workflow-Datei, und `pnpm -r typecheck` scheiterte dort — in
   einem frischen Klon gibt es kein `dist`, und `@sote/core` zeigt mit `types`

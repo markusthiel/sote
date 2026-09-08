@@ -20,11 +20,12 @@ import {
   type SetupKey,
 } from './bootstrap.js';
 import { addChild, addComment, detail } from './detail.js';
-import { effectiveFor, mayChange, patchSettings, type Scope } from './settings.js';
+import { effectiveFor, isAdmin, mayChange, patchSettings, type Scope } from './settings.js';
 import { queryOne, queryRows } from './db.js';
 import { create as createProject, NameTaken, update as updateProject } from './projects.js';
 import type { Config } from './env.js';
 import { cookie, fail, json, readJson } from './http/respond.js';
+import { accounts, deleteAccount, setAdmin } from './accounts.js';
 import { addPerson, findPeople, people, removePerson, roles, setRole } from './people.js';
 import { shareRoutes } from './shareRoutes.js';
 import { createShare, listShares, revokeShare, shareKeyPresent } from './shares.js';
@@ -348,6 +349,15 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
       id: me?.id,
       email: me?.email,
       displayName: me?.display_name,
+      /*
+       * Ob diese Person die Instanz verwaltet.
+       *
+       * Damit die Oberfläche „Verwaltung" nicht anbietet, wo sie 403 antwortet
+       * — ein Eintrag, der auf „das darfst du nicht" führt, bringt Leute dazu,
+       * dem Menü zu misstrauen (ADR-0027: abwesend statt anwesend und
+       * verweigernd).
+       */
+      isAdmin: await isAdmin(ctx.pool, userId),
       workspaces: spaces.map((w) => ({
         id: w.id,
         name: w.name,
@@ -484,6 +494,51 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
     json(res, 200, {
       workspace: { id: row!.id, name: row!.name, icon: readIcon(row!.icon) },
     });
+    return;
+  }
+
+  /* ── Konten: die Instanzseite ─────────────────────────────────────────────
+   *
+   * Alle drei Wege nehmen dasselbe Recht, und es ist nicht das des
+   * Arbeitsbereichs: die Instanz gehört keinem (Migration 0012).
+   */
+  if (path === '/api/accounts' && method === 'GET') {
+    if (!(await isAdmin(ctx.pool, userId))) {
+      fail(res, 403, 'not_allowed', 'das darf nur, wer die Instanz verwaltet');
+      return;
+    }
+    json(res, 200, {
+      you: userId,
+      accounts: (await accounts(ctx.pool)).map((a) => ({
+        id: a.id,
+        email: a.email,
+        displayName: a.displayName,
+        isAdmin: a.isAdmin,
+        workspaces: a.workspaces,
+        createdAt: a.createdAt.toISOString(),
+      })),
+    });
+    return;
+  }
+
+  const accountPath = /^\/api\/accounts\/([0-9a-f-]{36})$/.exec(path);
+  if (accountPath !== null && (method === 'PATCH' || method === 'DELETE')) {
+    if (!(await isAdmin(ctx.pool, userId))) {
+      fail(res, 403, 'not_allowed', 'das darf nur, wer die Instanz verwaltet');
+      return;
+    }
+    if (method === 'DELETE') {
+      await deleteAccount(ctx.pool, accountPath[1]!);
+      json(res, 200, { ok: true });
+      return;
+    }
+    const body = (await readJson(req)) as Record<string, unknown>;
+    if (typeof body?.['isAdmin'] !== 'boolean') {
+      fail(res, 400, 'no_flag', 'verwalten: ja oder nein');
+      return;
+    }
+    await setAdmin(ctx.pool, accountPath[1]!, body['isAdmin']);
+    json(res, 200, { ok: true });
     return;
   }
 

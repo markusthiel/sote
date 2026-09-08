@@ -2818,3 +2818,9 @@ select.target {
   font-size: 13.5px;
   font-weight: 500;
 }
+
+.admin-flag {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}

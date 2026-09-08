@@ -88,6 +88,7 @@ export const WORKSPACE_SECTIONS = [
 
 export const ADMIN_SECTIONS = [
   { id: 'instanz', label: 'Diese Instanz', hint: 'Vorgaben für alle' },
+  { id: 'konten', label: 'Konten', hint: 'Wer auf diesem Server ist' },
 ] as const;
 
 /** Wie die Flächen und Beziehungen heißen — SONEs Worte, auf Deutsch. */

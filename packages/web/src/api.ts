@@ -83,6 +83,8 @@ export interface Me {
   id: string;
   email: string;
   displayName: string;
+  /** Verwaltet diese Person die Instanz (Migration 0012)? */
+  isAdmin: boolean;
   workspaces: {
     id: string;
     name: string;
@@ -286,6 +288,26 @@ export const api = {
       `/api/workspace${workspace === undefined ? '' : `?workspace=${workspace}`}`,
       { method: 'PATCH', body: JSON.stringify(body) },
     ),
+  /* ── Konten: die Instanzseite ──────────────────────────────────────────── */
+  accounts: () =>
+    call<{
+      you: string;
+      accounts: {
+        id: string;
+        email: string;
+        displayName: string;
+        isAdmin: boolean;
+        workspaces: number;
+        createdAt: string;
+      }[];
+    }>('/api/accounts'),
+  setAdmin: (id: string, isAdmin: boolean) =>
+    call<{ ok: true }>(`/api/accounts/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ isAdmin }),
+    }),
+  deleteAccount: (id: string) => call<{ ok: true }>(`/api/accounts/${id}`, { method: 'DELETE' }),
+
   /* ── Leute ─────────────────────────────────────────────────────────────── */
   people: (workspace?: string) =>
     call<{

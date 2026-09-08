@@ -62,7 +62,16 @@ export function AccountMenu({
    * Liste der Orte, an denen man arbeitet. Ein Server ist kein Ort, an dem man
    * arbeitet.
    */
-  onAdmin: () => void;
+  /**
+   * Die Verwaltung — **oder gar nicht**.
+   *
+   * `undefined` heißt: dieser Eintrag fehlt. Ein Eintrag, der auf „das darfst
+   * du nicht" führt, bringt Leute dazu, dem Menü zu misstrauen (SONEs
+   * ADR-0027: abwesend statt anwesend und verweigernd). Als Möglichkeit im Typ
+   * und nicht als Flag daneben: ein `canAdmin`-Boolean wäre eine zweite
+   * Angabe, die zu `onAdmin` passen muss.
+   */
+  onAdmin?: (() => void) | undefined;
   onSignOut: () => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -133,18 +142,20 @@ export function AccountMenu({
             <SettingsIcon size={15} />
             Deine Einstellungen
           </button>
-          <button
-            type="button"
-            role="menuitem"
-            className="account-item"
-            onClick={() => {
-              setOpen(false);
-              onAdmin();
-            }}
-          >
-            <SlidersIcon size={15} />
-            Verwaltung
-          </button>
+          {onAdmin === undefined ? null : (
+            <button
+              type="button"
+              role="menuitem"
+              className="account-item"
+              onClick={() => {
+                setOpen(false);
+                onAdmin();
+              }}
+            >
+              <SlidersIcon size={15} />
+              Verwaltung
+            </button>
+          )}
           {/* Zuletzt und abgesetzt: das eine hier, was man nicht durch
               nochmaliges Drücken zurücknimmt. */}
           <button type="button" role="menuitem" className="account-item" onClick={onSignOut}>

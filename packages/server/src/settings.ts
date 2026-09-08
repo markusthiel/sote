@@ -11,10 +11,14 @@
  * - Den **Arbeitsbereich**: wer `roles.manage` hat oder Eigentümer ist. Ein
  *   Thema für den Inhalt ist eine Ansage an alle Mitglieder, und die soll
  *   nicht jeder machen können.
- * - Die **Instanz**: nur wer den Arbeitsbereich besitzt, in dem er gerade ist —
- *   SOTE hat noch keinen Instanzadministrator. **Das ist zu grob**, und es
- *   steht hier statt in einem Bugtracker: sobald es Rollen über Arbeitsbereiche
- *   hinweg gibt, gehört diese Prüfung dorthin.
+ * - Die **Instanz**: wer sie verwaltet (`users.is_admin`).
+ *
+ *   Hier stand vorher: *„nur wer den Arbeitsbereich besitzt, in dem er gerade
+ *   ist — SOTE hat noch keinen Instanzadministrator. Das ist zu grob, und es
+ *   steht hier statt in einem Bugtracker."* Es ist behoben (Migration 0012),
+ *   und die Notiz bleibt als Beleg dafür, dass die Grobheit bekannt war und
+ *   nicht bequem war: wer einen Arbeitsbereich besitzt, konnte Vorgaben für
+ *   **alle anderen** setzen.
  */
 
 import {
@@ -30,6 +34,23 @@ import { queryOne, queryRows, withTransaction, type PoolClient } from './db.js';
 import { OutOfOrder } from './tasks.js';
 
 export type Scope = 'instance' | 'workspace' | 'user';
+
+/**
+ * Verwaltet diese Person die Instanz?
+ *
+ * Eine eigene Funktion, weil drei Stellen sie brauchen — die Einstellungen,
+ * die Kontenliste und `/api/me`. Dieselbe Regel wie überall in diesem Projekt:
+ * ein Recht, das jeder Aufrufer selbst nachschlägt, ist ein Recht, das ein
+ * Aufrufer anders nachschlägt (ADR-0087).
+ */
+export async function isAdmin(q: Pool | PoolClient, userId: string): Promise<boolean> {
+  const row = await queryOne<{ is_admin: boolean }>(
+    q,
+    'SELECT is_admin FROM users WHERE id = $1',
+    [userId],
+  );
+  return row?.is_admin === true;
+}
 
 /**
  * Die drei Zeilen, in einer Abfrage.
@@ -170,6 +191,14 @@ export async function mayChange(
   workspaceId: string,
 ): Promise<boolean> {
   if (scope === 'user') return true;
+  if (scope === 'instance') {
+    /*
+     * Die Instanz gehört keinem Arbeitsbereich, also fragt diese Prüfung auch
+     * keinen. Vorher tat sie es — und damit konnte jeder, der irgendeinen
+     * Arbeitsbereich besitzt, die Vorgaben für alle anderen setzen.
+     */
+    return await isAdmin(q, userId);
+  }
   const row = await queryOne<{ ok: boolean }>(
     q,
     `SELECT (m.is_owner OR 'roles.manage' = ANY(r.rights)) AS ok

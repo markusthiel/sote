@@ -25,7 +25,16 @@ export function IconRail({
   displayName: string;
   email: string;
   onSettings: () => void;
-  onAdmin: () => void;
+  /**
+   * Die Verwaltung — **oder gar nicht**.
+   *
+   * `undefined` heißt: dieser Eintrag fehlt. Ein Eintrag, der auf „das darfst
+   * du nicht" führt, bringt Leute dazu, dem Menü zu misstrauen (SONEs
+   * ADR-0027: abwesend statt anwesend und verweigernd). Als Möglichkeit im Typ
+   * und nicht als Flag daneben: ein `canAdmin`-Boolean wäre eine zweite
+   * Angabe, die zu `onAdmin` passen muss.
+   */
+  onAdmin?: (() => void) | undefined;
   onSignOut: () => void;
 }) {
   return (

@@ -31,6 +31,7 @@ import { TaskList } from './screens/TaskList.js';
 import { Detail } from './screens/Detail.js';
 import { Search } from './screens/Search.js';
 import { landingRoute, markRoute, rememberRoute } from './landing.js';
+import { Accounts } from './screens/Accounts.js';
 import { People } from './screens/People.js';
 import { ShareScreen } from './screens/ShareScreen.js';
 import { Shares } from './screens/Shares.js';
@@ -333,7 +334,9 @@ export function App() {
         displayName={me.displayName}
         email={me.email}
         onSettings={() => go({ kind: 'settings', section: 'profil' })}
-        onAdmin={() => go({ kind: 'admin', section: 'instanz' })}
+        // Nur wer verwaltet: ein Eintrag, der auf „das darfst du nicht" führt,
+        // bringt Leute dazu, dem Menü zu misstrauen (ADR-0027).
+        {...(me.isAdmin ? { onAdmin: () => go({ kind: 'admin', section: 'instanz' }) } : {})}
         onSignOut={signOut}
       />
 
@@ -520,7 +523,9 @@ export function App() {
           detailOpen={openTask !== null}
           onToggleDetail={openTask === null ? undefined : () => setOpenTask(null)}
         />
-        {route.kind === 'shares' ? (
+        {route.kind === 'admin' && route.section === 'konten' ? (
+          <Accounts />
+        ) : route.kind === 'shares' ? (
           <Shares workspace={workspace} projects={projects} />
         ) : route.kind === 'workspaces' && route.section === 'alle' ? (
           <WorkspaceOverview workspaces={me.workspaces} current={workspace} />
@@ -635,7 +640,9 @@ export function App() {
         displayName={me.displayName}
         email={me.email}
         onSettings={() => go({ kind: 'settings', section: 'profil' })}
-        onAdmin={() => go({ kind: 'admin', section: 'instanz' })}
+        // Nur wer verwaltet: ein Eintrag, der auf „das darfst du nicht" führt,
+        // bringt Leute dazu, dem Menü zu misstrauen (ADR-0027).
+        {...(me.isAdmin ? { onAdmin: () => go({ kind: 'admin', section: 'instanz' }) } : {})}
         onSignOut={signOut}
       />
     </div>
