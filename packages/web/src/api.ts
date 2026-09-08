@@ -288,6 +288,47 @@ export const api = {
       `/api/workspace${workspace === undefined ? '' : `?workspace=${workspace}`}`,
       { method: 'PATCH', body: JSON.stringify(body) },
     ),
+  /* ── Rollen ────────────────────────────────────────────────────────────── */
+  roles: (workspace?: string) =>
+    call<{
+      roles: {
+        id: string;
+        name: string;
+        listLevel: 'viewer' | 'editor' | 'admin' | null;
+        rights: ('people.manage' | 'roles.manage' | 'workspace.settings')[];
+        system: boolean;
+        members: number;
+      }[];
+      mayManage: boolean;
+    }>(`/api/roles${workspace === undefined ? '' : `?workspace=${workspace}`}`),
+  createRole: (
+    body: { name: string; listLevel: 'viewer' | 'editor' | 'admin' | null; rights: string[] },
+    workspace?: string,
+  ) =>
+    call<{ role: unknown }>(`/api/roles${workspace === undefined ? '' : `?workspace=${workspace}`}`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+  patchRole: (
+    id: string,
+    body: {
+      name?: string;
+      /** `null` ist eine Angabe („keine Stufe" = Gast), Weglassen ist keine. */
+      listLevel?: 'viewer' | 'editor' | 'admin' | null;
+      rights?: string[];
+    },
+    workspace?: string,
+  ) =>
+    call<{ ok: true }>(
+      `/api/roles/${id}${workspace === undefined ? '' : `?workspace=${workspace}`}`,
+      { method: 'PATCH', body: JSON.stringify(body) },
+    ),
+  deleteRole: (id: string, workspace?: string) =>
+    call<{ ok: true }>(
+      `/api/roles/${id}${workspace === undefined ? '' : `?workspace=${workspace}`}`,
+      { method: 'DELETE' },
+    ),
+
   /* ── Konten: die Instanzseite ──────────────────────────────────────────── */
   accounts: () =>
     call<{

@@ -83,6 +83,7 @@ export const WORKSPACE_SECTIONS = [
   { id: 'name', label: 'Name und Zeichen', hint: 'Woran man ihn erkennt' },
   { id: 'landen', label: 'Standard-Seite', hint: 'Vorgabe für alle' },
   { id: 'leute', label: 'Leute', hint: 'Wer hier mitarbeitet' },
+  { id: 'rollen', label: 'Rollen', hint: 'Was jemand darf' },
   { id: 'aussehen', label: 'Farben und Flächen', hint: 'Für alle Mitglieder' },
 ] as const;
 

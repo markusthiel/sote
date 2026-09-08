@@ -1429,6 +1429,19 @@ Beim Bauen entschieden, weil es ohne Entscheidung keinen Code gibt:
   - Die **Schublade ist ausgenommen**: unter 800 px liegt die Seitenleiste
     absichtlich über der Seite. Ein Prüfer, der Absicht als Fehler meldet,
     macht seine echten Befunde unglaubwürdig.
+- **Eine Karte je Rolle, keine Zeile** (SONEs ADR-0119, Punkt 2, nach einer
+  Meldung aus der Benutzung). Eine Rolle sagt **zwei** Dinge — was sie in den
+  Projekten gibt und was sie im Arbeitsbereich verwaltet — dazu eine Zahl und ob
+  sie änderbar ist. Vier Dinge auf einer Zeile brechen um.
+  - Die **Zahl steht neben dem Namen**: sie beantwortet „darf ich das löschen",
+    und genau dort stellt sich die Frage.
+  - **Systemrollen stehen mit dabei**, nicht änderbar und mit Grund. Sie zu
+    verbergen hieße, dass jemand `member` sucht und nicht findet, obwohl es das
+    gibt — dieselbe Verwirrung wie ein gefiltertes Mitglied in der
+    Personensuche.
+  - Eine neue Rolle beginnt mit **Mitlesen und ohne Rechte**: ohne Stufe wäre
+    sie ein Gast, den niemand gemeint hat, mit Rechten eine Vergabe, die
+    niemand getroffen hat.
 - **`pnpm check` ist genau das, was die CI fährt.** Erst standen die Prüfungen
   einzeln in der Workflow-Datei, und `pnpm -r typecheck` scheiterte dort — in
   einem frischen Klon gibt es kein `dist`, und `@sote/core` zeigt mit `types`
