@@ -75,6 +75,8 @@ export function ProjectTree({
   >(null);
   const [renaming, setRenaming] = useState<string | null>(null);
   const [menu, setMenu] = useState<string | null>(null);
+  /** Wo das Menü aufgeht — in Fensterkoordinaten, weil es `fixed` ist. */
+  const [at, setAt] = useState<{ top: number; right: number }>({ top: 0, right: 0 });
   /*
    * Welche Zweige zugeklappt sind — zugeklappt und nicht aufgeklappt.
    *
@@ -229,7 +231,35 @@ export function ProjectTree({
               className="p-dots"
               aria-label={`Menü für ${p.name}`}
               aria-haspopup="menu"
-              onClick={() => setMenu(menu === p.id ? null : p.id)}
+              /*
+                Die Stelle wird beim Öffnen gemerkt, nicht beim Zeichnen
+                gerechnet: ein `fixed`-Menü hat keinen Vorfahren, an dem es
+                sich ausrichtet, und der Knopf kann beim nächsten Zeichnen
+                längst woanders stehen.
+              */
+              onClick={(e) => {
+                if (menu === p.id) {
+                  setMenu(null);
+                  return;
+                }
+                /*
+                  An BEIDEN Rändern festgeklemmt.
+                  Verankert wird rechts am Knopf, damit die Klappe unter ihm
+                  hängt — aber auf einem schmalen Fenster stand sie damit links
+                  draußen (`left: -21` auf 390 px). Die Breite ist im
+                  Stylesheet mit derselben Formel gesetzt, also lässt sie sich
+                  hier ausrechnen statt messen: messen ginge erst nach dem
+                  Zeichnen, und dann springt das Menü.
+                */
+                const r = e.currentTarget.getBoundingClientRect();
+                const breite = Math.min(312, window.innerWidth - 16);
+                const rechts = window.innerWidth - r.right;
+                setAt({
+                  top: Math.round(r.bottom + 4),
+                  right: Math.round(Math.max(8, Math.min(rechts, window.innerWidth - breite - 8))),
+                });
+                setMenu(p.id);
+              }}
             >
               ⋮
             </button>
@@ -237,7 +267,26 @@ export function ProjectTree({
         )}
 
         {menu === p.id ? (
-          <div className="menu" ref={box} role="menu">
+          <div
+            // `at-point`: dieselbe Erscheinung, aber an einer gerechneten
+            // Stelle im Fenster. Ohne den eigenen Namen hätte das Menü an der
+            // Aufgabenzeile mitgeändert — und tat es auch, bis der
+            // Breiten-Durchgang es meldete.
+            className="menu at-point"
+            ref={box}
+            role="menu"
+            /*
+              Von RECHTS verankert und nach unten begrenzt: das Menü ist hoch
+              (Zeichenwähler und Farben), und am Fuß einer langen Liste hätte
+              es sonst unten kein Ende. `maxHeight` plus eigenes Scrollen ist
+              die einzige Antwort, die auf jedem Fenster stimmt.
+            */
+            style={{
+              top: at.top,
+              right: at.right,
+              maxHeight: `calc(100vh - ${at.top + 12}px)`,
+            }}
+          >
             <button className="menu-item" role="menuitem" onClick={() => {
               setMenu(null);
               setRenaming(p.id);

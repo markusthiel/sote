@@ -1407,6 +1407,28 @@ Beim Bauen entschieden, weil es ohne Entscheidung keinen Code gibt:
     Aufgaben still verwaisen, und still ist bei Löschen das falsche Wort.
   - **„Verwaltung" fehlt im Menü, wenn man nicht verwaltet** — und `onAdmin` ist
     darum im Typ eine Möglichkeit und kein Flag daneben.
+- **Ein Klappmenü in einem scrollenden Kasten ist immer abgeschnitten.** Das
+  Zeilenmenü im Baum wächst nach links (das ⋮ steht rechts) und ragte über den
+  linken Rand der Seitenleiste, die `overflow: hidden` hat, weil die Liste darin
+  scrollt. Es liegt jetzt `fixed`, mit einer **berechenbaren** Breite
+  (`min(312px, 100vw - 16px)`) und an **beiden** Rändern festgeklemmt — mit
+  `min-width` hing die Stelle an einer Breite, die es beim Öffnen noch nicht gab.
+- **Eine gemeinsame Klasse ist eine gemeinsame Entscheidung.** `.menu` teilen
+  sich Baum und Aufgabenzeile; mein `fixed` für den Baum schob das Zeilenmenü
+  250 Pixel aus dem Fenster. Der Ort, der etwas anderes braucht, bekommt einen
+  eigenen Namen (`.menu.at-point`).
+- **`position: absolute` ohne positionierten Vorfahren verankert sich irgendwo.**
+  `.main-head` hatte kein `position: relative`, also lag „Erledigte einblenden"
+  bei offener Detailspalte über deren „schließen" — ein fremder Knopf in einer
+  fremden Spalte.
+- **Der Breiten-Durchgang prüft jetzt vier Fragen**, und jede stammt aus einem
+  gemeldeten Fehler: zu schmal, abgeschnitten, außerhalb, **überdeckt**. Die
+  vierte kam dazu, weil die ersten drei die Überdeckung nicht sahen — und sie
+  fand beim ersten Lauf zwei weitere Sachen, davon eine, die ich in derselben
+  Runde selbst eingebaut hatte.
+  - Die **Schublade ist ausgenommen**: unter 800 px liegt die Seitenleiste
+    absichtlich über der Seite. Ein Prüfer, der Absicht als Fehler meldet,
+    macht seine echten Befunde unglaubwürdig.
 - **`pnpm check` ist genau das, was die CI fährt.** Erst standen die Prüfungen
   einzeln in der Workflow-Datei, und `pnpm -r typecheck` scheiterte dort — in
   einem frischen Klon gibt es kein `dist`, und `@sote/core` zeigt mit `types`

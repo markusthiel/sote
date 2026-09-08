@@ -600,7 +600,20 @@ input {
   background: var(--page);
 }
 
+/*
+ * `position: relative`, und das Fehlen davon war ein Fehler im Bild.
+ *
+ * `.head-toggle` ist `absolute` und verankerte sich darum am nächsten
+ * positionierten Vorfahren — nicht an diesem Kopf. Mit offener Detailspalte
+ * landete „Erledigte einblenden" ÜBER dem „schließen" der Spalte, also über
+ * einem fremden Knopf in einer fremden Spalte.
+ *
+ * Gemeldet mit Bild. Mein Breiten-Durchgang hat es nicht gefunden, weil er auf
+ * Überlauf und Abschneiden prüft und nicht auf Überdeckung zwischen zwei
+ * Spalten — das ist jetzt drin.
+ */
 .main-head {
+  position: relative;
   padding: 26px 32px 14px;
   border-bottom: 1px solid var(--line);
 }
@@ -1081,17 +1094,63 @@ input {
   }
 }
 
+/*
+ * `.menu` bleibt `absolute` — die Aufgabenzeile braucht das.
+ *
+ * Ich hatte diese Regel auf `fixed` gestellt, um das Baummenü zu retten, und
+ * damit das Menü an der Aufgabenzeile aus dem Fenster geschoben: es teilt sich
+ * die Klasse, hatte aber keine gerechnete Stelle, also landete es an seinem
+ * statischen Platz und ragte 250 Pixel hinaus. Der erweiterte
+ * Breiten-Durchgang hat es beim ersten Lauf gemeldet.
+ *
+ * Die Lehre ist die alte: **eine gemeinsame Klasse ist eine gemeinsame
+ * Entscheidung.** Wer sie für einen Ort ändert, ändert sie für alle — also
+ * bekommt der Ort, der etwas anderes braucht, einen eigenen Namen.
+ */
 .menu {
   position: absolute;
   right: 0;
   top: 28px;
   z-index: 30;
+}
+
+/*
+ * `fixed` und nicht `absolute` — sonst schneidet die Leiste ab.
+ *
+ * Gemeldet mit Bild: „Das Submenü im Baum ist abgeschnitten." Das Menü wächst
+ * nach LINKS (das ⋮ steht am rechten Rand der Zeile) und ragte über den linken
+ * Rand der Seitenleiste hinaus. `.panel` hat `overflow: hidden`, weil die
+ * Liste darin scrollt — und **ein Klappmenü in einem scrollenden Kasten ist
+ * immer abgeschnitten**, egal wie es verankert ist.
+ *
+ * Dasselbe Prinzip wie beim Griff der Leiste, den ich schon einmal halb
+ * abgeschnitten hatte: was über den Rand hinausragen soll, darf nicht im
+ * Kasten liegen. `ProjectTree` rechnet die Stelle aus dem Rechteck des Knopfes
+ * aus, weil ein `fixed`-Element keinen Vorfahren mehr hat, an dem es sich
+ * ausrichten könnte.
+ */
+.menu.at-point {
+  position: fixed;
+  right: auto;
+  top: auto;
+  z-index: 60;
   background: var(--raised);
   border: 1px solid var(--line-strong);
   border-radius: var(--sote-radius-lg);
   box-shadow: var(--sote-shadow-lg);
   padding: 5px;
-  min-width: 220px;
+  /*
+   * Eine BERECHENBARE Breite statt `min-width`.
+   *
+   * Mit `min-width` wächst das Menü mit seinem Inhalt (dem Zeichengitter), und
+   * dann kann die Stelle beim Öffnen nicht ausgerechnet werden — sie hing an
+   * einer Breite, die es noch nicht gab. Auf 390 px stand das Menü darum bei
+   * `left: -21`, also links draußen.
+   *
+   * `min(312px, 100vw - 16px)` ist an beiden Enden bekannt: `ProjectTree`
+   * rechnet mit derselben Formel und kann darum an beiden Rändern festklemmen.
+   */
+  width: min(312px, calc(100vw - 16px));
 }
 
 .menu-label {
@@ -2823,4 +2882,10 @@ select.target {
   display: inline-flex;
   align-items: center;
   gap: 7px;
+}
+
+/* Ein fixiertes Menü braucht sein eigenes Scrollen: es ist hoch (Zeichenwähler
+   und Farben), und am Fuß einer langen Liste hätte es sonst unten kein Ende. */
+.menu {
+  overflow-y: auto;
 }
