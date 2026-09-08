@@ -1676,6 +1676,122 @@ Damit haben **alle vier** Migrationsfälle dieselbe Form: aus einem Projekt wird
 ein Ordner mit dem Namen, und die Aufgaben ziehen in ein gleichnamiges Projekt
 darin. Nur wo es keine Aufgaben gibt, entfällt das Projekt.
 
+## 10e. Freigaben — ein Link auf ein Projekt
+
+**Status: vorgeschlagen, nicht gebaut.** Aufgeschrieben vor dem Bau, weil eine
+Rechtefläche der eine Ort ist, an dem ein Irrtum nicht nur hässlich, sondern
+gefährlich ist.
+
+### Was aus SONEs ADRs mitkommt
+
+Drei Entscheidungen, und alle drei sind älter als dieser Abschnitt:
+
+- **Zugang ist keine Einladung** (ADR-0073). Ein Konto anzulegen ist Sache der
+  Instanz; wer in einem Arbeitsbereich mitarbeiten darf, ist Sache seines
+  Eigentümers. Ein Formular, das beides tut, lässt einen Arbeitsbereich fremde
+  Konten auf dem Server erzeugen.
+- **Der Link behält den Link** (ADR-0113). Man kann ihn wieder anzeigen. Ein
+  Link, den man nur einmal sieht, führt dazu, dass jemand einen zweiten anlegt
+  und den ersten zu widerrufen vergisst — die vergessene Freigabe ist der
+  eigentliche Schaden.
+- **Der Token reist nie in der Anfrage** (ADR-0126). Sobald es einen Mailweg
+  gibt: eine Route, die eine übergebene URL verschickt, ist ein kleiner
+  offener Verteiler mit dem Namen dieser Instanz auf dem Umschlag.
+
+Dazu die Regel, die heute schon drei Mal die Antwort war (ADR-0087, 0110, 0113)
+und die ich in dieser Sitzung selbst zweimal gebrochen habe: **ein Parameter,
+den jeder Aufrufer richtig berechnen muss, ist ein Parameter, den ein Aufrufer
+falsch berechnet.** Für Freigaben heißt das: die Sichtbarkeitsbedingung fragt
+selbst nach dem Zugang und bekommt ihn nicht übergeben.
+
+### Wo SOTE bewusst abweicht
+
+In SONE ist **ein Gast ein Mitglied** (ADR-0110) — weil Rechte dort an Seiten
+hängen und eine Erlaubnis ohne Mitgliedschaft eine Zeile wäre, die nicht weiß,
+ob die Person noch da ist.
+
+SOTE hat keine Rechte je Projekt: alles gilt je Arbeitsbereich. Ein Gast wäre
+hier also entweder ein Mitglied mit Zugriff auf **alles** — das ist keine
+Freigabe, das ist eine Einladung — oder etwas, das SOTE noch nicht hat.
+
+**Vorschlag: eine Freigabe ist ein Token, kein Konto.** Sie hängt an genau
+einem Projekt und trägt ihr Recht selbst. Damit ist sie kein Mitglied, und die
+Frage „ist die Person noch da" stellt sich nicht: es gibt keine Person, es gibt
+einen Link, und den widerruft man.
+
+Das ist ein echter Unterschied zu SONE, und der Preis steht dazu: ein Gast hat
+keinen Namen. Wer etwas ändert, erscheint als „über einen Link" und nicht als
+jemand. Bei einer Notizanwendung mit Kommentaren wäre das zu wenig; bei einer
+Aufgabenliste, die man jemandem hinhält, reicht es — und die Alternative wäre,
+Konten für Leute anzulegen, die keines wollen.
+
+### Die Form
+
+| | |
+|---|---|
+| **Woran** | genau ein Projekt. Kein Ordner: ein Ordner ist kein Ort, an dem Aufgaben stehen. |
+| **Was** | `read` oder `edit`. Zwei Stufen, keine Matrix. |
+| **Wie lange** | unbegrenzt oder mit Ablauf. Ein Ablauf ist die Freigabe, die sich selbst aufräumt. |
+| **Wer** | angelegt von einem Mitglied, das im Arbeitsbereich schreiben darf. |
+
+**`edit` heißt: abhaken, anlegen, Titel und Datum ändern.** Nicht: das Projekt
+umbenennen, es löschen, andere Projekte sehen, Leute sehen. Die Grenze ist
+nicht „was ist gefährlich", sondern **was gehört zum Projekt** — wer eine Liste
+abarbeiten soll, braucht die Liste und nichts darüber.
+
+### Was daraus folgt, und was ich entschieden hätte
+
+1. **Der Bildschirm einer Freigabe hat keine Schiene.** Es gibt keine anderen
+   Orte, also auch keine Liste davon. Ein Rahmen mit fünf Bereichen, von denen
+   vier „nicht für dich" antworten, ist schlimmer als kein Rahmen.
+
+2. **Das Token steht in der Adresse, nicht in einem Kopf.** Ein Link muss sich
+   weitergeben lassen, sonst ist er keiner. Der Preis: er steht im Verlauf des
+   Browsers und in jedem Protokoll, das URLs mitschreibt — deshalb ist der
+   Widerruf die wichtigste Funktion und nicht ein Nachtrag.
+
+3. **Gespeichert wird der Token verschlüsselt, nicht gehasht.** Ein Hash wäre
+   sicherer und würde ADR-0113 brechen: man könnte ihn nicht wieder anzeigen.
+   Die Abwägung geht hier gegen den Hash, weil der wahrscheinlichere Schaden
+   die *vergessene* Freigabe ist und nicht die gelesene Datenbank — wer die
+   Datenbank liest, hat die Aufgaben auch ohne Token.
+   **Das ist der Punkt, an dem ich am unsichersten bin**, und er steht als
+   Frage unten.
+
+4. **Der Widerruf ist sofort und endgültig.** Kein Papierkorb für Freigaben:
+   „widerrufen, aber wiederherstellbar" heißt, der Link geht noch.
+
+5. **Eine Liste dessen, was hinausgegeben ist**, unter „Freigaben" in der
+   Schiene — mit Projekt, Recht, Ablauf, wann zuletzt benutzt. „Zuletzt
+   benutzt" ist die Spalte, die eine vergessene Freigabe sichtbar macht.
+
+6. **Die Bedingung fragt selbst.** Eine Funktion `accessTo(projectId, viewer)`,
+   und `viewer` ist entweder ein Konto oder ein Token. Kein Aufrufer bekommt
+   ein `mayEdit` übergeben.
+
+### Was ich dabei nicht verspreche
+
+- **Kein Mailweg.** Den Link verschickt, wer ihn kopiert. Sobald es einen
+  Mailweg gibt, gilt ADR-0126 — und dann verschickt der Server einen Link, den
+  er selbst baut, und nicht einen, den der Browser ihm gibt.
+- **Kein Kommentieren, keine Namen.** Ein Gast ist niemand.
+- **Keine Freigabe eines Ordners** und keine des ganzen Arbeitsbereichs. Das
+  Zweite ist eine Einladung und gehört zu „Leute".
+
+### Offen, und zwar für Markus
+
+1. **Verschlüsselt oder gehasht?** Verschlüsselt heißt: der Link lässt sich
+   wieder anzeigen (SONEs ADR-0113), und ein Schlüssel in der Umgebung kann
+   alle Freigaben aufdecken. Gehasht heißt: sicherer, aber „einmal kopieren
+   oder neu anlegen" — und neu angelegte Links, deren Vorgänger noch gilt, sind
+   genau der Schaden, um den es geht. Ich neige zu **verschlüsselt**, wie SONE.
+2. **Darf ein Gast mit `edit` auch löschen?** Ich neige zu **nein**: eine Zeile
+   wegzuwerfen, die man nicht wiederherstellen kann, weil der Papierkorb ein
+   Ort des Arbeitsbereichs ist, ist mehr Recht als „mitarbeiten".
+3. **Ablauf pflicht oder freiwillig?** Ich neige zu **freiwillig, mit einem
+   Vorschlag** — eine Pflicht macht Leute erfinderisch (ein Jahr), und ein
+   Vorschlag macht den Ablauf zur Gewohnheit.
+
 ## 11. Was aus SONE mitkommt, ohne neu entschieden zu werden
 
 - Tokens dreischichtig, warme Neutralrampe, Radien 2/2/4, Archivo +
