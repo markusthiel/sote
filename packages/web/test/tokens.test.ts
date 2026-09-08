@@ -148,3 +148,56 @@ test('die Umschaltung auf Fußleiste geschieht im Stylesheet', () => {
 test('reduzierte Bewegung wird respektiert', () => {
   assert.match(CSS, /@media \(prefers-reduced-motion: reduce\)/);
 });
+
+test('keine Rastervorlage schlägt die Schmal-Regel', () => {
+  /*
+   * Der Fehler, den es gab, und der Grund für einen Wächter.
+   *
+   * `.app { grid-template-columns: 1fr }` steht in der Schmal-Media-Query und
+   * wurde von `.app[data-sidebar="false"]` geschlagen — nicht wegen der
+   * Reihenfolge, sondern wegen der **Spezifität**: ein Attribut wiegt mehr als
+   * eine Klasse, und dagegen hilft kein Verschieben.
+   *
+   * Im Bild: auf 390 px war der Inhalt 55 Pixel breit, „Heute" auf zwei
+   * Buchstaben abgeschnitten. Der Fehler war bei `data-detail` sogar ÄLTER als
+   * meine Seitenleisten-Umschaltung und niemandem aufgefallen, weil die
+   * Detailspalte auf dem Telefon ohnehin über allem liegt.
+   *
+   * Geprüft wird darum: jede Vorlage mit mehr als einer Spalte steht in einer
+   * `min-width`-Klammer. Das ist gröber als eine echte Kaskadenrechnung, aber
+   * es fängt genau die Form, in der der Fehler zweimal entstanden ist.
+   */
+  const zeilen = CSS.split('\n');
+  let klammer: number | null = null;
+  let tiefe = 0;
+  const verstoesse: string[] = [];
+
+  for (const [i, zeile] of zeilen.entries()) {
+    if (/@media[^{]*min-width:\s*800px/.test(zeile)) {
+      klammer = tiefe;
+    }
+    // Grobe Klammerzählung: reicht, weil dieses Stylesheet je Zeile öffnet
+    // oder schließt und nicht beides.
+    tiefe += (zeile.match(/\{/g) ?? []).length;
+    tiefe -= (zeile.match(/\}/g) ?? []).length;
+    if (klammer !== null && tiefe <= klammer) klammer = null;
+
+    if (!/grid-template-columns:/.test(zeile)) continue;
+    // Eine Spalte ist immer erlaubt: sie IST die Schmal-Antwort.
+    const spalten = zeile.split(':')[1]!.trim().replace(/;$/, '').split(/\s+/).length;
+    if (spalten <= 1) continue;
+    // Nur `.app`-Vorlagen sind gemeint; andere Raster (Wochentage, Farbfelder)
+    // haben mit der Kaskade der Hülle nichts zu tun.
+    const regel = zeilen.slice(Math.max(0, i - 12), i).join(' ');
+    if (!/\.app\[/.test(regel)) continue;
+    if (klammer === null) {
+      verstoesse.push(`Zeile ${i + 1}: ${zeile.trim()}`);
+    }
+  }
+
+  assert.deepEqual(
+    verstoesse,
+    [],
+    `mehrspaltige .app-Vorlage ohne min-width-Klammer:\n${verstoesse.join('\n')}`,
+  );
+});

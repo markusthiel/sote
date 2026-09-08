@@ -1276,6 +1276,23 @@ Beim Bauen entschieden, weil es ohne Entscheidung keinen Code gibt:
   verbarg, stand nicht in `search.ts` — dort wird nur gefiltert, wenn die
   Abfrage einen Status **nennt**. Genannt hat ihn die Vorgabe in
   `parseTaskQuery`, eine Datei weiter.
+- **Ein Attribut wiegt mehr als eine Klasse, und dagegen hilft kein
+  Verschieben.** `.app { grid-template-columns: 1fr }` steht in der
+  Schmal-Media-Query und wurde von `.app[data-sidebar="false"]` geschlagen —
+  auf 390 px war der Inhalt **55 Pixel breit**, „Heute" auf zwei Buchstaben
+  abgeschnitten, jede Zeile ein senkrechter Streifen. Bei `data-detail` war der
+  Fehler **älter** als meine Umschaltung und niemandem aufgefallen, weil die
+  Detailspalte auf dem Telefon ohnehin über allem liegt. Jede mehrspaltige
+  Vorlage steht jetzt in einer `min-width`-Klammer, und ein Wächter prüft das
+  (gegengeprüft: er schlägt an, wenn man den Fehler wieder einbaut).
+- **Ein Bündel braucht eine Überschrift, wenn die Grenze sonst nicht zu sehen
+  ist.** In den Listen ja — dort stehen zwanzig Zeilen. In der Detailspalte
+  nicht: es sind drei, und die Beschriftung sagt schon „3 von 5". Eine zweite
+  Überschrift in 340 Pixeln wäre mehr Aufbau als Inhalt.
+  - Sortiert wird beim **Zeichnen** und nicht in der Antwort: die Reihenfolge
+    der Teilaufgaben gehört ihrem Elternteil (sie lässt sich ziehen), und ein
+    zweites Sortierkriterium im Server würde die gezogene Ordnung
+    überschreiben, sobald jemand abhakt.
 - **`pnpm check` ist genau das, was die CI fährt.** Erst standen die Prüfungen
   einzeln in der Workflow-Datei, und `pnpm -r typecheck` scheiterte dort — in
   einem frischen Klon gibt es kein `dist`, und `@sote/core` zeigt mit `types`

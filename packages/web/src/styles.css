@@ -329,8 +329,24 @@ input {
  * `div.app` statt des Knopfs, und `main` war 0 px breit. Beides sieht man in
  * keinem Test, der nur auf Sichtbarkeit prüft — der Knopf WAR sichtbar.
  */
-.app[data-sidebar="false"] {
-  grid-template-columns: var(--sote-rail) 1fr;
+/*
+ * Nur wo es Spalten GIBT.
+ *
+ * Ohne diese Klammer schlägt `.app[data-sidebar="false"]` die Regel
+ * `.app { grid-template-columns: 1fr }` aus der Schmal-Media-Query — nicht
+ * wegen der Reihenfolge, sondern wegen der **Spezifität**: ein Attribut wiegt
+ * mehr als eine Klasse, und dagegen hilft kein Verschieben.
+ *
+ * Im Bild sah das so aus: auf 390 px war der Inhalt **55 Pixel breit**, die
+ * Überschrift „Heute" auf zwei Buchstaben abgeschnitten, jede Zeile ein
+ * senkrechter Streifen. Das Raster rechnete weiter mit Schiene und
+ * Seitenleiste, obwohl beide dort nicht in der Reihe stehen — die Schiene ist
+ * ausgeblendet, die Leiste ist eine Schublade.
+ */
+@media (min-width: 800px) {
+  .app[data-sidebar="false"] {
+    grid-template-columns: var(--sote-rail) 1fr;
+  }
 }
 
 .app[data-sidebar="false"] .panel {
@@ -1231,15 +1247,24 @@ select.target {
    Ab 1100 px eine Spalte, darunter ein Drawer von rechts — dieselbe Regel wie
    SONEs rechtes Panel, und umgeschaltet per Stylesheet. */
 
-.app[data-detail="true"] {
-  grid-template-columns: var(--sote-rail) var(--sote-panel) 1fr 340px;
-}
+/*
+ * Auch das nur ab 800 px, und dieser Fehler ist ÄLTER als meine
+ * Seitenleisten-Umschaltung: `.app[data-detail="true"]` schlug dieselbe
+ * Schmal-Regel aus demselben Grund. Auf dem Telefon war der Inhalt also schon
+ * eingeengt, sobald eine Aufgabe offen war — nur ist es niemandem aufgefallen,
+ * weil die Detailspalte dort ohnehin über allem liegt.
+ */
+@media (min-width: 800px) {
+  .app[data-detail="true"] {
+    grid-template-columns: var(--sote-rail) var(--sote-panel) 1fr 340px;
+  }
 
-/* Beide zusammen: ohne Leiste, mit Detailspalte. Die Kombination fehlte, und
-   dann galt die dreispaltige Vorlage von oben — der Hauptbereich wäre wieder
-   in die falsche Spalte gerutscht. */
-.app[data-detail="true"][data-sidebar="false"] {
-  grid-template-columns: var(--sote-rail) 1fr 340px;
+  /* Beide zusammen: ohne Leiste, mit Detailspalte. Die Kombination fehlte, und
+     dann galt die dreispaltige Vorlage von oben — der Hauptbereich wäre wieder
+     in die falsche Spalte gerutscht. */
+  .app[data-detail="true"][data-sidebar="false"] {
+    grid-template-columns: var(--sote-rail) 1fr 340px;
+  }
 }
 
 .detail {
@@ -1361,8 +1386,14 @@ select.target {
   font-size: 13.5px;
 }
 
+/* Ausgegraut wie in den Listen, und aus demselben Grund über `opacity`:
+   Kästchen, Titel und Datum treten gemeinsam zurück und behalten ihre
+   Verhältnisse. Lesbar bleibt es, weil man es lesen will, um es zu öffnen. */
+.child[data-done="true"] {
+  opacity: 0.55;
+}
+
 .child[data-done="true"] .ct {
-  color: var(--text-muted);
   text-decoration: line-through;
   text-decoration-color: var(--line-strong);
 }
@@ -1412,7 +1443,7 @@ select.target {
   white-space: pre-wrap;
 }
 
-@media (max-width: 1099px) {
+@media (min-width: 800px) and (max-width: 1099px) {
   .app[data-detail="true"] {
     grid-template-columns: var(--sote-rail) var(--sote-panel) 1fr;
   }

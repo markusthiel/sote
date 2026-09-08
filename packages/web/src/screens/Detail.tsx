@@ -400,7 +400,21 @@ export function Detail({
             </span>
           ) : null}
         </div>
-        {data.children.map((child: Task) => (
+        {/*
+          Erledigtes rutscht nach unten, hier ohne eigene Überschrift.
+          In den Listen trägt das Bündel eine — dort stehen zwanzig Zeilen und
+          man braucht die Grenze als Marke. Hier sind es drei, und die
+          Beschriftung darüber sagt schon „3 von 5": eine zweite Überschrift in
+          einer Spalte von 340 Pixeln wäre mehr Aufbau als Inhalt.
+
+          Sortiert beim Zeichnen und nicht in der Antwort: die Reihenfolge der
+          Teilaufgaben gehört ihrem Elternteil (sie lässt sich ziehen), und ein
+          zweites Sortierkriterium im Server würde die gezogene Ordnung
+          überschreiben, sobald jemand abhakt.
+        */}
+        {[...data.children]
+          .sort((a, b) => Number(a.completed !== null) - Number(b.completed !== null))
+          .map((child: Task) => (
           <div className="child" key={child.id} data-done={child.completed !== null}>
             <button
               className="task-box"
