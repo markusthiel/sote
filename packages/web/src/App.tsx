@@ -531,6 +531,17 @@ export function App() {
               void panelWrite(() => api.patchProject(id, { icon }, workspace))
             }
             onTrash={(id) => void panelWrite(() => api.trash('projects', id, workspace))}
+            onSort={(id, sortKey) =>
+              void panelWrite(() => api.patchProject(id, { sortKey }, workspace))
+            }
+            /*
+              Teilen führt auf die Freigaben, mit diesem Projekt vorgewählt.
+              Nicht sofort einen Link anlegen: Recht und Ablauf sind eine Wahl
+              (Konzept 10e), und ein Knopf, der still ein Schreibrecht
+              hinausgibt, wäre der eine Klick, den man nicht zurücknehmen kann,
+              ohne ihn zu bemerken.
+            */
+            onShare={(id) => go({ kind: 'shares', projectId: id })}
           />
           {panelError !== undefined ? (
             <p className="panel-error">{panelError}</p>
@@ -556,7 +567,12 @@ export function App() {
         ) : route.kind === 'admin' && route.section === 'konten' ? (
           <Accounts />
         ) : route.kind === 'shares' ? (
-          <Shares workspace={workspace} projects={projects} />
+          <Shares
+            workspace={workspace}
+            projects={projects}
+            // Vorgewählt, wenn man über den Teilen-Knopf im Baum kommt.
+            preselect={route.projectId}
+          />
         ) : route.kind === 'workspaces' && route.section === 'alle' ? (
           <WorkspaceOverview workspaces={me.workspaces} current={workspace} />
         ) : route.kind === 'workspaces' && route.section === 'gruppen' ? (

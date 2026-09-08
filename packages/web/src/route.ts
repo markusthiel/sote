@@ -58,8 +58,15 @@ export type Route =
    * mitschreibt, und darum ist der Widerruf die wichtigste Funktion.
    */
   | { readonly kind: 'share'; readonly token: string }
-  /** Was hinausgegeben ist — der letzte Platzhalter bekommt einen Inhalt. */
-  | { readonly kind: 'shares' }
+  /**
+   * Was hinausgegeben ist.
+   *
+   * `projectId` ist eine **Vorwahl** und kein Teil des Ortes: sie kommt vom
+   * Teilen-Knopf im Baum und steht darum nicht in der Adresse. Ein Ort, der
+   * eine Vorwahl in der Adresse trägt, ist ein Ort, den man versehentlich mit
+   * ihr weitergibt.
+   */
+  | { readonly kind: 'shares'; readonly projectId?: string }
   /** Eine Einladung einlösen — ohne Konto, wie eine Freigabe. */
   | { readonly kind: 'invite'; readonly token: string }
   | { readonly kind: 'workspaces'; readonly section: string }

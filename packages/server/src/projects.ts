@@ -194,6 +194,18 @@ export async function update(
     parentId?: string | null;
     /** `null` leert das Zeichen, ein fehlender Schlüssel lässt es stehen. */
     icon?: unknown;
+    /**
+     * Ein neuer Sortierschlüssel.
+     *
+     * Er kommt **fertig** von der Oberfläche, weil nur sie weiß, zwischen
+     * welche zwei Nachbarn etwas soll: der Server müsste sonst die Reihenfolge
+     * nachbilden, in der die Leiste zeichnet — zwei Wahrheiten über dieselbe
+     * Liste. Erlaubt sind nur die Zeichen, aus denen
+     * `generateKeyBetween` baut; alles andere wäre ein Wert, der die
+     * lexikographische Ordnung durcheinanderbringt und sich nicht mehr
+     * einsortieren lässt.
+     */
+    sortKey?: string;
   },
 ): Promise<ProjectRow> {
   checkColor(fields.color);
@@ -219,6 +231,12 @@ export async function update(
       };
 
       if (fields.name !== undefined) set('name', fields.name.trim());
+      if (fields.sortKey !== undefined) {
+        if (!/^[0-9A-Za-z]{1,60}$/.test(fields.sortKey)) {
+          throw new OutOfOrder('dieser Sortierschlüssel hat eine Form, die nicht sortiert');
+        }
+        set('sort_key', fields.sortKey);
+      }
       if (fields.color !== undefined) set('color', fields.color);
       /*
        * `null` leert, ein fehlender Schlüssel lässt stehen — dieselbe Regel wie

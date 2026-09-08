@@ -18,10 +18,18 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 
-import { colorValue, PALETTE } from '@sote/core';
+import { colorValue, generateKeyBetween, PALETTE } from '@sote/core';
 
 import type { Project } from '../api.js';
 import { useProgressive } from '../hooks/useProgressive.js';
+import {
+  ArrowDownIcon,
+  ArrowUpIcon,
+  FolderPlusIcon,
+  ListIcon,
+  PencilIcon,
+  ShareIcon,
+} from './icons.js';
 import { iconsFor, IconPreview, loadIcons, ProjectMark } from './ProjectMark.js';
 
 /**
@@ -52,11 +60,24 @@ export function ProjectTree({
   onColor,
   onIcon,
   onTrash,
+  onSort,
+  onShare,
 }: {
   projects: readonly Project[];
   activeId: string | null;
   busy: boolean;
   onOpen: (id: string) => void;
+  /**
+   * Einen Platz weiter — mit dem **fertigen** Schlüssel.
+   *
+   * Der Baum rechnet ihn, weil nur er weiß, zwischen welchen Nachbarn etwas
+   * landen soll; der Aufrufer schreibt ihn. Dieselbe Aufteilung wie bei allem
+   * anderen hier: der Baum ruft keine API selbst, sonst gäbe es zwei Bauarten
+   * in einer Datei.
+   */
+  onSort: (id: string, sortKey: string) => void;
+  /** Per Link teilen — der Aufrufer weiß, wohin das führt. */
+  onShare: (id: string) => void;
   onCreate: (name: string, parentId: string | null, kind: 'folder' | 'list') => void;
   onRename: (id: string, name: string) => void;
   onColor: (id: string, color: string | null) => void;
@@ -78,6 +99,52 @@ export function ProjectTree({
   const [menu, setMenu] = useState<string | null>(null);
   /** Wo das Menü aufgeht — in Fensterkoordinaten, weil es `fixed` ist. */
   const [at, setAt] = useState<{ top: number; right: number }>({ top: 0, right: 0 });
+
+  /**
+   * Die Geschwister eines Knotens, in der Reihenfolge, in der sie stehen.
+   *
+   * Aus derselben Liste, aus der die Leiste zeichnet — und das ist der Grund,
+   * warum der **Sortierschlüssel hier** gerechnet wird und nicht im Server:
+   * nur hier ist bekannt, zwischen welche zwei Nachbarn etwas soll. Der Server
+   * müsste die Reihenfolge nachbilden, und zwei Wahrheiten über dieselbe Liste
+   * laufen auseinander.
+   */
+  const siblings = (id: string): Project[] => {
+    const mine = projects.find((x) => x.id === id);
+    if (mine === undefined) return [];
+    return projects
+      .filter((x) => (x.parentId ?? null) === (mine.parentId ?? null))
+      .sort((a, b) => (a.sortKey < b.sortKey ? -1 : a.sortKey > b.sortKey ? 1 : 0));
+  };
+
+  /** Gibt es in dieser Richtung einen Nachbarn? Sonst ist der Knopf gesperrt. */
+  const canMove = (id: string, dir: -1 | 1): boolean => {
+    const reihe = siblings(id);
+    const i = reihe.findIndex((x) => x.id === id);
+    return i >= 0 && i + dir >= 0 && i + dir < reihe.length;
+  };
+
+  /**
+   * Einen Platz weiter.
+   *
+   * Der neue Schlüssel liegt **zwischen dem Nachbarn und dessen Nachbarn** —
+   * nicht „Plätze tauschen": ein Tausch schreibt zwei Zeilen, und wenn die
+   * zweite scheitert, stehen zwei Knoten auf demselben Platz. Ein Schlüssel
+   * dazwischen ist eine Zeile.
+   */
+  function move(id: string, dir: -1 | 1): void {
+    const reihe = siblings(id);
+    const i = reihe.findIndex((x) => x.id === id);
+    if (i < 0 || i + dir < 0 || i + dir >= reihe.length) return;
+    const nachbar = reihe[i + dir]!;
+    const dahinter = reihe[i + 2 * dir];
+    const [a, b] =
+      dir === -1
+        ? [dahinter?.sortKey ?? null, nachbar.sortKey]
+        : [nachbar.sortKey, dahinter?.sortKey ?? null];
+    setMenu(null);
+    onSort(id, generateKeyBetween(a, b));
+  }
   /*
    * Welche Zweige zugeklappt sind — zugeklappt und nicht aufgeklappt.
    *
@@ -306,42 +373,121 @@ export function ProjectTree({
               maxHeight: `calc(100vh - ${at.top + 12}px)`,
             }}
           >
-            <button className="menu-item" role="menuitem" onClick={() => {
-              setMenu(null);
-              setRenaming(p.id);
-            }}>
-              Umbenennen
-            </button>
             {/*
-              Zwei Eintraege statt einem, und nur bei einem Ordner.
-              Ein Projekt haelt Aufgaben und keine Unterpunkte (Konzept 10d) —
-              ein Eintrag „Unterprojekt anlegen" an einem Projekt waere ein
-              Angebot, das die Datenbank ablehnt. Abwesend statt anwesend und
-              verweigernd (SONEs ADR-0027).
+              DIE FORM IST SONES `EntryMenu`, und zwar abgeschaut und nicht
+              nachempfunden: ein **Band** aus Zeichenknöpfen oben für das
+              Häufige, darunter beschriftete Zeilen, dann das Aussehen, unten
+              das Zerstörende.
+
+              SONEs Begründung dafür steht in seinem Stylesheet und ist
+              gerechnet: *„At 190px the five most-used actions were five rows of
+              text and the menu ran most of the way down the sidebar. As a row
+              of marks they take one row, and the width is what makes five of
+              them fit — the space is bought back several times over."*
+
+              Die Wörter gehen dabei nicht verloren: jeder Knopf trägt seinen
+              Namen als `title` und als `aria-label`. Dasselbe Geschäft wie im
+              Blockmenü dort.
+            */}
+            <div className="entry-menu-band">
+              <div className="entry-menu-actions" role="group" aria-label="Aktionen">
+                <button
+                  type="button"
+                  className="entry-menu-action"
+                  title="Umbenennen"
+                  aria-label={`${p.name} umbenennen`}
+                  onClick={() => {
+                    setMenu(null);
+                    setRenaming(p.id);
+                  }}
+                >
+                  <PencilIcon size={16} />
+                </button>
+                {/*
+                  Teilen sitzt im Band, und das ist einer der gemeldeten Punkte:
+                  „Link teilen: auch hier fehlt ein Menü im Baum." Ein Projekt
+                  freizugeben ist eine Sache, die man **am Projekt** tut — es
+                  dafür in einem anderen Bereich wiederzufinden ist ein Umweg
+                  über eine Liste, in der es nur einmal vorkommt.
+
+                  Nur an Projekten: ein Ordner wird nicht freigegeben (der
+                  Trigger in Migration 0011 lehnt es ab), also fehlt der Knopf
+                  dort, statt anwesend zu sein und zu verweigern (ADR-0027).
+                */}
+                {p.kind === 'list' ? (
+                  <button
+                    type="button"
+                    className="entry-menu-action"
+                    title="Per Link teilen"
+                    aria-label={`${p.name} per Link teilen`}
+                    onClick={() => {
+                      setMenu(null);
+                      onShare(p.id);
+                    }}
+                  >
+                    <ShareIcon size={16} />
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  className="entry-menu-action"
+                  title="Nach oben"
+                  aria-label={`${p.name} nach oben`}
+                  disabled={!canMove(p.id, -1)}
+                  onClick={() => move(p.id, -1)}
+                >
+                  <ArrowUpIcon size={16} />
+                </button>
+                <button
+                  type="button"
+                  className="entry-menu-action"
+                  title="Nach unten"
+                  aria-label={`${p.name} nach unten`}
+                  disabled={!canMove(p.id, 1)}
+                  onClick={() => move(p.id, 1)}
+                >
+                  <ArrowDownIcon size={16} />
+                </button>
+              </div>
+            </div>
+
+            {/*
+              Was hineinkann, als Zeichen unter einem Wort — SONEs
+              `entry-menu-new`. Nur bei einem Ordner: ein Projekt hält Aufgaben
+              und keine Unterpunkte (Konzept 10d), und ein Eintrag
+              „Unterprojekt anlegen" an einem Projekt wäre ein Angebot, das die
+              Datenbank ablehnt.
             */}
             {p.kind === 'folder' ? (
-              <>
-                <button
-                  className="menu-item"
-                  role="menuitem"
-                  onClick={() => {
-                    setMenu(null);
-                    setAdding({ parentId: p.id, kind: 'list' });
-                  }}
-                >
-                  Projekt anlegen
-                </button>
-                <button
-                  className="menu-item"
-                  role="menuitem"
-                  onClick={() => {
-                    setMenu(null);
-                    setAdding({ parentId: p.id, kind: 'folder' });
-                  }}
-                >
-                  Unterordner anlegen
-                </button>
-              </>
+              <div className="entry-menu-new">
+                <span className="entry-menu-label">Neu</span>
+                <div className="entry-menu-actions" role="group" aria-label="Neu anlegen">
+                  <button
+                    type="button"
+                    className="entry-menu-action"
+                    title="Projekt anlegen"
+                    aria-label={`Projekt in ${p.name} anlegen`}
+                    onClick={() => {
+                      setMenu(null);
+                      setAdding({ parentId: p.id, kind: 'list' });
+                    }}
+                  >
+                    <ListIcon size={16} />
+                  </button>
+                  <button
+                    type="button"
+                    className="entry-menu-action"
+                    title="Unterordner anlegen"
+                    aria-label={`Unterordner in ${p.name} anlegen`}
+                    onClick={() => {
+                      setMenu(null);
+                      setAdding({ parentId: p.id, kind: 'folder' });
+                    }}
+                  >
+                    <FolderPlusIcon size={16} />
+                  </button>
+                </div>
+              </div>
             ) : null}
             <div className="menu-label sep">Zeichen</div>
             {/*

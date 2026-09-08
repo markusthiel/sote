@@ -1683,6 +1683,27 @@ Beim Bauen entschieden, weil es ohne Entscheidung keinen Code gibt:
   - **Was schon getippt war, bleibt stehen**: nicht mit der ersten eingefügten
     Zeile verschmolzen und nicht weggeworfen. Zusammenkleben wäre die einzige
     Variante, bei der etwas verlorengeht.
+- **SONE ist der Maßstab, und zwar abgeschaut und nicht nachempfunden.** Markus'
+  Korrektur: *„Ich glaube ich habe gesagt: So wie bei Sone. Nicht nicht wie bei
+  Sone. Sone ist eigentlich bei allem der Maßstab. Schau dort ab."* Der
+  Unterschied ist praktisch — SONEs `EntryMenu` hat eine Form, die ich mir nicht
+  ausgedacht hätte: ein **Band** aus Zeichenknöpfen für das Häufige, darunter
+  beschriftete Zeilen, dann das Aussehen, unten das Zerstörende.
+  - Und die Begründung stand dort **gerechnet**: *„At 190px the five most-used
+    actions were five rows of text and the menu ran most of the way down the
+    sidebar. As a row of marks they take one row, and the width is what makes
+    five of them fit."* Die Wörter überleben als `title` und `aria-label`.
+  - **Teilen sitzt im Band**, weil man ein Projekt am Projekt freigibt. Es führt
+    auf die Freigaben mit vorgewähltem Projekt und legt nicht still einen Link
+    an: Recht und Ablauf sind eine Wahl.
+  - **Der Sortierschlüssel wird in der Leiste gerechnet**, nicht im Server: nur
+    sie weiß, zwischen welche zwei Nachbarn etwas soll. Und ein Schlüssel
+    *dazwischen* statt „Plätze tauschen" — ein Tausch schreibt zwei Zeilen, und
+    wenn die zweite scheitert, stehen zwei Knoten auf demselben Platz.
+  - **Zwei Stellen gaben Projekte heraus, und ich pflegte eine.** `projectView`
+    bekam `sortKey`, die Liste baut ihre Zeilen aber selbst — der Baum bekam
+    keine Schlüssel, `siblings` verglich `undefined` mit `undefined`, und alle
+    Verschieben-Knöpfe waren gesperrt.
 - **`pnpm check` ist genau das, was die CI fährt.** Erst standen die Prüfungen
   einzeln in der Workflow-Datei, und `pnpm -r typecheck` scheiterte dort — in
   einem frischen Klon gibt es kein `dist`, und `@sote/core` zeigt mit `types`

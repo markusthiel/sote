@@ -3028,3 +3028,74 @@ a.btn {
   justify-content: center;
   text-decoration: none;
 }
+
+/* ── Das Zeilenmenü im Baum, in SONEs Form ─────────────────────────────────
+ *
+ * Abgeschaut aus SONEs `.entry-menu`, und die Begründung ist dort gerechnet:
+ * „At 190px the five most-used actions were five rows of text and the menu ran
+ * most of the way down the sidebar. As a row of marks they take one row, and
+ * the width is what makes five of them fit — the space is bought back several
+ * times over."
+ *
+ * Die Wörter gehen nicht verloren: jeder Knopf trägt seinen Namen als `title`
+ * und als `aria-label`.
+ */
+
+.entry-menu-band {
+  margin-bottom: 4px;
+  padding: 3px;
+  border-radius: var(--sote-radius-md);
+  background: var(--sunken);
+}
+
+.entry-menu-actions {
+  display: flex;
+  gap: 3px;
+  padding: 3px;
+}
+
+.entry-menu-action {
+  flex: 1 1 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--sote-radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.entry-menu-action:hover:not(:disabled) {
+  background: var(--raised);
+  color: var(--text);
+}
+
+/* Gesperrt heißt: es gibt keinen Nachbarn in dieser Richtung. Sichtbar
+   gesperrt und nicht abwesend — anders als bei „Teilen" an einem Ordner, wo es
+   die Sache gar nicht gibt: hier gibt es sie, nur hier nicht. */
+.entry-menu-action:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.entry-menu-new {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-left: 10px;
+}
+
+.entry-menu-new .entry-menu-actions {
+  flex: 1 1 auto;
+}
+
+.entry-menu-label {
+  font-family: var(--sote-mono);
+  font-size: 10.5px;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}

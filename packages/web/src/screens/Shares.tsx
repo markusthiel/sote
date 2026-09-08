@@ -24,9 +24,19 @@ import { api, ApiError, type Project } from '../api.js';
 export function Shares({
   workspace,
   projects,
+  preselect,
 }: {
   workspace: string | undefined;
   projects: readonly Project[];
+  /**
+   * Ein Projekt, das schon gewählt ist.
+   *
+   * Kommt vom Teilen-Knopf im Baum: dort tut man es **am Projekt**, und dann
+   * hier noch einmal aus einer Liste zu wählen wäre derselbe Schritt zweimal.
+   * Recht und Ablauf bleiben eine Wahl — das ist der Grund, warum der Knopf
+   * hierher führt und nicht still einen Link anlegt (Konzept 10e).
+   */
+  preselect?: string | undefined;
 }) {
   const [data, setData] = useState<Awaited<ReturnType<typeof api.shares>> | undefined>(undefined);
   const [notice, setNotice] = useState<string | undefined>(undefined);
@@ -34,7 +44,7 @@ export function Shares({
   const [frisch, setFrisch] = useState<string | undefined>(undefined);
 
   const listen = projects.filter((p) => p.kind === 'list');
-  const [ziel, setZiel] = useState('');
+  const [ziel, setZiel] = useState(preselect ?? '');
   const [recht, setRecht] = useState<'read' | 'edit'>('read');
   const [ablauf, setAblauf] = useState('');
 

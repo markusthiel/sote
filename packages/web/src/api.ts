@@ -157,6 +157,14 @@ export interface Project {
   kind: 'folder' | 'list';
   /** Tiefe im Baum, vom Server gerechnet. */
   depth?: number;
+  /**
+   * Der Sortierschlüssel — damit die Leiste „einen Platz weiter" rechnen kann.
+   *
+   * Sie braucht die Schlüssel der Nachbarn, um einen dazwischen zu bauen. Ohne
+   * sie müsste der Server die Reihenfolge nachbilden, in der die Leiste
+   * zeichnet, und zwei Wahrheiten über dieselbe Liste laufen auseinander.
+   */
+  sortKey: string;
   /** `null` und nicht 0 — eine Zahl über nichts ist Rauschen. */
   open: number | null;
 }
@@ -593,6 +601,8 @@ export const api = {
       parentId?: string | null;
       /** `null` leert das Zeichen, ein fehlender Schlüssel lässt es stehen. */
       icon?: { icon?: string; iconColor?: string } | null;
+      /** Fertig gerechnet: nur die Oberfläche kennt die Nachbarn. */
+      sortKey?: string;
     },
     workspace?: string,
   ) =>

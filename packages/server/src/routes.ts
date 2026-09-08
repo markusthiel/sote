@@ -1262,6 +1262,7 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
       color: string | null;
       icon: unknown;
       kind: 'folder' | 'list';
+      sort_key: string;
       depth: number;
       open: string;
     }>(
@@ -1277,13 +1278,23 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
            FROM projects c JOIN walk w ON c.parent_id = w.id
           WHERE c.workspace_id = $1 AND c.trashed_at IS NULL
        )
-       SELECT w.id, w.parent_id, w.name, w.color, w.icon, w.kind, w.depth,
+       SELECT w.id, w.parent_id, w.name, w.color, w.icon, w.kind, w.sort_key, w.depth,
               count(t.id) FILTER (
                 WHERE t.completed_at IS NULL AND t.trashed_at IS NULL
               ) AS open
          FROM walk w
          LEFT JOIN tasks t ON t.project_id = w.id
-        GROUP BY w.id, w.parent_id, w.name, w.color, w.icon, w.kind, w.depth, w.path
+        -- sort_key muss mit ins GROUP BY: eine neue Spalte im SELECT neben
+        -- einer Zaehlung ist sonst ein SQL-Fehler, und die Route antwortet mit
+        -- 500. Genau das hat der Projekt-Test gemeldet.
+        --
+        -- Und dieser Kommentar stand zuerst MIT Rueckwaertsstrichen um den
+        -- Spaltennamen -- die beenden ein Template-Literal, worauf der
+        -- Uebersetzer eine Klammer vermisste. Ich hatte also einen Kommentar
+        -- ueber diese Falle geschrieben und war dabei hineingetreten; sie ist
+        -- die dritte ihrer Art in diesem Projekt.
+        GROUP BY w.id, w.parent_id, w.name, w.color, w.icon, w.kind, w.sort_key,
+                 w.depth, w.path
         ORDER BY w.path`,
       [workspaceId],
     );
@@ -1296,6 +1307,17 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
         icon: readIcon(r.icon),
         kind: r.kind,
         depth: r.depth,
+        /*
+         * Der Sortierschlüssel.
+         *
+         * Er fehlte hier, obwohl ich ihn in `projectView` schon eingetragen
+         * hatte: **die Liste bildet ihre Zeilen selbst ab** und geht nicht
+         * durch `projectView`. Zwei Stellen, die dasselbe herausgeben, und ich
+         * habe eine gepflegt — der Baum bekam darum keine Schlüssel, `siblings`
+         * verglich `undefined` mit `undefined`, und alle Verschieben-Knöpfe
+         * waren gesperrt.
+         */
+        sortKey: r.sort_key,
 
         // Keine Null: eine Zahl über nichts ist Rauschen in einer ruhigen
         // Zeile (SONE, ADR-0092).
@@ -1318,6 +1340,7 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
     color: string | null;
     icon: unknown;
     kind: 'folder' | 'list';
+    sort_key?: string;
   }) => ({
     id: row.id,
     parentId: row.parent_id,
@@ -1325,6 +1348,15 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
     color: row.color,
     icon: readIcon(row.icon),
     kind: row.kind,
+    /*
+     * Der Sortierschlüssel geht mit hinaus.
+     *
+     * Damit die Leiste „einen Platz weiter" rechnen kann: sie braucht die
+     * Schlüssel der Nachbarn, um einen dazwischen zu bauen. Ohne sie müsste
+     * der Server die Reihenfolge nachbilden, in der die Leiste zeichnet — zwei
+     * Wahrheiten über dieselbe Liste.
+     */
+    sortKey: row.sort_key ?? '',
     depth: 0,
     open: null,
   });
@@ -1360,6 +1392,9 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
         ? { parentId: body['parentId'] === null ? null : String(body['parentId']) }
         : {}),
       ...('icon' in (body ?? {}) ? { icon: body['icon'] } : {}),
+      // Kommt fertig von der Oberfläche: nur sie weiß, zwischen welche zwei
+      // Nachbarn etwas soll (siehe `update` in projects.ts).
+      ...('sortKey' in (body ?? {}) ? { sortKey: String(body['sortKey']) } : {}),
     });
     json(res, 200, { project: projectView(row) });
     return;
