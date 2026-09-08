@@ -12,7 +12,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 
-import type { Look } from '@sote/core';
+import type { Landing, Look } from '@sote/core';
 
 import { api, ApiError, type Me, type Project } from './api.js';
 import { useLook, useScheme } from './appearance.js';
@@ -30,6 +30,7 @@ import { SignIn } from './screens/SignIn.js';
 import { TaskList } from './screens/TaskList.js';
 import { Detail } from './screens/Detail.js';
 import { Search } from './screens/Search.js';
+import { landingRoute, markRoute, rememberRoute } from './landing.js';
 import { WorkspaceMark } from './screens/WorkspaceMark.js';
 import { WorkspaceOverview } from './screens/WorkspaceOverview.js';
 import {
@@ -122,6 +123,10 @@ export function App() {
       else window.history.pushState(null, '', path);
     }
     setRoute(next);
+    // Merken, wo jemand war — für „wo du zuletzt warst" (ADR-0072). Hier und
+    // nicht in einem Effekt: das Navigieren ist das Ereignis, und ein Effekt
+    // über `route` würde beim ersten Zeichnen auch feuern.
+    rememberRoute(path);
     // Das Schließen beim Navigieren macht `useSidebar` selbst — und nur für
     // die Schublade. Eine Spalte zu schließen, weil jemand geklickt hat, wäre
     // zum Wahnsinnigwerden.
@@ -183,6 +188,7 @@ export function App() {
    */
   const [scheme, setScheme] = useState<'system' | 'light' | 'dark' | undefined>(undefined);
   const [look, setLook] = useState<Look | undefined>(undefined);
+  const [landing, setLanding] = useState<Landing>({ kind: 'today' });
   /*
    * Die Hülle als Element, damit `useLook` Attribute daran setzen kann.
    *
@@ -202,6 +208,15 @@ export function App() {
       .then((s) => {
         setScheme(s.effective.scheme);
         setLook(s.effective.look);
+        /*
+         * Ankommen heißt: die Landeeinstellung in voller Länge (ADR-0072).
+         *
+         * Nur wenn keine Adresse gemeint war. Wer einen Link auf ein Projekt
+         * öffnet, hat gesagt, wo er hin will — ihn stattdessen auf seine
+         * Landeseite zu schicken, macht jeden geteilten Link unbrauchbar.
+         */
+        setLanding(s.effective.landing);
+        if (window.location.pathname === '/') go(landingRoute(s.effective.landing, projects));
       })
       .catch(() => undefined);
   }, [me, workspace]);
@@ -285,7 +300,10 @@ export function App() {
         onPick={(id) =>
           go(
             id === 'tasks'
-              ? { kind: 'today' }
+              ? // Die Marke drücken heißt: irgendwohin, aber nicht hierher
+                // (ADR-0072). Vorher führte sie immer nach Heute und tat von
+                // Heute aus nichts.
+                markRoute(landing, projects, route)
               : id === 'workspaces'
                 ? // Der Bereich hat jetzt einen Inhalt und ist darum eine
                   // eigene Route statt der Platzhalterseite.
@@ -501,6 +519,9 @@ export function App() {
           />
         ) : SECTION_NAV !== null ? (
           <Settings
+            // Nur Projekte, keine Ordner: ein Ordner ist kein Ort, an dem
+            // Aufgaben stehen, also kein Ort zum Landen.
+            projects={projects.filter((p) => p.kind === 'list')}
             section={
               // Den Abschnitt „Aussehen" gibt es zweimal — einmal fuer dich,
               // einmal fuer den Arbeitsbereich. Der Bereich entscheidet,
@@ -575,7 +596,10 @@ export function App() {
         onPick={(id) =>
           go(
             id === 'tasks'
-              ? { kind: 'today' }
+              ? // Die Marke drücken heißt: irgendwohin, aber nicht hierher
+                // (ADR-0072). Vorher führte sie immer nach Heute und tat von
+                // Heute aus nichts.
+                markRoute(landing, projects, route)
               : id === 'workspaces'
                 ? // Der Bereich hat jetzt einen Inhalt und ist darum eine
                   // eigene Route statt der Platzhalterseite.

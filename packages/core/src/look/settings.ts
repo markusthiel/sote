@@ -35,6 +35,7 @@
  * sie hat.
  */
 
+import { readLanding, type Landing } from './landing.js';
 import { readLook, type Look } from './theme.js';
 import { isZone } from '../time/zone.js';
 
@@ -78,6 +79,8 @@ export interface Settings {
    * Schema: siehe `resolveLook`.
    */
   readonly look?: Look;
+  /** Wo eine Sitzung aufgeht (ADR-0072, ADR-0032). */
+  readonly landing?: Landing;
 }
 
 /** Liest, was in der Datenbank steht — und lässt weg, was keinen Sinn ergibt. */
@@ -87,10 +90,12 @@ export function readSettings(value: unknown): Settings {
   const scheme = isScheme(raw['scheme']) ? raw['scheme'] : undefined;
   const zone = typeof raw['zone'] === 'string' && isZone(raw['zone']) ? raw['zone'] : undefined;
   const look = readLook(raw['look']);
+  const landing = readLanding(raw['landing']);
   return {
     ...(scheme === undefined ? {} : { scheme }),
     ...(zone === undefined ? {} : { zone }),
     ...(Object.keys(look).length === 0 ? {} : { look }),
+    ...(landing === undefined ? {} : { landing }),
   };
 }
 

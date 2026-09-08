@@ -2646,3 +2646,52 @@ select.target {
   text-decoration: line-through;
   text-decoration-thickness: 1px;
 }
+
+/* Eine Wahl als Zeile mit Erklärung — wie in SONEs Bild „Wo du landest".
+   Der Hinweis steht NEBEN der Wahl und nicht als Absatz darüber: wer
+   „Posteingang" liest, will dort wissen, was das bedeutet. */
+.set-choice-row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 0;
+  border-top: 1px solid var(--line);
+  border-radius: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.set-choice-row:hover {
+  background: var(--sunken);
+}
+
+.set-choice-row[aria-current='true'] {
+  background: var(--sunken);
+}
+
+.set-choice-row[aria-current='true'] .scr-label {
+  font-weight: 500;
+  color: var(--accent);
+}
+
+.set-choice-row.as-row {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.scr-label {
+  font-size: 13.5px;
+}
+
+.scr-hint {
+  font-size: 11.5px;
+  color: var(--text-faint);
+}

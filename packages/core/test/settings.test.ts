@@ -9,6 +9,7 @@
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 
+import { readLanding, resolveLanding } from '../src/look/landing.js';
 import {
   isScheme,
   readSettings,
@@ -109,4 +110,40 @@ test('der Arbeitsbereich setzt sein Feld, ohne die anderen der Instanz zu verdr�
     { look: { accent: 'red', tint: '#112233', corners: 'round' } },
   );
   assert.deepEqual(out, { corners: 'sharp', accent: 'red', tint: '#112233' });
+});
+
+/* ── Wo du landest ───────────────────────────────────────────────────────── */
+
+test('die Person schlägt den Arbeitsbereich, und today ist der Rückfall', () => {
+  // Anders als beim Aussehen, und mit Grund (ADR-0032): wo jemand landet, ist
+  // die Wahl EINER Person für ihre eigene Sitzung. Der Arbeitsbereich setzt
+  // nur eine Vorgabe für alle, die selbst nichts gewählt haben.
+  assert.deepEqual(resolveLanding({ kind: 'inbox' }, { kind: 'today' }), { kind: 'inbox' });
+  assert.deepEqual(resolveLanding(undefined, { kind: 'inbox' }), { kind: 'inbox' });
+  /*
+   * `today` als letzter Rückfall und nicht `last`: beim allerersten Anmelden
+   * gibt es kein „zuletzt", und ein Rückfall, der auf einen leeren Speicher
+   * zeigt, bräuchte selbst einen Rückfall.
+   */
+  assert.deepEqual(resolveLanding(undefined, undefined), { kind: 'today' });
+});
+
+test('„ein bestimmtes Projekt" ohne Projekt ist keine Angabe', () => {
+  // „Ein bestimmtes Projekt, aber ich sage nicht welches" ist kein Ort. Es
+  // fällt ganz heraus, statt zu einem halben Zustand zu werden, den die
+  // Oberfläche später auflösen müsste.
+  assert.equal(readLanding({ kind: 'project' }), undefined);
+  assert.equal(readLanding({ kind: 'project', projectId: 'Haus' }), undefined);
+  assert.deepEqual(readLanding({ kind: 'project', projectId: '3f2a1b4c-5d6e-4f70-8192-a3b4c5d6e7f8' }), {
+    kind: 'project',
+    projectId: '3f2a1b4c-5d6e-4f70-8192-a3b4c5d6e7f8',
+  });
+});
+
+test('unbekanntes zählt als nichts gesagt', () => {
+  assert.equal(readLanding({ kind: 'mond' }), undefined);
+  assert.equal(readLanding('today'), undefined);
+  assert.equal(readLanding(null), undefined);
+  // Und eine Landung ohne Projekt-Id trägt auch keine mit sich herum.
+  assert.deepEqual(readLanding({ kind: 'today', projectId: 'egal' }), { kind: 'today' });
 });

@@ -109,7 +109,14 @@ export interface Task {
 }
 
 /** Was gilt, und wer was gesagt hat — beides in einer Antwort. */
-import type { Look } from '@sote/core';
+import type { Landing, Look } from '@sote/core';
+
+interface Level {
+  scheme?: 'system' | 'light' | 'dark';
+  zone?: string;
+  look?: Look;
+  landing?: Landing;
+}
 
 export interface SettingsAnswer {
   /** `zone` ist auch hier optional: „nirgends gesagt" ist eine Antwort. */
@@ -124,11 +131,13 @@ export interface SettingsAnswer {
      * kommt darin nicht vor; ihr gehört hell oder dunkel.
      */
     look?: Look;
+    /** Wo eine Sitzung aufgeht — Person schlägt Arbeitsbereich (ADR-0032). */
+    landing: Landing;
   };
   levels: {
-    instance: { scheme?: 'system' | 'light' | 'dark'; zone?: string; look?: Look };
-    workspace: { scheme?: 'system' | 'light' | 'dark'; zone?: string; look?: Look };
-    user: { scheme?: 'system' | 'light' | 'dark'; zone?: string; look?: Look };
+    instance: Level;
+    workspace: Level;
+    user: Level;
   };
 }
 

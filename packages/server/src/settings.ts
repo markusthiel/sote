@@ -17,7 +17,13 @@
  *   hinweg gibt, gehört diese Prüfung dorthin.
  */
 
-import { readSettings, resolveLook, resolveSettings, type Settings } from '@sote/core';
+import {
+  readSettings,
+  resolveLanding,
+  resolveLook,
+  resolveSettings,
+  type Settings,
+} from '@sote/core';
 import type { Pool } from 'pg';
 
 import { queryOne, queryRows, withTransaction, type PoolClient } from './db.js';
@@ -58,7 +64,10 @@ export async function effectiveFor(
   userId: string,
   workspaceId: string | null,
 ): Promise<{
-  effective: ReturnType<typeof resolveSettings> & { look: ReturnType<typeof resolveLook> };
+  effective: ReturnType<typeof resolveSettings> & {
+    look: ReturnType<typeof resolveLook>;
+    landing: ReturnType<typeof resolveLanding>;
+  };
   levels: { instance: Settings; workspace: Settings; user: Settings };
 }> {
   const levels = await levelsFor(q, userId, workspaceId);
@@ -69,6 +78,15 @@ export async function effectiveFor(
       // Arbeitsbereichs gestaltet, was alle sehen (ADR-0028). Die Person kommt
       // darin nicht vor.
       look: resolveLook(levels.workspace, levels.instance),
+      /*
+       * Wieder eine andere Reihenfolge, und wieder mit Grund (ADR-0032): wo
+       * jemand landet, ist die Wahl EINER Person für ihre eigene Sitzung —
+       * zwei Mitglieder haben verschiedene Antworten, also kann es keine
+       * Eigenschaft des Arbeitsbereichs sein. Der setzt nur eine Vorgabe für
+       * alle, die selbst nichts gewählt haben. Die Instanz kommt nicht vor:
+       * „wo du landest" ist keine Servereinstellung.
+       */
+      landing: resolveLanding(levels.user.landing, levels.workspace.landing),
     },
     levels,
   };

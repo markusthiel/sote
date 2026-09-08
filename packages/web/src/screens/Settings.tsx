@@ -30,12 +30,15 @@
 import {
   CORNERS,
   FONTS,
+  LANDINGS,
   PALETTE,
+  resolveLanding,
   resolveLook,
   resolveSettings,
   SCHEMES,
   SURFACES,
   TREATMENTS,
+  type Landing,
   type Look,
   type Scheme,
 } from '@sote/core';
@@ -61,6 +64,7 @@ export const SETTING_SECTIONS = [
   { id: 'profil', label: 'Profil', hint: 'Name und Adresse' },
   { id: 'aussehen', label: 'Aussehen', hint: 'Hell oder dunkel' },
   { id: 'zeit', label: 'Zeit', hint: 'Deine Zeitzone' },
+  { id: 'landen', label: 'Wo du landest', hint: 'Beim Anmelden' },
 ] as const;
 
 /**
@@ -75,6 +79,7 @@ export const SETTING_SECTIONS = [
 export const WORKSPACE_SECTIONS = [
   { id: 'alle', label: 'Alle Workspaces', hint: 'Übersicht' },
   { id: 'name', label: 'Name und Zeichen', hint: 'Woran man ihn erkennt' },
+  { id: 'landen', label: 'Standard-Seite', hint: 'Vorgabe für alle' },
   { id: 'aussehen', label: 'Farben und Flächen', hint: 'Für alle Mitglieder' },
 ] as const;
 
@@ -102,6 +107,25 @@ const FONT_LABELS: Record<(typeof FONTS)[number], string> = {
   reading: 'Zum Lesen',
   plain: 'Nüchtern',
   system: 'Wie das Gerät',
+};
+
+/**
+ * Die Orte, und was sie versprechen.
+ *
+ * Die Erklärung steht neben jeder Wahl und nicht als Absatz darüber: wer
+ * „oberste Seite" liest, will wissen, was daran wackelt, und zwar dort.
+ */
+const LANDING_LABELS: Record<
+  (typeof LANDINGS)[number],
+  { label: string; hint: string }
+> = {
+  last: { label: 'Wo du zuletzt warst', hint: 'Folgt dir — die Ansicht, die zuletzt offen war.' },
+  today: { label: 'Heute', hint: 'Immer dieselbe Frage: was liegt an.' },
+  inbox: { label: 'Posteingang', hint: 'Erst einsortieren, dann arbeiten.' },
+  project: {
+    label: 'Ein bestimmtes Projekt',
+    hint: 'Immer dasselbe, egal was du zuletzt getan hast.',
+  },
 };
 
 const CORNER_LABELS: Record<(typeof CORNERS)[number], string> = {
@@ -141,12 +165,15 @@ function zoneChoices(): string[] {
 
 export function Settings({
   section,
+  projects,
   workspaceName,
   displayName,
   email,
   onEffective,
 }: {
   section: string;
+  /** Für „ein bestimmtes Projekt" — die Liste ist ohnehin da. */
+  projects: readonly { id: string; name: string }[];
   workspaceName: string;
   displayName: string;
   email: string;
@@ -196,15 +223,20 @@ export function Settings({
       const levels = { ...data!.levels, [scope]: saved.settings };
       const next = {
         levels,
-        effective: resolveSettings(levels.user, levels.workspace, levels.instance),
+        effective: {
+          ...resolveSettings(levels.user, levels.workspace, levels.instance),
+          look: resolveLook(levels.workspace, levels.instance),
+          // Jedes Feld, das der Server auflöst, wird hier auch aufgelöst.
+          // Sonst zeigt der Bildschirm nach dem Speichern etwas anderes als
+          // nach dem Neuladen — und das ist der Fehler, den man erst beim
+          // Neuladen sieht.
+          landing: resolveLanding(levels.user.landing, levels.workspace.landing),
+        },
       };
       setData(next);
       // Sofort anwenden und nicht erst beim nächsten Laden.
       applyScheme(next.effective.scheme);
-      onEffective({
-        scheme: next.effective.scheme,
-        look: resolveLook(levels.workspace, levels.instance),
-      });
+      onEffective({ scheme: next.effective.scheme, look: next.effective.look });
     } catch (e) {
       setNotice(
         e instanceof ApiError
@@ -426,6 +458,98 @@ export function Settings({
     </section>
   );
 
+  /**
+   * Wo eine Sitzung aufgeht — eine Liste je Ebene.
+   *
+   * Auf der Personen-Ebene gibt es einen Eintrag mehr: „wie der Workspace",
+   * und der nennt, was das gerade heißt. Ohne diese Angabe müsste man den
+   * anderen Bildschirm aufsuchen, um zu wissen, was man gerade wählt.
+   */
+  const landingCard = (
+    scope: 'user' | 'workspace',
+    mine: Landing | undefined,
+    workspaceSays: Landing | undefined,
+  ) => (
+    <section className="set-card">
+      <h2>{scope === 'user' ? 'Wo du landest' : 'Standard-Seite'}</h2>
+      <p className="muted">
+        {scope === 'user'
+          ? 'Beim Anmelden, beim Wechsel des Workspace, oder wenn SOTE ohne bestimmte Adresse geöffnet wird. Gilt nur für dich.'
+          : 'Die Vorgabe für alle Mitglieder, die selbst nichts gewählt haben.'}
+      </p>
+
+      {scope === 'user' ? (
+        <button
+          type="button"
+          className="set-choice-row"
+          aria-current={mine === undefined}
+          disabled={busy}
+          onClick={() => void save('user', { landing: null })}
+        >
+          <span className="scr-label">Wie der Workspace</span>
+          <span className="scr-hint">
+            Zurzeit:{' '}
+            {workspaceSays === undefined
+              ? LANDING_LABELS.today.label
+              : LANDING_LABELS[workspaceSays.kind].label}
+          </span>
+        </button>
+      ) : null}
+
+      {LANDINGS.map((kind) => {
+        const chosen = (scope === 'user' ? mine : workspaceSays)?.kind === kind;
+        if (kind === 'project') {
+          /*
+           * Ein Projekt statt eines Knopfes: „ein bestimmtes" ohne die Angabe,
+           * welches, wäre eine Wahl, die man nicht treffen kann — der Zustand
+           * dazwischen gehört gar nicht in die Daten (`readLanding` wirft ihn
+           * weg).
+           */
+          return (
+            <div className="set-choice-row as-row" key={kind}>
+              <span className="scr-label">{LANDING_LABELS[kind].label}</span>
+              <select
+                aria-label="Projekt zum Landen"
+                disabled={busy || projects.length === 0}
+                value={
+                  ((scope === 'user' ? mine : workspaceSays)?.projectId ?? '') as string
+                }
+                onChange={(e) =>
+                  void save(scope, {
+                    landing:
+                      e.target.value === ''
+                        ? null
+                        : { kind: 'project', projectId: e.target.value },
+                  })
+                }
+              >
+                <option value="">— keins gewählt —</option>
+                {projects.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          );
+        }
+        return (
+          <button
+            type="button"
+            className="set-choice-row"
+            key={kind}
+            aria-current={chosen}
+            disabled={busy}
+            onClick={() => void save(scope, { landing: { kind } })}
+          >
+            <span className="scr-label">{LANDING_LABELS[kind].label}</span>
+            <span className="scr-hint">{LANDING_LABELS[kind].hint}</span>
+          </button>
+        );
+      })}
+    </section>
+  );
+
   const schemeRow = (
     scope: 'user' | 'workspace' | 'instance',
     /** `null` heißt „nichts gesagt" — die Ebene darüber entscheidet. */
@@ -511,6 +635,14 @@ export function Settings({
           </p>
           {schemeRow('user', data.levels.user.scheme, 'Wie der Arbeitsbereich')}
         </section>
+      ) : null}
+
+      {section === 'landen' ? (
+        landingCard('user', data.levels.user.landing, data.levels.workspace.landing)
+      ) : null}
+
+      {section === 'ws-landen' ? (
+        landingCard('workspace', undefined, data.levels.workspace.landing)
       ) : null}
 
       {section === 'zeit' ? (

@@ -1307,6 +1307,30 @@ Beim Bauen entschieden, weil es ohne Entscheidung keinen Code gibt:
     Regel — der Prüfer meldet `h1 20<69`.
   - Das Werkzeug liegt als `scripts/measure-widths.mjs` im Baum; es braucht
     Server und Browser und läuft darum nicht in der CI.
+- **Ankommen und die Marke drücken sind zwei Fragen** (SONEs ADR-0072). Die
+  Marke führte in SOTE immer nach Heute, also tat sie von Heute aus **nichts** —
+  der sechste Fall des Musters. Jetzt: Ankommen heißt die Landeeinstellung in
+  voller Länge (auch „wo du zuletzt warst"), die Marke drücken heißt „irgendwohin,
+  aber nicht hierher" — die Landeseite, und wenn man dort steht, das erste
+  Projekt.
+  - **Nur wenn keine Adresse gemeint war.** Wer einen Link auf ein Projekt
+    öffnet, hat gesagt, wo er hin will; ihn auf seine Landeseite zu schicken
+    macht jeden geteilten Link unbrauchbar.
+  - **Die Person schlägt den Arbeitsbereich**, anders als beim Aussehen — und
+    aus SONEs eigener Begründung (ADR-0032): wo jemand landet, ist die Wahl
+    *einer* Person für ihre eigene Sitzung, und zwei Mitglieder haben
+    verschiedene Antworten. Der Arbeitsbereich setzt nur eine Vorgabe. Die
+    Instanz kommt nicht vor: „wo du landest" ist keine Servereinstellung.
+  - **Einstellungen werden nicht als „zuletzt" gemerkt.** Wer beim Anmelden in
+    seinen Farbeinstellungen landet, weil er dort zuletzt etwas gerichtet hat,
+    ist an einem Ort, den er nicht gesucht hat.
+  - **Ein Projekt, das es hier nicht gibt, ist kein Ort:** liegt die gemerkte Id
+    nicht im geöffneten Arbeitsbereich, gilt der Rückfall. Ankommen soll nicht
+    fehlschlagen.
+  - **Abweichung von SONE, benannt:** dort gilt die persönliche Wahl je
+    Arbeitsbereich, hier je Person — die Einstellungen liegen je Person und
+    nicht je Paar. Sobald jemand in zwei Arbeitsbereichen verschieden landen
+    will, ist das die Stelle, die sich ändern muss.
 - **`pnpm check` ist genau das, was die CI fährt.** Erst standen die Prüfungen
   einzeln in der Workflow-Datei, und `pnpm -r typecheck` scheiterte dort — in
   einem frischen Klon gibt es kein `dist`, und `@sote/core` zeigt mit `types`
