@@ -17,7 +17,7 @@ import type { Pool } from 'pg';
 import { makePool, queryOne } from '../src/db.js';
 import { makeList } from './support/tree.js';
 import { migrate } from '../src/migrate.js';
-import { complete, createFromLine, recurrenceOf } from '../src/tasks.js';
+import { complete, createFromLine, NotFound, recurrenceOf, reopen } from '../src/tasks.js';
 import { list, splitOverdue } from '../src/views.js';
 
 const URL_ =
@@ -338,4 +338,107 @@ test('die Datenbank sortiert die Sortierschlüssel wie ein String-Vergleich', as
   const keys = rows.rows.map((r) => r.sort_key);
   assert.deepEqual([...keys].sort(), keys);
   assert.equal(new Set(keys).size, keys.length);
+});
+
+/* ── Den Haken zurücknehmen ──────────────────────────────────────────────── */
+
+test('eine abgehakte Aufgabe lässt sich wieder eröffnen', async () => {
+  // Gemeldet: „Ich kann übrigens abgehakte Aufgaben nicht wieder eröffnen." Es
+  // gab die Funktion nicht — die Oberfläche rief immer `complete`, und das
+  // kehrt bei einer erledigten Aufgabe früh zurück.
+  const { workspaceId, projectId } = await scratch('t-reopen');
+  const t = await createFromLine(pool, {
+    workspaceId,
+    userId,
+    line: 'Kabel messen',
+    now: NOW,
+    projectId,
+  });
+  await complete(pool, t.task.id, userId, NOW);
+
+  const back = await reopen(pool, t.task.id, workspaceId);
+  assert.equal(back.completed_at, null);
+  /*
+   * „Von wem" ohne „wann" wäre eine Auskunft über ein Ereignis, das nicht
+   * stattgefunden hat — also direkt aus der Tabelle gefragt und nicht aus der
+   * Antwort: `RETURNING` führt `completed_by` nicht, weil die Oberfläche es
+   * nicht anzeigt. Meine erste Fassung prüfte das Feld der Antwort und war
+   * damit ein Test über eine Spaltenliste statt über die Datenbank.
+   */
+  const row = await queryOne<{ completed_by: string | null }>(
+    pool,
+    'SELECT completed_by FROM tasks WHERE id = $1',
+    [t.task.id],
+  );
+  assert.equal(row!.completed_by, null);
+});
+
+test('zweimal zurücknehmen ist kein Fehler', async () => {
+  // Wer zweimal klickt, hat nicht zwei verschiedene Dinge gemeint. Der zweite
+  // Aufruf trifft eine offene Aufgabe und lässt sie offen.
+  const { workspaceId, projectId } = await scratch('t-reopen-twice');
+  const t = await createFromLine(pool, {
+    workspaceId,
+    userId,
+    line: 'Doppelt',
+    now: NOW,
+    projectId,
+  });
+  await complete(pool, t.task.id, userId, NOW);
+  await reopen(pool, t.task.id, workspaceId);
+  const again = await reopen(pool, t.task.id, workspaceId);
+  assert.equal(again.completed_at, null);
+});
+
+test('eine Aufgabe im Papierkorb lässt sich nicht wieder eröffnen', async () => {
+  // Sie ist nicht offen und nicht erledigt, sondern weg. Sie hier zu öffnen
+  // hieße, sie an einem Ort zu verändern, an dem man sie nicht sieht.
+  const { workspaceId, projectId } = await scratch('t-reopen-trash');
+  const t = await createFromLine(pool, {
+    workspaceId,
+    userId,
+    line: 'Weggeworfen',
+    now: NOW,
+    projectId,
+  });
+  await complete(pool, t.task.id, userId, NOW);
+  await pool.query('UPDATE tasks SET trashed_at = now() WHERE id = $1', [t.task.id]);
+  await assert.rejects(() => reopen(pool, t.task.id, workspaceId), NotFound);
+});
+
+test('ein fremder Arbeitsbereich kann sie nicht wieder eröffnen', async () => {
+  // Die Route liegt hinter der Mitgliedsprüfung, aber die Funktion prüft es
+  // selbst: eine Prüfung, die nur im Weg dorthin steht, gilt nur für diesen Weg.
+  const a = await scratch('t-reopen-a');
+  const b = await scratch('t-reopen-b');
+  const t = await createFromLine(pool, {
+    workspaceId: a.workspaceId,
+    userId,
+    line: 'Fremd',
+    now: NOW,
+    projectId: a.projectId,
+  });
+  await complete(pool, t.task.id, userId, NOW);
+  await assert.rejects(() => reopen(pool, t.task.id, b.workspaceId), NotFound);
+});
+
+test('nach dem Wiedereröffnen steht sie wieder in ihrer Ansicht', async () => {
+  const { workspaceId, projectId } = await scratch('t-reopen-view');
+  const t = await createFromLine(pool, {
+    workspaceId,
+    userId,
+    // „heute fällig heute" hätte beide Vorkommen als Zeitangabe gelesen und
+    // einen leeren Titel hinterlassen — richtig so, aber als Testdatum
+    // unbrauchbar. Dieselbe Falle wie in views.db.test.ts.
+    line: 'Bericht fällig heute',
+    now: NOW,
+    projectId,
+  });
+  await complete(pool, t.task.id, userId, NOW);
+  assert.equal((await list(pool, 'today', workspaceId, NOW)).length, 0);
+  await reopen(pool, t.task.id, workspaceId);
+  assert.deepEqual(
+    (await list(pool, 'today', workspaceId, NOW)).map((x) => x.title),
+    ['Bericht'],
+  );
 });

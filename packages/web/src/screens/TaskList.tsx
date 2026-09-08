@@ -172,13 +172,32 @@ export function TaskList({
   }
 
   /** Abhaken: optimistisch, mit sichtbarem Rücksprung bei Fehlschlag. */
+  /**
+   * Abhaken **und** zurücknehmen.
+   *
+   * Gemeldet: „Ich kann übrigens abgehakte Aufgaben nicht wieder eröffnen."
+   * Hier stand vorher immer `api.complete` — auch bei einer Zeile, deren
+   * Kästchen `„… wieder öffnen"` heißt. Der Server kehrt bei einer erledigten
+   * Aufgabe früh zurück, also passierte nichts: ein Umschalter, der nur in
+   * eine Richtung schaltet.
+   */
   async function toggle(task: Task) {
+    const wieder = task.completed !== null;
     setPending((p) => [...p, { id: task.id }]);
-    setOverdue((r) => r.filter((x) => x.id !== task.id));
-    setRows((r) => r.filter((x) => x.id !== task.id));
+    // Die Zeile verschwindet nur beim ABHAKEN sofort. Beim Zurücknehmen soll
+    // sie stehen bleiben und ihren Haken verlieren — sie geht ja nirgendwohin,
+    // sondern wird wieder eine offene Zeile an derselben Stelle.
+    if (!wieder) {
+      setOverdue((r) => r.filter((x) => x.id !== task.id));
+      setRows((r) => r.filter((x) => x.id !== task.id));
+    }
     try {
-      const out = await api.complete(task.id, workspace);
-      if (out.next !== null) setNotice(`„${out.next.title}“ kommt wieder.`);
+      if (wieder) {
+        await api.reopen(task.id, workspace);
+      } else {
+        const out = await api.complete(task.id, workspace);
+        if (out.next !== null) setNotice(`„${out.next.title}“ kommt wieder.`);
+      }
       await load();
       onChanged();
       setPending((p) => p.filter((x) => x.id !== task.id));
@@ -186,11 +205,19 @@ export function TaskList({
       setPending((p) =>
         p.map((x) =>
           x.id === task.id
-            ? { id: x.id, error: e instanceof ApiError ? e.message : 'Abhaken ging nicht.' }
+            ? {
+                id: x.id,
+                error:
+                  e instanceof ApiError
+                    ? e.message
+                    : wieder
+                      ? 'Wieder öffnen ging nicht.'
+                      : 'Abhaken ging nicht.',
+              }
             : x,
         ),
       );
-      setRows((r) => [task, ...r]);
+      if (!wieder) setRows((r) => [task, ...r]);
     }
   }
 

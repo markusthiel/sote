@@ -386,6 +386,12 @@ export const api = {
       `/api/tasks/${id}/comments${workspace === undefined ? '' : `?workspace=${workspace}`}`,
       { method: 'POST', body: JSON.stringify({ body }) },
     ),
+  /** Den Haken zurücknehmen — DELETE auf denselben Weg, nicht POST auf einen zweiten. */
+  reopen: (id: string, workspace?: string) =>
+    call<{ task: Task }>(
+      `/api/tasks/${id}/complete${workspace === undefined ? '' : `?workspace=${workspace}`}`,
+      { method: 'DELETE' },
+    ),
   complete: (id: string, workspace?: string) =>
     call<{ completed: Task; next: Task | null }>(
       `/api/tasks/${id}/complete${workspace === undefined ? '' : `?workspace=${workspace}`}`,

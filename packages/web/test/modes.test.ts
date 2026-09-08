@@ -96,6 +96,31 @@ test('jeder Eintrag der Schiene hat eine Beschriftung für Vorleseprogramme', ()
   assert.match(read('components/IconRail.tsx'), /aria-label=\{mode\.label\}/);
 });
 
+test('ein Umschalter schaltet in beide Richtungen', () => {
+  /*
+   * Der vierte Fall desselben Musters, und darum ein eigener Wächter.
+   *
+   * Gemeldet: „Ich kann übrigens abgehakte Aufgaben nicht wieder eröffnen."
+   * Das Kästchen trug `aria-label` mit „wieder öffnen", `aria-pressed={done}`
+   * und rief bei jedem Klick `api.complete` — der Server kehrt bei einer
+   * erledigten Aufgabe früh zurück, also passierte nichts. Vorher waren es der
+   * Kontoknopf, die Schublade und der Workspace-Wechsler.
+   *
+   * Geprüft wird die **Umkehrung**: wo eine Beschriftung zwei Zustände nennt,
+   * muss der Handler beide Richtungen kennen. Gröber als ein Klick, läuft aber
+   * bei jedem Commit.
+   */
+  const src = read('screens/TaskList.tsx');
+  assert.match(src, /api\.reopen\(/, 'es gibt einen Weg zurück');
+  // Und er hängt an einer Bedingung über den Zustand, nicht an einem zweiten
+  // Knopf: ein zweiter Knopf wäre ein zweiter Weg in dieselbe Sache.
+  assert.match(
+    src,
+    /task\.completed !== null/,
+    'der Handler unterscheidet die Richtung nicht',
+  );
+});
+
 test('kein Knopf im Rahmen ohne Wirkung', () => {
   /*
    * Der Test, den es nach dem dritten Mal geben muss.

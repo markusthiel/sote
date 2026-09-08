@@ -358,6 +358,40 @@ export interface Completion {
  * Beides in **einer** Transaktion: eine erledigte Aufgabe ohne Nachfolger ist
  * eine verschwundene Aufgabe.
  */
+/**
+ * Ein Haken zurücknehmen.
+ *
+ * Gemeldet: „Ich kann übrigens abgehakte Aufgaben nicht wieder eröffnen." Und
+ * das war wörtlich so: die Oberfläche rief bei einem Klick immer `complete`,
+ * und `complete` kehrt bei einer schon erledigten Aufgabe früh zurück. Das
+ * Kästchen trug `aria-label="… wieder öffnen"`, sah aus wie ein Umschalter und
+ * war keiner — dasselbe Muster wie der Kontoknopf, die Schublade und der
+ * Workspace-Wechsler.
+ *
+ * `completed_by` wird mitgelöscht: „von wem" ohne „wann" ist eine Auskunft über
+ * ein Ereignis, das nicht stattgefunden hat.
+ *
+ * **Ein bekanntes Loch, benannt statt versteckt:** hat das Abhaken einer
+ * wiederkehrenden Aufgabe einen Nachfolger angelegt, bleibt der stehen. Es gibt
+ * keine Spalte, die ihn mit dieser Erledigung verbindet, also kann diese
+ * Funktion ihn nicht finden — und ihn über den Titel zu erraten wäre schlimmer
+ * als ihn zu lassen. Die Oberfläche sagt es darum dazu, und die Verbindung
+ * gehört in eine eigene Runde.
+ */
+export async function reopen(pool: Pool, taskId: string, workspaceId: string): Promise<TaskRow> {
+  const row = await queryOne<TaskRow>(
+    pool,
+    `UPDATE tasks SET completed_at = NULL, completed_by = NULL, updated_at = now()
+      WHERE id = $1 AND workspace_id = $2 AND trashed_at IS NULL
+     RETURNING ${RETURNING}`,
+    [taskId, workspaceId],
+  );
+  if (row === undefined) {
+    throw new NotFound(`Aufgabe ${taskId} gibt es nicht oder liegt im Papierkorb`);
+  }
+  return row;
+}
+
 export async function complete(
   pool: Pool,
   taskId: string,

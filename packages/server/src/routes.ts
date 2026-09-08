@@ -28,6 +28,7 @@ import { cookie, fail, json, readJson } from './http/respond.js';
 import { makeStatic } from './http/static.js';
 import {
   complete,
+  reopen,
   createFromLine,
   listTrash,
   move,
@@ -631,6 +632,18 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
   }
 
   const completePath = /^\/api\/tasks\/([0-9a-f-]{36})\/complete$/.exec(path);
+  /*
+   * DELETE auf denselben Weg, nicht POST auf einen zweiten.
+   *
+   * Abhaken legt eine Erledigung an, Wiedereröffnen nimmt sie weg — dasselbe
+   * Ding, zwei Richtungen. Ein `/reopen` daneben wäre ein zweiter Name für die
+   * Rücknahme von etwas, das schon einen Namen hat.
+   */
+  if (completePath && method === 'DELETE') {
+    const row = await reopen(ctx.pool, completePath[1]!, workspaceId);
+    json(res, 200, { task: taskView(row) });
+    return;
+  }
   if (completePath && method === 'POST') {
     const out = await complete(ctx.pool, completePath[1]!, userId, now);
     if (out.completed.workspace_id !== workspaceId) {

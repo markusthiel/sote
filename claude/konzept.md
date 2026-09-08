@@ -1213,6 +1213,25 @@ Beim Bauen entschieden, weil es ohne Entscheidung keinen Code gibt:
   Meine Prüfung für „Wie das Gerät" suchte „system" — und die Vorgabe enthält
   schon `-apple-system`. Sie bestand, während die Schriftwahl gar nicht griff;
   nur weil die beiden Nachbarn zu Recht anschlugen, fiel es auf.
+- **Ein Umschalter, der nur in eine Richtung schaltet, ist der vierte Fall
+  desselben Musters.** Gemeldet: „Ich kann übrigens abgehakte Aufgaben nicht
+  wieder eröffnen." Das Kästchen trug `aria-label` mit „wieder öffnen",
+  `aria-pressed={done}` — und rief bei jedem Klick `complete`, das bei einer
+  erledigten Aufgabe früh zurückkehrt. Vorher: Kontoknopf, Schublade,
+  Workspace-Wechsler. Seit diesem Fall prüft ein Wächter die **Umkehrung**: wo
+  eine Beschriftung zwei Zustände nennt, muss der Handler beide Richtungen
+  kennen.
+  - `DELETE` auf denselben Weg und nicht `POST` auf einen zweiten: Abhaken legt
+    eine Erledigung an, Wiedereröffnen nimmt sie weg — dasselbe Ding, zwei
+    Richtungen.
+  - `completed_by` wird mitgelöscht: „von wem" ohne „wann" ist eine Auskunft
+    über ein Ereignis, das nicht stattgefunden hat.
+  - Die Zeile verschwindet nur beim **Abhaken** sofort. Beim Zurücknehmen bleibt
+    sie stehen und verliert ihren Haken — sie geht nirgendwohin.
+  - **Ein benanntes Loch:** hat das Abhaken einer wiederkehrenden Aufgabe einen
+    Nachfolger angelegt, bleibt der stehen. Es gibt keine Spalte, die ihn mit
+    dieser Erledigung verbindet, und ihn über den Titel zu erraten wäre
+    schlimmer als ihn zu lassen.
 - **`pnpm check` ist genau das, was die CI fährt.** Erst standen die Prüfungen
   einzeln in der Workflow-Datei, und `pnpm -r typecheck` scheiterte dort — in
   einem frischen Klon gibt es kein `dist`, und `@sote/core` zeigt mit `types`
