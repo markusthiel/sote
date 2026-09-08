@@ -1197,6 +1197,22 @@ Beim Bauen entschieden, weil es ohne Entscheidung keinen Code gibt:
   Tests waren grün, weil sie die anderen drei Stellen prüften. Der Test dazu
   prüft jetzt **jedes Feld eines vollständig gesetzten Aussehens** und nicht
   „die, die ich kenne".
+- **Die Schrift ist ein benanntes Paar und keine Familie.** SONEs Satz trägt
+  die Entscheidung: eine eingetippte Schrift ist eine, die die Maschine der
+  anderen vielleicht nicht hat — und wer sie eingetippt hat, sieht seine eigene
+  und kann es nicht wissen. Vier Namen, und jeder Stapel endet in etwas, das
+  die Maschine schon hat: ein Stapel, der auf dem Familiennamen endet, endet in
+  dem, was der Browser entscheidet, und das ist meistens Times.
+- **Zweimal dieselbe CSS-Regel, in zwei Gestalten.** Bei der Tönung war die
+  **Deklaration** zu hoch (`--surface` steht in `:root` und sah eine Tönung an
+  `.app` nicht). Bei der Schrift war die **Benutzung** zu hoch: `body {
+  font-family: var(--sote-sans) }` löst am Body auf, also außerhalb von `.app`,
+  und alles darin erbt die schon berechnete Familie und fragt nie wieder. Beide
+  Male hing das Attribut sichtbar am Element und tat nichts.
+- **Ein Test, der aus dem falschen Grund besteht, ist schlimmer als ein roter.**
+  Meine Prüfung für „Wie das Gerät" suchte „system" — und die Vorgabe enthält
+  schon `-apple-system`. Sie bestand, während die Schriftwahl gar nicht griff;
+  nur weil die beiden Nachbarn zu Recht anschlugen, fiel es auf.
 - **`pnpm check` ist genau das, was die CI fährt.** Erst standen die Prüfungen
   einzeln in der Workflow-Datei, und `pnpm -r typecheck` scheiterte dort — in
   einem frischen Klon gibt es kein `dist`, und `@sote/core` zeigt mit `types`

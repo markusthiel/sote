@@ -86,6 +86,7 @@ test('jedes Feld des Aussehens wird wirklich aufgelöst', () => {
     corners: 'round' as const,
     accent: 'blue' as const,
     tint: '#3355cc' as const,
+    fonts: 'reading' as const,
   };
   // Vom Arbeitsbereich gesetzt.
   assert.deepEqual(resolveLook({ look: alles }, {}), alles);

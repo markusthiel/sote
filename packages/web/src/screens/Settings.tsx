@@ -29,6 +29,7 @@
 
 import {
   CORNERS,
+  FONTS,
   PALETTE,
   resolveLook,
   resolveSettings,
@@ -94,6 +95,13 @@ const TREATMENT_LABELS: Record<(typeof TREATMENTS)[number], string> = {
   sunken: 'Vertieft',
   inverted: 'Umgekehrt',
   accent: 'Akzentfarbe',
+};
+
+const FONT_LABELS: Record<(typeof FONTS)[number], string> = {
+  designed: 'Wie entworfen',
+  reading: 'Zum Lesen',
+  plain: 'Nüchtern',
+  system: 'Wie das Gerät',
 };
 
 const CORNER_LABELS: Record<(typeof CORNERS)[number], string> = {
@@ -284,6 +292,35 @@ export function Settings({
           </div>
         </div>
       ))}
+
+      <div className="set-row">
+        <span className="set-label">Schrift</span>
+        <div className="set-value">
+          <div className="set-choice" role="radiogroup" aria-label="Schrift">
+            {FONTS.map((f) => (
+              <button
+                key={f}
+                type="button"
+                role="radio"
+                aria-checked={(look.fonts ?? 'designed') === f}
+                disabled={busy}
+                onClick={() =>
+                  saveLook(scope, look, {
+                    fonts: f === 'designed' ? undefined : f,
+                  })
+                }
+              >
+                {FONT_LABELS[f]}
+              </button>
+            ))}
+          </div>
+          <p className="muted small">
+            Ein benanntes Paar und keine Schriftfamilie: eine eingetippte Schrift
+            ist eine, die die Maschine der anderen vielleicht nicht hat — und wer
+            sie eingetippt hat, sieht seine eigene und kann es nicht wissen.
+          </p>
+        </div>
+      </div>
 
       <div className="set-row">
         <span className="set-label">Ecken</span>

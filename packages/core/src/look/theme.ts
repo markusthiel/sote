@@ -51,6 +51,25 @@ export type Treatment = (typeof TREATMENTS)[number];
 /** Was wirklich gespeichert wird: alles außer dem Zurückstellen. */
 export type StoredTreatment = Exclude<Treatment, 'follow'>;
 
+/**
+ * Welche Schrift gilt.
+ *
+ * **Ein benanntes Paar und keine Schriftfamilie** — SONEs Satz dazu trägt die
+ * Entscheidung: „a font typed into a box is a font somebody's machine may not
+ * have, and the person who typed it sees their own machine and cannot tell."
+ * Wer „Helvetica Neue" eintippt, sieht sie und kann nicht wissen, dass die
+ * Hälfte seiner Mitglieder Times bekommt.
+ *
+ * Eine **kurze, geschlossene Liste**, und in SOTE aus einem zweiten Grund:
+ * SOTE holt keine Datei von außen (mit einem Test dahinter). Jedes Paar hier
+ * endet darum in etwas, das die Maschine schon hat — `designed` benutzt
+ * Archivo, wenn es da ist, und fällt sonst auf die Systemschrift zurück.
+ *
+ * `designed` wird **als nichts gespeichert**, wie `follow` und `soft`.
+ */
+export const FONTS = ['designed', 'reading', 'plain', 'system'] as const;
+export type FontPair = (typeof FONTS)[number];
+
 /** Wie rund alles ist. Drei Stufen, keine Länge. */
 export const CORNERS = ['sharp', 'soft', 'round'] as const;
 export type Corners = (typeof CORNERS)[number];
@@ -83,6 +102,7 @@ export interface Look {
    * niemandem.
    */
   readonly tint?: `#${string}`;
+  readonly fonts?: Exclude<FontPair, 'designed'>;
 }
 
 const isTreatment = (v: unknown): v is StoredTreatment =>
@@ -115,12 +135,16 @@ export function readLook(value: unknown): Look {
   }
 
   const corners = raw['corners'];
+  const fonts = raw['fonts'];
   const accent = readColor(raw['accent']);
   const tint = readColor(raw['tint']);
 
   return {
     ...(Object.keys(surfaces).length === 0 ? {} : { surfaces }),
     ...(corners === 'sharp' || corners === 'round' ? { corners } : {}),
+    ...(fonts === 'reading' || fonts === 'plain' || fonts === 'system'
+      ? { fonts }
+      : {}),
     ...(accent === null ? {} : { accent }),
     // Nur ein Hex-Wert: ein Palettenname wäre hier inhaltlich falsch.
     ...(tint === null || !tint.startsWith('#') ? {} : { tint: tint as `#${string}` }),
@@ -148,6 +172,9 @@ export function lookAttributes(look: Look): {
     if (t !== undefined) attributes[`data-surface-${surface}`] = t;
   }
   if (look.corners !== undefined) attributes['data-corners'] = look.corners;
+  // Als Attribut und nicht als Wert: welche Stapel ein Paar bedeutet, steht im
+  // Stylesheet — dort, wo auch die Rückfälle stehen.
+  if (look.fonts !== undefined) attributes['data-fonts'] = look.fonts;
 
   const properties: Record<string, string> = {};
   if (look.accent !== undefined) {

@@ -136,6 +136,7 @@ export function resolveLook(workspace: Settings, instance: Settings): Look {
     ...(w.corners ?? i.corners ? { corners: (w.corners ?? i.corners)! } : {}),
     ...(w.accent ?? i.accent ? { accent: (w.accent ?? i.accent)! } : {}),
     ...(w.tint ?? i.tint ? { tint: (w.tint ?? i.tint)! } : {}),
+    ...(w.fonts ?? i.fonts ? { fonts: (w.fonts ?? i.fonts)! } : {}),
   };
 }
 

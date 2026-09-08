@@ -2508,3 +2508,44 @@ select.target {
   background: none;
   cursor: pointer;
 }
+
+/* ── Die Schrift eines Arbeitsbereichs ─────────────────────────────────────
+   Ein benanntes Paar und keine Familie (SONEs Regel): eine eingetippte Schrift
+   ist eine, die die Maschine der anderen vielleicht nicht hat — und wer sie
+   eingetippt hat, sieht seine eigene und kann es nicht wissen.
+
+   Jeder Stapel endet in etwas, das die Maschine schon hat. SOTE holt keine
+   Datei von außen (mit einem Test dahinter), also ist „designed" Archivo, wenn
+   es installiert ist, und sonst die Systemschrift. Ein Stapel, der auf dem
+   Familiennamen endet, endet in dem, was der Browser entscheidet — und das ist
+   meistens Times. */
+
+/*
+ * Die Hülle benutzt die Schrift selbst.
+ *
+ * `body { font-family: var(--sote-sans) }` löst die Variable AM BODY auf — also
+ * außerhalb von `.app`, wo meine Überschreibung steht. Alles darin erbt dann
+ * die schon berechnete Familie und fragt die Variable nie wieder. Im Browser
+ * blieb Archivo stehen, obwohl `data-fonts` am Element hing.
+ *
+ * Dieselbe Regel wie bei der Tönung, in anderer Gestalt: dort war die
+ * DEKLARATION zu hoch, hier die BENUTZUNG. Mit dieser Zeile fragt die Hülle
+ * selbst, und alles darin erbt von ihr.
+ */
+.app {
+  font-family: var(--sote-sans);
+}
+
+.app[data-fonts='reading'] {
+  --sote-sans: Charter, "Iowan Old Style", Palatino, Georgia, serif;
+}
+
+.app[data-fonts='plain'] {
+  --sote-sans: Inter, "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+
+.app[data-fonts='system'] {
+  --sote-sans:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial,
+    sans-serif;
+}
