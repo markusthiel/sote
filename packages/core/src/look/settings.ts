@@ -35,6 +35,7 @@
  * sie hat.
  */
 
+import { readLook, type Look } from './theme.js';
 import { isZone } from '../time/zone.js';
 
 /**
@@ -68,6 +69,15 @@ export interface Settings {
    * passiert: nächtliche Erinnerungen etwa.
    */
   readonly zone?: string;
+  /**
+   * Wie es aussieht: Flächen, Ecken, Akzent.
+   *
+   * Steht **nur auf Instanz- und Arbeitsbereichsebene** sinnvoll, und wird
+   * trotzdem nicht künstlich verboten — eine Regel gegen etwas, das niemand
+   * gefragt hat, ist eine Regel zu viel. Aufgelöst wird sie anders als das
+   * Schema: siehe `resolveLook`.
+   */
+  readonly look?: Look;
 }
 
 /** Liest, was in der Datenbank steht — und lässt weg, was keinen Sinn ergibt. */
@@ -76,9 +86,39 @@ export function readSettings(value: unknown): Settings {
   const raw = value as Record<string, unknown>;
   const scheme = isScheme(raw['scheme']) ? raw['scheme'] : undefined;
   const zone = typeof raw['zone'] === 'string' && isZone(raw['zone']) ? raw['zone'] : undefined;
+  const look = readLook(raw['look']);
   return {
     ...(scheme === undefined ? {} : { scheme }),
     ...(zone === undefined ? {} : { zone }),
+    ...(Object.keys(look).length === 0 ? {} : { look }),
+  };
+}
+
+/**
+ * Wie es aussieht, aus drei Ebenen.
+ *
+ * **Nicht dieselbe Reihenfolge wie beim Schema, und das ist der Punkt**
+ * (ADR-0028): das Aussehen des Arbeitsbereichs gestaltet, was alle sehen — es
+ * gehört dem Arbeitsbereich und nicht der Person. Eine Person, die ihre
+ * Schiene grün färbt, färbt sonst die Schiene aller anderen mit, sobald sie
+ * dasselbe Feld benutzt.
+ *
+ * Also: **Arbeitsbereich über Instanz**, und die Person kommt hier nicht vor.
+ * Was ihr gehört, ist hell oder dunkel — und das ist eine andere Achse.
+ *
+ * Gefüllt statt ersetzt, Feld für Feld: ein Arbeitsbereich, der nur die
+ * Schiene setzt, soll die Ecken der Instanz behalten. Ein Ersetzen des ganzen
+ * Objekts würde eine Angabe zu einem Verzicht auf alle anderen machen.
+ */
+export function resolveLook(workspace: Settings, instance: Settings): Look {
+  const w = workspace.look ?? {};
+  const i = instance.look ?? {};
+  return {
+    ...(w.surfaces !== undefined || i.surfaces !== undefined
+      ? { surfaces: { ...i.surfaces, ...w.surfaces } }
+      : {}),
+    ...(w.corners ?? i.corners ? { corners: (w.corners ?? i.corners)! } : {}),
+    ...(w.accent ?? i.accent ? { accent: (w.accent ?? i.accent)! } : {}),
   };
 }
 

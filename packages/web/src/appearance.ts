@@ -30,7 +30,7 @@
  * Editor, und die Regel ist dieselbe.
  */
 
-import { isScheme, type Scheme } from '@sote/core';
+import { isScheme, lookAttributes, type Look, type Scheme } from '@sote/core';
 import { useEffect } from 'react';
 
 /** Wo die Kopie liegt. Ein Name, damit sie nicht zweimal woanders steht. */
@@ -102,4 +102,32 @@ export function useScheme(scheme: Scheme | undefined): void {
     if (scheme === undefined) return;
     applyScheme(scheme);
   }, [scheme]);
+}
+
+
+/**
+ * Wie der Arbeitsbereich aussieht, an die Hülle.
+ *
+ * An `.app` und nicht an `<html>`, anders als das Schema — und der Unterschied
+ * ist begründet: hell oder dunkel gehört dem **Dokument** (auch der Teil, den
+ * React nicht besitzt), Flächen und Ecken gehören der **Anwendung**. Ein
+ * `data-corners` an `<html>` würde auch die Anmeldemaske treffen, und die
+ * gehört keinem Arbeitsbereich.
+ *
+ * Attribute setzen UND aufräumen: eine Fläche, die zurück auf „wie entworfen"
+ * gestellt wird, muss ihr Attribut verlieren. Nur zu setzen und nie zu
+ * entfernen ist der Fehler, bei dem eine Einstellung sich nicht mehr
+ * zurücknehmen lässt — und den sieht man erst beim Zurücknehmen.
+ */
+export function useLook(look: Look | undefined, node: HTMLElement | null): void {
+  useEffect(() => {
+    if (node === null) return undefined;
+    const { attributes, properties } = lookAttributes(look ?? {});
+    for (const [key, value] of Object.entries(attributes)) node.setAttribute(key, value);
+    for (const [key, value] of Object.entries(properties)) node.style.setProperty(key, value);
+    return () => {
+      for (const key of Object.keys(attributes)) node.removeAttribute(key);
+      for (const key of Object.keys(properties)) node.style.removeProperty(key);
+    };
+  }, [look, node]);
 }

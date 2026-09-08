@@ -12,8 +12,10 @@
 
 import { useCallback, useEffect, useState } from 'react';
 
+import type { Look } from '@sote/core';
+
 import { api, ApiError, type Me, type Project } from './api.js';
-import { useScheme } from './appearance.js';
+import { useLook, useScheme } from './appearance.js';
 import { useSidebar } from './hooks/useSidebar.js';
 import { useSidebarWidth } from './hooks/useSidebarWidth.js';
 import { FootBar } from './components/FootBar.js';
@@ -172,6 +174,16 @@ export function App() {
    * Browser.
    */
   const [scheme, setScheme] = useState<'system' | 'light' | 'dark' | undefined>(undefined);
+  const [look, setLook] = useState<Look | undefined>(undefined);
+  /*
+   * Die Hülle als Element, damit `useLook` Attribute daran setzen kann.
+   *
+   * Über einen Ref und nicht über React-Props: die Flächen werden im
+   * Stylesheet über `[data-surface-*]` zugeordnet, und das ist die Stelle, an
+   * der beide Themen ohnehin stehen. Als Props müsste jedes Bauteil seine
+   * eigene Farbe kennen.
+   */
+  const [shell, setShell] = useState<HTMLElement | null>(null);
   useEffect(() => {
     // Erst mit Sitzung fragen. Vorher antwortet die Route 401, und ein
     // erwarteter Fehlschlag im Protokoll ist einer, den man beim Suchen nach
@@ -179,10 +191,14 @@ export function App() {
     if (me === undefined || me === null) return;
     void api
       .settings()
-      .then((s) => setScheme(s.effective.scheme))
+      .then((s) => {
+        setScheme(s.effective.scheme);
+        setLook(s.effective.look);
+      })
       .catch(() => undefined);
   }, [me, workspace]);
   useScheme(scheme);
+  useLook(look, shell);
 
   if (me === undefined) return <div className="signin" aria-busy="true" />;
   if (me === null) {
@@ -216,7 +232,12 @@ export function App() {
   const wsName = me.workspaces.find((w) => w.id === workspace)?.name ?? 'Kein Workspace';
 
   return (
-    <div className="app" data-detail={openTask !== null} data-sidebar={sidebar.visible}>
+    <div
+      className="app"
+      ref={setShell}
+      data-detail={openTask !== null}
+      data-sidebar={sidebar.visible}
+    >
       <IconRail
         active={modeOfRoute(route) as ModeId}
         onPick={(id) => go(id === 'tasks' ? { kind: 'today' } : { kind: 'mode', mode: id })}
@@ -394,6 +415,10 @@ export function App() {
             workspaceName={wsName}
             displayName={me.displayName}
             email={me.email}
+            onEffective={(out) => {
+              setScheme(out.scheme);
+              setLook(out.look);
+            }}
           />
         ) : route.kind !== 'mode' && route.kind !== 'search' ? (
           <TaskList

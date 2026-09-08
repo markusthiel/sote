@@ -1054,6 +1054,31 @@ Beim Bauen entschieden, weil es ohne Entscheidung keinen Code gibt:
   dasselbe Wort in zwei Ordnern stehen — die Migration erzeugt regelmäßig
   „Haus ▸ Haus". Zwei Ebenen, aus dem vorhandenen Baum gerechnet: eine zweite
   Quelle für denselben Pfad wären zwei Antworten auf eine Frage.
+- **Eine Fläche bekommt eine Beziehung, keine Farbe** (aus SONEs ADR-0023).
+  `#101010` auf der Schiene ist in beiden Themen schwarz — wer das setzt, gibt
+  jedem, der im Dunkeln liest, eine schwarze Leiste auf schwarzer Seite.
+  „Umgekehrt" ist das Argument in einem Wort: hell auf dunkel für den im hellen
+  Thema, dunkel auf hell für den im dunklen, aus **einem** gespeicherten Wert.
+  Nachgemessen: im hellen Thema `38,37,34`, im dunklen `244,241,234`.
+  - **Drei Flächen, und die Seite ist keine davon.** Wer draußen in der Sonne
+    sitzt, will hell — was auch ein Arbeitsbereich lieber hätte. Die Zeile über
+    dem Inhalt ist auch nicht dabei: sie sitzt absichtlich auf der Seitenfläche.
+  - **Abwesend ist die Vorgabe.** `follow` und `soft` werden als nichts
+    gespeichert; ein gespeichertes `follow` wäre eine zweite Schreibweise für
+    denselben Zustand, und zwei Schreibweisen laufen auseinander.
+  - **Die Zuordnung „umgekehrt → diese Töne" steht im Stylesheet**, nicht im
+    Kern: dort sind beide Themen ohnehin definiert. Gäbe es sie zweimal, gäbe
+    es zwei Orte, an denen steht, was dunkel bedeutet.
+  - **Das Aussehen wird anders aufgelöst als das Schema:** Arbeitsbereich über
+    Instanz, und die **Person kommt nicht vor**. Sonst färbt jemand, der seine
+    Schiene grün macht, die Schiene aller anderen mit. Gefüllt statt ersetzt,
+    Feld für Feld — wer nur die Schiene setzt, behält die Ecken der Instanz.
+  - Angewandt an `.app` und nicht an `<html>`: hell oder dunkel gehört dem
+    **Dokument**, Flächen und Ecken der **Anwendung**. Ein `data-corners` an
+    `<html>` träfe auch die Anmeldemaske, und die gehört keinem Arbeitsbereich.
+  - **Attribute werden gesetzt UND aufgeräumt.** Nur zu setzen ist der Fehler,
+    bei dem eine Einstellung sich nicht mehr zurücknehmen lässt — und den sieht
+    man erst beim Zurücknehmen.
 - **`pnpm check` ist genau das, was die CI fährt.** Erst standen die Prüfungen
   einzeln in der Workflow-Datei, und `pnpm -r typecheck` scheiterte dort — in
   einem frischen Klon gibt es kein `dist`, und `@sote/core` zeigt mit `types`

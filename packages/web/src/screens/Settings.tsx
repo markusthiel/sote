@@ -27,7 +27,17 @@
  * Abschnitt „Dieses Gerät", damit niemand sie für synchronisiert hält.
  */
 
-import { resolveSettings, SCHEMES, type Scheme } from '@sote/core';
+import {
+  CORNERS,
+  PALETTE,
+  resolveLook,
+  resolveSettings,
+  SCHEMES,
+  SURFACES,
+  TREATMENTS,
+  type Look,
+  type Scheme,
+} from '@sote/core';
 import { useEffect, useState } from 'react';
 
 import { api, ApiError, type SettingsAnswer } from '../api.js';
@@ -51,6 +61,27 @@ export const SETTING_SECTIONS = [
   { id: 'workspace', label: 'Dieser Workspace', hint: 'Für alle Mitglieder' },
   { id: 'instanz', label: 'Diese Instanz', hint: 'Für alle auf diesem Server' },
 ] as const;
+
+/** Wie die Flächen und Beziehungen heißen — SONEs Worte, auf Deutsch. */
+const SURFACE_LABELS: Record<(typeof SURFACES)[number], string> = {
+  rail: 'Schmale Leiste',
+  sidebar: 'Seitenleiste',
+  detail: 'Detailspalte',
+};
+
+const TREATMENT_LABELS: Record<(typeof TREATMENTS)[number], string> = {
+  follow: 'Wie entworfen',
+  raised: 'Angehoben',
+  sunken: 'Vertieft',
+  inverted: 'Umgekehrt',
+  accent: 'Akzentfarbe',
+};
+
+const CORNER_LABELS: Record<(typeof CORNERS)[number], string> = {
+  sharp: 'Kantig',
+  soft: 'Wie entworfen',
+  round: 'Rund',
+};
 
 const SCHEME_LABELS: Record<Scheme, string> = {
   system: 'Wie das Gerät',
@@ -86,11 +117,24 @@ export function Settings({
   workspaceName,
   displayName,
   email,
+  onEffective,
 }: {
   section: string;
   workspaceName: string;
   displayName: string;
   email: string;
+  /**
+   * Sagt der Hülle, was jetzt gilt.
+   *
+   * Ohne das war die Einstellung gespeichert und **nicht angewandt**: die Hülle
+   * holt `/api/settings` nur beim Wechsel des Arbeitsbereichs, also sah man
+   * eine geänderte Fläche erst nach dem Neuladen. Eine Einstellung, die man
+   * ändert und nicht sieht, ist eine Einstellung, die man zweimal ändert.
+   *
+   * Gemeldet und nicht neu geholt: die Antwort des Schreibens sagt schon, was
+   * die Ebene jetzt sagt, und der Kern rechnet daraus dasselbe wie der Server.
+   */
+  onEffective: (out: { scheme: Scheme; look: Look }) => void;
 }) {
   const [data, setData] = useState<SettingsAnswer | undefined>(undefined);
   const [notice, setNotice] = useState<string | undefined>(undefined);
@@ -128,10 +172,12 @@ export function Settings({
         effective: resolveSettings(levels.user, levels.workspace, levels.instance),
       };
       setData(next);
-      // Sofort anwenden und nicht erst beim nächsten Laden: eine Einstellung,
-      // die man ändert und nicht sieht, ist eine Einstellung, die man zweimal
-      // ändert.
+      // Sofort anwenden und nicht erst beim nächsten Laden.
       applyScheme(next.effective.scheme);
+      onEffective({
+        scheme: next.effective.scheme,
+        look: resolveLook(levels.workspace, levels.instance),
+      });
     } catch (e) {
       setNotice(
         e instanceof ApiError
@@ -152,6 +198,123 @@ export function Settings({
       </div>
     );
   }
+
+  /**
+   * Eine Angabe im Aussehen ändern, ohne die anderen zu verlieren.
+   *
+   * `look` ist **ein** Feld in den Einstellungen, also schreibt jedes Ändern
+   * das ganze Objekt. Ohne das Zusammenführen hier würde ein Klick auf „Ecken:
+   * rund" die Flächen leeren — der Fehler, bei dem eine Einstellung eine
+   * andere still wegwirft, und der erst auffällt, wenn jemand beides gesetzt
+   * hat.
+   */
+  const saveLook = (
+    scope: 'workspace' | 'instance',
+    before: Look,
+    /*
+     * `undefined` heißt hier ausdrücklich „auf die Vorgabe zurück".
+     *
+     * Deshalb steht es im Typ und wird nicht von `exactOptionalPropertyTypes`
+     * wegdefiniert: ein Zurückstellen ist eine Angabe und kein fehlendes Feld.
+     */
+    change: { [K in keyof Look]?: Look[K] | undefined },
+  ) => {
+    const next: Record<string, unknown> = { ...before, ...change };
+    // Was auf die Vorgabe zurückgestellt wird, verschwindet — abwesend und
+    // „wie entworfen" sind derselbe Zustand (Konzept, `theme.ts`).
+    for (const [key, value] of Object.entries(change)) {
+      if (value === undefined) delete next[key];
+    }
+    void save(scope, { look: Object.keys(next).length === 0 ? null : next });
+  };
+
+  const lookCard = (scope: 'workspace' | 'instance', look: Look) => (
+    <section className="set-card">
+      <h2>Farben und Flächen</h2>
+      <p className="muted">
+        Gewählt wird eine <strong>Beziehung</strong> und keine Farbe: „umgekehrt"
+        ist im hellen Design dunkel und im dunklen hell — aus einem gespeicherten
+        Wert. Ein festes Grau wäre in beiden dasselbe Grau.
+      </p>
+
+      {SURFACES.map((surface) => (
+        <div className="set-row" key={surface}>
+          <span className="set-label">{SURFACE_LABELS[surface]}</span>
+          <div className="set-choice" role="radiogroup" aria-label={SURFACE_LABELS[surface]}>
+            {TREATMENTS.map((t) => (
+              <button
+                key={t}
+                type="button"
+                role="radio"
+                aria-checked={(look.surfaces?.[surface] ?? 'follow') === t}
+                disabled={busy}
+                onClick={() =>
+                  saveLook(scope, look, {
+                    surfaces:
+                      t === 'follow'
+                        ? Object.fromEntries(
+                            Object.entries(look.surfaces ?? {}).filter(([k]) => k !== surface),
+                          )
+                        : { ...look.surfaces, [surface]: t },
+                  })
+                }
+              >
+                {TREATMENT_LABELS[t]}
+              </button>
+            ))}
+          </div>
+        </div>
+      ))}
+
+      <div className="set-row">
+        <span className="set-label">Ecken</span>
+        <div className="set-choice" role="radiogroup" aria-label="Ecken">
+          {CORNERS.map((c) => (
+            <button
+              key={c}
+              type="button"
+              role="radio"
+              aria-checked={(look.corners ?? 'soft') === c}
+              disabled={busy}
+              onClick={() =>
+                saveLook(scope, look, { corners: c === 'soft' ? undefined : c })
+              }
+            >
+              {CORNER_LABELS[c]}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="set-row">
+        <span className="set-label">Akzent</span>
+        <div className="set-choice" role="radiogroup" aria-label="Akzent">
+          <button
+            type="button"
+            role="radio"
+            aria-checked={look.accent === undefined}
+            disabled={busy}
+            onClick={() => saveLook(scope, look, { accent: undefined })}
+          >
+            Wie entworfen
+          </button>
+          {PALETTE.map((name) => (
+            <button
+              key={name}
+              type="button"
+              role="radio"
+              className="swatch-btn"
+              aria-label={name}
+              aria-checked={look.accent === name}
+              disabled={busy}
+              style={{ background: `var(--sote-palette-${name})` }}
+              onClick={() => saveLook(scope, look, { accent: name })}
+            />
+          ))}
+        </div>
+      </div>
+    </section>
+  );
 
   const schemeRow = (
     scope: 'user' | 'workspace' | 'instance',
@@ -246,24 +409,38 @@ export function Settings({
       ) : null}
 
       {section === 'workspace' ? (
-        <section className="set-card">
-          <h2>{workspaceName}</h2>
-          <p className="muted">
-            Gilt für alle Mitglieder, solange sie selbst nichts anderes gewählt
-            haben.
-          </p>
-          {schemeRow('workspace', data.levels.workspace.scheme, 'Wie die Instanz')}
-        </section>
+        <>
+          <section className="set-card">
+            <h2>{workspaceName}</h2>
+            <p className="muted">
+              Gilt für alle Mitglieder, solange sie selbst nichts anderes gewählt
+              haben.
+            </p>
+            {schemeRow('workspace', data.levels.workspace.scheme, 'Wie die Instanz')}
+          </section>
+
+          {/*
+            Flächen, Ecken und Akzent — und die Überschrift sagt, dass es alle
+            angeht. Das ist SONEs Grenze aus ADR-0028: das Aussehen des
+            Arbeitsbereichs gestaltet den INHALT und gehört ihm, hell oder
+            dunkel gehört der Person. Beides zu vermischen hieße, dass die
+            Vorliebe einer Person ändert, was eine andere sieht.
+          */}
+          {lookCard('workspace', data.levels.workspace.look ?? {})}
+        </>
       ) : null}
 
       {section === 'instanz' ? (
-        <section className="set-card">
-          <h2>Diese Instanz</h2>
-          <p className="muted">
-            Die Vorgabe für alle Arbeitsbereiche, die nichts eigenes sagen.
-          </p>
-          {schemeRow('instance', data.levels.instance.scheme, null)}
-        </section>
+        <>
+          <section className="set-card">
+            <h2>Diese Instanz</h2>
+            <p className="muted">
+              Die Vorgabe für alle Arbeitsbereiche, die nichts eigenes sagen.
+            </p>
+            {schemeRow('instance', data.levels.instance.scheme, null)}
+          </section>
+          {lookCard('instance', data.levels.instance.look ?? {})}
+        </>
       ) : null}
 
       {notice === undefined ? null : <p className="note-error">{notice}</p>}

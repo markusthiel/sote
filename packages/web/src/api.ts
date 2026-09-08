@@ -103,13 +103,26 @@ export interface Task {
 }
 
 /** Was gilt, und wer was gesagt hat — beides in einer Antwort. */
+import type { Look } from '@sote/core';
+
 export interface SettingsAnswer {
   /** `zone` ist auch hier optional: „nirgends gesagt" ist eine Antwort. */
-  effective: { scheme: 'system' | 'light' | 'dark'; zone?: string | undefined };
+  effective: {
+    scheme: 'system' | 'light' | 'dark';
+    zone?: string | undefined;
+    /**
+     * Flächen, Ecken, Akzent — aus Arbeitsbereich über Instanz.
+     *
+     * Anders aufgelöst als das Schema, und mit Absicht (ADR-0028): das
+     * Aussehen des Arbeitsbereichs gestaltet, was **alle** sehen. Die Person
+     * kommt darin nicht vor; ihr gehört hell oder dunkel.
+     */
+    look?: Look;
+  };
   levels: {
-    instance: { scheme?: 'system' | 'light' | 'dark'; zone?: string };
-    workspace: { scheme?: 'system' | 'light' | 'dark'; zone?: string };
-    user: { scheme?: 'system' | 'light' | 'dark'; zone?: string };
+    instance: { scheme?: 'system' | 'light' | 'dark'; zone?: string; look?: Look };
+    workspace: { scheme?: 'system' | 'light' | 'dark'; zone?: string; look?: Look };
+    user: { scheme?: 'system' | 'light' | 'dark'; zone?: string; look?: Look };
   };
 }
 

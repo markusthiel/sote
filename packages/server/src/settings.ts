@@ -17,7 +17,7 @@
  *   hinweg gibt, gehört diese Prüfung dorthin.
  */
 
-import { readSettings, resolveSettings, type Settings } from '@sote/core';
+import { readSettings, resolveLook, resolveSettings, type Settings } from '@sote/core';
 import type { Pool } from 'pg';
 
 import { queryOne, queryRows, withTransaction, type PoolClient } from './db.js';
@@ -58,12 +58,18 @@ export async function effectiveFor(
   userId: string,
   workspaceId: string | null,
 ): Promise<{
-  effective: ReturnType<typeof resolveSettings>;
+  effective: ReturnType<typeof resolveSettings> & { look: ReturnType<typeof resolveLook> };
   levels: { instance: Settings; workspace: Settings; user: Settings };
 }> {
   const levels = await levelsFor(q, userId, workspaceId);
   return {
-    effective: resolveSettings(levels.user, levels.workspace, levels.instance),
+    effective: {
+      ...resolveSettings(levels.user, levels.workspace, levels.instance),
+      // Anders aufgelöst als das Schema, und mit Absicht: das Aussehen des
+      // Arbeitsbereichs gestaltet, was alle sehen (ADR-0028). Die Person kommt
+      // darin nicht vor.
+      look: resolveLook(levels.workspace, levels.instance),
+    },
     levels,
   };
 }

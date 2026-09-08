@@ -91,6 +91,18 @@
   --warning: var(--warning-500);
   /* Grau folgt der Textfarbe — wie in SONE. Damit stimmt es in beiden Themen,
      ohne einen eigenen Wert zu brauchen. */
+  /* ── Umgekehrt ────────────────────────────────────────────────────────
+     „inverted" ist eine BEZIEHUNG und keine Farbe: hell auf dunkel für den
+     im hellen Thema, dunkel auf hell für den im dunklen — aus EINEM
+     gespeicherten Wert (SONEs ADR-0023). Ein gespeichertes `#101010` wäre in
+     beiden Themen schwarz, also eine schwarze Leiste auf schwarzer Seite für
+     jeden, der im Dunkeln liest. */
+  --inverse-bg: #262522;
+  --inverse-ink: #f4f1ea;
+  --inverse-muted: #a8a29a;
+  --inverse-line: #3b3a36;
+  --inverse-hover: #32302c;
+
   --sote-palette-grey: var(--text-muted);
   --sote-palette-red: var(--palette-red-light);
   --sote-palette-orange: var(--palette-orange-light);
@@ -141,6 +153,13 @@
   /* Dunkel ist entworfen, nicht invertiert: die Palette ist hier heller und
      weniger gesättigt, weil dieselben Werte auf Schwarz glühen (ADR-0028).
      `grey` braucht keinen Eintrag — es folgt der Textfarbe. */
+  /* Im dunklen Thema ist „umgekehrt" hell — dasselbe Wort, andere Töne. */
+  --inverse-bg: #f4f1ea;
+  --inverse-ink: #1c1b19;
+  --inverse-muted: #6a675f;
+  --inverse-line: #ddd8cd;
+  --inverse-hover: #e8e4d9;
+
   --sote-palette-red: var(--palette-red-dark);
   --sote-palette-orange: var(--palette-orange-dark);
   --sote-palette-yellow: var(--palette-yellow-dark);
@@ -2042,6 +2061,23 @@ select.target {
   color: var(--accent-on);
 }
 
+/*
+ * Beim Speichern wird der ganze Knopf blasser, nicht nur sein Text.
+ *
+ * Ohne diese Regel gräut der Browser die Textfarbe — und auf einem gefüllten
+ * Knopf verschwindet die Beschriftung dann ganz. Im Bild war der gerade
+ * geklickte Knopf ein leerer Kasten, und zwar genau in dem Moment, in dem man
+ * hinsieht, weil man ihn gerade gedrückt hat.
+ *
+ * `opacity` und nicht eine eigene Farbe: sie nimmt Grund und Text gemeinsam
+ * mit, also bleibt der Kontrast zwischen beiden erhalten.
+ */
+.set-choice button:disabled,
+.swatch-btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
 .set-value select {
   min-height: 34px;
   padding: 5px 8px;
@@ -2178,4 +2214,104 @@ select.target {
   border-top: 1px solid var(--line);
   color: var(--text-faint);
   font-size: 11.5px;
+}
+
+
+/* ── Die Flächen eines Arbeitsbereichs ─────────────────────────────────────
+   Fünf Beziehungen für drei Flächen. Die Zuordnung „umgekehrt → diese Töne"
+   steht HIER und nicht im Kern: hier sind beide Themen ohnehin definiert, und
+   gäbe es sie zweimal, gäbe es zwei Orte, an denen steht, was dunkel bedeutet.
+
+   Je Fläche ein eigener Block statt einer gemeinsamen Regel: Schiene,
+   Seitenleiste und Detailspalte haben verschiedene Kinder, und ein
+   `[data-surface-*]`-Selektor, der auf alle passt, träfe auch den Inhalt der
+   Seite. */
+
+.app[data-surface-rail="raised"] .rail { background: var(--raised); }
+.app[data-surface-rail="sunken"] .rail { background: var(--sunken); }
+.app[data-surface-rail="accent"] .rail {
+  background: var(--accent);
+  color: var(--accent-on);
+  border-right-color: transparent;
+}
+.app[data-surface-rail="inverted"] .rail {
+  background: var(--inverse-bg);
+  color: var(--inverse-ink);
+  border-right-color: var(--inverse-line);
+}
+
+.app[data-surface-sidebar="raised"] .panel { background: var(--raised); }
+.app[data-surface-sidebar="sunken"] .panel { background: var(--sunken); }
+.app[data-surface-sidebar="accent"] .panel {
+  background: var(--accent);
+  color: var(--accent-on);
+}
+.app[data-surface-sidebar="inverted"] .panel {
+  background: var(--inverse-bg);
+  color: var(--inverse-ink);
+  border-right-color: var(--inverse-line);
+}
+
+.app[data-surface-detail="raised"] .detail { background: var(--raised); }
+.app[data-surface-detail="sunken"] .detail { background: var(--sunken); }
+.app[data-surface-detail="accent"] .detail {
+  background: var(--accent);
+  color: var(--accent-on);
+}
+.app[data-surface-detail="inverted"] .detail {
+  background: var(--inverse-bg);
+  color: var(--inverse-ink);
+  border-left-color: var(--inverse-line);
+}
+
+/* Innerhalb einer umgekehrten oder akzentuierten Fläche muss auch das Leise
+   mitkommen. Ohne diese Zeilen bleibt gedämpfter Text in seiner alten Farbe
+   und verschwindet — das ist der Fehler, der bei einem Flächenwechsel als
+   Erstes auffällt, und zwar erst im Bild. */
+.app[data-surface-rail="inverted"] .rail .n,
+.app[data-surface-sidebar="inverted"] .panel .n,
+.app[data-surface-sidebar="inverted"] .panel .group-label,
+.app[data-surface-sidebar="inverted"] .panel .p-mark,
+.app[data-surface-detail="inverted"] .detail .fl {
+  color: var(--inverse-muted);
+}
+
+.app[data-surface-sidebar="inverted"] .p-item:hover,
+.app[data-surface-sidebar="inverted"] .p-item[aria-current="true"],
+.app[data-surface-rail="inverted"] .rail-slot:hover {
+  background: var(--inverse-hover);
+}
+
+/* ── Ecken ─────────────────────────────────────────────────────────────────
+   Drei Stufen, und alle drei Radien bewegen sich zusammen: ein kleines
+   Bedienelement mit großem Radius liest sich versehentlich als Pille, und wer
+   es gesetzt hat, sieht nicht, dass das passiert ist. */
+
+.app[data-corners="sharp"] {
+  --sote-radius-sm: 0;
+  --sote-radius-md: 2px;
+  --sote-radius-lg: 3px;
+}
+
+.app[data-corners="round"] {
+  --sote-radius-sm: 6px;
+  --sote-radius-md: 10px;
+  --sote-radius-lg: 16px;
+}
+
+/* Ein Farbfeld statt eines Wortes: acht Namen nebeneinander sind acht Wörter,
+   die man liest — acht Felder sind eine Farbe, die man sieht. Die Beschriftung
+   trägt den Namen für alles, was nicht sieht. */
+.swatch-btn {
+  width: 26px;
+  min-height: 32px;
+  padding: 0;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--sote-radius-md);
+  cursor: pointer;
+}
+
+.swatch-btn[aria-checked='true'] {
+  outline: 2px solid var(--text);
+  outline-offset: 1px;
 }
