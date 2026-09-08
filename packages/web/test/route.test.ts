@@ -182,7 +182,9 @@ test('jede Adresse führt dorthin, wo der Klick hinführt', () => {
     { kind: 'workspaces', section: 'alle' },
     { kind: 'workspaces', section: 'aussehen' },
     { kind: 'admin', section: 'instanz' },
-    { kind: 'mode', mode: 'inbox' },
+    // Der Posteingang ist seit dem Bau eine ANSICHT und kein Modus mehr — er
+    // hat einen Inhalt, und die Platzhalterseite hatte keinen.
+    { kind: 'inbox' },
     { kind: 'mode', mode: 'shares' },
     { kind: 'mode', mode: 'trash' },
   ];

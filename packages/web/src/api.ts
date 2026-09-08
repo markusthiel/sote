@@ -207,7 +207,7 @@ export const api = {
   me: () => call<Me>('/api/me'),
   /** Eine Ansicht. `overdue` ist nur bei `today` gefüllt. */
   tasks: (
-    view: 'today' | 'upcoming' | 'someday' | 'project',
+    view: 'today' | 'upcoming' | 'someday' | 'inbox' | 'project',
     opts: { workspace?: string; project?: string } = {},
   ) => {
     const q = new URLSearchParams({ view });
@@ -227,7 +227,13 @@ export const api = {
     }>(`/api/search?${p}`);
   },
   counts: (workspace?: string) =>
-    call<{ today: number; upcoming: number; someday: number; overdue: number }>(
+    call<{
+      today: number;
+      upcoming: number;
+      someday: number;
+      inbox: number;
+      overdue: number;
+    }>(
       `/api/counts${workspace === undefined ? '' : `?workspace=${workspace}`}`,
     ),
   move: (

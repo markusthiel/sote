@@ -46,7 +46,7 @@ import { search } from './search.js';
 import { counts, list, splitOverdue, type ViewId } from './views.js';
 
 const COOKIE = 'sote_session';
-const VIEWS: readonly ViewId[] = ['today', 'upcoming', 'someday', 'project'];
+const VIEWS: readonly ViewId[] = ['today', 'upcoming', 'someday', 'inbox', 'project'];
 
 /**
  * Aus dem Körper einer PATCH-Anfrage die genannten Felder — und nur die.

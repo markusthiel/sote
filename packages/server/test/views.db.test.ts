@@ -97,28 +97,44 @@ test('die vier Ansichten teilen dieselben Aufgaben ohne Überschneidung auf', as
   const today = await list(pool, 'today', workspaceId, NOW);
   const upcoming = await list(pool, 'upcoming', workspaceId, NOW);
   const someday = await list(pool, 'someday', workspaceId, NOW);
+  const inbox = await list(pool, 'inbox', workspaceId, NOW);
 
   assert.deepEqual(today.map((t) => t.title), ['Bericht']);
   assert.deepEqual(upcoming.map((t) => t.title), ['Angebot']);
-  assert.deepEqual(
-    someday.map((t) => t.title).sort(),
-    ['Archiv sortieren', 'Filter reinigen'],
-  );
+  /*
+   * Irgendwann ist LEER, obwohl zwei Aufgaben ohne Zeit angelegt wurden.
+   *
+   * Der Test hieß früher „die vier Ansichten teilen dieselben Aufgaben ohne
+   * Überschneidung auf", und die Annahme stimmt seit dem Posteingang nicht
+   * mehr — ich habe sie geändert, also gehört sie hier richtiggestellt und
+   * nicht umgebogen. Irgendwann heißt jetzt „ohne Zeit UND einsortiert"; was
+   * noch keinen Ort hat, steht im Posteingang.
+   */
+  assert.deepEqual(someday.map((t) => t.title), []);
 
-  // Keine Aufgabe in zwei Ansichten, keine in keiner.
-  const ids = [...today, ...upcoming, ...someday].map((t) => t.id);
-  assert.equal(new Set(ids).size, ids.length, 'eine Aufgabe liegt in zwei Ansichten');
-  assert.equal(ids.length, 4, 'eine Aufgabe liegt in keiner Ansicht');
+  // Die drei ZEIT-Ansichten teilen weiter ohne Überschneidung auf.
+  const zeit = [...today, ...upcoming, ...someday].map((t) => t.id);
+  assert.equal(new Set(zeit).size, zeit.length, 'eine Aufgabe liegt in zwei Zeit-Ansichten');
+
+  /*
+   * Der Posteingang schneidet quer, und das ist Absicht: er ist eine Frage an
+   * den Menschen („wohin gehört das?") und keine Ansicht über die Zeit. Wer
+   * „Zahnarzt anrufen morgen" tippt, hat einen Zeitpunkt gesagt und keinen
+   * Ort — die Aufgabe steht dann in Demnächst UND im Posteingang.
+   */
+  assert.equal(inbox.length, 4, 'alle vier sind ortlos angelegt');
 });
 
-test('eine erledigungsbezogene Wiederholung liegt vor dem ersten Abhaken unter Irgendwann', async () => {
+test('eine erledigungsbezogene Wiederholung liegt vor dem ersten Abhaken im Posteingang', async () => {
   // Der offene Punkt aus dem Konzept, hier als Verhalten festgehalten: sie ist
   // nicht unsichtbar, sondern ungeplant. Sonst könnte niemand sie abhaken, und
   // ohne Abhaken entsteht kein Termin.
   const { workspaceId } = await scratch('v-after');
   await add(workspaceId, 'Filter reinigen 3 Monate nach dem Abhaken');
-  const someday = await list(pool, 'someday', workspaceId, NOW);
-  assert.deepEqual(someday.map((t) => t.title), ['Filter reinigen']);
+  // Ortlos angelegt, also im Posteingang. Der Punkt bleibt derselbe: sie ist
+  // nicht unsichtbar, sondern ungeplant — und findbar.
+  const found = await list(pool, 'inbox', workspaceId, NOW);
+  assert.deepEqual(found.map((t) => t.title), ['Filter reinigen']);
 });
 
 test('die Zähler stimmen mit den Listen überein', async () => {
@@ -313,8 +329,16 @@ test('eine Aufgabe aus einem fremden Arbeitsbereich lässt sich nicht ändern', 
 });
 
 test('das Datum zu setzen bewegt die Aufgabe zwischen den Ansichten', async () => {
-  const { workspaceId } = await scratch('p-move-view');
-  const t = await add(workspaceId, 'ungeplant');
+  const { workspaceId, projectId } = await scratch('p-move-view');
+  // MIT Ort, damit die Aufgabe wirklich in Irgendwann liegt und nicht im
+  // Posteingang: der Test soll den Weg zwischen den ZEIT-Ansichten zeigen.
+  const t = await createFromLine(pool, {
+    workspaceId,
+    userId,
+    line: 'ungeplant',
+    now: NOW,
+    projectId,
+  });
   assert.deepEqual(
     (await list(pool, 'someday', workspaceId, NOW)).map((x) => x.title),
     ['ungeplant'],
@@ -373,4 +397,81 @@ test('an den Umstellungstagen ist der Tag nicht 24 Stunden lang', () => {
   const autumn = boundsOf(new Date('2026-10-25T10:00:00Z'), 'Europe/Berlin');
   assert.equal(Math.round((spring.endOfDay.getTime() - spring.startOfDay.getTime()) / h), 23);
   assert.equal(Math.round((autumn.endOfDay.getTime() - autumn.startOfDay.getTime()) / h), 25);
+});
+
+/* ── Der Posteingang ─────────────────────────────────────────────────────── */
+
+test('der Posteingang zeigt, was noch keinen Ort hat', async () => {
+  const { workspaceId, projectId } = await scratch('v-inbox');
+  await add(workspaceId, 'ohne Ort und ohne Zeit');
+  // „morgen" wird als Datum gelesen und aus dem Titel genommen — richtig so,
+  // aber als Testdatum unbrauchbar (dieselbe Falle wie oben bei „heute").
+  await add(workspaceId, 'ohne Ort, aber datiert morgen');
+  const mit = await createFromLine(pool, {
+    workspaceId,
+    userId,
+    line: 'mit Ort',
+    now: NOW,
+    projectId,
+  });
+  assert.equal(mit.task.project_id, projectId);
+
+  const inbox = (await list(pool, 'inbox', workspaceId, NOW)).map((t) => t.title);
+  assert.deepEqual(inbox.sort(), ['ohne Ort und ohne Zeit', 'ohne Ort, aber datiert']);
+});
+
+test('ein Datum schließt aus dem Posteingang nicht aus', async () => {
+  // Wer „Zahnarzt anrufen morgen" tippt, hat einen Zeitpunkt gesagt und keinen
+  // Ort. Die Aufgabe steht dann in Demnächst UND hier, und das ist richtig:
+  // sie ist erfasst und nicht eingeordnet. Der Posteingang ist eine Frage an
+  // den Menschen, keine Ansicht über die Zeit.
+  const { workspaceId } = await scratch('v-inbox-dated');
+  await add(workspaceId, 'Zahnarzt anrufen morgen');
+  assert.deepEqual((await list(pool, 'inbox', workspaceId, NOW)).map((t) => t.title), ['Zahnarzt anrufen']);
+  assert.deepEqual((await list(pool, 'upcoming', workspaceId, NOW)).map((t) => t.title), ['Zahnarzt anrufen']);
+});
+
+test('Irgendwann heißt ohne Zeit, nicht ohne Ort', async () => {
+  // Vorher lag alles Ortlose auch in Irgendwann. Eine Aufgabe an zwei Orten,
+  // von denen einer „ungeplant" und der andere „unerfasst" heißt, lässt
+  // niemanden wissen, welchen er abarbeiten soll.
+  const { workspaceId, projectId } = await scratch('v-someday-place');
+  await add(workspaceId, 'ohne Ort und ohne Zeit');
+  await createFromLine(pool, {
+    workspaceId,
+    userId,
+    line: 'mit Ort, ohne Zeit',
+    now: NOW,
+    projectId,
+  });
+  assert.deepEqual((await list(pool, 'someday', workspaceId, NOW)).map((t) => t.title), ['mit Ort, ohne Zeit']);
+  assert.deepEqual((await list(pool, 'inbox', workspaceId, NOW)).map((t) => t.title), ['ohne Ort und ohne Zeit']);
+});
+
+test('die Zahl am Posteingang stimmt mit seiner Liste überein', async () => {
+  // Die Stelle, an der es auseinanderlaufen kann: `counts` und `whereFor`
+  // schreiben dieselben Bedingungen zweimal. Eine Zahl, die anders zählt als
+  // die Liste, ist schlimmer als keine Zahl.
+  const { workspaceId, projectId } = await scratch('v-inbox-count');
+  await add(workspaceId, 'eins');
+  await add(workspaceId, 'zwei morgen');
+  await createFromLine(pool, { workspaceId, userId, line: 'drei', now: NOW, projectId });
+
+  const n = await counts(pool, workspaceId, NOW);
+  assert.equal(n.inbox, (await list(pool, 'inbox', workspaceId, NOW)).length);
+  assert.equal(n.someday, (await list(pool, 'someday', workspaceId, NOW)).length);
+  assert.equal(n.inbox, 2);
+});
+
+test('eine Teilaufgabe steht nicht im Posteingang', async () => {
+  // Sie erbt Projekt und Arbeitsbereich vom Elternteil (Konzept 8) — und wenn
+  // der Elternteil ortlos ist, ist SIE nicht das, was jemand einsortieren
+  // muss. Der Posteingang zeigt darum nur oberste Zeilen.
+  const { workspaceId } = await scratch('v-inbox-child');
+  const parent = await add(workspaceId, 'Elternteil');
+  await pool.query(
+    `INSERT INTO tasks (workspace_id, parent_id, title, sort_key) VALUES ($1,$2,'Teil','a0')`,
+    [workspaceId, parent.task.id],
+  );
+  assert.deepEqual((await list(pool, 'inbox', workspaceId, NOW)).map((t) => t.title), ['Elternteil']);
 });

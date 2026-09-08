@@ -48,8 +48,9 @@ export function App() {
     today: number;
     upcoming: number;
     someday: number;
+    inbox: number;
     overdue: number;
-  }>({ today: 0, upcoming: 0, someday: 0, overdue: 0 });
+  }>({ today: 0, upcoming: 0, someday: 0, inbox: 0, overdue: 0 });
   const [workspace, setWorkspace] = useState<string | undefined>(undefined);
   /*
    * Die Leiste: **ein** Zustand, nicht zwei.
@@ -288,10 +289,12 @@ export function App() {
                 ? // Der Bereich hat jetzt einen Inhalt und ist darum eine
                   // eigene Route statt der Platzhalterseite.
                   { kind: 'workspaces', section: 'alle' }
-                : { kind: 'mode', mode: id },
+                : id === 'inbox'
+                  ? { kind: 'inbox' }
+                  : { kind: 'mode', mode: id },
           )
         }
-        inboxCount={0}
+        inboxCount={counts.inbox}
         displayName={me.displayName}
         email={me.email}
         onSettings={() => go({ kind: 'settings', section: 'profil' })}
@@ -321,6 +324,12 @@ export function App() {
           />
         ) : null}
         <div className="panel-head">
+          {SECTION_NAV !== null ? (
+            <div className="panel-title">
+              <strong>{SECTION_NAV.title}</strong>
+              <span className="panel-scope">{SECTION_NAV.note}</span>
+            </div>
+          ) : (
           <WorkspaceMenu
             workspaces={me.workspaces}
             current={workspace}
@@ -333,6 +342,7 @@ export function App() {
               go({ kind: 'today' });
             }}
           />
+          )}
         </div>
 
         <div className="seek">
@@ -379,8 +389,15 @@ export function App() {
           */}
           {SECTION_NAV !== null ? (
             <>
-              <div className="group-label">{SECTION_NAV.title}</div>
-              <p className="nav-note">{SECTION_NAV.note}</p>
+              {/*
+                KEINE Gruppenüberschrift (SONEs ADR-0072, das ADR-0070
+                ändert): „a heading repeating it over the only group in the
+                column says nothing." Der Titel steht im Kopf der Leiste, wo
+                sonst der Arbeitsbereich steht — und die Zeile darunter nennt
+                den Geltungsbereich, „Nur für dich" gegen „Für alle auf diesem
+                Server". Die verdient ihren Platz: sie ist die Tatsache, die auf
+                dem Bildschirm stehen soll, wenn jemand etwas für alle ändert.
+              */}
               {SECTION_NAV.entries.map((entry) => (
                 <button
                   key={entry.id}
@@ -551,10 +568,12 @@ export function App() {
                 ? // Der Bereich hat jetzt einen Inhalt und ist darum eine
                   // eigene Route statt der Platzhalterseite.
                   { kind: 'workspaces', section: 'alle' }
-                : { kind: 'mode', mode: id },
+                : id === 'inbox'
+                  ? { kind: 'inbox' }
+                  : { kind: 'mode', mode: id },
           )
         }
-        inboxCount={0}
+        inboxCount={counts.inbox}
         displayName={me.displayName}
         email={me.email}
         onSettings={() => go({ kind: 'settings', section: 'profil' })}

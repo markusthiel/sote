@@ -1129,6 +1129,30 @@ Beim Bauen entschieden, weil es ohne Entscheidung keinen Code gibt:
   durchsichtig: der Grund der Schiene war `rgba(0,0,0,0)` und das Signet
   unsichtbar. Gelesen wird darum `--accent-base`, eine Kopie, die kein
   Flächenblock überschreibt.
+- **Der Posteingang ist eine Frage an den Menschen, keine Ansicht über die
+  Zeit.** Die Schnellerfassung zieht ihren Wert daraus, dass man nichts
+  entscheiden muss, um etwas festzuhalten — also entstehen Aufgaben ohne
+  Projekt, und die brauchen einen Ort, an dem man sie wiederfindet.
+  - **Zwei verschiedene Dinge, vorher eins:** *ohne Ort* und *ohne Zeit*. Bis
+    hierher lagen beide in Irgendwann, zusammen mit allem, was jemand
+    ausdrücklich als „irgendwann" eingeordnet hat. Irgendwann heißt jetzt
+    „ohne Zeit **und** einsortiert".
+  - **Ein Datum schließt nicht aus.** Wer „Zahnarzt anrufen morgen" tippt, hat
+    einen Zeitpunkt gesagt und keinen Ort — die Aufgabe steht in Demnächst
+    **und** hier. Damit teilen die drei Zeit-Ansichten weiter ohne
+    Überschneidung auf, und der Posteingang schneidet quer.
+  - Ein leerer Posteingang ist ein **guter** Zustand, und der Satz sagt das:
+    „Alles einsortiert." „Nichts hier" liest sich wie ein Mangel.
+  - Eine **Teilaufgabe** steht nicht darin: sie erbt ihren Ort vom Elternteil,
+    also ist nicht sie das, was jemand einsortieren muss.
+- **Keine Gruppenüberschrift über der einzigen Gruppe** (SONEs ADR-0072, das
+  ADR-0070 ändert): „a heading repeating it over the only group in the column
+  says nothing." Der Titel steht im Kopf der Leiste, die Zeile darunter nennt
+  den Geltungsbereich — und die verdient ihren Platz, weil sie die Tatsache
+  ist, die auf dem Bildschirm stehen soll, wenn jemand etwas für alle ändert.
+- **Backticks in einem SQL-Kommentar beenden das Template-Literal.** Der
+  Übersetzer meldet dann eine fehlende Klammer irgendwo weiter unten. Zwei
+  Zeichen, eine halbe Stunde Suche.
 - **`pnpm check` ist genau das, was die CI fährt.** Erst standen die Prüfungen
   einzeln in der Workflow-Datei, und `pnpm -r typecheck` scheiterte dort — in
   einem frischen Klon gibt es kein `dist`, und `@sote/core` zeigt mit `types`

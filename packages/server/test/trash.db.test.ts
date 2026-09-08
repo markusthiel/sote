@@ -112,10 +112,12 @@ test('eine weggeworfene Aufgabe verschwindet aus jeder Ansicht und aus den Zähl
   assert.equal((await list(pool, 'today', workspaceId, NOW)).length, 0);
   assert.equal((await list(pool, 'upcoming', workspaceId, NOW)).length, 0);
   assert.equal((await list(pool, 'someday', workspaceId, NOW)).length, 0);
+  assert.equal((await list(pool, 'inbox', workspaceId, NOW)).length, 0);
   assert.deepEqual(await counts(pool, workspaceId, NOW), {
     today: 0,
     upcoming: 0,
     someday: 0,
+    inbox: 0,
     overdue: 0,
   });
   assert.equal((await listTrash(pool, workspaceId, 'task')).length, 3);
@@ -207,9 +209,13 @@ test('als Ziel geht auch „ohne Projekt"', async () => {
   await trash(pool, 'task', t.task.id, workspaceId, userId);
   await trash(pool, 'project', haus, workspaceId, userId);
   await restore(pool, 'task', t.task.id, workspaceId, null);
-  const someday = await list(pool, 'someday', workspaceId, NOW);
-  assert.deepEqual(titles(someday), ['Kabel messen']);
-  assert.equal(someday[0]!.project_id, null);
+  // „Ohne Projekt" heisst seit dem Posteingang: DORT liegt sie. In Irgendwann
+  // stand sie vorher, weil Irgendwann alles Ortlose mitnahm — jetzt heisst
+  // Irgendwann „ohne Zeit und einsortiert" (Konzept 10d).
+  const back = await list(pool, 'inbox', workspaceId, NOW);
+  assert.deepEqual(titles(back), ['Kabel messen']);
+  assert.equal(back[0]!.project_id, null);
+  assert.equal((await list(pool, 'someday', workspaceId, NOW)).length, 0);
 });
 
 test('ein Ziel, das es nicht gibt, wird abgelehnt', async () => {

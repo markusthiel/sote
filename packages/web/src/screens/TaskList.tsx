@@ -30,6 +30,7 @@ const TITLES: Record<string, string> = {
   today: 'Heute',
   upcoming: 'Demnächst',
   someday: 'Irgendwann',
+  inbox: 'Posteingang',
 };
 
 export function TaskList({
@@ -262,7 +263,12 @@ export function TaskList({
         ? `${longDate(now)}${loaded ? ` — ${count === 0 ? 'nichts offen' : `${count} ${count === 1 ? 'Aufgabe' : 'Aufgaben'}`}${overdue.length > 0 ? `, ${overdue.length} überfällig` : ''}` : ''}`
         : view === 'upcoming'
           ? 'Was einen Zeitpunkt hat, aber später'
-          : 'Ohne Zeitpunkt — nicht unwichtig, nur ungeplant';
+          : view === 'inbox'
+            ? // Der Untertitel sagt, was zu tun ist, und nicht was fehlt: der
+              // Posteingang ist eine Frage an den Menschen und keine Ansicht
+              // über die Zeit.
+              'Noch ohne Projekt — zieh sie an ihren Ort oder tippe #projekt dazu'
+            : 'Ohne Zeitpunkt — nicht unwichtig, nur ungeplant';
 
   function renderRow(task: Task, index: number) {
     return (
@@ -380,9 +386,13 @@ export function TaskList({
                 ? 'Für heute ist nichts geplant.'
                 : view === 'upcoming'
                   ? 'Nichts steht an.'
-                  : route.kind === 'project'
-                    ? 'Dieses Projekt ist leer.'
-                    : 'Nichts Ungeplantes.'}
+                  : view === 'inbox'
+                    ? // Ein leerer Posteingang ist ein GUTER Zustand, und der
+                      // Satz sagt das. „Nichts hier" liest sich wie ein Mangel.
+                      'Alles einsortiert.'
+                    : route.kind === 'project'
+                      ? 'Dieses Projekt ist leer.'
+                      : 'Nichts Ungeplantes.'}
             </strong>
             Tippe oben eine Zeile — Datum, Projekt und Priorität liest sie mit.
           </div>

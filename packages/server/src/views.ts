@@ -25,7 +25,7 @@ import type { Pool } from 'pg';
 import { queryRows, type PoolClient } from './db.js';
 import type { TaskRow } from './tasks.js';
 
-export type ViewId = 'today' | 'upcoming' | 'someday' | 'project';
+export type ViewId = 'today' | 'upcoming' | 'someday' | 'inbox' | 'project';
 
 const COLUMNS = `
   id, workspace_id, project_id, parent_id, title, note,
@@ -129,10 +129,41 @@ function whereFor(
         params: [workspaceId, bounds.endOfDay],
         order: 'COALESCE(planned_at, due_at) ASC, priority ASC, sort_key ASC',
       };
+    case 'inbox':
+      /*
+       * Der Posteingang: was noch keinen Ort hat.
+       *
+       * Die Schnellerfassung zieht ihren Wert daraus, dass man **nichts
+       * entscheiden muss**, um etwas festzuhalten (Konzept 10d) — also
+       * entstehen Aufgaben ohne Projekt, und die brauchen einen Ort, an dem man
+       * sie wiederfindet. Bis hierher lagen sie in Irgendwann, zusammen mit
+       * allem, was jemand ausdrücklich als „irgendwann" eingeordnet hat. Das
+       * sind zwei verschiedene Dinge: **ohne Ort** und **ohne Zeit**.
+       *
+       * Ein Datum schließt hier nicht aus. Wer „Zahnarzt anrufen morgen"
+       * tippt, hat einen Zeitpunkt gesagt und keinen Ort — die Aufgabe steht
+       * dann in Demnächst UND hier, und das ist richtig: sie ist erfasst und
+       * nicht eingeordnet. Der Posteingang ist eine Frage an den Menschen
+       * („wohin gehört das?"), keine Ansicht über die Zeit.
+       */
+      return {
+        sql: `workspace_id = $1 AND ${ALIVE} AND project_id IS NULL AND parent_id IS NULL`,
+        params: [workspaceId],
+        order: 'COALESCE(planned_at, due_at) ASC NULLS LAST, priority ASC, sort_key ASC',
+      };
     case 'someday':
       return {
+        /*
+         * Irgendwann heißt **ohne Zeit**, nicht „ohne Ort".
+         *
+         * `project_id IS NOT NULL` ist neu: was noch nirgends einsortiert ist,
+         * steht im Posteingang und hier nicht mehr doppelt. Eine Aufgabe an
+         * zwei Orten, von denen einer „ungeplant" und der andere „unerfasst"
+         * heißt, lässt niemanden wissen, welchen er abarbeiten soll.
+         */
         sql: `workspace_id = $1 AND ${ALIVE}
-              AND planned_at IS NULL AND due_at IS NULL`,
+              AND planned_at IS NULL AND due_at IS NULL
+              AND project_id IS NOT NULL`,
         params: [workspaceId],
         order: 'priority ASC, sort_key ASC',
       };
@@ -184,12 +215,19 @@ export async function counts(
   workspaceId: string,
   now: Date,
   zone?: string,
-): Promise<{ today: number; upcoming: number; someday: number; overdue: number }> {
+): Promise<{
+  today: number;
+  upcoming: number;
+  someday: number;
+  inbox: number;
+  overdue: number;
+}> {
   const bounds = boundsOf(now, zone);
   const rows = await queryRows<{
     today: string;
     upcoming: string;
     someday: string;
+    inbox: string;
     overdue: string;
   }>(
     q,
@@ -197,7 +235,15 @@ export async function counts(
        count(*) FILTER (WHERE planned_at <= $2 OR due_at <= $2)          AS today,
        count(*) FILTER (WHERE (planned_at IS NOT NULL OR due_at IS NOT NULL)
                           AND COALESCE(planned_at, due_at) > $2)         AS upcoming,
-       count(*) FILTER (WHERE planned_at IS NULL AND due_at IS NULL)     AS someday,
+       -- Dieselben Bedingungen wie in whereFor, und das ist die Stelle, an
+       -- der es auseinanderlaufen kann: eine Zahl, die anders zaehlt als die
+       -- Liste, ist schlimmer als keine Zahl. Ein Test haelt beide zusammen.
+       -- (Ohne Backticks im Kommentar: sie beenden das Template-Literal, und
+       -- der Uebersetzer meldet dann eine fehlende Klammer irgendwo weiter
+       -- unten. Eine halbe Stunde Suche fuer zwei Zeichen.)
+       count(*) FILTER (WHERE planned_at IS NULL AND due_at IS NULL
+                          AND project_id IS NOT NULL)                    AS someday,
+       count(*) FILTER (WHERE project_id IS NULL AND parent_id IS NULL)   AS inbox,
        count(*) FILTER (WHERE COALESCE(planned_at, due_at) < $3)         AS overdue
      FROM tasks WHERE workspace_id = $1 AND ${ALIVE}`,
     [workspaceId, bounds.endOfDay, bounds.startOfDay],
@@ -207,6 +253,7 @@ export async function counts(
     today: Number(r?.today ?? 0),
     upcoming: Number(r?.upcoming ?? 0),
     someday: Number(r?.someday ?? 0),
+    inbox: Number(r?.inbox ?? 0),
     overdue: Number(r?.overdue ?? 0),
   };
 }

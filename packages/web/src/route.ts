@@ -42,12 +42,19 @@ export type Route =
    * dabei über die Farben eines Teams stolpert, hat den falschen Bereich
    * gefunden.
    */
+  /**
+   * Der Posteingang: was noch keinen Ort hat.
+   *
+   * Eine Ansicht wie Heute und keine „mode"-Route mehr — er hat einen Inhalt,
+   * und die Platzhalterseite hatte keinen.
+   */
+  | { readonly kind: 'inbox' }
   | { readonly kind: 'workspaces'; readonly section: string }
   /** Alles, was für jeden auf diesem Server gilt. */
   | { readonly kind: 'admin'; readonly section: string };
 
 /** Die Ansichten, wie der Server sie nennt. */
-export function viewOf(route: Route): 'today' | 'upcoming' | 'someday' | 'project' {
+export function viewOf(route: Route): 'today' | 'upcoming' | 'someday' | 'inbox' | 'project' {
   switch (route.kind) {
     case 'upcoming':
       return 'upcoming';
@@ -55,6 +62,8 @@ export function viewOf(route: Route): 'today' | 'upcoming' | 'someday' | 'projec
       return 'someday';
     case 'project':
       return 'project';
+    case 'inbox':
+      return 'inbox';
     default:
       return 'today';
   }
@@ -85,7 +94,7 @@ export function parseRoute(pathname: string, queryString = ''): Route {
     case 'irgendwann':
       return { kind: 'someday' };
     case 'posteingang':
-      return { kind: 'mode', mode: 'inbox' };
+      return { kind: 'inbox' };
     case 'freigaben':
       return { kind: 'mode', mode: 'shares' };
     case 'papierkorb':
@@ -114,6 +123,8 @@ export function pathOf(route: Route): string {
       return '/demnaechst';
     case 'someday':
       return '/irgendwann';
+    case 'inbox':
+      return '/posteingang';
     case 'project':
       return `/p/${route.projectId}`;
     case 'search':
@@ -142,6 +153,7 @@ export function modeOfRoute(route: Route): string {
   // Die Arbeitsbereiche sind ein Modus in der Schiene und keine „mode"-Route
   // mehr: sie haben einen Inhalt, und die Platzhalterseite hat keinen.
   if (route.kind === 'workspaces') return 'workspaces';
+  if (route.kind === 'inbox') return 'inbox';
   // Die Verwaltung ist KEIN Modus. Sie steht nicht in der Schiene, weil sie
   // kein Ort ist, an dem man arbeitet — sie steht im Kontomenue, wie in SONE.
   return route.kind === 'mode' ? route.mode : 'tasks';

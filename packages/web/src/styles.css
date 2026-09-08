@@ -2419,3 +2419,24 @@ select.target {
 .ws-here {
   color: var(--text-faint);
 }
+
+/* Der Kopf der Leiste in einem Einstellungsbereich: Titel und Geltungsbereich.
+   Keine Gruppenüberschrift darunter — die würde nur wiederholen, was hier
+   schon steht (SONEs ADR-0072). */
+.panel-title {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 3px 4px;
+}
+
+.panel-title strong {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.panel-scope {
+  font-family: var(--sote-mono);
+  font-size: 10px;
+  color: var(--text-faint);
+}
