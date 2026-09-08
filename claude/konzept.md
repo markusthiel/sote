@@ -1663,6 +1663,26 @@ Beim Bauen entschieden, weil es ohne Entscheidung keinen Code gibt:
   behaupteten „Einladungen gibt es noch nicht". Für jede Variable steht jetzt
   da, **was ohne sie passiert** — beim Einrichten die einzige Auskunft, die
   zählt.
+- **„Leer" ist kein ungültiger Wert, sondern ein Zurücknehmen.** Die schmale
+  Leiste auf „Vertieft" und zurück auf „Wie entworfen" antwortete *„look" nimmt
+  diesen Wert nicht*: das Formular schickt dann `look: { surfaces: {} }`,
+  `readLook` macht `{}`, und `readSettings` lässt ein leeres `look` weg — die
+  Prüfung sah „Schlüssel fehlt in `kept`" und schloss auf einen ungültigen Wert.
+  „Nichts gesetzt" und „nicht vorhanden" sind derselbe Zustand. Die Grenze hat
+  einen eigenen Test: „leer" nimmt zurück, „Unsinn" wird weiter abgelehnt.
+- **Was absolut zu einer Zeile sitzt, wandert mit ihr.** Die offene Zeile hatte
+  `margin-left: -10px` samt `padding-left` — für den Inhalt hob sich das auf,
+  für den absolut gesetzten **Anfasser** nicht: er wanderte nach links und
+  klebte am Streifen. Der Streifen ist jetzt ein eigenes Element, das keinen
+  Platz nimmt; damit gibt es keine Verschiebung zum Gegenrechnen, und eine
+  Gegenrechnung wäre eine zweite Zahl, die zur ersten passen muss.
+- **Ein `<input>` verschluckt Zeilenumbrüche.** Der Browser ersetzt sie durch
+  Leerzeichen, also wurde aus drei eingefügten Zeilen eine Aufgabe
+  „zeile 1 zeile 2 zeile 3" — still. Jetzt eine Aufgabe je Zeile, jede durch
+  dieselbe Erfassung (`morgen 9 Uhr`, `#projekt`, `!!` gelten je Zeile).
+  - **Was schon getippt war, bleibt stehen**: nicht mit der ersten eingefügten
+    Zeile verschmolzen und nicht weggeworfen. Zusammenkleben wäre die einzige
+    Variante, bei der etwas verlorengeht.
 - **`pnpm check` ist genau das, was die CI fährt.** Erst standen die Prüfungen
   einzeln in der Workflow-Datei, und `pnpm -r typecheck` scheiterte dort — in
   einem frischen Klon gibt es kein `dist`, und `@sote/core` zeigt mit `types`

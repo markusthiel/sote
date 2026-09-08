@@ -158,3 +158,40 @@ test('wer nicht Mitglied ist, darf am Arbeitsbereich nichts ändern', async () =
   // Die eigenen aber schon — es sind seine.
   assert.equal(await mayChange(pool, 'user', stranger, workspaceId), true);
 });
+
+test('„Wie entworfen" beim letzten Feld ist ein Zurücknehmen, kein Fehler', async () => {
+  /*
+   * Der Fehler, den es gab, gemeldet mit Bild: die schmale Leiste auf
+   * „Vertieft" und dann zurück auf „Wie entworfen" antwortete
+   * *„look" nimmt diesen Wert nicht*.
+   *
+   * Warum: das Formular schickt dann `look: { surfaces: {} }`, `readLook` macht
+   * daraus `{}`, und `readSettings` lässt ein leeres `look` weg — es ist ja
+   * nichts gesetzt. Die Prüfung sah „Schlüssel nicht in `kept`" und schloss auf
+   * einen ungültigen Wert.
+   *
+   * „Nichts gesetzt" und „nicht vorhanden" sind derselbe Zustand.
+   */
+  await patchSettings(pool, 'instance', null, { look: { surfaces: { rail: 'sunken' } } });
+  const zurück = await patchSettings(pool, 'instance', null, { look: { surfaces: {} } });
+  assert.equal('look' in zurück, false, 'nichts gesetzt');
+
+  // Und dasselbe für ein ganz leeres `look` und für ein leeres `landing`.
+  await patchSettings(pool, 'instance', null, { look: { corners: 'round' } });
+  await patchSettings(pool, 'instance', null, { look: {} });
+  const stand = await patchSettings(pool, 'instance', null, {});
+  assert.equal('look' in stand, false);
+});
+
+test('ein wirklich ungültiger Wert wird weiter abgelehnt', async () => {
+  // Die Grenze: „leer" ist ein Zurücknehmen, „Unsinn" nicht. Ohne diesen Test
+  // wäre die Behebung oben eine, die alles durchlässt.
+  await assert.rejects(
+    () => patchSettings(pool, 'instance', null, { look: { corners: '999px' } }),
+    (e: unknown) => /nimmt diesen Wert nicht/.test((e as Error).message),
+  );
+  await assert.rejects(
+    () => patchSettings(pool, 'instance', null, { scheme: 'mondlicht' }),
+    (e: unknown) => /nimmt diesen Wert nicht/.test((e as Error).message),
+  );
+});

@@ -56,6 +56,20 @@ export type Scope = 'instance' | 'workspace' | 'user';
  * „oder Eigentümer" ergänzen muss, ist eine, die ein Aufrufer vergisst
  * (ADR-0087, dort dreimal die Antwort).
  */
+/**
+ * Trägt dieser Wert nichts?
+ *
+ * Rekursiv, weil ein `{ surfaces: {} }` genauso nichts trägt wie ein `{}`: das
+ * Formular nimmt eine Fläche zurück und schickt die Hülle mit. Ohne die
+ * Rekursion wäre nur der zweite Fall ein Zurücknehmen und der erste ein Fehler
+ * — und der erste ist der, der wirklich vorkommt.
+ */
+function istLeer(value: unknown): boolean {
+  if (value === null || value === undefined) return true;
+  if (typeof value !== 'object') return false;
+  return Object.values(value as Record<string, unknown>).every(istLeer);
+}
+
 export async function mayDo(
   q: Pool | PoolClient,
   userId: string,
@@ -252,14 +266,38 @@ export async function patchSettings(
       else after[key] = value;
     }
 
-    // Geprüft wird vor dem Schreiben, nicht beim Lesen: ein ungültiger Wert in
-    // der Datenbank wäre still, ein abgelehnter Aufruf ist es nicht.
+    /*
+     * Geprüft wird vor dem Schreiben, nicht beim Lesen: ein ungültiger Wert in
+     * der Datenbank wäre still, ein abgelehnter Aufruf ist es nicht.
+     *
+     * **„Leer" ist kein ungültiger Wert, sondern ein Zurücknehmen.**
+     *
+     * Der Fehler, den es gab, gemeldet mit Bild: die schmale Leiste auf
+     * „Vertieft" und dann zurück auf „Wie entworfen" antwortete
+     * *„look" nimmt diesen Wert nicht*. Warum: das Formular schickt dann
+     * `look: { surfaces: {} }`, `readLook` macht daraus `{}`, und
+     * `readSettings` lässt ein leeres `look` weg — es ist ja nichts gesetzt.
+     * Die Prüfung sah „Schlüssel nicht in `kept`" und schloss auf einen
+     * ungültigen Wert.
+     *
+     * „Nichts gesetzt" und „nicht vorhanden" sind derselbe Zustand. Ein
+     * Aufruf, der auf diesen Zustand führt, ist also ein Zurücknehmen — und
+     * wird wie `null` behandelt, statt abgelehnt.
+     */
     const kept = readSettings(after);
     for (const key of Object.keys(changes)) {
-      if (changes[key] !== null && !(key in kept)) {
-        throw new OutOfOrder(`„${key}" nimmt diesen Wert nicht`);
+      if (changes[key] === null || key in kept) continue;
+      const allein = readSettings({ [key]: changes[key] });
+      if (Object.keys(allein).length === 0 && istLeer(changes[key])) {
+        // Zurücknehmen: der Wert trägt nichts, also trägt er nichts bei.
+        delete after[key];
+        continue;
       }
+      throw new OutOfOrder(`„${key}" nimmt diesen Wert nicht`);
     }
+    // Nach dem Aufräumen erneut lesen, damit die Antwort den Stand nennt, der
+    // wirklich geschrieben wird — und nicht den vor dem Zurücknehmen.
+    const endgültig = readSettings(after);
 
     await client.query(
       `INSERT INTO settings (scope, scope_id, data)
@@ -268,7 +306,7 @@ export async function patchSettings(
          SET data = EXCLUDED.data, updated_at = now()`,
       [scope, scopeId, JSON.stringify(after)],
     );
-    return kept;
+    return endgültig;
   });
 }
 

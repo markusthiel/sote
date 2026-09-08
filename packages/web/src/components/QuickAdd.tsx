@@ -84,6 +84,35 @@ export function QuickAdd({
     setLine('');
   }
 
+  /**
+   * Mehrere Zeilen einfügen: eine Aufgabe je Zeile.
+   *
+   * **Vorher verschluckte das Feld die Umbrüche.** Ein `<input>` ist einzeilig,
+   * also ersetzt der Browser jeden Umbruch durch ein Leerzeichen — aus drei
+   * Zeilen wurde eine Aufgabe „zeile 1 zeile 2 zeile 3". Still, und genau so
+   * gemeldet.
+   *
+   * Was schon getippt war, bleibt **stehen**: es wird nicht mit der ersten
+   * eingefügten Zeile verschmolzen und nicht weggeworfen. Wer es auch will,
+   * drückt danach Enter. Die Alternative — Getipptes und Eingefügtes
+   * zusammenkleben — wäre die einzige, bei der etwas verlorengehen kann.
+   *
+   * Jede Zeile geht durch dieselbe Erfassung wie eine getippte, also gelten
+   * `morgen 9 Uhr`, `#projekt` und `!!` je Zeile. Ein Absatz aus einer Mail
+   * wird damit zu einer Liste, in der die Termine schon stehen.
+   */
+  function pasteLines(text: string): boolean {
+    const zeilen = text
+      .split(/\r?\n/)
+      .map((z) => z.trim())
+      // Leerzeilen weg: ein Absatz aus einer Mail hat welche, und eine leere
+      // Aufgabe ist keine.
+      .filter((z) => z !== '');
+    if (zeilen.length < 2) return false;
+    for (const z of zeilen) onSubmit(z);
+    return true;
+  }
+
   return (
     <div className="quick">
       <div className="quick-field">
@@ -93,6 +122,12 @@ export function QuickAdd({
         <input
           value={line}
           onChange={(e) => setLine(e.target.value)}
+          onPaste={(e) => {
+            // Nur eingreifen, wenn wirklich mehrere Zeilen kommen — bei einer
+            // einzelnen soll Einfügen ganz normal einfügen.
+            if (busy) return;
+            if (pasteLines(e.clipboardData.getData('text'))) e.preventDefault();
+          }}
           onKeyDown={(e) => {
             if (e.key === 'Enter') {
               e.preventDefault();

@@ -661,6 +661,10 @@ input {
 /* ── Die Zeile. Vier Dinge und nicht mehr. ── */
 
 .task {
+  /* Damit der Anfasser und der Streifen der offenen Zeile sich hieran
+     ausrichten und nicht an irgendeinem Vorfahren — dieselbe Falle wie beim
+     Umschalter im Kopf, der ohne `relative` über der Detailspalte lag. */
+  position: relative;
   display: flex;
   align-items: flex-start;
   gap: 11px;
@@ -1043,9 +1047,16 @@ input {
   opacity: 0.4;
 }
 
+/*
+ * Der Anfasser sitzt im Rand links, VOR dem Streifen der offenen Zeile.
+ *
+ * −24 statt −19: der Streifen liegt bei −8 und ist 2 px breit, der Anfasser
+ * ist etwa 10 px breit — bei −19 hätte er ihn berührt. Beide liegen innerhalb
+ * der 32 px Innenabstand des Hauptbereichs, also ragt nichts hinaus.
+ */
 .grip {
   position: absolute;
-  left: -19px;
+  left: -24px;
   top: 12px;
   color: var(--line-strong);
   font-size: 12px;
@@ -1530,10 +1541,27 @@ select.target {
   font-size: 14.5px;
 }
 
-.task[data-open="true"] {
-  box-shadow: inset 2px 0 0 var(--accent);
-  padding-left: 10px;
-  margin-left: -10px;
+/*
+ * Die offene Zeile verschiebt sich **nicht** mehr.
+ *
+ * Hier stand `padding-left: 10px; margin-left: -10px` mit einem
+ * `inset`-Schatten — die Verschiebung hob sich für den Inhalt auf, aber nicht
+ * für alles, was **absolut zur Zeile** sitzt: der Anfasser wanderte mit nach
+ * links und klebte am Streifen. So im Bild gemeldet.
+ *
+ * Jetzt ein eigenes Element für den Streifen, das keinen Platz nimmt. Damit
+ * bleibt die Zeile, wo sie ist, und niemand muss die Verschiebung
+ * gegenrechnen — eine Gegenrechnung wäre eine zweite Zahl, die zur ersten
+ * passen muss.
+ */
+.task[data-open="true"]::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -8px;
+  width: 2px;
+  background: var(--accent);
 }
 
 /* ── Der Projektbaum im Panel ── */
