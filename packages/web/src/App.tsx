@@ -31,6 +31,7 @@ import { TaskList } from './screens/TaskList.js';
 import { Detail } from './screens/Detail.js';
 import { Search } from './screens/Search.js';
 import { landingRoute, markRoute, rememberRoute } from './landing.js';
+import { People } from './screens/People.js';
 import { ShareScreen } from './screens/ShareScreen.js';
 import { Shares } from './screens/Shares.js';
 import { WorkspaceMark } from './screens/WorkspaceMark.js';
@@ -523,6 +524,8 @@ export function App() {
           <Shares workspace={workspace} projects={projects} />
         ) : route.kind === 'workspaces' && route.section === 'alle' ? (
           <WorkspaceOverview workspaces={me.workspaces} current={workspace} />
+        ) : route.kind === 'workspaces' && route.section === 'leute' ? (
+          <People workspace={workspace} you={me.id} />
         ) : route.kind === 'workspaces' && route.section === 'name' ? (
           <WorkspaceMark
             name={wsName}

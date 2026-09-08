@@ -1356,6 +1356,32 @@ Beim Bauen entschieden, weil es ohne Entscheidung keinen Code gibt:
     sofort. Ein Zwischenzustand nur für den Dateiweg wäre ein **zweites
     Bedienmodell in einem Bildschirm**; der Knopf heißt darum „Laden und
     übernehmen".
+- **Zugang ist keine Einladung** (SONEs ADR-0073): ein **Konto** anzulegen ist
+  Sache der Instanz, wer in einem **Arbeitsbereich** mitarbeitet Sache seines
+  Eigentümers — und das ist eine Frage über Leute, die es schon gibt. Ein
+  Formular, das beides täte, ließe einen Arbeitsbereich fremde Konten auf dem
+  Server erzeugen.
+  - **Gesucht wird, nicht getippt** (ADR-0119, das ADR-0073 hier überholt).
+    Dessen Sorge war richtig, der Schluss zu stark: weil die Route „dieses
+    Konto gibt es nicht" deutlich sagt, konnte derselbe Aufrufer jede Adresse
+    ohnehin bestätigen. Das Adressfeld machte nur die ehrliche Frage — *ist das
+    die richtige Person?* — vor dem Klick unbeantwortbar.
+  - **Nichts unter zwei Zeichen**, und das ist der Unterschied zwischen
+    *bestätigen* und *auflisten*. Die ehrliche Grenze: wer entschlossen ist,
+    kann Präfixe abgehen; gewonnen ist, dass das Verzeichnis unbequem statt
+    offen ist.
+  - **Wer schon hier ist, wird mitgeliefert und markiert**, nicht gefiltert.
+    Verborgen liest er sich als „gibt es nicht" — dieselbe Verwirrung von der
+    anderen Seite.
+  - **Hinzufügen ist nicht Befördern:** wer Mitglied ist, wird abgelehnt statt
+    still umgestuft. Beides in einem Weg heißt, dass ein Verklicken jemandem
+    Rechte gibt.
+  - **Eigentümerschaft ist eine Spalte und kein Recht** (ADR-0102): sie steht
+    als Wort da und nicht als Auswahl, und der **letzte Eigentümer kann nicht
+    gehen** — ein Arbeitsbereich ohne Eigentümer lässt sich von innen nicht
+    heilen.
+  - Einladungen stehen als **Satz** da und nicht als Feld: ein Feld, das nichts
+    tut, ist der Fehler, den SONE vierzehn Mal hatte (ADR-0112).
 - **`pnpm check` ist genau das, was die CI fährt.** Erst standen die Prüfungen
   einzeln in der Workflow-Datei, und `pnpm -r typecheck` scheiterte dort — in
   einem frischen Klon gibt es kein `dist`, und `@sote/core` zeigt mit `types`

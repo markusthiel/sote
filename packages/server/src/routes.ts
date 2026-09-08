@@ -25,6 +25,7 @@ import { queryOne, queryRows } from './db.js';
 import { create as createProject, NameTaken, update as updateProject } from './projects.js';
 import type { Config } from './env.js';
 import { cookie, fail, json, readJson } from './http/respond.js';
+import { addPerson, findPeople, people, removePerson, roles, setRole } from './people.js';
 import { shareRoutes } from './shareRoutes.js';
 import { createShare, listShares, revokeShare, shareKeyPresent } from './shares.js';
 import { makeStatic } from './http/static.js';
@@ -483,6 +484,72 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
     json(res, 200, {
       workspace: { id: row!.id, name: row!.name, icon: readIcon(row!.icon) },
     });
+    return;
+  }
+
+  /* ── Leute ───────────────────────────────────────────────────────────────
+   *
+   * Alle vier Wege nehmen DASSELBE Recht wie das Hinzufügen — auch das Suchen
+   * (ADR-0119). Was daran neu ist, ist Name → Adresse; darum wird das Recht
+   * nicht gelockert, nur weil die Antwort kürzer aussieht.
+   */
+  if (path === '/api/people' && method === 'GET') {
+    const q = url.searchParams.get('q');
+    if (q !== null) {
+      if (!(await mayChange(ctx.pool, 'workspace', userId, workspaceId))) {
+        fail(res, 403, 'not_allowed', 'das darfst du hier nicht');
+        return;
+      }
+      json(res, 200, { found: await findPeople(ctx.pool, workspaceId, q) });
+      return;
+    }
+    // Ohne Suche: wer hier ist. Das darf jedes Mitglied sehen — mit wem man
+    // einen Arbeitsbereich teilt, ist keine Auskunft über den Server.
+    json(res, 200, {
+      people: await people(ctx.pool, workspaceId),
+      roles: await roles(ctx.pool, workspaceId),
+      mayManage: await mayChange(ctx.pool, 'workspace', userId, workspaceId),
+      you: userId,
+    });
+    return;
+  }
+
+  if (path === '/api/people' && method === 'POST') {
+    if (!(await mayChange(ctx.pool, 'workspace', userId, workspaceId))) {
+      fail(res, 403, 'not_allowed', 'das darfst du hier nicht');
+      return;
+    }
+    const body = (await readJson(req)) as Record<string, unknown>;
+    const wer = String(body?.['userId'] ?? '');
+    const rolle = String(body?.['roleId'] ?? '');
+    if (!/^[0-9a-f-]{36}$/.test(wer) || !/^[0-9a-f-]{36}$/.test(rolle)) {
+      fail(res, 400, 'no_person', 'wer, und mit welcher Rolle?');
+      return;
+    }
+    await addPerson(ctx.pool, workspaceId, wer, rolle);
+    json(res, 201, { ok: true });
+    return;
+  }
+
+  const personPath = /^\/api\/people\/([0-9a-f-]{36})$/.exec(path);
+  if (personPath !== null && (method === 'PATCH' || method === 'DELETE')) {
+    if (!(await mayChange(ctx.pool, 'workspace', userId, workspaceId))) {
+      fail(res, 403, 'not_allowed', 'das darfst du hier nicht');
+      return;
+    }
+    if (method === 'DELETE') {
+      await removePerson(ctx.pool, workspaceId, personPath[1]!);
+      json(res, 200, { ok: true });
+      return;
+    }
+    const body = (await readJson(req)) as Record<string, unknown>;
+    const rolle = String(body?.['roleId'] ?? '');
+    if (!/^[0-9a-f-]{36}$/.test(rolle)) {
+      fail(res, 400, 'no_role', 'welche Rolle?');
+      return;
+    }
+    await setRole(ctx.pool, workspaceId, personPath[1]!, rolle);
+    json(res, 200, { ok: true });
     return;
   }
 

@@ -286,6 +286,44 @@ export const api = {
       `/api/workspace${workspace === undefined ? '' : `?workspace=${workspace}`}`,
       { method: 'PATCH', body: JSON.stringify(body) },
     ),
+  /* ── Leute ─────────────────────────────────────────────────────────────── */
+  people: (workspace?: string) =>
+    call<{
+      people: {
+        userId: string;
+        displayName: string;
+        email: string;
+        isOwner: boolean;
+        roleId: string | null;
+        roleName: string | null;
+      }[];
+      roles: { id: string; name: string }[];
+      mayManage: boolean;
+      you: string;
+    }>(`/api/people${workspace === undefined ? '' : `?workspace=${workspace}`}`),
+  findPeople: (q: string, workspace?: string) => {
+    const p = new URLSearchParams({ q });
+    if (workspace !== undefined) p.set('workspace', workspace);
+    return call<{
+      found: { userId: string; displayName: string; email: string; alreadyMember: boolean }[];
+    }>(`/api/people?${p}`);
+  },
+  addPerson: (body: { userId: string; roleId: string }, workspace?: string) =>
+    call<{ ok: true }>(`/api/people${workspace === undefined ? '' : `?workspace=${workspace}`}`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+  setRole: (userId: string, roleId: string, workspace?: string) =>
+    call<{ ok: true }>(
+      `/api/people/${userId}${workspace === undefined ? '' : `?workspace=${workspace}`}`,
+      { method: 'PATCH', body: JSON.stringify({ roleId }) },
+    ),
+  removePerson: (userId: string, workspace?: string) =>
+    call<{ ok: true }>(
+      `/api/people/${userId}${workspace === undefined ? '' : `?workspace=${workspace}`}`,
+      { method: 'DELETE' },
+    ),
+
   /* ── Freigaben verwalten (mit Konto) ───────────────────────────────────── */
   shares: (workspace?: string) =>
     call<{
