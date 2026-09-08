@@ -1232,6 +1232,30 @@ Beim Bauen entschieden, weil es ohne Entscheidung keinen Code gibt:
     Nachfolger angelegt, bleibt der stehen. Es gibt keine Spalte, die ihn mit
     dieser Erledigung verbindet, und ihn über den Titel zu erraten wäre
     schlimmer als ihn zu lassen.
+- **Erledigtes lässt sich überall einblenden, und es rutscht in ein
+  ausgegrautes Bündel unten.** Gemeldet als Vorschlag; vorher konnte das nur
+  die Projektansicht, und die konnte es **immer**. Eine Ansicht, die etwas
+  zeigt, was ihre Nachbarn verbergen, ist die Ungleichheit, um die es ging.
+  - **Je Ansicht gemerkt, nicht einmal für alles:** „in diesem Projekt will ich
+    sehen, was ich geschafft habe" und „in Heute will ich nur, was ansteht"
+    sind zwei Antworten. Ein Schalter für alles würde bei jedem Setzen die
+    andere überschreiben.
+  - **Abwesend heißt „wie die Ansicht es ohnehin sagt"**, und die Vorgabe ist
+    nicht überall dieselbe: ein Projekt beantwortet die Frage „was habe ich
+    hier geschafft", eine Zeit-Ansicht nicht. Im Browser gemerkt, nicht am
+    Konto (ADR-0124).
+  - **Eine Abfrage, zwei Bündel.** Der Server liefert Erledigtes am Ende
+    derselben Liste; getrennt wird in der Oberfläche. Zwei Abfragen hätten je
+    eigene Sortierung, Grenze und Zeitpunkt — und zwei Listen, die zusammen
+    eine sein sollen, laufen genau daran auseinander.
+  - **Erledigtes ist nie überfällig.** Ohne diese Zeile wäre eine abgehakte
+    Aufgabe von letzter Woche im Abschnitt „überfällig" gelandet — und
+    „überfällig" ist eine Aufforderung.
+  - **Die Zähler zählen weiter nur Offenes:** eine Zahl neben einer Liste, die
+    man abarbeiten soll, sagt „so viel liegt an" und nicht „so viel war".
+  - Ausgegraut über `opacity` und nicht über eine graue Textfarbe, damit
+    Kästchen, Zeichen und Pfad gemeinsam zurücktreten und ihre Verhältnisse
+    behalten. Lesbar bleibt es, weil man es lesen will, um es zu öffnen.
 - **`pnpm check` ist genau das, was die CI fährt.** Erst standen die Prüfungen
   einzeln in der Workflow-Datei, und `pnpm -r typecheck` scheiterte dort — in
   einem frischen Klon gibt es kein `dist`, und `@sote/core` zeigt mit `types`

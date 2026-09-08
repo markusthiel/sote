@@ -18,6 +18,7 @@ import { HandleMenu } from '../components/HandleMenu.js';
 import { QuickAdd } from '../components/QuickAdd.js';
 import { TaskRow } from '../components/TaskRow.js';
 import { longDate } from '../dates.js';
+import { useShowDone } from '../hooks/useShowDone.js';
 import { neighboursFor, neighboursForStep, reordered } from '../reorder.js';
 import { viewOf, type Route } from '../route.js';
 
@@ -59,6 +60,13 @@ export function TaskList({
   const [pending, setPending] = useState<readonly Pending[]>([]);
   const [notice, setNotice] = useState<string | undefined>(undefined);
   const [unknownProject, setUnknownProject] = useState<string | null>(null);
+  /*
+   * Ob Erledigtes mitkommt — je Ansicht, im Browser gemerkt.
+   *
+   * Gemeldet: „es sollte überall die möglichkeit geben abgehakte
+   * einzublenden." Vorher konnte das nur das Projekt, und es konnte es immer.
+   */
+  const { showDone, toggle: toggleDone } = useShowDone(view);
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [dragging, setDragging] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
@@ -68,11 +76,12 @@ export function TaskList({
     const data = await api.tasks(view, {
       ...(workspace === undefined ? {} : { workspace }),
       ...(projectId === undefined ? {} : { project: projectId }),
+      ...(showDone ? { done: true } : {}),
     });
     setOverdue(data.overdue);
     setRows(data.tasks);
     setLoaded(true);
-  }, [view, workspace, projectId]);
+  }, [view, workspace, projectId, showDone]);
 
   useEffect(() => {
     setLoaded(false);
@@ -282,6 +291,16 @@ export function TaskList({
   const title =
     route.kind === 'project' ? (project?.name ?? 'Projekt') : (TITLES[view] ?? 'Aufgaben');
   const count = overdue.length + rows.filter((r) => r.completed === null).length;
+  /*
+   * Offen und erledigt, aus derselben Liste.
+   *
+   * Die Grenze zieht der Server über die Sortierung (`completed_at IS NOT
+   * NULL` zuerst), hier wird nur getrennt. Ein `filter` und nicht ein Suchen
+   * der Grenze: eine Aufgabe, die zwischen Laden und Zeichnen abgehakt wird,
+   * soll im richtigen Bündel landen und nicht an einer gemerkten Stelle.
+   */
+  const offen = rows.filter((r) => r.completed === null);
+  const erledigt = rows.filter((r) => r.completed !== null);
 
   const subtitle =
     route.kind === 'project'
@@ -362,6 +381,19 @@ export function TaskList({
       <div className="main-head">
         <h1>{title}</h1>
         <div className="sub">{subtitle}</div>
+        {/*
+          Der Umschalter steht im Kopf, bei der Frage, die er beantwortet.
+          Nicht unten bei der Liste, die er erzeugt: dort wäre er beim ersten
+          Mal unsichtbar, weil es die Liste noch nicht gibt.
+        */}
+        <button
+          type="button"
+          className="head-toggle"
+          aria-pressed={showDone}
+          onClick={toggleDone}
+        >
+          {showDone ? 'Erledigte ausblenden' : 'Erledigte einblenden'}
+        </button>
       </div>
 
       <div className="body">
@@ -387,7 +419,30 @@ export function TaskList({
           </>
         ) : null}
 
-        {rows.map((task, i) => renderRow(task, i))}
+        {/*
+          Zwei Bündel aus einer Liste.
+          Der Server liefert sie in einer Abfrage, Erledigtes am Ende — eine
+          zweite Abfrage hätte eine eigene Sortierung und einen eigenen
+          Zeitpunkt, und zwei Listen, die zusammen eine sein sollen, laufen
+          genau daran auseinander. Getrennt wird darum HIER, an der Grenze, die
+          die Sortierung schon gezogen hat.
+        */}
+        {offen.map((task, i) => renderRow(task, i))}
+
+        {erledigt.length > 0 ? (
+          <>
+            <div className="section-label done">
+              Erledigt
+              <span className="rule" />
+            </div>
+            {/*
+              Der Index läuft weiter: `renderRow` benutzt ihn fürs Ziehen, und
+              zwei Bündel mit je eigener Zählung würden zwei Zeilen denselben
+              Platz geben.
+            */}
+            {erledigt.map((task, i) => renderRow(task, offen.length + i))}
+          </>
+        ) : null}
 
         {/* Eine Ablegestelle hinter der letzten Zeile, sonst gibt es kein
             „nach ganz unten". */}

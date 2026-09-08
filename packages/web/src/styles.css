@@ -2549,3 +2549,45 @@ select.target {
     -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial,
     sans-serif;
 }
+
+/* Der Umschalter im Kopf, bei der Frage, die er beantwortet. */
+.head-toggle {
+  position: absolute;
+  top: 14px;
+  right: 18px;
+  padding: 5px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--sote-radius-md);
+  background: none;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.head-toggle:hover {
+  background: var(--sunken);
+  color: var(--text);
+}
+
+.head-toggle[aria-pressed='true'] {
+  border-color: var(--accent-line);
+  color: var(--accent);
+}
+
+/* Ausgegraut, aber lesbar: eine erledigte Zeile ist erledigt und nicht
+   verschwunden — man will sie noch lesen können, um sie wieder zu öffnen.
+   `opacity` und keine graue Textfarbe, damit Kästchen, Zeichen und Pfad
+   gemeinsam zurücktreten und ihre Verhältnisse behalten. */
+.section-label.done {
+  color: var(--text-faint);
+}
+
+.task[data-done='true'] {
+  opacity: 0.55;
+}
+
+.task[data-done='true'] .task-title {
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+}

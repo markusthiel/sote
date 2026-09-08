@@ -29,7 +29,7 @@ import {
   OutOfOrder,
   patch,
 } from '../src/tasks.js';
-import { boundsOf, counts, list } from '../src/views.js';
+import { boundsOf, counts, list, splitOverdue } from '../src/views.js';
 
 const URL_ =
   process.env['SOTE_TEST_DATABASE_URL'] ??
@@ -156,13 +156,19 @@ test('die Zähler stimmen mit den Listen überein', async () => {
   assert.equal(n.overdue, 1);
 });
 
-test('ein Projekt zeigt auch Erledigtes, aber unten', async () => {
+test('ein Projekt zeigt Erledigtes, wenn man danach fragt — und dann unten', async () => {
+  /*
+   * Der Test hieß „ein Projekt zeigt AUCH Erledigtes, aber unten", und das war
+   * die Vorgabe der Ansicht. Gemeldet wurde die Ungleichheit: nur das Projekt
+   * konnte es, und es konnte es immer. Jetzt ist es überall eine Wahl — also
+   * fragt dieser Test danach, statt es vorauszusetzen.
+   */
   const { workspaceId, projectId } = await scratch('v-project');
   const one = await add(workspaceId, 'offen #haus');
   const two = await add(workspaceId, 'erledigt #haus');
   await complete(pool, two.task.id, userId, NOW);
 
-  const rows = await list(pool, 'project', workspaceId, NOW, projectId);
+  const rows = await list(pool, 'project', workspaceId, NOW, projectId, undefined, true);
   assert.deepEqual(rows.map((t) => t.title), ['offen', 'erledigt']);
   assert.equal(rows[0]!.id, one.task.id);
   assert.notEqual(rows[1]!.completed_at, null);
@@ -474,4 +480,85 @@ test('eine Teilaufgabe steht nicht im Posteingang', async () => {
     [workspaceId, parent.task.id],
   );
   assert.deepEqual((await list(pool, 'inbox', workspaceId, NOW)).map((t) => t.title), ['Elternteil']);
+});
+
+/* ── Erledigtes einblenden ───────────────────────────────────────────────── */
+
+test('Erledigtes bleibt draußen, solange niemand danach fragt', async () => {
+  const { workspaceId, projectId } = await scratch('v-done-off');
+  const t = await createFromLine(pool, {
+    workspaceId, userId, line: 'Bericht fällig heute', now: NOW, projectId,
+  });
+  await complete(pool, t.task.id, userId, NOW);
+  for (const view of ['today', 'upcoming', 'someday', 'inbox'] as const) {
+    assert.equal((await list(pool, view, workspaceId, NOW)).length, 0, view);
+  }
+  assert.equal((await list(pool, 'project', workspaceId, NOW, projectId)).length, 0);
+});
+
+test('mit Erledigtem steht es in jeder Ansicht — und zwar unten', async () => {
+  // Gemeldet: „es sollte überall die möglichkeit geben abgehakte
+  // einzublenden." Vorher konnte das nur die Projektansicht, und die konnte es
+  // immer.
+  const { workspaceId, projectId } = await scratch('v-done-on');
+  const offen = await createFromLine(pool, {
+    workspaceId, userId, line: 'Kabel messen heute', now: NOW, projectId,
+  });
+  const zu = await createFromLine(pool, {
+    workspaceId, userId, line: 'Dosen setzen heute', now: NOW, projectId,
+  });
+  await complete(pool, zu.task.id, userId, NOW);
+
+  const rows = await list(pool, 'today', workspaceId, NOW, null, undefined, true);
+  assert.deepEqual(rows.map((r) => r.title), ['Kabel messen', 'Dosen setzen']);
+  assert.equal(rows[0]!.id, offen.task.id, 'das Offene steht oben');
+  assert.notEqual(rows[1]!.completed_at, null, 'das Erledigte steht unten');
+});
+
+test('Erledigtes ist nie überfällig', async () => {
+  /*
+   * „Überfällig" ist eine Aufforderung. Sie an etwas zu richten, das schon
+   * getan ist, macht den Abschnitt unbrauchbar — und zwar für den, der ihn am
+   * meisten braucht.
+   */
+  const { workspaceId, projectId } = await scratch('v-done-overdue');
+  const alt = await createFromLine(pool, {
+    workspaceId, userId, line: 'Angebot', now: NOW, projectId,
+  });
+  // Das Datum wird gesetzt und nicht getippt: „gestern" liest die
+  // Schnellerfassung nicht als Zeitangabe, also wäre die Aufgabe ohne Datum
+  // entstanden und gar nicht in Heute gelandet. Mein erster Versuch tat genau
+  // das und meldete eine leere Liste.
+  await pool.query(
+    "UPDATE tasks SET planned_at = $2, planned_all_day = true WHERE id = $1",
+    [alt.task.id, new Date(NOW.getTime() - 36 * 3600 * 1000)],
+  );
+  await complete(pool, alt.task.id, userId, NOW);
+  const rows = await list(pool, 'today', workspaceId, NOW, null, undefined, true);
+  const split = splitOverdue(rows, NOW);
+  assert.equal(split.overdue.length, 0, 'Erledigtes gehört nicht in „überfällig"');
+  assert.equal(split.rest.length, 1);
+});
+
+test('einblenden holt nichts aus dem Papierkorb', async () => {
+  // „Einblenden" heißt erledigt, nicht weggeworfen. Beide Fassungen der
+  // Bedingung schließen den Korb aus.
+  const { workspaceId, projectId } = await scratch('v-done-trash');
+  const t = await createFromLine(pool, {
+    workspaceId, userId, line: 'Weg damit heute', now: NOW, projectId,
+  });
+  await pool.query('UPDATE tasks SET trashed_at = now() WHERE id = $1', [t.task.id]);
+  assert.equal((await list(pool, 'today', workspaceId, NOW, null, undefined, true)).length, 0);
+});
+
+test('die Zähler zählen weiter nur Offenes', async () => {
+  // Eine Zahl an der Ansicht sagt „so viel liegt an". Erledigtes mitzuzählen
+  // würde sie zu einer Zahl über die Vergangenheit machen, und die Zahl steht
+  // neben einer Liste, die man abarbeiten soll.
+  const { workspaceId, projectId } = await scratch('v-done-counts');
+  const t = await createFromLine(pool, {
+    workspaceId, userId, line: 'Bericht fällig heute', now: NOW, projectId,
+  });
+  await complete(pool, t.task.id, userId, NOW);
+  assert.equal((await counts(pool, workspaceId, NOW)).today, 0);
 });

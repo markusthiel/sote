@@ -371,7 +371,16 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
       fail(res, 400, 'no_project', 'diese Ansicht braucht ein Projekt');
       return;
     }
-    const rows = await list(ctx.pool, view, workspaceId, now, projectId, zone);
+    /*
+     * `?done=1` blendet Erledigtes ein.
+     *
+     * Ein Parameter an der Abfrage und keine Einstellung am Konto: „zeig mir
+     * gerade auch das Abgehakte" ist eine Frage an diese Liste in diesem
+     * Moment. Was davon gemerkt wird, entscheidet der Browser — dieselbe Regel
+     * wie bei der Breite der Leiste (ADR-0124).
+     */
+    const withDone = url.searchParams.get('done') === '1';
+    const rows = await list(ctx.pool, view, workspaceId, now, projectId, zone, withDone);
     const sections = view === 'today' ? splitOverdue(rows, now, zone) : undefined;
     json(res, 200, {
       view,

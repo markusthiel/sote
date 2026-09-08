@@ -214,11 +214,14 @@ export const api = {
   /** Eine Ansicht. `overdue` ist nur bei `today` gefüllt. */
   tasks: (
     view: 'today' | 'upcoming' | 'someday' | 'inbox' | 'project',
-    opts: { workspace?: string; project?: string } = {},
+    opts: { workspace?: string; project?: string; done?: boolean } = {},
   ) => {
     const q = new URLSearchParams({ view });
     if (opts.workspace !== undefined) q.set('workspace', opts.workspace);
     if (opts.project !== undefined) q.set('project', opts.project);
+    // Nur wenn eingeblendet: ein `done=0` in jeder Adresse wäre eine Angabe
+    // über die Vorgabe, und die soll die Abwesenheit sein.
+    if (opts.done === true) q.set('done', '1');
     return call<{ view: string; overdue: Task[]; tasks: Task[] }>(`/api/tasks?${q}`);
   },
   search: (q: string, workspace?: string) => {

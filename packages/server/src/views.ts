@@ -67,6 +67,25 @@ const COLUMNS = `
 const ALIVE = `completed_at IS NULL AND trashed_at IS NULL
   AND (tasks.project_id IS NULL OR NOT project_in_trash(tasks.project_id))`;
 
+/**
+ * Dasselbe, aber Erledigtes darf mit.
+ *
+ * Gemeldet: „es sollte überall die möglichkeit geben abgehakte einzublenden.
+ * vielleicht schieben die sich in eine gesonderte liste unten und sind dann
+ * ausgegraut."
+ *
+ * Zwei Zeichenketten und keine Bedingung mit `OR $n`: die Ansichten setzen
+ * ihre Parameter durchnumeriert ein, und ein zusätzlicher Platzhalter mitten
+ * in `ALIVE` würde jede Nummer danach verschieben. Der Papierkorb bleibt in
+ * **beiden** Fassungen ausgeschlossen — „einblenden" heißt erledigt, nicht
+ * weggeworfen.
+ */
+const ALIVE_WITH_DONE = `trashed_at IS NULL
+  AND (tasks.project_id IS NULL OR NOT project_in_trash(tasks.project_id))`;
+
+/** Erledigtes zuletzt — die Reihenfolge, die die Projektansicht schon hatte. */
+const DONE_LAST = 'completed_at IS NOT NULL, ';
+
 export interface Bounds {
   readonly startOfDay: Date;
   readonly endOfDay: Date;
@@ -112,22 +131,33 @@ function whereFor(
   workspaceId: string,
   bounds: Bounds,
   projectId: string | null,
+  /**
+   * Ob Erledigtes mitkommt.
+   *
+   * Es rutscht dann **an das Ende derselben Abfrage** und nicht in eine zweite:
+   * eine zweite Abfrage hätte eine eigene Sortierung, eine eigene Grenze und
+   * einen eigenen Zeitpunkt — und zwei Listen, die zusammen eine sein sollen,
+   * laufen genau daran auseinander.
+   */
+  withDone: boolean,
 ): Where {
+  const alive = withDone ? ALIVE_WITH_DONE : ALIVE;
+  const last = withDone ? DONE_LAST : '';
   switch (view) {
     case 'today':
       return {
-        sql: `workspace_id = $1 AND ${ALIVE}
+        sql: `workspace_id = $1 AND ${alive}
               AND (planned_at <= $2 OR due_at <= $2)`,
         params: [workspaceId, bounds.endOfDay],
-        order: 'priority ASC, COALESCE(planned_at, due_at) ASC, sort_key ASC',
+        order: `${last}priority ASC, COALESCE(planned_at, due_at) ASC, sort_key ASC`,
       };
     case 'upcoming':
       return {
-        sql: `workspace_id = $1 AND ${ALIVE}
+        sql: `workspace_id = $1 AND ${alive}
               AND (planned_at IS NOT NULL OR due_at IS NOT NULL)
               AND COALESCE(planned_at, due_at) > $2`,
         params: [workspaceId, bounds.endOfDay],
-        order: 'COALESCE(planned_at, due_at) ASC, priority ASC, sort_key ASC',
+        order: `${last}COALESCE(planned_at, due_at) ASC, priority ASC, sort_key ASC`,
       };
     case 'inbox':
       /*
@@ -147,9 +177,9 @@ function whereFor(
        * („wohin gehört das?"), keine Ansicht über die Zeit.
        */
       return {
-        sql: `workspace_id = $1 AND ${ALIVE} AND project_id IS NULL AND parent_id IS NULL`,
+        sql: `workspace_id = $1 AND ${alive} AND project_id IS NULL AND parent_id IS NULL`,
         params: [workspaceId],
-        order: 'COALESCE(planned_at, due_at) ASC NULLS LAST, priority ASC, sort_key ASC',
+        order: `${last}COALESCE(planned_at, due_at) ASC NULLS LAST, priority ASC, sort_key ASC`,
       };
     case 'someday':
       return {
@@ -161,11 +191,11 @@ function whereFor(
          * zwei Orten, von denen einer „ungeplant" und der andere „unerfasst"
          * heißt, lässt niemanden wissen, welchen er abarbeiten soll.
          */
-        sql: `workspace_id = $1 AND ${ALIVE}
+        sql: `workspace_id = $1 AND ${alive}
               AND planned_at IS NULL AND due_at IS NULL
               AND project_id IS NOT NULL`,
         params: [workspaceId],
-        order: 'priority ASC, sort_key ASC',
+        order: `${last}priority ASC, sort_key ASC`,
       };
     case 'project':
       return {
@@ -179,10 +209,16 @@ function whereFor(
         // dasselbe meinen. In den Zeit-Ansichten ist es umgekehrt: dort steht
         // sie, weil sie ein eigenes Datum hat, und genau das ist der Grund für
         // echte Teilaufgaben statt Checklistenpunkte.
+        // Auch hier ist Erledigtes jetzt eine WAHL und nicht die Vorgabe der
+        // Ansicht. Vorher zeigte das Projekt es immer — eine Ansicht, die
+        // etwas zeigt, was die Nachbarn verbergen, ist genau die
+        // Ungleichheit, die gemeldet wurde. Die Vorgabe je Ansicht bleibt
+        // trotzdem unterschiedlich, und das entscheidet die Oberfläche.
         sql: `workspace_id = $1 AND project_id = $2 AND trashed_at IS NULL
-              AND parent_id IS NULL`,
+              AND parent_id IS NULL
+              ${withDone ? '' : 'AND completed_at IS NULL'}`,
         params: [workspaceId, projectId],
-        order: 'completed_at IS NOT NULL, sort_key ASC',
+        order: `${last}sort_key ASC`,
       };
   }
 }
@@ -194,9 +230,10 @@ export async function list(
   now: Date,
   projectId: string | null = null,
   zone?: string,
+  withDone = false,
 ): Promise<TaskRow[]> {
   const bounds = boundsOf(now, zone);
-  const where = whereFor(view, workspaceId, bounds, projectId);
+  const where = whereFor(view, workspaceId, bounds, projectId, withDone);
   return queryRows<TaskRow>(
     q,
     `SELECT ${COLUMNS} FROM tasks WHERE ${where.sql} ORDER BY ${where.order}`,
@@ -269,8 +306,19 @@ export function splitOverdue(
   const rest: TaskRow[] = [];
   for (const row of rows) {
     const marker = row.planned_at ?? row.due_at;
-    if (marker !== null && marker.getTime() < startOfDay.getTime()) overdue.push(row);
-    else rest.push(row);
+    /*
+     * Erledigtes ist nie überfällig.
+     *
+     * Ohne `completed_at === null` wäre eine abgehakte Aufgabe von letzter
+     * Woche im Abschnitt „überfällig" gelandet, sobald man Erledigtes
+     * einblendet — und „überfällig" ist eine Aufforderung. Sie an etwas zu
+     * richten, das schon getan ist, macht den Abschnitt unbrauchbar, und zwar
+     * genau für den, der ihn am meisten braucht.
+     */
+    const offen = row.completed_at === null;
+    if (offen && marker !== null && marker.getTime() < startOfDay.getTime()) {
+      overdue.push(row);
+    } else rest.push(row);
   }
   return { overdue, rest };
 }
