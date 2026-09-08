@@ -12,3 +12,4 @@ export * from './look/theme.js';
 export * from './look/contrast.js';
 export * from './look/landing.js';
 export * from './look/themeFile.js';
+export * from './task/rights.js';

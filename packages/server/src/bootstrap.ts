@@ -118,9 +118,21 @@ export async function createAccountIn(
   // Die vier Systemrollen aus SONE, gleiche Bedeutung: `list_level = NULL`
   // heißt wirklich nichts — wer eine Rolle ohne Stufe bekommt, ist Gast
   // (ADR-0110).
+  /*
+   * `groups.manage` ist **weg**, und `workspace.settings` ist dazugekommen.
+   *
+   * Es gibt keine Gruppen, also bewachte der Name nichts — und ein Recht, das
+   * nichts bewacht, ist ein Schalter, bei dem jemand etwas glaubt, wenn er ihn
+   * ausschaltet (ADR-0087). Es kommt zurück, wenn Gruppen kommen, im selben
+   * Commit wie die Wege, die es prüfen.
+   *
+   * `workspace.settings` gab es umgekehrt als Sache, aber nicht als Namen:
+   * geprüft wurde `roles.manage`, also bewachte ein Recht drei Dinge, von denen
+   * es nur eines heißt.
+   */
   const roles: [name: string, level: string | null, rights: string[]][] = [
-    ['owner', 'admin', ['people.manage', 'roles.manage', 'groups.manage']],
-    ['admin', 'admin', ['people.manage', 'roles.manage', 'groups.manage']],
+    ['owner', 'admin', ['people.manage', 'roles.manage', 'workspace.settings']],
+    ['admin', 'admin', ['people.manage', 'roles.manage', 'workspace.settings']],
     ['member', 'editor', []],
     ['guest', null, []],
   ];

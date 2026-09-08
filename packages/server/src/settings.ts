@@ -8,9 +8,13 @@
  * ## Wer was ändern darf
  *
  * - **Die eigene** Person: immer. Es sind die eigenen.
- * - Den **Arbeitsbereich**: wer `roles.manage` hat oder Eigentümer ist. Ein
- *   Thema für den Inhalt ist eine Ansage an alle Mitglieder, und die soll
- *   nicht jeder machen können.
+ * - Den **Arbeitsbereich**: wer `workspace.settings` hat oder Eigentümer ist.
+ *
+ *   Hier stand `roles.manage`, und das war falsch benannt und falsch geprüft:
+ *   dasselbe Recht bewachte Einstellungen, Leute UND Rollen — drei Dinge, von
+ *   denen es nur eines heißt. Ein Recht, das mehr bewacht als sein Name sagt,
+ *   ist ein Recht, das jemand vergibt, ohne zu wissen, was er vergibt
+ *   (ADR-0087).
  * - Die **Instanz**: wer sie verwaltet (`users.is_admin`).
  *
  *   Hier stand vorher: *„nur wer den Arbeitsbereich besitzt, in dem er gerade
@@ -26,6 +30,7 @@ import {
   resolveLanding,
   resolveLook,
   resolveSettings,
+  type Right,
   type Settings,
 } from '@sote/core';
 import type { Pool } from 'pg';
@@ -43,6 +48,59 @@ export type Scope = 'instance' | 'workspace' | 'user';
  * ein Recht, das jeder Aufrufer selbst nachschlägt, ist ein Recht, das ein
  * Aufrufer anders nachschlägt (ADR-0087).
  */
+/**
+ * Darf diese Person das in diesem Arbeitsbereich?
+ *
+ * **Die eine Stelle**, an der ein Recht nachgeschlagen wird — und darum die
+ * eine, an der `is_owner` steht. Eine Bedingung, die jeder Aufrufer selbst um
+ * „oder Eigentümer" ergänzen muss, ist eine, die ein Aufrufer vergisst
+ * (ADR-0087, dort dreimal die Antwort).
+ */
+export async function mayDo(
+  q: Pool | PoolClient,
+  userId: string,
+  workspaceId: string,
+  right: Right,
+): Promise<boolean> {
+  const row = await queryOne<{ ok: boolean }>(
+    q,
+    `SELECT (m.is_owner OR $3 = ANY(r.rights)) AS ok
+       FROM workspace_members m
+       JOIN roles r ON r.id = m.role_id
+      WHERE m.user_id = $1 AND m.workspace_id = $2`,
+    [userId, workspaceId, right],
+  );
+  return row?.ok === true;
+}
+
+/**
+ * Darf diese Person in den Projekten dieses Arbeitsbereichs schreiben?
+ *
+ * Die **Stufe** und nicht ein Recht — das ist SONEs Zweiteilung (ADR-0087):
+ * eine Rolle ist (eine Stufe, eine Menge von Rechten), und Schreiben ist die
+ * Stufe. Eine Freigabe gibt genau das weiter, also fragt sie danach.
+ *
+ * Hier stand vorher `workspace.settings`, und das war die falsche Frage: wer
+ * die Farben eines Arbeitsbereichs ändern darf, hat damit nicht gesagt, dass
+ * er Aufgaben schreiben darf — und umgekehrt konnte jemand, der schreibt und
+ * gerne freigäbe, es nicht.
+ */
+export async function mayWriteLists(
+  q: Pool | PoolClient,
+  userId: string,
+  workspaceId: string,
+): Promise<boolean> {
+  const row = await queryOne<{ ok: boolean }>(
+    q,
+    `SELECT (m.is_owner OR r.list_level IN ('editor','admin')) AS ok
+       FROM workspace_members m
+       JOIN roles r ON r.id = m.role_id
+      WHERE m.user_id = $1 AND m.workspace_id = $2`,
+    [userId, workspaceId],
+  );
+  return row?.ok === true;
+}
+
 export async function isAdmin(q: Pool | PoolClient, userId: string): Promise<boolean> {
   const row = await queryOne<{ is_admin: boolean }>(
     q,
@@ -199,13 +257,5 @@ export async function mayChange(
      */
     return await isAdmin(q, userId);
   }
-  const row = await queryOne<{ ok: boolean }>(
-    q,
-    `SELECT (m.is_owner OR 'roles.manage' = ANY(r.rights)) AS ok
-       FROM workspace_members m
-       JOIN roles r ON r.id = m.role_id
-      WHERE m.user_id = $1 AND m.workspace_id = $2`,
-    [userId, workspaceId],
-  );
-  return row?.ok === true;
+  return await mayDo(q, userId, workspaceId, 'workspace.settings');
 }

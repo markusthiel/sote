@@ -8,7 +8,7 @@
 
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 
-import { describe as describeRecurrence, isZone, readIcon } from '@sote/core';
+import { describe as describeRecurrence, isListLevel, isZone, readIcon } from '@sote/core';
 import type { Pool } from 'pg';
 
 import { signIn, signOut, userOfToken } from './auth.js';
@@ -20,12 +20,26 @@ import {
   type SetupKey,
 } from './bootstrap.js';
 import { addChild, addComment, detail } from './detail.js';
-import { effectiveFor, isAdmin, mayChange, patchSettings, type Scope } from './settings.js';
+import {
+  effectiveFor,
+  isAdmin,
+  mayChange,
+  mayDo,
+  mayWriteLists,
+  patchSettings,
+  type Scope,
+} from './settings.js';
 import { queryOne, queryRows } from './db.js';
 import { create as createProject, NameTaken, update as updateProject } from './projects.js';
 import type { Config } from './env.js';
 import { cookie, fail, json, readJson } from './http/respond.js';
 import { accounts, deleteAccount, setAdmin } from './accounts.js';
+import {
+  create as createRole,
+  list as listRoles,
+  remove as removeRole,
+  update as updateRole,
+} from './roles.js';
 import { addPerson, findPeople, people, removePerson, roles, setRole } from './people.js';
 import { shareRoutes } from './shareRoutes.js';
 import { createShare, listShares, revokeShare, shareKeyPresent } from './shares.js';
@@ -497,6 +511,65 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
     return;
   }
 
+  /* ── Rollen ──────────────────────────────────────────────────────────────
+   *
+   * `roles.manage`, und das ist der einzige Ort, der es prüft. Der Wächter in
+   * `rights.test.ts` verlangt genau das: jedes Recht aus der Liste kommt im
+   * Server vor — sonst ist es ein Schalter, bei dem jemand etwas glaubt.
+   */
+  if (path === '/api/roles' && method === 'GET') {
+    // Sehen darf jedes Mitglied: welche Rollen es gibt, steht schon in der
+    // Leute-Liste, und zwei Antworten auf dieselbe Frage wären zwei Wahrheiten.
+    json(res, 200, {
+      roles: await listRoles(ctx.pool, workspaceId),
+      mayManage: await mayDo(ctx.pool, userId, workspaceId, 'roles.manage'),
+    });
+    return;
+  }
+
+  if (path === '/api/roles' && method === 'POST') {
+    if (!(await mayDo(ctx.pool, userId, workspaceId, 'roles.manage'))) {
+      fail(res, 403, 'not_allowed', 'Rollen festzulegen darfst du hier nicht');
+      return;
+    }
+    const body = (await readJson(req)) as Record<string, unknown>;
+    const level = body?.['listLevel'];
+    const role = await createRole(ctx.pool, workspaceId, {
+      name: String(body?.['name'] ?? ''),
+      listLevel: isListLevel(level) ? level : null,
+      rights: Array.isArray(body?.['rights']) ? (body['rights'] as string[]) : [],
+    });
+    json(res, 201, { role });
+    return;
+  }
+
+  const rolePath = /^\/api\/roles\/([0-9a-f-]{36})$/.exec(path);
+  if (rolePath !== null && (method === 'PATCH' || method === 'DELETE')) {
+    if (!(await mayDo(ctx.pool, userId, workspaceId, 'roles.manage'))) {
+      fail(res, 403, 'not_allowed', 'Rollen festzulegen darfst du hier nicht');
+      return;
+    }
+    if (method === 'DELETE') {
+      await removeRole(ctx.pool, rolePath[1]!, workspaceId);
+      json(res, 200, { ok: true });
+      return;
+    }
+    const body = (await readJson(req)) as Record<string, unknown>;
+    const level = body?.['listLevel'];
+    await updateRole(ctx.pool, rolePath[1]!, workspaceId, {
+      ...('name' in (body ?? {}) ? { name: String(body['name'] ?? '') } : {}),
+      // `null` ist eine Angabe („keine Stufe" = Gast), ein fehlender Schlüssel
+      // nicht. Beides zusammenzuwerfen hieße, dass man eine Stufe nicht mehr
+      // wegnehmen kann.
+      ...('listLevel' in (body ?? {})
+        ? { listLevel: isListLevel(level) ? level : null }
+        : {}),
+      ...(Array.isArray(body?.['rights']) ? { rights: body['rights'] as string[] } : {}),
+    });
+    json(res, 200, { ok: true });
+    return;
+  }
+
   /* ── Konten: die Instanzseite ─────────────────────────────────────────────
    *
    * Alle drei Wege nehmen dasselbe Recht, und es ist nicht das des
@@ -551,7 +624,9 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
   if (path === '/api/people' && method === 'GET') {
     const q = url.searchParams.get('q');
     if (q !== null) {
-      if (!(await mayChange(ctx.pool, 'workspace', userId, workspaceId))) {
+      // `people.manage`, nicht das Recht für Einstellungen: das Suchen nimmt
+      // dasselbe Recht wie das Hinzufügen (ADR-0119), und beide heißen Leute.
+      if (!(await mayDo(ctx.pool, userId, workspaceId, 'people.manage'))) {
         fail(res, 403, 'not_allowed', 'das darfst du hier nicht');
         return;
       }
@@ -563,14 +638,14 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
     json(res, 200, {
       people: await people(ctx.pool, workspaceId),
       roles: await roles(ctx.pool, workspaceId),
-      mayManage: await mayChange(ctx.pool, 'workspace', userId, workspaceId),
+      mayManage: await mayDo(ctx.pool, userId, workspaceId, 'people.manage'),
       you: userId,
     });
     return;
   }
 
   if (path === '/api/people' && method === 'POST') {
-    if (!(await mayChange(ctx.pool, 'workspace', userId, workspaceId))) {
+    if (!(await mayDo(ctx.pool, userId, workspaceId, 'people.manage'))) {
       fail(res, 403, 'not_allowed', 'das darfst du hier nicht');
       return;
     }
@@ -588,7 +663,7 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
 
   const personPath = /^\/api\/people\/([0-9a-f-]{36})$/.exec(path);
   if (personPath !== null && (method === 'PATCH' || method === 'DELETE')) {
-    if (!(await mayChange(ctx.pool, 'workspace', userId, workspaceId))) {
+    if (!(await mayDo(ctx.pool, userId, workspaceId, 'people.manage'))) {
       fail(res, 403, 'not_allowed', 'das darfst du hier nicht');
       return;
     }
@@ -633,13 +708,15 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
 
   if (path === '/api/shares' && method === 'POST') {
     /*
-     * Wer schreiben darf, darf freigeben.
+     * Wer schreiben darf, darf freigeben — und „schreiben" ist die STUFE.
      *
-     * Nicht nur Eigentümer: eine Freigabe gibt nicht mehr her als das, was der
-     * Freigebende selbst am Projekt tun kann. Und nicht jedes Mitglied: wer nur
-     * lesen darf, würde sonst ein Schreibrecht ausgeben, das er nicht hat.
+     * Eine Freigabe gibt nicht mehr her als das, was der Freigebende selbst am
+     * Projekt tun kann; wer nur lesen darf, würde sonst ein Schreibrecht
+     * ausgeben, das er nicht hat. Hier stand `workspace.settings`, und das war
+     * die falsche Frage: wer die Farben ändern darf, hat damit nichts über
+     * Aufgaben gesagt.
      */
-    if (!(await mayChange(ctx.pool, 'workspace', userId, workspaceId))) {
+    if (!(await mayWriteLists(ctx.pool, userId, workspaceId))) {
       fail(res, 403, 'not_allowed', 'das darfst du hier nicht');
       return;
     }
@@ -681,7 +758,9 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
 
   const revokePath = /^\/api\/shares\/([0-9a-f-]{36})$/.exec(path);
   if (revokePath !== null && method === 'DELETE') {
-    if (!(await mayChange(ctx.pool, 'workspace', userId, workspaceId))) {
+    // Widerrufen darf, wer freigeben darf: sonst gäbe es Links, die niemand
+    // zurücknehmen kann außer dem, der sie angelegt hat.
+    if (!(await mayWriteLists(ctx.pool, userId, workspaceId))) {
       fail(res, 403, 'not_allowed', 'das darfst du hier nicht');
       return;
     }
