@@ -2440,3 +2440,24 @@ select.target {
   font-size: 10px;
   color: var(--text-faint);
 }
+
+.set-input {
+  width: 100%;
+  min-height: 34px;
+  padding: 5px 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--sote-radius-md);
+  background: var(--page);
+  color: var(--text);
+  font: inherit;
+  font-size: 13.5px;
+}
+
+/* Die Vorschau zeigt beide Farben zusammen — getrennt gewählt, gemeinsam
+   gesehen. Ein Wähler ohne Vorschau lässt einen raten, wie das Paar wirkt. */
+.ws-preview {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+}

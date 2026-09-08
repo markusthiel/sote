@@ -30,6 +30,7 @@ import { SignIn } from './screens/SignIn.js';
 import { TaskList } from './screens/TaskList.js';
 import { Detail } from './screens/Detail.js';
 import { Search } from './screens/Search.js';
+import { WorkspaceMark } from './screens/WorkspaceMark.js';
 import { WorkspaceOverview } from './screens/WorkspaceOverview.js';
 import {
   ADMIN_SECTIONS,
@@ -487,6 +488,17 @@ export function App() {
         />
         {route.kind === 'workspaces' && route.section === 'alle' ? (
           <WorkspaceOverview workspaces={me.workspaces} current={workspace} />
+        ) : route.kind === 'workspaces' && route.section === 'name' ? (
+          <WorkspaceMark
+            name={wsName}
+            owner={me.workspaces.find((w) => w.id === workspace)?.owner === true}
+            icon={me.workspaces.find((w) => w.id === workspace)?.icon ?? null}
+            workspace={workspace}
+            // Neu laden, damit Wechsler, Kopf und Übersicht dasselbe zeigen.
+            // Drei Stellen, ein Zustand — sonst heißt der Arbeitsbereich an
+            // einer davon noch alt.
+            onChanged={() => void loadMe()}
+          />
         ) : SECTION_NAV !== null ? (
           <Settings
             section={

@@ -19,7 +19,7 @@ export function WorkspaceOverview({
   workspaces,
   current,
 }: {
-  workspaces: readonly { id: string; name: string }[];
+  workspaces: readonly { id: string; name: string; owner: boolean }[];
   current: string | undefined;
 }) {
   return (
@@ -41,15 +41,9 @@ export function WorkspaceOverview({
                   {w.name}
                   {w.id === current ? <span className="ws-here"> · du bist hier</span> : null}
                 </td>
-                {/*
-                  „Eigentümer" steht hier fest, und das ist eine Lücke, die
-                  ich benenne statt sie zu verstecken: `/api/me` liefert die
-                  Rolle noch nicht mit. Solange es genau ein Konto je
-                  Arbeitsbereich gibt, ist die Angabe richtig — sobald es
-                  Einladungen gibt, ist sie falsch, und dann muss sie aus der
-                  Antwort kommen.
-                */}
-                <td>Eigentümer</td>
+                {/* Die Lücke von vorhin ist zu: die Rolle kommt jetzt aus
+                    `/api/me` und steht nicht mehr fest. */}
+                <td>{w.owner ? 'Eigentümer' : 'Mitglied'}</td>
               </tr>
             ))}
           </tbody>

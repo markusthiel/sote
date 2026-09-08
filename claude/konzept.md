@@ -1153,6 +1153,24 @@ Beim Bauen entschieden, weil es ohne Entscheidung keinen Code gibt:
 - **Backticks in einem SQL-Kommentar beenden das Template-Literal.** Der
   Übersetzer meldet dann eine fehlende Klammer irgendwo weiter unten. Zwei
   Zeichen, eine halbe Stunde Suche.
+- **Ein Arbeitsbereich hat zwei Dinge zu färben, ein Projekt eines.** Beim
+  Projektzeichen fehlt `titleColor`, und die Begründung stand dort: „eine Zeile
+  in der Seitenleiste hat keinen eigenen Titel, der sich färben ließe." Beim
+  Arbeitsbereich steht der Name im Wechsler, im Kopf der Leiste und in der
+  Übersicht — daran erkennt man, dass die Begründung damals stimmte: die Form
+  braucht das Feld erst dort, wo es etwas zu färben gibt.
+  - Das Zeichen ist **nicht Teil des Themas** (`settings.look`): das Thema sagt,
+    wie ein Arbeitsbereich aussieht, das Zeichen sagt, **welcher er ist**. Wer
+    sein Thema zurücksetzt, will nicht sein Signet verlieren. Dieselbe Trennung
+    zieht SONEs Kommentar an `workspaces.icon`.
+  - Der Name speichert **beim Verlassen des Feldes**: bei jedem Tastendruck
+    wären es zwanzig Umbenennungen für ein Wort, und jede gilt für alle
+    Mitglieder.
+  - Eine Route und nicht `/api/workspaces/:id`: sie liegt hinter der
+    Mitgliedsprüfung, also ist „welcher" schon beantwortet. Ein zweiter Weg
+    wäre ein zweiter Ort für dieselbe Rechteprüfung.
+  - Die **Lücke von vorhin ist zu**: die Rolle in der Übersicht kam als fest
+    eingetragenes „Eigentümer" und kommt jetzt aus `/api/me`.
 - **`pnpm check` ist genau das, was die CI fährt.** Erst standen die Prüfungen
   einzeln in der Workflow-Datei, und `pnpm -r typecheck` scheiterte dort — in
   einem frischen Klon gibt es kein `dist`, und `@sote/core` zeigt mit `types`

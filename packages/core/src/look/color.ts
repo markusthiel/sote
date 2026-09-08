@@ -110,6 +110,17 @@ export function colorValue(value: unknown): string | undefined {
 export interface ProjectIcon {
   readonly icon?: string;
   readonly iconColor?: ChosenColor;
+  /**
+   * Die Farbe des **Namens**, nicht des Zeichens.
+   *
+   * Bei Projekten bleibt sie leer, und die Begründung stand hier zuerst: eine
+   * Zeile in der Seitenleiste hat keinen eigenen Titel, der sich färben ließe.
+   * Beim **Arbeitsbereich** ist es anders — sein Name steht im Wechsler, im
+   * Kopf der Leiste und in der Übersicht. Daran erkennt man, dass die
+   * Begründung damals stimmte: die Form braucht das Feld erst, wo es etwas zu
+   * färben gibt.
+   */
+  readonly titleColor?: ChosenColor;
 }
 
 /** Liest, was in der Datenbank steht — und wirft weg, was keine Form hat. */
@@ -118,9 +129,11 @@ export function readIcon(value: unknown): ProjectIcon | null {
   const raw = value as Record<string, unknown>;
   const name = typeof raw['icon'] === 'string' ? raw['icon'].trim() : '';
   const color = readColor(raw['iconColor']);
-  if (name === '' && color === null) return null;
+  const title = readColor(raw['titleColor']);
+  if (name === '' && color === null && title === null) return null;
   return {
     ...(name === '' ? {} : { icon: name.slice(0, 64) }),
     ...(color === null ? {} : { iconColor: color }),
+    ...(title === null ? {} : { titleColor: title }),
   };
 }

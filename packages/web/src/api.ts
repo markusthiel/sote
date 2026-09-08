@@ -83,7 +83,13 @@ export interface Me {
   id: string;
   email: string;
   displayName: string;
-  workspaces: { id: string; name: string }[];
+  workspaces: {
+    id: string;
+    name: string;
+    /** Dieselbe Form wie beim Projekt, plus `titleColor` für den Namen. */
+    icon: { icon?: string; iconColor?: string; titleColor?: string } | null;
+    owner: boolean;
+  }[];
 }
 
 export interface Task {
@@ -255,6 +261,18 @@ export const api = {
     call<{ task: Task }>(
       `/api/tasks/${id}${workspace === undefined ? '' : `?workspace=${workspace}`}`,
       { method: 'PATCH', body: JSON.stringify(fields) },
+    ),
+  /** Name und Zeichen des Arbeitsbereichs, in dem man steht. */
+  patchWorkspace: (
+    body: {
+      name?: string;
+      icon?: { icon?: string; iconColor?: string; titleColor?: string } | null;
+    },
+    workspace?: string,
+  ) =>
+    call<{ workspace: { id: string; name: string; icon: unknown } }>(
+      `/api/workspace${workspace === undefined ? '' : `?workspace=${workspace}`}`,
+      { method: 'PATCH', body: JSON.stringify(body) },
     ),
   settings: () => call<SettingsAnswer>('/api/settings'),
   /** `null` bei einem Feld heißt „nichts gesagt" — die Ebene darüber gilt. */

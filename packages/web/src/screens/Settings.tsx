@@ -73,6 +73,7 @@ export const SETTING_SECTIONS = [
  */
 export const WORKSPACE_SECTIONS = [
   { id: 'alle', label: 'Alle Workspaces', hint: 'Übersicht' },
+  { id: 'name', label: 'Name und Zeichen', hint: 'Woran man ihn erkennt' },
   { id: 'aussehen', label: 'Farben und Flächen', hint: 'Für alle Mitglieder' },
 ] as const;
 

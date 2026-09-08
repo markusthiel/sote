@@ -307,9 +307,17 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
       'SELECT id, email, display_name FROM users WHERE id = $1',
       [userId],
     );
-    const spaces = await queryRows<{ id: string; name: string }>(
+    const spaces = await queryRows<{
+      id: string;
+      name: string;
+      icon: unknown;
+      is_owner: boolean;
+    }>(
       ctx.pool,
-      `SELECT w.id, w.name FROM workspaces w
+      // `is_owner` kommt mit, weil die Übersicht die Rolle nennt. Vorher stand
+      // dort „Eigentümer" fest — richtig, solange es ein Konto je
+      // Arbeitsbereich gibt, und falsch ab der ersten Einladung.
+      `SELECT w.id, w.name, w.icon, m.is_owner FROM workspaces w
          JOIN workspace_members m ON m.workspace_id = w.id
         WHERE m.user_id = $1 AND w.deleted_at IS NULL
         ORDER BY w.created_at`,
@@ -319,7 +327,15 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
       id: me?.id,
       email: me?.email,
       displayName: me?.display_name,
-      workspaces: spaces,
+      workspaces: spaces.map((w) => ({
+        id: w.id,
+        name: w.name,
+        icon: readIcon(w.icon),
+        // „Eigentümer" oder „Mitglied" — mehr sagt diese Antwort nicht, weil
+        // sie mehr nicht braucht. Welche Rechte eine Rolle trägt, ist eine
+        // Frage an den Arbeitsbereich und nicht an das Konto.
+        owner: w.is_owner,
+      })),
     });
     return;
   }
@@ -391,6 +407,56 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
    * sagen, dass der Arbeitsbereich das vorgibt, ist eine Auskunft, die zur
    * Frage wird, sobald man sie ändert und nichts passiert.
    */
+  /*
+   * Name und Zeichen eines Arbeitsbereichs.
+   *
+   * Kein `/api/workspaces/:id`, sondern der Arbeitsbereich, in dem man steht:
+   * die Route liegt hinter der Mitgliedsprüfung, also ist „welcher" schon
+   * beantwortet. Ein zweiter Weg, einen anderen zu benennen, wäre ein zweiter
+   * Ort für dieselbe Rechteprüfung.
+   */
+  if (path === '/api/workspace' && method === 'PATCH') {
+    if (!(await mayChange(ctx.pool, 'workspace', userId, workspaceId))) {
+      fail(res, 403, 'not_allowed', 'das darfst du hier nicht ändern');
+      return;
+    }
+    const body = (await readJson(req)) as Record<string, unknown>;
+    const sets: string[] = [];
+    const params: unknown[] = [workspaceId];
+
+    if ('name' in (body ?? {})) {
+      const name = String(body['name'] ?? '').trim();
+      if (name === '') {
+        fail(res, 400, 'conflict', 'ein Arbeitsbereich braucht einen Namen');
+        return;
+      }
+      params.push(name.slice(0, 120));
+      sets.push(`name = $${params.length}`);
+    }
+    if ('icon' in (body ?? {})) {
+      // `null` leert, ein fehlender Schlüssel lässt stehen — dieselbe Regel
+      // wie überall. `readIcon` wirft weg, was keine Form hat.
+      const icon = body['icon'] === null ? null : readIcon(body['icon']);
+      params.push(icon === null ? null : JSON.stringify(icon));
+      sets.push(`icon = $${params.length}`);
+    }
+    if (sets.length === 0) {
+      fail(res, 409, 'conflict', 'nichts zu ändern');
+      return;
+    }
+
+    const row = await queryOne<{ id: string; name: string; icon: unknown }>(
+      ctx.pool,
+      `UPDATE workspaces SET ${sets.join(', ')} WHERE id = $1
+        RETURNING id, name, icon`,
+      params,
+    );
+    json(res, 200, {
+      workspace: { id: row!.id, name: row!.name, icon: readIcon(row!.icon) },
+    });
+    return;
+  }
+
   if (path === '/api/settings' && method === 'GET') {
     json(res, 200, await effectiveFor(ctx.pool, userId, workspaceId));
     return;

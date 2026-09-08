@@ -24,12 +24,18 @@
 
 import { useEffect, useRef, useState } from 'react';
 
+import { ProjectMark } from './ProjectMark.js';
+
 export function WorkspaceMenu({
   workspaces,
   current,
   onPick,
 }: {
-  workspaces: readonly { id: string; name: string }[];
+  workspaces: readonly {
+    id: string;
+    name: string;
+    icon: { icon?: string; iconColor?: string; titleColor?: string } | null;
+  }[];
   current: string | undefined;
   onPick: (id: string) => void;
 }) {
@@ -56,7 +62,34 @@ export function WorkspaceMenu({
     };
   }, [open]);
 
-  const name = workspaces.find((w) => w.id === current)?.name ?? 'Kein Workspace';
+  const here = workspaces.find((w) => w.id === current);
+  const name = here?.name ?? 'Kein Workspace';
+
+  /** Zeichen und Name eines Eintrags — an zwei Stellen gebraucht, also einmal. */
+  const mark = (w: (typeof workspaces)[number]) => (
+    <>
+      <ProjectMark
+        icon={w.icon?.icon}
+        kind="folder"
+        name={w.name}
+        color={
+          w.icon?.iconColor === undefined
+            ? undefined
+            : `var(--sote-palette-${w.icon.iconColor})`
+        }
+      />
+      <span
+        className="ws-name"
+        style={
+          w.icon?.titleColor === undefined
+            ? undefined
+            : { color: `var(--sote-palette-${w.icon.titleColor})` }
+        }
+      >
+        {w.name}
+      </span>
+    </>
+  );
 
   return (
     <div className="ws-menu" ref={box}>
@@ -71,8 +104,11 @@ export function WorkspaceMenu({
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
       >
-        <span className="ws-dot" aria-hidden="true" />
-        <span className="ws-name">{name}</span>
+        {here === undefined ? (
+          <span className="ws-name">{name}</span>
+        ) : (
+          mark(here)
+        )}
         <span aria-hidden="true" className="ws-caret">
           ▾
         </span>
@@ -94,8 +130,7 @@ export function WorkspaceMenu({
                 onPick(w.id);
               }}
             >
-              <span className="ws-dot" aria-hidden="true" />
-              {w.name}
+              {mark(w)}
             </button>
           ))}
           {workspaces.length <= 1 ? (
