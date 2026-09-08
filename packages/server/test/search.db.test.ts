@@ -130,18 +130,29 @@ test('Groß und klein ist gleich', async () => {
 
 /* ── Was nicht gefunden werden darf ────────────────────────────────────── */
 
-test('offen ist die Vorgabe — Erledigtes kommt nur auf Verlangen', async () => {
+test('alles ist die Vorgabe — Erledigtes wird gefunden, steht aber hinten', async () => {
+  /*
+   * Der Test hieß „offen ist die Vorgabe — Erledigtes kommt nur auf Verlangen",
+   * und er hielt genau die Stelle fest, die gemeldet wurde: die Suche zeigte
+   * Erledigtes nicht.
+   *
+   * **In einer Suche nennt man einen Namen und keinen Zustand.** Wer „Kabel"
+   * tippt, sucht die Aufgabe; ob sie abgehakt ist, ist die Antwort und nicht
+   * die Frage. Eine Suche, die einen Treffer verbirgt, lügt unbemerkt — man
+   * sieht kein Ergebnis und schließt daraus, dass es die Sache nicht gibt.
+   *
+   * Einschränken geht weiter, und dann steht es sichtbar in der Abfrage.
+   */
   const ws = await space('s-open');
   const a = await add(ws, 'Kabel messen');
   await add(ws, 'Kabel bestellen');
   await complete(pool, a.task.id, userId, NOW);
 
-  assert.deepEqual(await found(ws, 'kabel'), ['Kabel bestellen']);
+  // Beide, und das Erledigte hinten — die Sortierung zieht die Grenze, die die
+  // Oberfläche als Bündel zeichnet.
+  assert.deepEqual(await found(ws, 'kabel'), ['Kabel bestellen', 'Kabel messen']);
   assert.deepEqual(await found(ws, 'kabel ist:erledigt'), ['Kabel messen']);
-  assert.deepEqual(await found(ws, 'kabel status:alles'), [
-    'Kabel bestellen',
-    'Kabel messen',
-  ]);
+  assert.deepEqual(await found(ws, 'kabel status:offen'), ['Kabel bestellen']);
 });
 
 test('Weggeworfenes wird nie gefunden, auch nicht mit status:alles', async () => {

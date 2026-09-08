@@ -20,6 +20,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { api, ApiError, type Detail as DetailData, type Project, type Task } from '../api.js';
+import { toggleDone } from '../tasks/toggleDone.js';
 import { FieldRow, FreeDate } from '../components/FieldRow.js';
 import { whenOptions } from '../components/HandleMenu.js';
 import { whenLabel } from '../dates.js';
@@ -412,7 +413,9 @@ export function Detail({
               }
               aria-pressed={child.completed !== null}
               disabled={busy}
-              onClick={() => void save(() => api.complete(child.id, workspace))}
+              /* In beide Richtungen — die Beschriftung darüber nennt schon
+                 zwei Zustände, und `toggleDone` kennt beide. */
+              onClick={() => void save(() => toggleDone(child, workspace))}
             >
               <svg width="11" height="11" viewBox="0 0 12 12" aria-hidden="true">
                 <path

@@ -96,6 +96,16 @@ test('jeder Eintrag der Schiene hat eine Beschriftung für Vorleseprogramme', ()
   assert.match(read('components/IconRail.tsx'), /aria-label=\{mode\.label\}/);
 });
 
+/**
+ * Kommentare weg, bevor gesucht wird.
+ *
+ * Zweimal derselbe Fehler von mir: ein Muster schlug an einer Prosa-Zeile an,
+ * die den alten Fehler beschreibt. Ein Test, der Prosa prüft, prüft die falsche
+ * Sache — und Code, der seine Fehler dokumentiert, wird sonst dafür bestraft.
+ */
+const ohneKommentare = (src: string): string =>
+  src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+
 test('ein Umschalter schaltet in beide Richtungen', () => {
   /*
    * Der vierte Fall desselben Musters, und darum ein eigener Wächter.
@@ -110,15 +120,28 @@ test('ein Umschalter schaltet in beide Richtungen', () => {
    * muss der Handler beide Richtungen kennen. Gröber als ein Klick, läuft aber
    * bei jedem Commit.
    */
-  const src = read('screens/TaskList.tsx');
-  assert.match(src, /api\.reopen\(/, 'es gibt einen Weg zurück');
-  // Und er hängt an einer Bedingung über den Zustand, nicht an einem zweiten
-  // Knopf: ein zweiter Knopf wäre ein zweiter Weg in dieselbe Sache.
-  assert.match(
-    src,
-    /task\.completed !== null/,
-    'der Handler unterscheidet die Richtung nicht',
-  );
+  /*
+   * Die zweite Fassung dieses Wächters, und der Grund dafür ist ein fünfter
+   * Fall.
+   *
+   * Die erste prüfte `TaskList.tsx` — und genau daneben riefen die **Suche**
+   * und die **Detailspalte** weiter unbedingt `api.complete`. Ein Wächter, der
+   * eine Datei prüft, sichert eine Datei; die Entscheidung stand an drei
+   * Stellen.
+   *
+   * Jetzt steht sie an einer (`tasks/toggleDone.ts`), und geprüft wird, dass
+   * **niemand sonst** `api.complete` ruft. Das ist die Prüfung, die auch den
+   * nächsten Bildschirm erfasst, den es noch nicht gibt.
+   */
+  assert.match(read('tasks/toggleDone.ts'), /api\.reopen\(/, 'es gibt einen Weg zurück');
+
+  for (const file of ['screens/TaskList.tsx', 'screens/Search.tsx', 'screens/Detail.tsx']) {
+    assert.doesNotMatch(
+      ohneKommentare(read(file)),
+      /api\.complete\(/,
+      `${file} hakt selbst ab statt über toggleDone — dann fehlt der Weg zurück`,
+    );
+  }
 });
 
 test('kein Knopf im Rahmen ohne Wirkung', () => {
@@ -137,18 +160,6 @@ test('kein Knopf im Rahmen ohne Wirkung', () => {
    * Was es nicht findet: ein `onClick`, das auf eine leere Funktion zeigt.
    * Deshalb steht `() => void 0` ausdrücklich als verbotenes Muster dabei.
    */
-  /*
-   * Kommentare weg, bevor gesucht wird.
-   *
-   * Zum ZWEITEN Mal derselbe Fehler von mir: die erste Fassung schlug am
-   * Kommentar an, der `onAccount={() => void 0}` als alten Fehler beschreibt.
-   * Vorher hatte schon `weight.test.ts` das Wort „lucide" in einer Prosa-Zeile
-   * getroffen. Ein Test, der Prosa prüft, prüft die falsche Sache — und ein
-   * Code, der seine Fehler dokumentiert, wird sonst dafür bestraft.
-   */
-  const ohneKommentare = (src: string): string =>
-    src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
-
   for (const file of [
     'components/IconRail.tsx',
     'components/FootBar.tsx',

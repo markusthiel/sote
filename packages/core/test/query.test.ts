@@ -14,7 +14,15 @@ test('Freitext bleibt Freitext', () => {
   const q = parseTaskQuery('kabel messen');
   assert.equal(q.text, 'kabel messen');
   assert.deepEqual(q.read, []);
-  assert.equal(q.status, 'open', 'offen ist die Vorgabe');
+  /*
+   * „Alles" ist die Vorgabe, nicht „offen".
+   *
+   * Der Test behauptete das Gegenteil, und er hatte recht — bis gefragt wurde,
+   * ob die Suche auch Erledigtes zeigen soll, und die Antwort ja war. In einer
+   * Suche nennt man einen Namen und keinen Zustand: wer „Dosen" tippt, sucht
+   * die Aufgabe, und ob sie abgehakt ist, ist die Antwort und nicht die Frage.
+   */
+  assert.equal(q.status, 'all', 'alles ist die Vorgabe');
 });
 
 test('die Zeichen aus der Schnellerfassung gelten auch hier', () => {
@@ -73,7 +81,10 @@ test('ein Doppelpunkt, der keine Facette ist, bleibt Text', () => {
 test('ein unbekannter Wert einer bekannten Facette bleibt Text', () => {
   const q = parseTaskQuery('prio:9 status:vielleicht');
   assert.deepEqual(q.priorities, []);
-  assert.equal(q.status, 'open');
+  // „vielleicht" ist kein Status, also bleibt die Vorgabe stehen — und die ist
+  // „alles". Der Punkt des Tests ist unberührt: ein unbekannter Wert wird nicht
+  // zur Einschränkung, sondern zu Text.
+  assert.equal(q.status, 'all');
   assert.equal(q.text, 'prio:9 status:vielleicht');
 });
 

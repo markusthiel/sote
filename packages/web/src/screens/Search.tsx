@@ -21,6 +21,7 @@ import { useCallback, useEffect, useState } from 'react';
 
 import { api, ApiError, type Project, type Task } from '../api.js';
 import { TaskRow } from '../components/TaskRow.js';
+import { toggleDone } from '../tasks/toggleDone.js';
 
 const EXAMPLES: readonly { q: string; says: string }[] = [
   { q: 'kabel', says: 'Titel und Notiz, auch halbe Wörter' },
@@ -206,7 +207,16 @@ export function Search({
           </div>
         ) : null}
 
-        {tasks.map((task) => (
+        {/*
+          Auch hier zwei Bündel, und ohne Umschalter.
+          Die Suche zeigt Erledigtes IMMER mit: man nennt darin einen Namen und
+          keinen Zustand, und eine Suche, die einen Treffer verbirgt, lügt. Wer
+          es anders will, sagt es in der Abfrage selbst — `status:offen` gibt es
+          schon, und das ist der Ort, an dem eine Suche eingeschränkt wird.
+        */}
+        {tasks
+          .filter((t) => t.completed === null)
+          .map((task) => (
           <TaskRow
             key={task.id}
             task={task}
@@ -215,12 +225,42 @@ export function Search({
             open={openTask === task.id}
             onOpen={() => onOpenTask(openTask === task.id ? null : task.id)}
             onComplete={() => {
-              void api.complete(task.id, workspace).then(load, () =>
-                setNotice('Abhaken ging nicht.'),
+              // In beide Richtungen: eine Suche zeigt Erledigtes mit, also
+              // steht hier auch ein Kästchen, das „wieder öffnen" heißt.
+              void toggleDone(task, workspace).then(load, () =>
+                setNotice(
+                  task.completed === null ? 'Abhaken ging nicht.' : 'Wieder öffnen ging nicht.',
+                ),
               );
             }}
           />
         ))}
+
+        {tasks.some((t) => t.completed !== null) ? (
+          <>
+            <div className="section-label done">
+              Erledigt
+              <span className="rule" />
+            </div>
+            {tasks
+              .filter((t) => t.completed !== null)
+              .map((task) => (
+                <TaskRow
+                  key={task.id}
+                  task={task}
+                  now={now}
+                  projectName={nameOf(task.projectId)}
+                  open={openTask === task.id}
+                  onOpen={() => onOpenTask(openTask === task.id ? null : task.id)}
+                  onComplete={() => {
+                    void toggleDone(task, workspace).then(load, () =>
+                      setNotice('Wieder öffnen ging nicht.'),
+                    );
+                  }}
+                />
+              ))}
+          </>
+        ) : null}
 
         {more ? (
           <p className="more-hint">

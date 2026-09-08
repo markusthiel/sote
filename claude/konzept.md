@@ -1256,6 +1256,26 @@ Beim Bauen entschieden, weil es ohne Entscheidung keinen Code gibt:
   - Ausgegraut über `opacity` und nicht über eine graue Textfarbe, damit
     Kästchen, Zeichen und Pfad gemeinsam zurücktreten und ihre Verhältnisse
     behalten. Lesbar bleibt es, weil man es lesen will, um es zu öffnen.
+- **In einer Suche nennt man einen Namen, keinen Zustand.** Die Vorgabe der
+  Abfrage ist darum `status: alles` und nicht `offen`. Wer „Dosen" tippt, sucht
+  die Aufgabe; ob sie abgehakt ist, ist die Antwort und nicht die Frage. Eine
+  Suche, die einen Treffer verbirgt, lügt **unbemerkt** — man sieht kein
+  Ergebnis und schließt daraus, dass es die Sache nicht gibt. Einschränken geht
+  weiter, und dann steht es sichtbar in der Abfrage (`status:offen`).
+  - Kein Umschalter dafür: die Suche schränkt man **in der Abfrage** ein, und
+    ein dritter Schalter für dieselbe Wahl wäre eine dritte Form derselben
+    Frage.
+- **Eine Entscheidung, die an drei Stellen richtig getroffen werden muss, wird
+  an einer davon falsch getroffen.** Der Weg zurück fehlte nach dem Beheben
+  weiter in der **Suche** und in der **Detailspalte**, weil ich ihn in
+  `TaskList.tsx` eingebaut und den Wächter auf genau diese Datei geschrieben
+  hatte. Jetzt gibt es `tasks/toggleDone.ts`, und der Wächter prüft, dass
+  **niemand sonst** `api.complete` ruft — das erfasst auch den Bildschirm, den
+  es noch nicht gibt.
+- **Ich habe an der falschen Stelle gesucht.** Dass die Suche Erledigtes
+  verbarg, stand nicht in `search.ts` — dort wird nur gefiltert, wenn die
+  Abfrage einen Status **nennt**. Genannt hat ihn die Vorgabe in
+  `parseTaskQuery`, eine Datei weiter.
 - **`pnpm check` ist genau das, was die CI fährt.** Erst standen die Prüfungen
   einzeln in der Workflow-Datei, und `pnpm -r typecheck` scheiterte dort — in
   einem frischen Klon gibt es kein `dist`, und `@sote/core` zeigt mit `types`

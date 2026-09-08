@@ -93,7 +93,25 @@ export function parseTaskQuery(input: string): TaskQuery {
   const assignees: string[] = [];
   const priorities: number[] = [];
   const read: { facet: string; value: string }[] = [];
-  let status: QueryStatus = 'open';
+  /*
+   * Die Vorgabe ist `all` und nicht `open`.
+   *
+   * Gefragt und beantwortet: „auch erledigtes". Hier stand `open`, und das war
+   * die Stelle, die es verhinderte — nicht `search.ts`, wo ich zuerst gesucht
+   * habe: dort sortiert Erledigtes längst ans Ende und wird nur gefiltert, wenn
+   * die Abfrage einen Status NENNT. Genannt hat ihn die Vorgabe.
+   *
+   * Der Grund für `all`: **in einer Suche nennt man einen Namen, keinen
+   * Zustand.** Wer „Dosen" tippt, sucht die Aufgabe „Dosen setzen" — ob sie
+   * abgehakt ist, ist die Antwort und nicht die Frage. Eine Suche, die einen
+   * Treffer verbirgt, lügt, und zwar unbemerkt: man sieht kein Ergebnis und
+   * schließt daraus, dass es die Sache nicht gibt.
+   *
+   * Einschränken kann man weiter, und dafür gibt es den Facettennamen —
+   * `status:offen` ist der Ort, an dem eine Suche eingeengt wird, und er steht
+   * dann sichtbar in der Abfrage.
+   */
+  let status: QueryStatus = 'all';
   let due: 'today' | 'week' | 'overdue' | undefined;
 
   for (const part of splitQuery(input)) {

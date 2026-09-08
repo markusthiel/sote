@@ -19,6 +19,7 @@ import { QuickAdd } from '../components/QuickAdd.js';
 import { TaskRow } from '../components/TaskRow.js';
 import { longDate } from '../dates.js';
 import { useShowDone } from '../hooks/useShowDone.js';
+import { toggleDone } from '../tasks/toggleDone.js';
 import { neighboursFor, neighboursForStep, reordered } from '../reorder.js';
 import { viewOf, type Route } from '../route.js';
 
@@ -66,7 +67,7 @@ export function TaskList({
    * Gemeldet: „es sollte überall die möglichkeit geben abgehakte
    * einzublenden." Vorher konnte das nur das Projekt, und es konnte es immer.
    */
-  const { showDone, toggle: toggleDone } = useShowDone(view);
+  const { showDone, toggle: toggleShowDone } = useShowDone(view);
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [dragging, setDragging] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
@@ -201,12 +202,11 @@ export function TaskList({
       setRows((r) => r.filter((x) => x.id !== task.id));
     }
     try {
-      if (wieder) {
-        await api.reopen(task.id, workspace);
-      } else {
-        const out = await api.complete(task.id, workspace);
-        if (out.next !== null) setNotice(`„${out.next.title}“ kommt wieder.`);
-      }
+      // Die Richtung entscheidet `toggleDone` und nicht dieser Bildschirm:
+      // dieselbe Entscheidung stand an drei Stellen, und an zwei davon war sie
+      // falsch.
+      const out = await toggleDone(task, workspace);
+      if (out.nextTitle !== undefined) setNotice(`„${out.nextTitle}“ kommt wieder.`);
       await load();
       onChanged();
       setPending((p) => p.filter((x) => x.id !== task.id));
@@ -390,7 +390,7 @@ export function TaskList({
           type="button"
           className="head-toggle"
           aria-pressed={showDone}
-          onClick={toggleDone}
+          onClick={toggleShowDone}
         >
           {showDone ? 'Erledigte ausblenden' : 'Erledigte einblenden'}
         </button>
