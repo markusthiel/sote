@@ -92,7 +92,7 @@ export function SharesPanel({
       <button
         key={`${v.of}-${'projectId' in v ? v.projectId : ''}`}
         type="button"
-        className="panel-row"
+        className="p-item"
         aria-current={gleich(v, view)}
         onClick={() => onPick(v)}
       >
@@ -113,7 +113,7 @@ export function SharesPanel({
       {zeile({ of: 'active' }, 'Aktiv')}
       {zeile({ of: 'all' }, 'Alle')}
 
-      <div className="panel-group">Aufräumen</div>
+      <div className="group-label">Aufräumen</div>
       {zeile({ of: 'unused' }, 'Nie benutzt')}
       {zeile({ of: 'expired' }, 'Abgelaufen')}
 
@@ -121,7 +121,7 @@ export function SharesPanel({
         <>
           {/* Erst ab zwei: eine Gruppe über einer einzigen Zeile ist eine
               Überschrift für etwas, das keine Wahl ist. */}
-          <div className="panel-group">Projekt</div>
+          <div className="group-label">Projekt</div>
           {projekte.map(([id, name]) => zeile({ of: 'project', projectId: id }, name))}
         </>
       ) : null}

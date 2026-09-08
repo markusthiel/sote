@@ -101,6 +101,25 @@ export function App() {
    * stehen geblieben ist.
    */
   const [letzteSuche, setLetzteSuche] = useState('');
+
+  /*
+   * Steht die Leiste im AUFGABEN-Bereich?
+   *
+   * Nur dort gehört das Suchfeld hin, denn es sucht Aufgaben. Vorher hing es an
+   * `SECTION_NAV === null`, und das erfasste die Einstellungen und die
+   * Verwaltung — aber nicht die Benachrichtigungen, die Freigaben, den
+   * Papierkorb und die Suche selbst. Im Bild der Freigaben stand darum
+   * „Aufgaben durchsuchen" über einer Liste von Links.
+   *
+   * Als **Aufzählung dessen, wo es hingehört**, und nicht als Liste dessen, wo
+   * nicht: ein neuer Bereich erbt damit kein Feld, das dort nichts findet.
+   */
+  const imBaum =
+    route.kind === 'today' ||
+    route.kind === 'upcoming' ||
+    route.kind === 'someday' ||
+    route.kind === 'inbox' ||
+    route.kind === 'project';
   /*
    * Die Benachrichtigungen werden EINMAL geholt, für Menü und Bildschirm.
    *
@@ -550,7 +569,7 @@ export function App() {
           das an einem Ort nichts findet, ist ein Feld, dem man an allen Orten
           misstraut.
         */}
-        {SECTION_NAV === null ? (
+        {imBaum ? (
         <div className="seek">
           <svg
             width="14"
@@ -568,7 +587,16 @@ export function App() {
           <input
             placeholder="Aufgaben durchsuchen"
             aria-label="Aufgaben durchsuchen"
-            value={route.kind === 'search' ? route.q : ''}
+            /*
+              Immer leer, denn dieses Feld steht nur im Aufgaben-Bereich.
+              Vorher las es `route.q` für den Fall, dass man in der Suche
+              steht — dort gibt es das Feld jetzt nicht mehr, und der
+              Übersetzer hat den unmöglichen Vergleich gemeldet. Die Abfrage
+              zeigt das Feld IM Suchbildschirm, wo sie hingehört.
+            */
+            value=""
+            /* Und das Getippte reist mit: `defaultValue` wäre ein Feld, das
+               nach dem Wechsel den alten Text behält. */
             /* Das Feld IST der Eingang. Tippen bringt einen in die Suche,
                mitsamt dem Getippten — kein Knopf, der einen Bildschirm mit
                einem Feld öffnet. */

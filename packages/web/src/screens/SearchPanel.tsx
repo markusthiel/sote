@@ -72,7 +72,7 @@ export function SearchPanel({
     <button
       key={`${facet}-${value ?? ''}`}
       type="button"
-      className="panel-row"
+      className="p-item"
       aria-pressed={an}
       onClick={() =>
         // Derselbe Klick nimmt zurück: ein Filter, den man nur setzen kann,
@@ -92,17 +92,22 @@ export function SearchPanel({
 
   return (
     <>
-      <div className="panel-group">Status</div>
+      <div className="group-label">Status</div>
       {zeile('Offen', gelesen.status === 'open', 'status', 'offen')}
       {zeile('Erledigt', gelesen.status === 'done', 'status', 'erledigt')}
 
-      <div className="panel-group">Frist</div>
+      <div className="group-label">Frist</div>
       {zeile('Überfällig', gelesen.due === 'overdue', 'frist', 'überfällig')}
       {zeile('Heute', gelesen.due === 'today', 'frist', 'heute')}
       {zeile('Diese Woche', gelesen.due === 'week', 'frist', 'woche')}
 
-      <div className="panel-group">Priorität</div>
-      {[1, 2, 3].map((p) =>
+      <div className="group-label">Priorität</div>
+      {/*
+        Vier Stufen, nicht drei: „Später" ist eine davon, und im ersten Anlauf
+        fehlte sie hier — ein Filter für eine Stufe, die es gibt, ist keine
+        Auswahl, sondern eine Lücke.
+      */}
+      {[1, 2, 3, 4].map((p) =>
         // `'priorität'` ist der Facettenname im Kern, nicht `'prio'` — das ist
         // eine der getippten Kurzformen, und der Übersetzer hat es gemeldet.
         zeile(
@@ -120,7 +125,7 @@ export function SearchPanel({
       */}
       {projects.filter((p) => p.kind === 'list').length > 1 ? (
         <>
-          <div className="panel-group">Projekt</div>
+          <div className="group-label">Projekt</div>
           {projects
             .filter((p) => p.kind === 'list')
             .map((p) =>
@@ -146,7 +151,7 @@ export function SearchPanel({
       {gelesen.read.length > 0 ? (
         <button
           type="button"
-          className="panel-row quiet"
+          className="p-item quiet"
           onClick={() => onQuery(gelesen.text)}
         >
           <span>Filter zurücknehmen</span>

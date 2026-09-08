@@ -1880,6 +1880,20 @@ erfunden.
   traf und „nichts gefiltert" meldete, während die Liste sich geändert hatte.
   **Ein grüner Test ohne Gegenprobe ist eine Behauptung** — und eine
   Textersetzung ohne `assert` tut still nichts.
+- **Eine neue Klasse für eine Zeile, die aussehen soll wie die daneben, ist eine
+  zweite Antwort auf „wie sieht eine Zeile in der Leiste aus".** Für die drei
+  neuen Panels hatte ich `panel-row` und `panel-group` erfunden und **nur** die
+  `quiet`-Variante gestaltet — die Grundform gab es nie, also zeichneten sie
+  nackte Knöpfe mit den Vorgaben des Browsers. Gemeldet als „in allen
+  Seitenmenüs hast du die Texte einfach reingeklatscht ohne Style". Jetzt
+  `p-item` und `group-label`: dieselbe Zeilenform wie im Baum (32 px, 14 px,
+  gleiche Polster), gemessen in allen vier Panels.
+- **Wo etwas hingehört, wird aufgezählt — nicht, wo es nicht hingehört.** Das
+  Aufgaben-Suchfeld hing an `SECTION_NAV === null`, was Einstellungen und
+  Verwaltung erfasste, aber nicht Benachrichtigungen, Freigaben, Papierkorb und
+  die Suche selbst: über der Liste der Freigabelinks stand „Aufgaben
+  durchsuchen". Mit einer Aufzählung der Orte, an die es gehört, erbt ein neuer
+  Bereich kein Feld, das dort nichts findet.
 - **`pnpm check` ist genau das, was die CI fährt.** Erst standen die Prüfungen
   einzeln in der Workflow-Datei, und `pnpm -r typecheck` scheiterte dort — in
   einem frischen Klon gibt es kein `dist`, und `@sote/core` zeigt mit `types`

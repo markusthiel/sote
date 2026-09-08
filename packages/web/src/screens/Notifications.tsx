@@ -81,7 +81,7 @@ export function NotificationsPanel({
       <button
         key={`${v.of}-${'kind' in v ? v.kind : 'workspaceId' in v ? v.workspaceId : ''}`}
         type="button"
-        className="panel-row"
+        className="p-item"
         aria-current={gleich(v, view)}
         onClick={() => onPick(v)}
       >
@@ -103,14 +103,14 @@ export function NotificationsPanel({
       {zeile({ of: 'unread' }, 'Ungelesen')}
       {zeile({ of: 'all' }, 'Alles')}
 
-      <div className="panel-group">Art</div>
+      <div className="group-label">Art</div>
       {(['assigned', 'commented'] as const).map((k) => zeile({ of: 'kind', kind: k }, KIND_SAYS[k]))}
 
       {bereiche.length > 1 ? (
         <>
           {/* Erst ab zwei: eine Gruppe „Wo" über einer einzigen Zeile ist eine
               Überschrift für eine Sache, die keine Wahl ist (ADR-0072). */}
-          <div className="panel-group">Wo</div>
+          <div className="group-label">Wo</div>
           {bereiche.map(([id, name]) => zeile({ of: 'workspace', workspaceId: id }, name))}
         </>
       ) : null}

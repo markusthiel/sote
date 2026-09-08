@@ -3272,6 +3272,40 @@ label.btn {
 
 /* Eine Filterzeile, die zurückgenommen wird: leiser als die Filter selbst,
    weil sie nichts findet, sondern etwas aufhebt. */
-.panel-row.quiet {
+/*
+ * Die Zeilen der Panels tragen jetzt `p-item` und `group-label` — die
+ * gewachsenen Klassen der Leiste.
+ *
+ * Ich hatte für die drei neuen Panels (Benachrichtigungen, Suche, Freigaben)
+ * eigene Namen erfunden (`panel-row`, `panel-group`) und **nur** die
+ * `quiet`-Variante gestaltet: die Grundform gab es nie. Gemeldet als „in allen
+ * Seitenmenüs hast du die Texte einfach reingeklatscht ohne Style" — und genau
+ * das war es, nackte Knöpfe mit den Vorgaben des Browsers.
+ *
+ * Eine neue Klasse für eine Zeile, die aussehen soll wie die daneben, ist eine
+ * zweite Antwort auf „wie sieht eine Zeile in der Leiste aus" — und die eine
+ * bleibt ungestaltet.
+ */
+.p-item.quiet {
   color: var(--text-muted);
+}
+
+/*
+ * Ein Häkchen an einem gesetzten Filter: an derselben Stelle wie die Zahl im
+ * Baum, damit die Spalte rechts eine Spalte bleibt.
+ */
+.p-item[aria-pressed='true'] {
+  background: var(--sunken);
+  font-weight: 500;
+}
+
+/*
+ * Die erste Gruppe braucht oben keinen Abstand.
+ *
+ * `group-label` bringt 12px mit, damit im Baum Luft zwischen den Zeitansichten
+ * und „Projekte" ist. Als ERSTES Element eines Panels wäre das ein Absatz vor
+ * dem ersten Wort — dort setzt der Kopf der Leiste schon eine Grenze.
+ */
+.panel-list > .group-label:first-child {
+  padding-top: 2px;
 }
