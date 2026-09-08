@@ -2942,3 +2942,18 @@ select.target {
   font-weight: 400;
   color: var(--text-muted);
 }
+
+/* Eine Karte, die etwas Endgültiges tut. Nur ein Rahmen und eine Überschrift in
+   der Warnfarbe — kein roter Kasten: wenn alles schreit, hört niemand hin. */
+.set-card.danger {
+  border-color: var(--danger);
+}
+
+.set-card.danger h2 {
+  color: var(--danger);
+}
+
+.btn.danger {
+  border-color: var(--danger);
+  color: var(--danger);
+}

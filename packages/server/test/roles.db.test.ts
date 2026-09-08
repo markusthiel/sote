@@ -81,7 +81,10 @@ test('ein unbekanntes Recht wird weggeworfen, nicht gespeichert', async () => {
   const rolle = await create(pool, ws, {
     name: 'Bastler',
     listLevel: 'editor',
-    rights: ['roles.manage', 'groups.manage', 'alles.duerfen'],
+    // `groups.manage` stand hier als Beispiel für ein unbekanntes Recht — und
+    // ist seit Migration 0014 ein bekanntes. Ein Test, der ein Beispiel
+    // benutzt, das gültig geworden ist, prüft nichts mehr.
+    rights: ['roles.manage', 'alles.duerfen', 'projekte.loeschen'],
   });
   assert.deepEqual(rolle.rights, ['roles.manage'], 'nur was die Liste kennt');
 });

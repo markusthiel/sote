@@ -1442,6 +1442,35 @@ Beim Bauen entschieden, weil es ohne Entscheidung keinen Code gibt:
   - Eine neue Rolle beginnt mit **Mitlesen und ohne Rechte**: ohne Stufe wäre
     sie ein Gast, den niemand gemeint hat, mit Rechten eine Vergabe, die
     niemand getroffen hat.
+- **Vereinigung und Maximum, niemals Abzug** (SONEs ADR-0087, begründet in
+  ADR-0026). Die wirksame Rolle einer Person ist die Vereinigung der Rechte und
+  das Maximum der Stufen über ihre eigene Rolle und die aller ihrer Gruppen —
+  weil **in eine Gruppe aufgenommen zu werden niemals wegnehmen darf, was
+  jemand schon durfte.** Ein Modell, in dem Beitreten etwas nimmt, macht jede
+  Gruppenmitgliedschaft zu einer Sache, die man vor dem Vergeben prüft.
+  - Als **ein `OR` in einer Abfrage** und nicht als zwei Abfragen mit `||`
+    darüber: zwei Abfragen sind zwei Zustände, und zwischen ihnen kann sich
+    eine Mitgliedschaft ändern.
+  - **Eine Gruppe ohne Rolle ist erlaubt** — sie ordnet dann nur, und „das sind
+    die Leute vom Umzug" ist ein Zweck.
+  - **Eine Gruppe wird gelöscht, auch mit Leuten darin** — anders als eine
+    Rolle, und deshalb: ihre Rolle gab nur *dazu*, also bleibt jeder bei seiner
+    eigenen. Bei einer Rolle wäre die stille Antwort „nichts" oder „alles".
+  - `groups.manage` ist zurück, **im selben Commit wie seine Prüfungen** — das
+    Versprechen aus Migration 0013, und der Wächter hat es eingefordert.
+- **Beim Export `SELECT *`, bei Leuten aufzählen.** Für Inhaltstabellen soll ein
+  neues Feld mitwandern, ohne dass jemand daran denkt; bei `users` ist es genau
+  umgekehrt — was dazukommt, soll **nicht** automatisch in eine Datei wandern,
+  die per Mail unterwegs ist. Nicht im Export: Kennwörter, Freigabe-Tokens,
+  Sitzungen.
+- **Einen Arbeitsbereich wirft sein Eigentümer weg, nicht ein Recht.** Eine
+  Rolle könnte man aus Versehen mit dem Recht ausstatten; die Eigentümerspalte
+  lässt sich nicht aus Versehen setzen. Der Name muss abgetippt werden — der
+  einzige Ort mit dieser Hürde, weil ein Papierkorb für Arbeitsbereiche ein
+  Papierkorb für alles wäre.
+- **Keine Einstellung „wer ein Konto anlegen darf".** SOTE hat keinen Weg, sich
+  selbst anzumelden — eine Einstellung dafür wäre der Fehler aus ADR-0112, nur
+  von mir selbst gebaut.
 - **`pnpm check` ist genau das, was die CI fährt.** Erst standen die Prüfungen
   einzeln in der Workflow-Datei, und `pnpm -r typecheck` scheiterte dort — in
   einem frischen Klon gibt es kein `dist`, und `@sote/core` zeigt mit `types`

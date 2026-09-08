@@ -64,7 +64,30 @@ export async function mayDo(
 ): Promise<boolean> {
   const row = await queryOne<{ ok: boolean }>(
     q,
-    `SELECT (m.is_owner OR $3 = ANY(r.rights)) AS ok
+    /*
+     * Die VEREINIGUNG der Rechte: die eigene Rolle **oder** die Rolle einer
+     * Gruppe, in der man ist (ADR-0087).
+     *
+     * Niemals Abzug, und der Grund ist ADR-0026: in eine Gruppe aufgenommen zu
+     * werden darf nicht wegnehmen, was jemand schon durfte — sonst ist jede
+     * Gruppenmitgliedschaft eine Sache, die man vor dem Vergeben prüft.
+     *
+     * Als ein `OR` in EINER Abfrage und nicht als zwei Abfragen mit einem
+     * `||` darüber: zwei Abfragen sind zwei Zustände, und zwischen ihnen kann
+     * sich eine Mitgliedschaft ändern.
+     */
+    `SELECT (
+              m.is_owner
+              OR $3 = ANY(r.rights)
+              OR EXISTS (
+                   SELECT 1 FROM group_members gm
+                     JOIN groups g ON g.id = gm.group_id
+                     JOIN roles gr ON gr.id = g.role_id
+                    WHERE gm.user_id = $1
+                      AND g.workspace_id = $2
+                      AND $3 = ANY(gr.rights)
+                 )
+            ) AS ok
        FROM workspace_members m
        JOIN roles r ON r.id = m.role_id
       WHERE m.user_id = $1 AND m.workspace_id = $2`,
@@ -92,7 +115,20 @@ export async function mayWriteLists(
 ): Promise<boolean> {
   const row = await queryOne<{ ok: boolean }>(
     q,
-    `SELECT (m.is_owner OR r.list_level IN ('editor','admin')) AS ok
+    // Das MAXIMUM der Stufen, aus demselben Grund wie die Vereinigung oben:
+    // eine Gruppe kann hinaufheben und nie herunterziehen.
+    `SELECT (
+              m.is_owner
+              OR r.list_level IN ('editor','admin')
+              OR EXISTS (
+                   SELECT 1 FROM group_members gm
+                     JOIN groups g ON g.id = gm.group_id
+                     JOIN roles gr ON gr.id = g.role_id
+                    WHERE gm.user_id = $1
+                      AND g.workspace_id = $2
+                      AND gr.list_level IN ('editor','admin')
+                 )
+            ) AS ok
        FROM workspace_members m
        JOIN roles r ON r.id = m.role_id
       WHERE m.user_id = $1 AND m.workspace_id = $2`,

@@ -111,7 +111,7 @@ export interface Task {
 }
 
 /** Was gilt, und wer was gesagt hat — beides in einer Antwort. */
-import type { Landing, Look } from '@sote/core';
+import type { Landing, Look, Right } from '@sote/core';
 
 interface Level {
   scheme?: 'system' | 'light' | 'dark';
@@ -288,6 +288,55 @@ export const api = {
       `/api/workspace${workspace === undefined ? '' : `?workspace=${workspace}`}`,
       { method: 'PATCH', body: JSON.stringify(body) },
     ),
+  /* ── Gruppen ───────────────────────────────────────────────────────────── */
+  groups: (workspace?: string) =>
+    call<{
+      groups: {
+        id: string;
+        name: string;
+        roleId: string | null;
+        roleName: string | null;
+        members: { userId: string; displayName: string }[];
+      }[];
+      mayManage: boolean;
+    }>(`/api/groups${workspace === undefined ? '' : `?workspace=${workspace}`}`),
+  createGroup: (name: string, workspace?: string) =>
+    call<{ id: string }>(`/api/groups${workspace === undefined ? '' : `?workspace=${workspace}`}`, {
+      method: 'POST',
+      body: JSON.stringify({ name }),
+    }),
+  patchGroup: (id: string, body: { name?: string; roleId?: string }, workspace?: string) =>
+    call<{ ok: true }>(
+      `/api/groups/${id}${workspace === undefined ? '' : `?workspace=${workspace}`}`,
+      { method: 'PATCH', body: JSON.stringify(body) },
+    ),
+  deleteGroup: (id: string, workspace?: string) =>
+    call<{ ok: true }>(
+      `/api/groups/${id}${workspace === undefined ? '' : `?workspace=${workspace}`}`,
+      { method: 'DELETE' },
+    ),
+  addToGroup: (id: string, userId: string, workspace?: string) =>
+    call<{ ok: true }>(
+      `/api/groups/${id}/members${workspace === undefined ? '' : `?workspace=${workspace}`}`,
+      { method: 'POST', body: JSON.stringify({ userId }) },
+    ),
+  dropFromGroup: (id: string, userId: string, workspace?: string) =>
+    call<{ ok: true }>(
+      `/api/groups/${id}/members/${userId}${workspace === undefined ? '' : `?workspace=${workspace}`}`,
+      { method: 'DELETE' },
+    ),
+
+  /* ── Mitnehmen und wegwerfen ───────────────────────────────────────────── */
+  exportWorkspace: (workspace?: string) =>
+    call<Record<string, unknown>>(
+      `/api/workspace/export${workspace === undefined ? '' : `?workspace=${workspace}`}`,
+    ),
+  deleteWorkspace: (name: string, workspace?: string) =>
+    call<{ ok: true }>(
+      `/api/workspace${workspace === undefined ? '' : `?workspace=${workspace}`}`,
+      { method: 'DELETE', body: JSON.stringify({ name }) },
+    ),
+
   /* ── Rollen ────────────────────────────────────────────────────────────── */
   roles: (workspace?: string) =>
     call<{
@@ -295,7 +344,11 @@ export const api = {
         id: string;
         name: string;
         listLevel: 'viewer' | 'editor' | 'admin' | null;
-        rights: ('people.manage' | 'roles.manage' | 'workspace.settings')[];
+        // Aus dem Kern statt abgeschrieben: eine zweite Liste derselben Rechte
+        // ist eine Liste, die beim nächsten Recht auseinanderläuft — genau so
+        // ist `groups.manage` hier hängen geblieben und der Übersetzer hat es
+        // gemeldet.
+        rights: Right[];
         system: boolean;
         members: number;
       }[];

@@ -52,17 +52,24 @@ test('jedes Recht sagt, was es erlaubt', () => {
   }
 });
 
-test('es gibt keine Gruppen, also kein groups.manage', () => {
-  // Es kommt zurück, wenn Gruppen kommen — im selben Commit wie die Wege, die
-  // es prüfen. Das ist die Regel aus ADR-0087, und der Test hält sie fest.
-  assert.equal(isRight('groups.manage'), false);
-  assert.equal((RIGHTS as readonly string[]).includes('groups.manage'), false);
+test('das Versprechen von Migration 0013 ist eingehalten', () => {
+  /*
+   * Hier stand: „es gibt keine Gruppen, also kein groups.manage" — mit dem
+   * Zusatz, es komme zurück, wenn Gruppen kommen, **im selben Commit wie die
+   * Wege, die es prüfen** (ADR-0087).
+   *
+   * Der Test steht jetzt umgedreht da, und das ist der Beleg: das Recht ist
+   * zurück, und der Wächter oben hat verlangt, dass die Prüfungen mitkommen —
+   * er schlug an, bevor eine Gruppe existierte.
+   */
+  assert.equal(isRight('groups.manage'), true);
+  assert.ok((RIGHTS as readonly string[]).includes('groups.manage'));
 });
 
 test('unbekanntes wird weggeworfen, nicht übernommen', () => {
   // Ein Recht aus einer künftigen Fassung soll nicht abstürzen — und eines aus
   // einer vergangenen nicht als Erlaubnis wiederauferstehen.
-  assert.deepEqual(readRights(['roles.manage', 'groups.manage', 'nonsens']), ['roles.manage']);
+  assert.deepEqual(readRights(['roles.manage', 'nonsens', 'alles.duerfen']), ['roles.manage']);
   assert.deepEqual(readRights('roles.manage'), []);
   assert.deepEqual(readRights(null), []);
   // Doppeltes einmal, und sortiert: zwei Schreibweisen für dieselbe Menge

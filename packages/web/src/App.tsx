@@ -33,7 +33,9 @@ import { Search } from './screens/Search.js';
 import { landingRoute, markRoute, rememberRoute } from './landing.js';
 import { Accounts } from './screens/Accounts.js';
 import { People } from './screens/People.js';
+import { Groups } from './screens/Groups.js';
 import { Roles } from './screens/Roles.js';
+import { WorkspaceExit } from './screens/WorkspaceExit.js';
 import { ShareScreen } from './screens/ShareScreen.js';
 import { Shares } from './screens/Shares.js';
 import { WorkspaceMark } from './screens/WorkspaceMark.js';
@@ -530,6 +532,14 @@ export function App() {
           <Shares workspace={workspace} projects={projects} />
         ) : route.kind === 'workspaces' && route.section === 'alle' ? (
           <WorkspaceOverview workspaces={me.workspaces} current={workspace} />
+        ) : route.kind === 'workspaces' && route.section === 'gruppen' ? (
+          <Groups workspace={workspace} />
+        ) : route.kind === 'workspaces' && route.section === 'weg' ? (
+          <WorkspaceExit
+            workspace={workspace}
+            name={me.workspaces.find((w) => w.id === workspace)?.name ?? ''}
+            onGone={() => void loadMe()}
+          />
         ) : route.kind === 'workspaces' && route.section === 'rollen' ? (
           <Roles workspace={workspace} />
         ) : route.kind === 'workspaces' && route.section === 'leute' ? (

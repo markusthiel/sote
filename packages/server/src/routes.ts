@@ -34,6 +34,15 @@ import { create as createProject, NameTaken, update as updateProject } from './p
 import type { Config } from './env.js';
 import { cookie, fail, json, readJson } from './http/respond.js';
 import { accounts, deleteAccount, setAdmin } from './accounts.js';
+import { deleteWorkspace, exportWorkspace } from './workspace.js';
+import {
+  add as addToGroup,
+  create as createGroup,
+  drop as dropFromGroup,
+  list as listGroups,
+  remove as removeGroup,
+  update as updateGroup,
+} from './groups.js';
 import {
   create as createRole,
   list as listRoles,
@@ -509,6 +518,108 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
       workspace: { id: row!.id, name: row!.name, icon: readIcon(row!.icon) },
     });
     return;
+  }
+
+  /* ── Mitnehmen und wegwerfen ─────────────────────────────────────────────
+   *
+   * Beides nur für Eigentümer, und nicht über ein Recht: einen Arbeitsbereich
+   * zu löschen ist keine Verwaltungsaufgabe, sondern die letzte. Eine Rolle
+   * könnte man aus Versehen mit dem Recht ausstatten; die Eigentümerspalte
+   * lässt sich nicht aus Versehen setzen (ADR-0087).
+   */
+  if (path === '/api/workspace/export' && method === 'GET') {
+    const chef = await queryOne<{ is_owner: boolean }>(
+      ctx.pool,
+      'SELECT is_owner FROM workspace_members WHERE workspace_id = $1 AND user_id = $2',
+      [workspaceId, userId],
+    );
+    if (chef?.is_owner !== true) {
+      fail(res, 403, 'not_allowed', 'einen Arbeitsbereich nimmt sein Eigentümer mit');
+      return;
+    }
+    json(res, 200, await exportWorkspace(ctx.pool, workspaceId));
+    return;
+  }
+
+  if (path === '/api/workspace' && method === 'DELETE') {
+    const chef = await queryOne<{ is_owner: boolean }>(
+      ctx.pool,
+      'SELECT is_owner FROM workspace_members WHERE workspace_id = $1 AND user_id = $2',
+      [workspaceId, userId],
+    );
+    if (chef?.is_owner !== true) {
+      fail(res, 403, 'not_allowed', 'einen Arbeitsbereich wirft sein Eigentümer weg');
+      return;
+    }
+    const body = (await readJson(req)) as Record<string, unknown>;
+    await deleteWorkspace(ctx.pool, workspaceId, userId, String(body?.['name'] ?? ''));
+    json(res, 200, { ok: true });
+    return;
+  }
+
+  /* ── Gruppen ─────────────────────────────────────────────────────────────
+   *
+   * `groups.manage` — das Recht, das in Migration 0013 entfernt wurde, weil es
+   * nichts bewachte. Hier sind die Prüfungen, im selben Commit wie seine
+   * Rückkehr (ADR-0087).
+   */
+  if (path === '/api/groups' && method === 'GET') {
+    json(res, 200, {
+      groups: await listGroups(ctx.pool, workspaceId),
+      mayManage: await mayDo(ctx.pool, userId, workspaceId, 'groups.manage'),
+    });
+    return;
+  }
+
+  if (path === '/api/groups' && method === 'POST') {
+    if (!(await mayDo(ctx.pool, userId, workspaceId, 'groups.manage'))) {
+      fail(res, 403, 'not_allowed', 'Gruppen zu verwalten darfst du hier nicht');
+      return;
+    }
+    const body = (await readJson(req)) as Record<string, unknown>;
+    const out = await createGroup(ctx.pool, workspaceId, String(body?.['name'] ?? ''));
+    json(res, 201, { id: out.id });
+    return;
+  }
+
+  const groupPath = /^\/api\/groups\/([0-9a-f-]{36})(\/members(\/([0-9a-f-]{36}))?)?$/.exec(path);
+  if (groupPath !== null && method !== 'GET') {
+    if (!(await mayDo(ctx.pool, userId, workspaceId, 'groups.manage'))) {
+      fail(res, 403, 'not_allowed', 'Gruppen zu verwalten darfst du hier nicht');
+      return;
+    }
+    const id = groupPath[1]!;
+    if (groupPath[2] === undefined) {
+      if (method === 'DELETE') {
+        await removeGroup(ctx.pool, id, workspaceId);
+        json(res, 200, { ok: true });
+        return;
+      }
+      if (method === 'PATCH') {
+        const body = (await readJson(req)) as Record<string, unknown>;
+        const rolle = body?.['roleId'];
+        await updateGroup(ctx.pool, id, workspaceId, {
+          ...('name' in (body ?? {}) ? { name: String(body['name'] ?? '') } : {}),
+          // `null` ist eine Angabe („trägt keine Rolle", ordnet nur), ein
+          // fehlender Schlüssel nicht — sonst ließe sich eine Rolle nicht mehr
+          // wegnehmen.
+          ...('roleId' in (body ?? {})
+            ? { roleId: typeof rolle === 'string' && rolle !== '' ? rolle : null }
+            : {}),
+        });
+        json(res, 200, { ok: true });
+        return;
+      }
+    } else if (method === 'POST') {
+      const body = (await readJson(req)) as Record<string, unknown>;
+      await addToGroup(ctx.pool, id, workspaceId, String(body?.['userId'] ?? ''));
+      json(res, 201, { ok: true });
+      return;
+    } else if (method === 'DELETE' && groupPath[4] !== undefined) {
+      await dropFromGroup(ctx.pool, id, workspaceId, groupPath[4]);
+      json(res, 200, { ok: true });
+      return;
+    }
   }
 
   /* ── Rollen ──────────────────────────────────────────────────────────────

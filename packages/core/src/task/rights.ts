@@ -27,10 +27,10 @@
  * Namen standen in den Daten und bewachten nichts, und einer bewachte drei
  * Dinge, die er nicht heißt.
  *
- * Darum stehen hier **drei** Rechte und nicht vier: `groups.manage` fehlt, weil
- * es keine Gruppen gibt. Es kommt zurück, wenn sie kommen — im selben Commit
- * wie die Wege, die es prüft, so wie ADR-0087 es für `roles.manage`
- * beschreibt.
+ * `groups.manage` fehlte hier eine Zeit lang, weil es keine Gruppen gab, und
+ * stand mit dem Versprechen da, im selben Commit zurückzukommen wie die Wege,
+ * die es prüfen. Das ist eingehalten (Migration 0014) — vier Rechte, und jedes
+ * bewacht etwas.
  *
  * Die Namen sagen, was jemand **tun** darf, und nicht, welchen Bildschirm er
  * sieht: ein Bildschirm kann umziehen.
@@ -46,7 +46,12 @@ export type ListLevel = (typeof LIST_LEVELS)[number];
  * Ein Eintrag hier ohne eine Prüfung im Server wäre ein Schalter, der nichts
  * tut — und dann glaubt jemand etwas, wenn er ihn ausschaltet.
  */
-export const RIGHTS = ['people.manage', 'roles.manage', 'workspace.settings'] as const;
+export const RIGHTS = [
+  'people.manage',
+  'roles.manage',
+  'workspace.settings',
+  'groups.manage',
+] as const;
 export type Right = (typeof RIGHTS)[number];
 
 /** Was jedes Recht erlaubt — der Satz, der neben dem Schalter steht. */
@@ -54,6 +59,7 @@ export const RIGHT_SAYS: Record<Right, string> = {
   'people.manage': 'Leute hinzufügen, entfernen und ihre Rolle ändern',
   'roles.manage': 'Rollen anlegen und festlegen, was sie geben',
   'workspace.settings': 'Name, Zeichen, Farben, Schrift und Standard-Seite',
+  'groups.manage': 'Gruppen anlegen und festlegen, wer darin ist',
 };
 
 export const isRight = (v: unknown): v is Right =>
