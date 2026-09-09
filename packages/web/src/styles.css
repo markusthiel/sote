@@ -1287,10 +1287,10 @@ input {
   right: auto;
   top: auto;
   z-index: 60;
-  background: var(--raised);
-  border: 1px solid var(--line-strong);
-  border-radius: var(--sote-radius-lg);
-  box-shadow: var(--sote-shadow-lg);
+  /* Fläche, Rand und Schatten kommen aus `.menu` — SONEs eine Behandlung für
+     alles, was schwebt. Hier stand eine eigene, und weil dieser Selektor
+     spezifischer ist, gewann sie: das Menü war 312px breit und trug SOTEs
+     Schatten, während SONEs Regel darunter wirkungslos blieb. */
   padding: 5px;
   /*
    * Eine BERECHENBARE Breite statt `min-width`.
@@ -1303,7 +1303,7 @@ input {
    * `min(312px, 100vw - 16px)` ist an beiden Enden bekannt: `ProjectTree`
    * rechnet mit derselben Formel und kann darum an beiden Rändern festklemmen.
    */
-  width: min(312px, calc(100vw - 16px));
+  width: min(232px, calc(100vw - 16px));
 }
 
 .menu-label {
@@ -3726,6 +3726,194 @@ label.btn {
   padding: var(--sone-space-2) var(--sone-space-3);
   font-size: var(--sone-text-xs);
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * Das Zeilenmenü — SONEs `entry-menu`, wörtlich übernommen.
+ *
+ * Aus `sone/packages/web/src/styles.css`, Zeilen 4712–4843 und die
+ * Aussehen-Klassen (`entry-icon-grid`, `entry-icon`, `entry-icon-search`,
+ * `block-menu-swatches`, `block-menu-swatch`).
+ *
+ * EINE benannte Abweichung: die Position. SONE hängt das Menü `absolute` an die
+ * Zeile; SOTEs Baum steht in einem scrollenden Kasten, und ein Klappmenü in
+ * einem scrollenden Kasten ist immer abgeschnitten (Lehre aus Commit d71772f).
+ * Darum bleibt `.menu` hier `position: fixed` mit `.at-point` — dieselbe
+ * Fläche, derselbe Schatten, dieselbe Breite, nur anders aufgehängt.
+ *
+ * Und „gewählt" ist hier `aria-current="true"` statt `.current`: dieselbe
+ * Regel, ein Selektor, der auch dem Vorleser etwas sagt.
+ * ═══════════════════════════════════════════════════════════════════════ */
+
+.menu {
+  /* Wider, and shorter for it. At 190px the five most-used actions were five
+     rows of text and the menu ran most of the way down the sidebar. (SONE) */
+  inline-size: 232px;
+  padding: var(--sone-space-2);
+  /* One treatment for everything that floats: the overlay surface, a subtle
+     border, and a lift. On a dark theme the surface is a step lighter and the
+     shadow does almost nothing — height is expressed by the surface, because a
+     shadow on a dark background reads as dirt. (SONE) */
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--sone-radius-lg);
+  background: var(--surface-overlay);
+  box-shadow: var(--sone-shadow-lg);
+}
+
+/* A line between groups. (SONE) */
+.entry-menu-rule {
+  block-size: 0;
+  margin: 4px 0;
+  border: 0;
+  border-block-start: 1px solid var(--border-subtle);
+}
+
+.entry-menu-band {
+  margin-block-end: 4px;
+  padding: var(--sone-space-1);
+  border-radius: var(--sone-radius);
+  background: var(--surface-sunken);
+}
+.entry-menu-band .entry-menu-new { padding-inline-start: var(--sone-space-3); }
+
+.entry-menu-actions {
+  display: flex;
+  gap: var(--sone-space-1);
+  padding: var(--sone-space-1);
+}
+
+.entry-menu-action {
+  flex: 1 1 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-block-size: var(--sone-control-lg);
+  padding: 0;
+  border: 0;
+  border-radius: var(--sone-radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.entry-menu-action svg { inline-size: 16px; block-size: 16px; }
+.entry-menu-action:hover:not(:disabled) {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+}
+.entry-menu-action:disabled { opacity: 0.35; cursor: default; }
+
+.entry-menu-new {
+  display: flex;
+  align-items: center;
+  gap: var(--sone-space-2);
+  padding-inline-start: var(--sone-space-3);
+}
+.entry-menu-new .entry-menu-actions { flex: 1 1 auto; }
+
+.entry-menu-label {
+  padding: var(--sone-space-3) var(--sone-space-4) var(--sone-space-1);
+  color: var(--text-muted);
+  font-size: var(--sone-text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.entry-menu-item {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: flex;
+  align-items: center;
+  gap: var(--sone-space-4);
+  inline-size: 100%;
+  min-block-size: var(--sone-control-lg);
+  padding: var(--sone-space-3) var(--sone-space-4);
+  border: 0;
+  border-radius: var(--sone-radius);
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  text-align: start;
+  font-size: 0.88rem;
+  cursor: pointer;
+}
+.entry-menu-item:hover { background: var(--surface-hover); }
+.entry-menu-item.destructive { color: var(--danger); }
+
+/* ── Aussehen: Zeichen und Farbe ──────────────────────────────────────── */
+
+.entry-icon-search {
+  inline-size: 100%;
+  min-block-size: var(--sone-control);
+  margin-block-end: var(--sone-space-2);
+  padding-inline: var(--sone-space-2);
+  border: 1px solid var(--border-default);
+  border-radius: var(--sone-radius-sm);
+  background: var(--surface-page);
+  font: inherit;
+  font-size: var(--sone-text-sm);
+  color: inherit;
+}
+
+.entry-icon-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(1.75rem, 1fr));
+  gap: var(--sone-space-1);
+  max-block-size: 9rem;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+}
+
+.entry-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-block-size: var(--sone-control);
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--sone-radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.entry-icon:hover { background: var(--surface-hover); color: var(--text-primary); }
+.entry-icon.current,
+.entry-icon[aria-current='true'] {
+  border-color: var(--accent);
+  color: var(--text-primary);
+}
+
+.entry-menu-empty {
+  margin: 0;
+  padding: var(--sone-space-2) var(--sone-space-4);
+  font-size: var(--sone-text-xs);
+  color: var(--text-muted);
+}
+
+.block-menu-swatches {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: var(--sone-space-2);
+  padding: var(--sone-space-2);
+  justify-items: center;
+}
+
+.block-menu-swatch {
+  inline-size: 18px;
+  block-size: 18px;
+  padding: 0;
+  border: 1px solid var(--border-default);
+  border-radius: 50%;
+  background: var(--tag-color, var(--text-muted));
+  cursor: pointer;
+}
+.block-menu-swatch.none { background: var(--surface-page); }
+.block-menu-swatch.current,
+.block-menu-swatch[aria-current='true'] {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.block-menu-swatch:disabled { opacity: 0.35; }
 
 /* Eine Filterzeile, die zurückgenommen wird: leiser als die Filter selbst,
    weil sie nichts findet, sondern etwas aufhebt. */

@@ -1926,10 +1926,21 @@ erfunden.
   `panel-scope`. Vorher war der Titel eine Spalte mit dem Scope *darin*; bei
   SONE ist er eine Zeile und der Scope steht darunter. Vier Köpfe gemessen:
   14,4 px / 600, Scope 12 px mit 0,08 em Sperrung.
-- **Noch offen, in dieser Reihenfolge:** das Zeilenmenü
-  (`entry-menu`), Kontomenü, Workspace-Wähler, Einstellungen (`settings-card`,
-  `settings-row`, `section-nav`), Knöpfe und Felder, Dialoge — und zuletzt ein
-  Wächter gegen harte Pixelwerte, wo eine Skala existiert.
+- **Fläche 4, das Zeilenmenü:** SONEs `entry-menu` (Zeilen 4712–4843 dort)
+  samt Aussehen-Klassen: 232 px, `surface-overlay`, `shadow-lg`, Zeichenraster
+  auf 9 rem gedeckelt, runde Farbfelder in fünf Spalten, `destructive` unten.
+  Eine **benannte Abweichung**: die Position bleibt `fixed` (`.at-point`), weil
+  SOTEs Baum in einem scrollenden Kasten steht und ein Klappmenü dort immer
+  abgeschnitten ist (Commit d71772f). Und „gewählt" ist `aria-current="true"`
+  statt `.current` — dieselbe Regel, ein Selektor, der auch dem Vorleser etwas
+  sagt.
+  - **Ein spezifischerer Selektor gewann still:** `.menu.at-point` setzte 312 px
+    und eigene Fläche, also blieb SONEs Regel auf `.menu` wirkungslos. Gefunden
+    nur durch Messen — die Funktionsprüfung war grün.
+- **Noch offen, in dieser Reihenfolge:** Kontomenü, Workspace-Wähler,
+  Einstellungen (`settings-card`, `settings-row`, `section-nav`), Knöpfe und
+  Felder, Dialoge — und zuletzt ein Wächter gegen harte Pixelwerte, wo eine
+  Skala existiert.
 - **Der Token-Wächter liest nur den ersten `:root`.** Meine Aliase standen in
   einem zweiten und galten als „nur im Dunkeln deklariert". Sie gehören in den
   ersten — nicht der Wächter zu mir.

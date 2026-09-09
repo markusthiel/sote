@@ -16,7 +16,7 @@
  * values" in SONEs Gestaltungs-Records.
  */
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 
 import { colorValue, generateKeyBetween, PALETTE } from '@sote/core';
 
@@ -346,7 +346,7 @@ export function ProjectTree({
                   Zeichnen, und dann springt das Menü.
                 */
                 const r = e.currentTarget.getBoundingClientRect();
-                const breite = Math.min(312, window.innerWidth - 16);
+                const breite = Math.min(232, window.innerWidth - 16);
                 const rechts = window.innerWidth - r.right;
                 setAt({
                   top: Math.round(r.bottom + 4),
@@ -497,7 +497,7 @@ export function ProjectTree({
                 </div>
               </div>
             ) : null}
-            <div className="menu-label sep">Zeichen</div>
+            <div className="entry-menu-label">Zeichen</div>
             {/*
               Ein Suchfeld statt einer Auswahl.
 
@@ -508,7 +508,7 @@ export function ProjectTree({
               irgendwen zu wählen — man kann den ganzen Satz durchsuchen.
             */}
             <input
-              className="mark-find"
+              className="entry-icon-search"
               value={find}
               /* Die Namen kommen aus Lucide und sind englisch. Ein Beispiel
                  auf Deutsch stand hier zuerst („haus") und fand nichts — ein
@@ -518,11 +518,11 @@ export function ProjectTree({
               aria-label="Zeichen suchen"
               onChange={(e) => setFind(e.target.value)}
             />
-            <div className="swatches marks">
+            <div className="entry-icon-grid">
               {/* „ohne" zuerst: es ist die eine Wahl, die kein Bild hat und
                   sonst zwischen tausend Bildern verschwindet. */}
               <button
-                className="mark-btn"
+                className="entry-icon"
                 aria-label="ohne Zeichen"
                 aria-current={(p.icon?.icon ?? undefined) === undefined}
                 disabled={busy}
@@ -536,7 +536,7 @@ export function ProjectTree({
               {shown.map((n) => (
                 <button
                   key={n}
-                  className="mark-btn"
+                  className="entry-icon"
                   aria-label={n}
                   title={n}
                   aria-current={p.icon?.icon === n}
@@ -558,31 +558,27 @@ export function ProjectTree({
               ))}
             </div>
             {shown.length > 0 ? null : (
-              <p className="fpop-none">
+              <p className="entry-menu-empty">
                 {ready ? 'Kein Zeichen mit diesem Namen.' : 'Zeichen werden geladen…'}
               </p>
             )}
-            <div className="menu-label sep">Farbe</div>
-            <div className="swatches">
+            <div className="entry-menu-label">Farbe</div>
+            <div className="block-menu-swatches">
               {COLORS.map((c) => (
                 <button
                   key={c.name}
-                  className="swatch-btn"
+                  className={c.value === null ? 'block-menu-swatch none' : 'block-menu-swatch'}
                   aria-label={c.name}
                   aria-current={p.color === c.value}
                   disabled={busy}
                   {...(c.value === null
                     ? {}
                     : {
-                        style: {
-                          // Über colorValue und nicht direkt: ein Palettenname
-                          // ist KEINE CSS-Farbe. Ihn roh zu setzen tat in SONE
-                          // für die acht Namen stillschweigend nichts — „die
-                          // schlechtere Hälfte, weil das die sind, die man
-                          // wählt".
-                          background: colorValue(c.value),
-                          borderColor: colorValue(c.value),
-                        },
+                        // SONEs Feld liest `--tag-color`; die Farbe kommt über
+                        // colorValue und nicht roh: ein Palettenname ist KEINE
+                        // CSS-Farbe, und ihn roh zu setzen tat in SONE für die
+                        // acht Namen stillschweigend nichts.
+                        style: { '--tag-color': colorValue(c.value) } as CSSProperties,
                       })}
                   onClick={() => {
                     setMenu(null);
@@ -591,9 +587,9 @@ export function ProjectTree({
                 />
               ))}
             </div>
-            <div className="menu-label sep" />
+            <div className="entry-menu-label" />
             <button
-              className="menu-item danger"
+              className="entry-menu-item destructive"
               role="menuitem"
               disabled={busy}
               onClick={() => {
