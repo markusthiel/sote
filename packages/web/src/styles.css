@@ -522,43 +522,78 @@ input {
   min-block-size: 0;
 }
 
+/* ══════════════════════════════════════════════════════════════════════════
+ * Die Schiene — SONEs `.icon-rail`, wörtlich in Geometrie und Zuständen.
+ *
+ * SOTEs Flächen-Behandlung (`data-surface-rail`: erhöht, vertieft, umgekehrt,
+ * Akzent) bleibt — sie setzt `--surface` und die Textfarben für diesen
+ * Teilbaum, genau wie SONEs `--sone-theme-rail-*`. Die Vorgabe ist hell
+ * (`surface-chrome`), wie bei SONE.
+ *
+ * Gemeldet: „In der schmalen Leiste sind die Icons nicht genau so groß wie bei
+ * SONE. Auch die Abstände stimmen nicht ganz." SOTE hatte 40px-Kacheln mit 2px
+ * Lücke und 10px Rand; SONE hat 44px (`--sone-tap`), 2px Lücke in der Gruppe,
+ * 6px Rand, Zeichen 1.2em, Akzentstrich über das mittlere Halbe.
+ * ═══════════════════════════════════════════════════════════════════════ */
 .rail {
-  background: var(--surface);
-  border-right: 1px solid var(--line);
   display: flex;
   flex-direction: column;
+  min-block-size: 0;
   align-items: center;
-  padding: 10px 0;
-  gap: 2px;
+  gap: var(--sone-space-3);
+  padding-block: var(--sone-space-3);
+  border-inline-end: 1px solid var(--border-subtle);
+  background: var(--surface, var(--surface-chrome));
+  /* Nothing in the rail overflows on its own; the only thing that leaves it
+     is a popup, and a popup leaving is the point. (SONE) */
   overflow: visible;
 }
 
-.rail-slot {
-  width: 40px;
-  height: 40px;
-  border-radius: var(--sote-radius-md);
-  display: grid;
-  place-items: center;
-  color: var(--text-muted);
+.rail-nav {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sone-space-1);
+}
+
+.rail-brand,
+.rail-item {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   position: relative;
+  inline-size: var(--sone-tap);
+  block-size: var(--sone-tap);
+  padding: 0;
+  border: 0;
+  border-radius: var(--sone-radius);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
 }
-
-.rail-slot:hover {
-  background: var(--sunken);
+.rail-brand { color: var(--text-primary); }
+.rail-brand:hover,
+.rail-item:hover {
+  background: var(--surface-hover);
+  color: var(--text-primary);
 }
-
-.rail-slot[aria-current="page"] {
-  background: var(--sunken);
-  color: var(--text);
+.rail svg {
+  inline-size: 1.2em;
+  block-size: 1.2em;
 }
-
-.rail-slot[aria-current="page"]::before {
-  content: "";
+.rail-item[aria-current='page'] {
+  color: var(--text-primary);
+  background: var(--surface-hover);
+}
+/* A 2px accent along the leading edge of the current mode, the same way the
+   sidebar's own current row marks itself. Logical inset, so it moves to the
+   other edge in a right-to-left interface. (SONE) */
+.rail-item[aria-current='page']::before {
+  content: '';
   position: absolute;
-  left: -10px;
-  top: 9px;
-  bottom: 9px;
-  width: 2px;
+  inset-block: 25%;
+  inset-inline-start: 0;
+  inline-size: 2px;
   background: var(--accent);
 }
 
@@ -2499,6 +2534,8 @@ select.target {
 .app[data-surface-detail="raised"] .detail {
   --surface: var(--raised);
   --sunken: var(--raised);
+  /* SONEs Namen gehen mit: die übernommenen Regeln lesen `--surface-hover`. */
+  --surface-hover: var(--sunken);
   background: var(--raised);
 }
 
@@ -2506,6 +2543,7 @@ select.target {
 .app[data-surface-sidebar="sunken"] .panel,
 .app[data-surface-detail="sunken"] .detail {
   --surface: var(--sunken);
+  --surface-hover: var(--raised);
   background: var(--sunken);
 }
 
@@ -2520,6 +2558,18 @@ select.target {
   --line-strong: var(--inverse-line);
   --sunken: var(--inverse-hover);
   --raised: var(--inverse-hover);
+  /*
+   * SONEs Namen gehen mit — sonst liest eine übernommene Regel auf einer
+   * umgekehrten Fläche die Farben der Seite: helles Hover-Grau auf Schwarz,
+   * oder umgekehrt ein Schwarz beim Hover auf einer hellen Schiene. Genau so
+   * kam „der Hover-Effekt im Profil ist schwarz" zustande.
+   */
+  --text-primary: var(--inverse-ink);
+  --surface-hover: var(--inverse-hover);
+  --border-subtle: var(--inverse-line);
+  --border-default: var(--inverse-line);
+  --accent-quiet: var(--inverse-hover);
+  --accent-text: var(--inverse-accent);
   /* Der Akzent des anderen Schemas — sonst steht das dunkle Grün auf
      Fast-Schwarz, das das dunkle Thema selbst schon ersetzt. */
   --accent: var(--inverse-accent);
@@ -2543,6 +2593,11 @@ select.target {
   --line-strong: color-mix(in srgb, var(--accent-base-on) 34%, var(--accent-base));
   --sunken: color-mix(in srgb, var(--accent-base-on) 14%, var(--accent-base));
   --raised: color-mix(in srgb, var(--accent-base-on) 10%, var(--accent-base));
+  /* SONEs Namen gehen mit (siehe den umgekehrten Block). */
+  --text-primary: var(--accent-base-on);
+  --surface-hover: color-mix(in srgb, var(--accent-base-on) 14%, var(--accent-base));
+  --border-subtle: color-mix(in srgb, var(--accent-base-on) 22%, var(--accent-base));
+  --border-default: color-mix(in srgb, var(--accent-base-on) 34%, var(--accent-base));
   /* Getauscht: Akzent auf Akzent ist nichts (ADR-0131). */
   --accent: var(--accent-base-on);
   --accent-on: var(--accent-base);
@@ -3831,6 +3886,30 @@ label.btn {
   z-index: 60;
 }
 
+/* Name und Adresse oben im Menü — SOTEs Ergänzung zu SONEs Menü, in dessen
+   Maßen: dieselbe Zeilenhöhe und derselbe Rand wie die Einträge darunter, mit
+   einer Linie dazwischen, weil es keine Wahl ist, sondern eine Auskunft. */
+.sidebar-account-who {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-block-size: var(--sone-control-lg);
+  justify-content: center;
+  padding-inline: var(--sone-space-4);
+  margin-block-end: var(--sone-space-2);
+  padding-block-end: var(--sone-space-2);
+  border-block-end: 1px solid var(--border-subtle);
+  font-size: var(--sone-text-sm);
+}
+.sidebar-account-who strong { font-weight: 600; }
+.sidebar-account-who span {
+  color: var(--text-muted);
+  font-size: var(--sone-text-xs);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .sidebar-account-menu a,
 .sidebar-account-menu button {
   display: flex;
@@ -3884,13 +3963,11 @@ label.btn {
   padding-inline: 0;
 }
 .rail-account .sidebar-avatar { inline-size: 26px; block-size: 26px; }
-/* Die Schiene ist dunkel: Gesicht in Umkehrfarben, sonst leuchtet ein heller
-   Kreis in einer dunklen Spalte. */
-.rail .rail-account .sidebar-avatar {
-  background: var(--inverse-accent);
-  color: var(--inverse-bg);
-}
-.rail .rail-account .sidebar-account:hover { background: var(--inverse-hover); }
+/* Das Konto folgt der Fläche der Schiene: hell auf hell, und auf einer
+   umgekehrten Schiene setzt der Flächenblock die Farben für den ganzen
+   Teilbaum um — auch für Gesicht und Hover. Keine Sonderregel mehr, die von
+   „dunkel" ausgeht: genau die gab beim Hover ein Schwarz auf einer hellen
+   Schiene. */
 .rail-account .sidebar-account-menu {
   inset-block-end: 0;
   inset-inline-start: calc(100% + var(--sone-space-3));

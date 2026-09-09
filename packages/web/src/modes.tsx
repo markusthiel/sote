@@ -47,6 +47,15 @@ export interface Mode {
    * gebaut.
    */
   readonly badge?: boolean;
+  /**
+   * Ist dieser Bereich die Marke?
+   *
+   * SONEs Schiene zeichnet den ersten Eintrag als `rail-brand` — kräftiger als
+   * die anderen, weil er die Anwendung ist und nicht ein Bereich in ihr. Am
+   * Modus und nicht in der Zeichnung, aus demselben Grund wie `badge`: der
+   * Wächter in `modes.test.ts` hat `mode.id === 'tasks'` gemeldet.
+   */
+  readonly brand?: boolean;
   readonly label: string;
   readonly icon: import('react').ReactNode;
 }
@@ -65,6 +74,7 @@ export const MODES: readonly Mode[] = [
     id: 'tasks',
     label: 'Aufgaben',
     icon: <SoteMark size={22} />,
+    brand: true,
   },
   {
     id: 'search',

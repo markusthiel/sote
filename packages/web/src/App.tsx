@@ -308,8 +308,14 @@ export function App() {
     // erwarteter Fehlschlag im Protokoll ist einer, den man beim Suchen nach
     // einem echten überliest.
     if (me === undefined || me === null) return;
+    /*
+     * MIT dem Arbeitsbereich, und neu bei jedem Wechsel: der wirksame Look
+     * hängt vom Bereich ab. Ohne den Parameter kam immer der des ersten
+     * Bereichs — darum sah ein zweiter Arbeitsbereich nie anders aus, und
+     * eine Änderung dort schien „alle" zu ändern.
+     */
     void api
-      .settings()
+      .settings(workspace)
       .then((s) => {
         setScheme(s.effective.scheme);
         setLook(s.effective.look);
@@ -548,11 +554,22 @@ export function App() {
             current={workspace}
             onPick={(id) => {
               setWorkspace(id);
-              // Zurück nach Heute: die alte Adresse konnte ein Projekt sein,
-              // und das gibt es im neuen Arbeitsbereich nicht. Ein Wechsel,
-              // der auf „Projekt gibt es nicht" landet, ist ein Wechsel, den
-              // man rückgängig machen will.
-              go({ kind: 'today' });
+              /*
+               * Der Ort bleibt, wenn er im neuen Arbeitsbereich existiert.
+               *
+               * Gemeldet: „Wenn ich einen Workspace bearbeite und dann im
+               * Wähler einen anderen wähle, lande ich im Aufgaben-Bereich —
+               * aber der Wähler soll ja dafür sorgen, dass ich in den
+               * Workspace-Einstellungen durchwechseln kann. Dasselbe für das
+               * Teilen-Menü und den Papierkorb."
+               *
+               * Nur ein Projekt gibt es im nächsten Bereich nicht — darum ging
+               * es vorher immer nach Heute. Alles andere (Einstellungen,
+               * Verwaltung, Workspaces, Freigaben, Papierkorb, Benachrichtigungen,
+               * Suche) ist ein Ort, der in jedem Arbeitsbereich existiert, und
+               * dort bleibt man.
+               */
+              go(route.kind === 'project' ? { kind: 'today' } : route);
             }}
             /*
               Angelegt heißt: Liste neu laden UND hineinwechseln. Beides, weil
@@ -849,6 +866,7 @@ export function App() {
               route.kind === 'workspaces' ? `ws-${SECTION_NAV.active}` : SECTION_NAV.active
             }
             workspaceName={wsName}
+            workspaceId={workspace}
             displayName={me.displayName}
             userId={me.id}
             email={me.email}

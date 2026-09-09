@@ -1963,6 +1963,21 @@ erfunden.
   - **Spezifität, zum zweiten Mal:** SONEs `.settings-row > :not(.settings-row-label)`
     richtet die Bedienspalte rechts aus und schlägt eine einzelne Klasse. Drei
     Zeilen Hinweistext standen rechtsbündig unter einem Knopf.
+- **Vier gemeldete Fehler, eine Sitzung:**
+  - **Der Akzent galt für alle Bereiche.** `api.settings()` und
+    `api.patchSettings()` schickten keinen `?workspace=`; der Server nahm den
+    ersten. „Arbeitsbereich" hieß in Wahrheit immer derselbe — und das konnte
+    niemandem auffallen, solange es einen gab. Jede andere Route bekam ihn.
+  - **Der Wähler sprang nach Heute.** Jetzt bleibt der Ort, wenn er im nächsten
+    Bereich existiert; nur ein Projekt existiert dort nicht.
+  - **Die Schiene ist SONEs** (`icon-rail`: 44 px Kacheln, Zeichen 1,2 em, hell
+    auf `surface-chrome`, Akzentstrich über das mittlere Halbe). SOTEs
+    Flächen-Behandlung bleibt, und die Flächenblöcke setzen jetzt **auch SONEs
+    Namen** (`--text-primary`, `--surface-hover`, `--border-*`) — sonst liest
+    eine übernommene Regel auf einer umgekehrten Fläche die Farben der Seite.
+    Genau so kam „der Hover im Profil ist schwarz" zustande.
+  - **Name und Adresse im Kontomenü bleiben** — Markus findet sie praktisch,
+    und sie sind ein Vorschlag für SONE. In SONEs Maßen gezeichnet.
 - **Noch offen, in dieser Reihenfolge:**
   Einstellungen (`settings-card`, `settings-row`, `section-nav`), Knöpfe und
   Felder, Dialoge — und zuletzt ein Wächter gegen harte Pixelwerte, wo eine

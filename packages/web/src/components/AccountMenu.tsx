@@ -124,11 +124,20 @@ export function AccountMenu({
           {/* Wer man ist, ohne Knopf: eine Auskunft, die man nicht drücken
               kann, soll auch nicht aussehen wie eine, die man drücken kann. */}
           {/*
-            Kein Kopf mit Name und Adresse — SONEs Kontomenü hat keinen. Der
-            Name steht am Knopf, die Adresse unter Einstellungen › Profil, und
-            ein Menü, das oben wiederholt, was der Knopf schon sagt, ist eine
-            Zeile, die man überliest, um zu den Einträgen zu kommen.
+            Der Kopf mit Name und Adresse BLEIBT — und ist damit die eine
+            Stelle, an der SOTE mehr hat als SONE.
+
+            Ich hatte ihn entfernt, weil SONEs Menü keinen hat. Markus: „Dass
+            bei SOTE im Kontomenü oben erst noch der Name und E-Mail stehen,
+            finde ich praktisch — das wäre etwas, das wir eher bei SONE noch
+            ergänzen können." Also hier behalten, in SONEs Maßen gezeichnet
+            (Zeile in `control-lg`, Text-sm, Adresse gedämpft), und als
+            Vorschlag für SONE gemerkt.
           */}
+          <div className="sidebar-account-who">
+            <strong>{displayName}</strong>
+            <span>{email}</span>
+          </div>
           <button
             type="button"
             role="menuitem"

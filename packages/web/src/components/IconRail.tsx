@@ -38,11 +38,21 @@ export function IconRail({
   onSignOut: () => void;
 }) {
   return (
-    <nav className="rail" aria-label="Bereiche">
+    <nav className="rail icon-rail" aria-label="Bereiche">
+      {/*
+        SONEs Schiene: die Marke ist der erste Eintrag (`rail-brand`), die
+        Bereiche stehen in einer eigenen Gruppe (`rail-nav`) mit 2px Lücke, das
+        Konto am Fuß. Die Kacheln sind 44px (`--sone-tap`) — SOTEs waren 40 —,
+        die Zeichen 1.2em, und der gewählte Bereich trägt einen 2px-Akzent am
+        Rand über das mittlere Halbe. Gemeldet: „In der schmalen Leiste sind
+        die Icons nicht genau so groß wie bei SONE, auch die Abstände stimmen
+        nicht ganz."
+      */}
+      <div className="rail-nav">
       {MODES.map((mode) => (
         <button
           key={mode.id}
-          className="rail-slot"
+          className={mode.brand === true ? 'rail-item rail-brand' : 'rail-item'}
           aria-label={mode.label}
           title={mode.label}
           {...(mode.id === active ? { 'aria-current': 'page' as const } : {})}
@@ -62,6 +72,7 @@ export function IconRail({
           ) : null}
         </button>
       ))}
+      </div>
       <span className="rail-spacer" />
       {/* Kein Wort unter dem Gesicht: in einer Spalte ist Platz, und der Name
           steht im Menü. Die Fußleiste gibt „Du" mit — siehe AccountMenu. */}

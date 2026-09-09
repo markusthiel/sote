@@ -258,6 +258,7 @@ export function Settings({
   section,
   projects,
   workspaceName,
+  workspaceId,
   displayName,
   email,
   userId,
@@ -267,6 +268,11 @@ export function Settings({
   /** Für „ein bestimmtes Projekt" — die Liste ist ohnehin da. */
   projects: readonly { id: string; name: string }[];
   workspaceName: string;
+  /**
+   * WELCHER Arbeitsbereich. Ohne ihn nahm der Server den ersten — und die
+   * Akzentfarbe „dieses" Arbeitsbereichs war immer die des ersten.
+   */
+  workspaceId: string | undefined;
   displayName: string;
   email: string;
   /** Für die Adresse des eigenen Bildes: `/api/users/:id/picture`. */
@@ -291,7 +297,7 @@ export function Settings({
 
   const load = async () => {
     try {
-      setData(await api.settings());
+      setData(await api.settings(workspaceId));
     } catch (e) {
       setNotice(e instanceof ApiError ? e.message : 'Laden ging nicht.');
     }
@@ -313,7 +319,7 @@ export function Settings({
        * PATCH enthält, was die Ebene jetzt sagt; was daraus insgesamt folgt,
        * rechnet der Kern mit derselben Funktion wie der Server.
        */
-      const saved = await api.patchSettings(scope, changes);
+      const saved = await api.patchSettings(scope, changes, workspaceId);
       // `data` ist hier gesetzt: ohne geladene Antwort gibt es keine Knöpfe.
       const levels = { ...data!.levels, [scope]: saved.settings };
       const next = {

@@ -48,9 +48,10 @@ export function WorkspaceOverview({
             ))}
           </tbody>
         </table>
+        {/* Stand hier: „Weitere anzulegen gibt es noch nicht." Ehrlich damals,
+            falsch seit dem Fuß im Wähler — und im Bild gefunden, nicht im Code. */}
         <p className="muted small">
-          Weitere anzulegen gibt es noch nicht. Einer je Konto, und der gehört
-          dir.
+          Einen weiteren legst du oben im Wähler an — „Neuer Arbeitsbereich".
         </p>
       </section>
     </div>

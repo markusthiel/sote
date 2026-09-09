@@ -651,15 +651,30 @@ export const api = {
       body: JSON.stringify({ body }),
     }),
 
-  settings: () => call<SettingsAnswer>('/api/settings'),
+  /*
+   * MIT dem Arbeitsbereich — beides, Lesen und Schreiben.
+   *
+   * Gemeldet: „Wenn ich einen neuen Workspace anlege und dort die Akzentfarbe
+   * ändere, dann ändert sich auch die Akzentfarbe von allen anderen." Der
+   * Server entscheidet die Ebene „Arbeitsbereich" nach `?workspace=`, und
+   * ohne den Parameter nimmt er den ERSTEN, in dem man Mitglied ist. Diese
+   * beiden Aufrufe schickten ihn nie mit: „Arbeitsbereich" hieß hier in
+   * Wahrheit immer derselbe, egal wo man stand. Jede andere Route bekommt ihn;
+   * diese zwei hatte ich beim Bauen der Einstellungen vergessen, als es nur
+   * einen Arbeitsbereich gab — und dann konnte es niemandem auffallen.
+   */
+  settings: (workspace?: string) =>
+    call<SettingsAnswer>(`/api/settings${workspace === undefined ? '' : `?workspace=${workspace}`}`),
   /** `null` bei einem Feld heißt „nichts gesagt" — die Ebene darüber gilt. */
   patchSettings: (
     scope: 'instance' | 'workspace' | 'user',
     body: Record<string, unknown>,
-  ) => call<{ settings: SettingsAnswer['levels']['user'] }>(`/api/settings/${scope}`, {
-    method: 'PATCH',
-    body: JSON.stringify(body),
-  }),
+    workspace?: string,
+  ) =>
+    call<{ settings: SettingsAnswer['levels']['user'] }>(
+      `/api/settings/${scope}${workspace === undefined ? '' : `?workspace=${workspace}`}`,
+      { method: 'PATCH', body: JSON.stringify(body) },
+    ),
   projects: (workspace?: string) =>
     call<{ projects: Project[] }>(
       `/api/projects${workspace === undefined ? '' : `?workspace=${workspace}`}`,
