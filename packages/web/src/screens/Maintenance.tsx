@@ -54,17 +54,14 @@ export function Maintenance() {
           zweimal laufen, und jeder ist so gebaut, dass das nichts schadet.
         </p>
         <div className="settings-row">
-          <span className="settings-row-label"><b>Bearbeiter</b></span>
+          <span className="settings-row-label"><b>Bearbeiter</b><span>Der Papierkorb leert sich nach {data.trashDays} Tagen — gerechnet
+              vom Wegwerfen, nicht vom Anlegen.</span></span>
           <div className="settings-row-value">
             {data.kinds.length === 0 ? (
               <span className="muted">keine</span>
             ) : (
               <code>{data.kinds.join(', ')}</code>
             )}
-            <p className="muted small">
-              Der Papierkorb leert sich nach {data.trashDays} Tagen — gerechnet
-              vom Wegwerfen, nicht vom Anlegen.
-            </p>
           </div>
         </div>
         <div className="settings-row">

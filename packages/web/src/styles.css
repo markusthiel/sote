@@ -2306,10 +2306,42 @@ select.target {
 .settings-row > .settings-row-value {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: flex-end;
   gap: var(--sone-space-2);
+  /*
+   * Nicht unter den eigenen Inhalt.
+   *
+   * SONEs Regel gibt beiden Spalten Schrumpfung nach ihrer Grundbreite — und
+   * SOTEs Hinweise sind zwei Sätze, SONEs einer. Mit einem langen Hinweis hat
+   * die Beschriftung eine riesige Grundbreite, nimmt aber nur ihren Anteil, und
+   * die Bedienspalte wurde von 154 auf 102px gedrückt: „Bild wählen" ragte aus
+   * der Karte. Gemessen, nicht geraten. Also: die Bedienspalte behält ihren
+   * Inhalt, die Beschriftung bricht um — mit einem Deckel, damit ein sehr
+   * breites Bedienelement der Beschriftung nicht alles nimmt.
+   */
+  flex: 0 0 auto;
+  max-inline-size: 55%;
   min-inline-size: 0;
-  text-align: start;
+  text-align: end;
+}
+.settings-row > .settings-row-value > .muted { text-align: start; align-self: stretch; }
+
+/* Below that, side by side stops working: the label wraps to two lines and the
+   field has nowhere to go. Stacked, both get the full width. (SONE) */
+@media (max-width: 620px) {
+  .settings-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--sone-space-3);
+  }
+  .settings-row > :not(.settings-row-label) { text-align: start; }
+  .settings-row > .settings-row-value {
+    max-inline-size: none;
+    align-items: stretch;
+    text-align: start;
+  }
+  .settings-row input,
+  .settings-row select { inline-size: 100%; }
 }
 .settings-row > .settings-row-value > .muted {
   margin: 0;

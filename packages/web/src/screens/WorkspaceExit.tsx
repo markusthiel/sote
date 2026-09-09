@@ -87,7 +87,8 @@ export function WorkspaceExit({
           dafür.
         </p>
         <div className="settings-row">
-          <span className="settings-row-label"><b>Name abtippen</b></span>
+          <span className="settings-row-label"><b>Name abtippen</b><span>Dein <em>letzter</em> Arbeitsbereich lässt sich nicht löschen —
+              sonst landest du nirgends.</span></span>
           <div className="settings-row-value">
             <div className="pick">
               <input
@@ -123,10 +124,6 @@ export function WorkspaceExit({
                 Endgültig löschen
               </button>
             </div>
-            <p className="muted small">
-              Dein <em>letzter</em> Arbeitsbereich lässt sich nicht löschen —
-              sonst landest du nirgends.
-            </p>
           </div>
         </div>
       </section>

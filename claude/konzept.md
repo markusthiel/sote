@@ -1956,10 +1956,13 @@ erfunden.
   `settings-heading`, `settings-actions`, `settings-nav-*` — in zwölf Dateien
   die Klassen umgestellt. Gemessen: Karte 16 px Polster / 4 px Radius, Zeile 8
   px, Beschriftung 550, Navigation 34 px / 14,4 px.
-  - **Restarbeit, benannt:** die Hinweise stehen noch in der Bedienspalte (links
-    ausgerichtet, 42 ch), nicht unter der Beschriftung wie bei SONE. Sie wandern
-    Bildschirm für Bildschirm — 33 Zeilen in acht Bildschirmen, das ist
-    Handarbeit je Zeile.
+  - **7b, erledigt:** 15 Hinweise sind in die Beschriftung gewandert (SONEs
+    `<b>Wort</b><span>Hinweis</span>`); Zustandsmeldungen in Bedingungen blieben
+    in der Spalte — der Verschieber hatte eine herausgerissen. Zwei Funde:
+    **die Bedienspalte darf nicht unter ihren Inhalt** (SOTEs Hinweise sind zwei
+    Sätze, SONEs einer; bei langer Grundbreite der Beschriftung wurde die Spalte
+    von 154 auf 102 px gedrückt), und **unter 620 px stapelt die Zeile**, SONEs
+    Regel wörtlich.
   - **Spezifität, zum zweiten Mal:** SONEs `.settings-row > :not(.settings-row-label)`
     richtet die Bedienspalte rechts aus und schlägt eine einzelne Klasse. Drei
     Zeilen Hinweistext standen rechtsbündig unter einem Knopf.

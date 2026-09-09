@@ -427,7 +427,9 @@ export function Settings({
       ))}
 
       <div className="settings-row">
-        <span className="settings-row-label"><b>Schrift</b></span>
+        <span className="settings-row-label"><b>Schrift</b><span>Ein benanntes Paar und keine Schriftfamilie: eine eingetippte Schrift
+            ist eine, die die Maschine der anderen vielleicht nicht hat — und wer
+            sie eingetippt hat, sieht seine eigene und kann es nicht wissen.</span></span>
         <div className="settings-row-value">
           <div className="set-choice" role="radiogroup" aria-label="Schrift">
             {FONTS.map((f) => (
@@ -447,11 +449,6 @@ export function Settings({
               </button>
             ))}
           </div>
-          <p className="muted small">
-            Ein benanntes Paar und keine Schriftfamilie: eine eingetippte Schrift
-            ist eine, die die Maschine der anderen vielleicht nicht hat — und wer
-            sie eingetippt hat, sieht seine eigene und kann es nicht wissen.
-          </p>
         </div>
       </div>
 
@@ -482,7 +479,9 @@ export function Settings({
         Thema geprüft wird.
       */}
       <div className="settings-row">
-        <span className="settings-row-label"><b>Als Datei</b></span>
+        <span className="settings-row-label"><b>Als Datei</b><span>Eine Datei trägt das ganze Thema: Farben, Flächen, Ecken, Schrift und
+            hell oder dunkel. Geladen wird sie sofort übernommen — eine Datei
+            kann nichts, was du hier nicht auch einstellen könntest.</span></span>
         <div className="settings-row-value">
           <div className="pick">
             <button
@@ -550,16 +549,13 @@ export function Settings({
               />
             </label>
           </div>
-          <p className="muted small">
-            Eine Datei trägt das ganze Thema: Farben, Flächen, Ecken, Schrift und
-            hell oder dunkel. Geladen wird sie sofort übernommen — eine Datei
-            kann nichts, was du hier nicht auch einstellen könntest.
-          </p>
         </div>
       </div>
 
       <div className="settings-row">
-        <span className="settings-row-label"><b>Tönung</b></span>
+        <span className="settings-row-label"><b>Tönung</b><span>Wird in Seitenleiste, Bereiche und Menüs gemischt — eine Farbe statt
+            einer pro Fläche, damit sie weiter zusammengehören. Die Seite bleibt
+            fast unberührt.</span></span>
         <div className="settings-row-value">
           <div className="pick">
             {/*
@@ -584,11 +580,6 @@ export function Settings({
               Zurücksetzen
             </button>
           </div>
-          <p className="muted small">
-            Wird in Seitenleiste, Bereiche und Menüs gemischt — eine Farbe statt
-            einer pro Fläche, damit sie weiter zusammengehören. Die Seite bleibt
-            fast unberührt.
-          </p>
         </div>
       </div>
 
@@ -794,7 +785,9 @@ export function Settings({
         <section className="settings-card">
           <h2>Profil</h2>
           <div className="settings-row">
-            <span className="settings-row-label"><b>Bild</b></span>
+            <span className="settings-row-label"><b>Bild</b><span>Wird im Browser auf 512 Pixel verkleinert, bevor es hochgeht —
+                das Original bleibt auf deinem Gerät. Ein Profilbild wird
+                zweiundzwanzig Pixel breit gezeichnet.</span></span>
             <div className="settings-row-value">
               <div className="pic-row">
                 {/*
@@ -859,11 +852,6 @@ export function Settings({
                   ) : null}
                 </div>
               </div>
-              <p className="muted small">
-                Wird im Browser auf 512 Pixel verkleinert, bevor es hochgeht —
-                das Original bleibt auf deinem Gerät. Ein Profilbild wird
-                zweiundzwanzig Pixel breit gezeichnet.
-              </p>
               {picNotice === undefined ? null : (
                 <p className="note-error">{picNotice}</p>
               )}
@@ -874,14 +862,11 @@ export function Settings({
             <div className="settings-row-value">{displayName}</div>
           </div>
           <div className="settings-row">
-            <span className="settings-row-label"><b>E-Mail</b></span>
+            <span className="settings-row-label"><b>E-Mail</b><span>Sie erkennt das Konto beim Anmelden. Sie zu ändern braucht einen
+                Weg, die neue Adresse als eigene zu belegen — den hat diese
+                Instanz noch nicht.</span></span>
             <div className="settings-row-value">
               {email}
-              <p className="muted small">
-                Sie erkennt das Konto beim Anmelden. Sie zu ändern braucht einen
-                Weg, die neue Adresse als eigene zu belegen — den hat diese
-                Instanz noch nicht.
-              </p>
             </div>
           </div>
         </section>
@@ -907,7 +892,9 @@ export function Settings({
             nichts mehr an nichts.
           </p>
           <div className="settings-row">
-            <span className="settings-row-label"><b>Post am Morgen</b></span>
+            <span className="settings-row-label"><b>Post am Morgen</b><span>Deine Ortszeit ({data.effective.zone ?? 'UTC'}). Nachgesehen wird
+                alle fünfzehn Minuten — der Brief kommt also kurz nach der
+                gewählten Zeit, nie davor.</span></span>
             <div className="settings-row-value">
               <div className="pick">
                 <input
@@ -938,11 +925,6 @@ export function Settings({
                   </button>
                 )}
               </div>
-              <p className="muted small">
-                Deine Ortszeit ({data.effective.zone ?? 'UTC'}). Nachgesehen wird
-                alle fünfzehn Minuten — der Brief kommt also kurz nach der
-                gewählten Zeit, nie davor.
-              </p>
             </div>
           </div>
         </section>
@@ -960,7 +942,9 @@ export function Settings({
         <section className="settings-card">
           <h2>Zeit</h2>
           <div className="settings-row">
-            <span className="settings-row-label"><b>Zeitzone</b></span>
+            <span className="settings-row-label"><b>Zeitzone</b><span>Der Browser weiß, wo du gerade bist, und hat beim Tippen Vorrang.
+                Diese Angabe gilt für alles, was ohne Browser passiert — später
+                etwa nächtliche Erinnerungen.</span></span>
             <div className="settings-row-value">
               <select
                 aria-label="Deine Zeitzone"
@@ -977,11 +961,6 @@ export function Settings({
                   </option>
                 ))}
               </select>
-              <p className="muted small">
-                Der Browser weiß, wo du gerade bist, und hat beim Tippen Vorrang.
-                Diese Angabe gilt für alles, was ohne Browser passiert — später
-                etwa nächtliche Erinnerungen.
-              </p>
             </div>
           </div>
         </section>

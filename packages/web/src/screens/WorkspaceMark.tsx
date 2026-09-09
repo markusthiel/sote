@@ -134,7 +134,7 @@ export function WorkspaceMark({
         <h2>Name und Zeichen</h2>
 
         <div className="settings-row">
-          <span className="settings-row-label"><b>Name</b></span>
+          <span className="settings-row-label"><b>Name</b><span>Überall, wo dieser Workspace auftaucht.</span></span>
           <div className="settings-row-value">
             <input
               className="set-input"
@@ -156,18 +156,14 @@ export function WorkspaceMark({
                 }
               }}
             />
-            <p className="muted small">Überall, wo dieser Workspace auftaucht.</p>
           </div>
         </div>
 
         <div className="settings-row">
-          <span className="settings-row-label"><b>Deine Rolle</b></span>
+          <span className="settings-row-label"><b>Deine Rolle</b><span>Was du hier darfst. Rollen zu setzen gehört zu „Leute" — den
+              Bildschirm gibt es noch nicht.</span></span>
           <div className="settings-row-value">
             {owner ? 'Eigentümer' : 'Mitglied'}
-            <p className="muted small">
-              Was du hier darfst. Rollen zu setzen gehört zu „Leute" — den
-              Bildschirm gibt es noch nicht.
-            </p>
           </div>
         </div>
       </section>

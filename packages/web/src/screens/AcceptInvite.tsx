@@ -79,7 +79,7 @@ export function AcceptInvite({ token, onDone }: { token: string; onDone: () => v
           </div>
         </div>
         <div className="settings-row">
-          <span className="settings-row-label"><b>Kennwort</b></span>
+          <span className="settings-row-label"><b>Kennwort</b><span>Mindestens acht Zeichen.</span></span>
           <div className="settings-row-value">
             <input
               className="set-input"
@@ -91,7 +91,6 @@ export function AcceptInvite({ token, onDone }: { token: string; onDone: () => v
             />
             {/* Die Grenze steht VOR dem Abschicken da. Ein Formular, das erst
                 nach dem Klick sagt, was es verlangt, lässt jemanden raten. */}
-            <p className="muted small">Mindestens acht Zeichen.</p>
           </div>
         </div>
 

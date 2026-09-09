@@ -132,7 +132,7 @@ export function Roles({ workspace }: { workspace: string | undefined }) {
           ) : null}
 
           <div className="settings-row">
-            <span className="settings-row-label"><b>In den Projekten</b></span>
+            <span className="settings-row-label"><b>In den Projekten</b><span>{LEVEL_SAYS[r.listLevel ?? 'none'].hint}</span></span>
             <div className="settings-row-value">
               <div className="set-choice" role="radiogroup" aria-label={`Stufe von ${r.name}`}>
                 {(['none', ...LIST_LEVELS] as const).map((lvl) => (
@@ -159,7 +159,6 @@ export function Roles({ workspace }: { workspace: string | undefined }) {
                   </button>
                 ))}
               </div>
-              <p className="muted small">{LEVEL_SAYS[r.listLevel ?? 'none'].hint}</p>
             </div>
           </div>
 
@@ -237,7 +236,8 @@ export function Roles({ workspace }: { workspace: string | undefined }) {
         <section className="settings-card">
           <h2>Eine Rolle anlegen</h2>
           <div className="settings-row">
-            <span className="settings-row-label"><b>Name</b></span>
+            <span className="settings-row-label"><b>Name</b><span>Sie beginnt mit „Mitlesen" und ohne Rechte — was sie gibt, stellst
+                du in ihrer Karte ein.</span></span>
             <div className="settings-row-value">
               <div className="pick">
                 <input
@@ -273,10 +273,6 @@ export function Roles({ workspace }: { workspace: string | undefined }) {
                   Anlegen
                 </button>
               </div>
-              <p className="muted small">
-                Sie beginnt mit „Mitlesen" und ohne Rechte — was sie gibt, stellst
-                du in ihrer Karte ein.
-              </p>
             </div>
           </div>
         </section>

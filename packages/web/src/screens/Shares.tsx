@@ -188,7 +188,7 @@ export function Shares({
         </div>
 
         <div className="settings-row">
-          <span className="settings-row-label"><b>Ablauf</b></span>
+          <span className="settings-row-label"><b>Ablauf</b><span>Freiwillig. Ein Ablauf ist die Freigabe, die sich selbst aufräumt.</span></span>
           <div className="settings-row-value">
             <input
               type="date"
@@ -201,9 +201,6 @@ export function Shares({
             {/* Freiwillig, mit einem Vorschlag: eine Pflicht macht Leute
                 erfinderisch (ein Jahr), ein Vorschlag macht den Ablauf zur
                 Gewohnheit. */}
-            <p className="muted small">
-              Freiwillig. Ein Ablauf ist die Freigabe, die sich selbst aufräumt.
-            </p>
           </div>
         </div>
 
