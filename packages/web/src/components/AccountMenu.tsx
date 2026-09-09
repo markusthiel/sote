@@ -32,7 +32,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 
-import { PersonIcon, SettingsIcon, SignOutIcon, SlidersIcon } from './icons.js';
+import { SettingsIcon, SignOutIcon, SlidersIcon } from './icons.js';
 
 export function AccountMenu({
   displayName,
@@ -100,11 +100,11 @@ export function AccountMenu({
   const initials = displayName.trim().charAt(0).toUpperCase() || '?';
 
   return (
-    <div className="account" ref={box}>
+    <div className="sidebar-footer" ref={box}>
       <button
         ref={knob}
         type="button"
-        className="account-face"
+        className="sidebar-account"
         aria-haspopup="menu"
         aria-expanded={open}
         // Nur der Name. Was wartet, wird an der Glocke angesagt, weil es dort
@@ -113,27 +113,26 @@ export function AccountMenu({
         aria-label={`${displayName} — Konto`}
         onClick={() => setOpen((o) => !o)}
       >
-        <span className="face" aria-hidden="true">
+        <span className="sidebar-avatar" aria-hidden="true">
           {initials}
         </span>
-        {label === undefined ? null : <span className="account-name">{label}</span>}
+        {label === undefined ? null : <span className="sidebar-account-name">{label}</span>}
       </button>
 
       {open ? (
-        <div className="account-menu" role="menu">
+        <div className="sidebar-account-menu" role="menu">
           {/* Wer man ist, ohne Knopf: eine Auskunft, die man nicht drücken
               kann, soll auch nicht aussehen wie eine, die man drücken kann. */}
-          <div className="account-who">
-            <PersonIcon size={15} />
-            <span>
-              <strong>{displayName}</strong>
-              <span className="account-mail">{email}</span>
-            </span>
-          </div>
+          {/*
+            Kein Kopf mit Name und Adresse — SONEs Kontomenü hat keinen. Der
+            Name steht am Knopf, die Adresse unter Einstellungen › Profil, und
+            ein Menü, das oben wiederholt, was der Knopf schon sagt, ist eine
+            Zeile, die man überliest, um zu den Einträgen zu kommen.
+          */}
           <button
             type="button"
             role="menuitem"
-            className="account-item"
+           
             onClick={() => {
               setOpen(false);
               onSettings();
@@ -146,7 +145,7 @@ export function AccountMenu({
             <button
               type="button"
               role="menuitem"
-              className="account-item"
+             
               onClick={() => {
                 setOpen(false);
                 onAdmin();
@@ -158,7 +157,7 @@ export function AccountMenu({
           )}
           {/* Zuletzt und abgesetzt: das eine hier, was man nicht durch
               nochmaliges Drücken zurücknimmt. */}
-          <button type="button" role="menuitem" className="account-item" onClick={onSignOut}>
+          <button type="button" role="menuitem" onClick={onSignOut}>
             <SignOutIcon size={15} />
             Abmelden
           </button>

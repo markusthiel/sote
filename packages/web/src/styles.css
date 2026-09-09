@@ -566,17 +566,6 @@ input {
   flex: 1;
 }
 
-.face {
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  background: var(--accent-500);
-  color: #fff;
-  font-size: 11px;
-  font-weight: 600;
-  display: grid;
-  place-items: center;
-}
 
 .badge {
   position: absolute;
@@ -2188,133 +2177,9 @@ select.target {
   color: var(--text);
 }
 
-/* ── Das Konto, und das Menü dahinter ──────────────────────────────────────
-   Nachgebaut aus SONEs AccountMenu: ein Zeichen statt einer Reihe, Namen im
-   Menü statt Symbolen in der Leiste. Vorher hing der Knopf an einer leeren
-   Funktion — abmelden ging überhaupt nicht. */
 
-.account {
-  position: relative;
-}
 
-.account-face {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 3px;
-  width: 100%;
-  min-height: var(--sote-tap);
-  padding: 6px 0;
-  border: 0;
-  border-radius: var(--sote-radius-md);
-  background: none;
-  color: inherit;
-  font: inherit;
-  cursor: pointer;
-}
 
-.account-face:hover {
-  background: var(--sunken);
-}
-
-.account-name {
-  font-size: 10px;
-  color: var(--text-muted);
-}
-
-/* Über dem Gesicht und nach rechts: in der Schiene sitzt es unten links, und
-   ein Menü, das nach unten aufgeht, hätte dort keinen Platz. */
-/*
- * Das Menü öffnet nach rechts — am Fuß der Schiene.
- *
- * Dort ist links Platz. In der Fußleiste des Telefons sitzt das Konto ganz
- * rechts, und dasselbe `left: 4px` schob das Menü 180 Pixel aus dem Fenster:
- * gemessen auf 390 px stand es von x=338 bis x=570. Man sah einen Streifen und
- * konnte „Abmelden" nicht lesen, geschweige denn treffen.
- *
- * Gefunden beim Durchmessen der Zustände, nicht der Seiten — die Seite war in
- * Ordnung, das offene Menü nicht. Ein Durchgang, der nur Adressen abklappert,
- * hätte es nicht gesehen.
- */
-.account-menu {
-  position: absolute;
-  z-index: 40;
-  bottom: calc(100% + 4px);
-  left: 4px;
-  min-width: 232px;
-  padding: 5px;
-  border: 1px solid var(--line-strong);
-  border-radius: var(--sote-radius-lg);
-  background: var(--raised);
-  box-shadow: var(--sote-shadow-lg);
-  text-align: left;
-}
-
-/*
- * In der Fußleiste rechts ausgerichtet.
- *
- * `max-width` dazu, weil 232 px auf einem sehr schmalen Gerät auch von rechts
- * nicht hineinpassen müssen: dann wird das Menü schmaler statt unerreichbar.
- */
-.footbar .account-menu {
-  left: auto;
-  right: 4px;
-  max-width: calc(100vw - 16px);
-}
-
-/* Eine Auskunft, die man nicht drücken kann, soll nicht aussehen wie eine,
-   die man drücken kann. */
-.account-who {
-  display: flex;
-  align-items: flex-start;
-  gap: 9px;
-  padding: 8px 9px 10px;
-  border-bottom: 1px solid var(--line);
-  margin-bottom: 5px;
-  font-size: 13px;
-  color: var(--text);
-}
-
-.account-who > span {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
-.account-mail {
-  color: var(--text-muted);
-  font-size: 11.5px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.account-item {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  width: 100%;
-  min-height: 32px;
-  padding: 7px 9px;
-  border: 0;
-  border-radius: var(--sote-radius-md);
-  background: none;
-  color: var(--text);
-  font: inherit;
-  font-size: 13.5px;
-  text-align: left;
-  cursor: pointer;
-}
-
-.account-item:hover {
-  background: var(--sunken);
-}
-
-/* In der Fußleiste steht das Menü über der Leiste und mittig, nicht links. */
-.foot .account-menu {
-  bottom: calc(100% + 8px);
-  left: auto;
-  right: 8px;
-}
 
 /* ── Einstellungen ─────────────────────────────────────────────────────────
    Ein eigener Bildschirm und kein Dialog: ein Dialog über etwas, das man beim
@@ -3914,6 +3779,157 @@ label.btn {
   outline-offset: 2px;
 }
 .block-menu-swatch:disabled { opacity: 0.35; }
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * Das Kontomenü — SONEs `sidebar-footer` / `sidebar-account` /
+ * `sidebar-account-menu`, wörtlich, mit SONEs `.rail-account`-Anpassung.
+ *
+ * Bei SONE ist es EIN Bauteil an zwei Orten: im Fuß der Leiste mit Namen, in
+ * der Schiene auf das Gesicht verkürzt, das Menü öffnet dort nach rechts.
+ * SOTE hat nur die Schiene (und die Fußleiste auf dem Telefon), also gilt hier
+ * überall die Schienen-Form.
+ * ═══════════════════════════════════════════════════════════════════════ */
+
+.sidebar-footer {
+  display: flex;
+  align-items: center;
+  gap: var(--sone-space-2);
+  padding: var(--sone-space-4) var(--sone-space-3);
+  border-block-start: 1px solid var(--border-subtle);
+  margin-block-start: auto;
+  position: relative;
+}
+
+.sidebar-account {
+  display: flex;
+  align-items: center;
+  gap: var(--sone-space-4);
+  flex: 1 1 auto;
+  min-inline-size: 0;
+  min-block-size: var(--sone-tap);
+  padding-inline: var(--sone-space-2);
+  border: 0;
+  border-radius: var(--sone-radius);
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: var(--sone-text-sm);
+  text-align: start;
+  cursor: pointer;
+}
+.sidebar-account:hover { background: var(--surface-hover); }
+
+.sidebar-avatar {
+  display: grid;
+  place-items: center;
+  inline-size: 22px;
+  block-size: 22px;
+  border-radius: 50%;
+  background: var(--accent-quiet);
+  color: var(--accent-text);
+  font-size: var(--sone-text-xs);
+  font-weight: 600;
+  flex: none;
+  overflow: hidden;
+}
+.sidebar-avatar img { inline-size: 100%; block-size: 100%; object-fit: cover; }
+
+.sidebar-account-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebar-account-menu {
+  position: absolute;
+  inset-block-end: calc(100% + var(--sone-space-2));
+  inset-inline-start: var(--sone-space-2);
+  inline-size: 200px;
+  padding: var(--sone-space-2);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--sone-radius-lg);
+  background: var(--surface-overlay);
+  box-shadow: var(--sone-shadow-lg);
+  z-index: 60;
+}
+
+.sidebar-account-menu a,
+.sidebar-account-menu button {
+  display: flex;
+  align-items: center;
+  /* A mark, then the name. The gap is the same as the entry menu's, so the two
+     popups read as the same kind of thing. (SONE) */
+  gap: var(--sone-space-4);
+  inline-size: 100%;
+  min-block-size: var(--sone-control-lg);
+  padding-inline: var(--sone-space-4);
+  border: 0;
+  border-radius: var(--sone-radius-sm);
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: var(--sone-text-sm);
+  text-decoration: none;
+  text-align: start;
+  cursor: pointer;
+}
+.sidebar-account-menu svg {
+  flex: none;
+  inline-size: 16px;
+  block-size: 16px;
+  color: var(--text-muted);
+}
+.sidebar-account-menu a:hover svg,
+.sidebar-account-menu button:hover svg { color: var(--text-primary); }
+.sidebar-account-menu a:hover,
+.sidebar-account-menu button:hover { background: var(--surface-hover); }
+
+/* In der Schiene: auf das Gesicht verkürzt, das Menü öffnet nach rechts. (SONE) */
+.rail-account {
+  margin-block-start: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.rail-account .sidebar-footer {
+  gap: 0;
+  padding: 0;
+  border-block-start: 0;
+  margin-block-start: 0;
+}
+.rail-account .sidebar-account-name { display: none; }
+.rail-account .sidebar-account {
+  position: relative;
+  flex: none;
+  inline-size: var(--sone-tap);
+  justify-content: center;
+  padding-inline: 0;
+}
+.rail-account .sidebar-avatar { inline-size: 26px; block-size: 26px; }
+/* Die Schiene ist dunkel: Gesicht in Umkehrfarben, sonst leuchtet ein heller
+   Kreis in einer dunklen Spalte. */
+.rail .rail-account .sidebar-avatar {
+  background: var(--inverse-accent);
+  color: var(--inverse-bg);
+}
+.rail .rail-account .sidebar-account:hover { background: var(--inverse-hover); }
+.rail-account .sidebar-account-menu {
+  inset-block-end: 0;
+  inset-inline-start: calc(100% + var(--sone-space-3));
+}
+
+/* In der Fußleiste auf dem Telefon: das Menü öffnet nach OBEN und rechts —
+   nach rechts hinaus wäre außerhalb des Bildschirms. Der Name „Du" bleibt. */
+.foot-account .sidebar-account-name { display: inline; }
+.foot-account .sidebar-account { inline-size: auto; padding-inline: var(--sone-space-2); }
+.foot-account .sidebar-account-menu {
+  inset-block-end: calc(100% + var(--sone-space-2));
+  inset-inline-start: auto;
+  inset-inline-end: var(--sone-space-2);
+  /* Und schmaler werden statt unerreichbar bleiben: 200px passen auf einem
+     sehr engen Gerät auch von rechts nicht immer hinein. */
+  max-inline-size: calc(100vw - 16px);
+}
 
 /* Eine Filterzeile, die zurückgenommen wird: leiser als die Filter selbst,
    weil sie nichts findet, sondern etwas aufhebt. */

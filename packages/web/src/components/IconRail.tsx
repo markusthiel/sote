@@ -65,9 +65,14 @@ export function IconRail({
       <span className="rail-spacer" />
       {/* Kein Wort unter dem Gesicht: in einer Spalte ist Platz, und der Name
           steht im Menü. Die Fußleiste gibt „Du" mit — siehe AccountMenu. */}
-      <AccountMenu displayName={displayName} email={email} onSettings={onSettings}
-        onAdmin={onAdmin}
-        onSignOut={onSignOut} />
+      {/* SONEs `.rail-account`: dasselbe Bauteil wie im Fuß der Leiste, in der
+          Schiene auf das Gesicht verkürzt — der Name fällt weg, das Menü
+          öffnet nach rechts statt nach oben. */}
+      <div className="rail-account">
+        <AccountMenu displayName={displayName} email={email} onSettings={onSettings}
+          onAdmin={onAdmin}
+          onSignOut={onSignOut} />
+      </div>
     </nav>
   );
 }

@@ -217,11 +217,20 @@ test('ein Klappmenü am rechten Rand öffnet nach links', () => {
    * landet, muss es von rechts verankert sein. Das ist gröber als eine
    * Messung, aber es hält die Regel fest, die der nächste Ort auch braucht.
    */
-  const block = CSS.slice(CSS.indexOf('.footbar .account-menu'));
+  /*
+   * Der Selektor heißt seit der Angleichung an SONE `.foot-account
+   * .sidebar-account-menu`, und die Eigenschaften sind logisch
+   * (`inset-inline-end` statt `right`). Die Regel ist dieselbe; der Wächter
+   * prüft sie und nicht die alte Schreibweise — ein Wächter, der einen Namen
+   * festschreibt, blockiert irgendwann die richtige Änderung.
+   */
+  const at = CSS.indexOf('.foot-account .sidebar-account-menu');
+  assert.notEqual(at, -1, 'die Fußleisten-Regel für das Kontomenü fehlt');
+  const block = CSS.slice(at);
   const regel = block.slice(0, block.indexOf('}'));
-  assert.match(regel, /right:\s*4px/, 'in der Fußleiste von rechts verankert');
-  assert.match(regel, /left:\s*auto/, 'und links losgelassen');
-  // Und schmaler werden statt unerreichbar bleiben: 232 px passen auf einem
-  // sehr engen Gerät auch von rechts nicht hinein.
-  assert.match(regel, /max-width:\s*calc\(100vw/, 'darf schmaler werden');
+  assert.match(regel, /inset-inline-end:\s*var\(--sone-space-2\)/, 'in der Fußleiste von rechts verankert');
+  assert.match(regel, /inset-inline-start:\s*auto/, 'und links losgelassen');
+  // Und schmaler werden statt unerreichbar bleiben: 200 px passen auf einem
+  // sehr engen Gerät auch von rechts nicht immer hinein.
+  assert.match(regel, /max-inline-size:\s*calc\(100vw/, 'darf schmaler werden');
 });

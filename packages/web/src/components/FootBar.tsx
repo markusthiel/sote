@@ -65,14 +65,16 @@ export function FootBar({
       {/* „Du" als Wort unter dem Gesicht: hier hat jeder Eintrag eine
           Beschriftung, und ein unbeschriftetes Gesicht daneben liest sich als
           Versehen (SONEs ADR-0074). */}
-      <AccountMenu
-        displayName={displayName}
-        label="Du"
-        email={email}
-        onSettings={onSettings}
-        onAdmin={onAdmin}
-        onSignOut={onSignOut}
-      />
+      <div className="rail-account foot-account">
+        <AccountMenu
+          displayName={displayName}
+          label="Du"
+          email={email}
+          onSettings={onSettings}
+          onAdmin={onAdmin}
+          onSignOut={onSignOut}
+        />
+      </div>
     </nav>
   );
 }

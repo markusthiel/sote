@@ -1937,7 +1937,17 @@ erfunden.
   - **Ein spezifischerer Selektor gewann still:** `.menu.at-point` setzte 312 px
     und eigene Fläche, also blieb SONEs Regel auf `.menu` wirkungslos. Gefunden
     nur durch Messen — die Funktionsprüfung war grün.
-- **Noch offen, in dieser Reihenfolge:** Kontomenü, Workspace-Wähler,
+- **Fläche 5, das Kontomenü:** SONEs `sidebar-footer`, `sidebar-account`,
+  `sidebar-avatar`, `sidebar-account-menu` und die `.rail-account`-Anpassung
+  für die Schiene — bei SONE ist es *ein* Bauteil an zwei Orten. 200 px, öffnet
+  in der Schiene nach rechts, in der Fußleiste nach oben. Der Kopf mit Name und
+  Adresse fiel weg: SONEs Menü hat keinen, und eine Zeile, die wiederholt, was
+  der Knopf schon sagt, überliest man.
+  - **Ein Wächter prüfte einen Namen statt die Regel** (`.footbar
+    .account-menu`, `right: 4px`). Die Regel — in der Fußleiste von rechts
+    verankert, darf schmaler werden — gilt weiter; er prüft sie jetzt am neuen
+    Selektor mit logischen Eigenschaften.
+- **Noch offen, in dieser Reihenfolge:** Workspace-Wähler,
   Einstellungen (`settings-card`, `settings-row`, `section-nav`), Knöpfe und
   Felder, Dialoge — und zuletzt ein Wächter gegen harte Pixelwerte, wo eine
   Skala existiert.
