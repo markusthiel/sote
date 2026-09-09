@@ -4191,6 +4191,71 @@ label.btn {
    jedem Hinweis wäre ein Rand, den niemand gewollt hat. */
 .switcher-menu .small { padding-inline: var(--sone-space-2); }
 
+/* ══════════════════════════════════════════════════════════════════════════
+ * Tabellen und Kennzeichen der Verwaltung — wiederhergestellt, auf der Skala.
+ *
+ * Bei Fläche 6 (Workspace-Wähler) habe ich SOTEs alte `.ws-*`-Regeln per Regex
+ * entfernt — und der Ausdruck traf ALLE Klassen mit diesem Anfang, auch diese
+ * vier, die mit dem Wähler nichts zu tun haben: `ws-table` (Leute, Konten,
+ * Einladungen, Wartung), `ws-here`, `ws-dot`, `ws-preview`. Vier Bildschirme
+ * verloren ihre Tabellengestalt, und niemand hat es gesehen. Gefunden vom
+ * Wächter `check-styles`: Klassen im Markup ohne Regel.
+ *
+ * Aus 489e3f3 zurückgeholt — und derselbe Wächter meldete gleich darauf, dass
+ * die alten Regeln harte Pixel trugen (13.5px, 10px, 6px 8px). Also nicht
+ * zurückkopiert, sondern auf SONEs Skala gesetzt: Text-md, Text-xs, Space-3/-4.
+ * SONEs `.admin-table` ist die Fläche, in die diese Tabellen später wandern.
+ * ═══════════════════════════════════════════════════════════════════════ */
+.ws-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--sone-text-md);
+}
+
+.ws-table th {
+  text-align: left;
+  padding: var(--sone-space-3) var(--sone-space-4);
+  border-bottom: 1px solid var(--border-subtle);
+  font-family: var(--sone-font-mono);
+  font-size: var(--sone-text-xs);
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.ws-table td {
+  padding: var(--sone-space-4);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.ws-table tr[aria-current='true'] {
+  background: var(--surface-hover);
+}
+
+.ws-here {
+  color: var(--text-muted);
+}
+
+.ws-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: var(--sone-radius-sm);
+  background: var(--accent);
+  flex: none;
+}
+
+/* Die Vorschau zeigt beide Farben zusammen — getrennt gewählt, gemeinsam
+   gesehen. Ein Wähler ohne Vorschau lässt einen raten, wie das Paar wirkt. */
+.ws-preview {
+  /* Nachgesehen in 489e3f3 und nicht aus dem Gedächtnis: die alte Regel war
+     eine Zeile mit Lücke, kein Kasten — ich hatte beim Zurückholen einen
+     Rahmen erfunden. */
+  display: flex;
+  align-items: center;
+  gap: var(--sone-space-4);
+  font-size: var(--sone-text-md);
+}
+
 /* Eine Filterzeile, die zurückgenommen wird: leiser als die Filter selbst,
    weil sie nichts findet, sondern etwas aufhebt. */
 /*

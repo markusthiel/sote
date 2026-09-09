@@ -160,8 +160,7 @@ export function WorkspaceMark({
         </div>
 
         <div className="settings-row">
-          <span className="settings-row-label"><b>Deine Rolle</b><span>Was du hier darfst. Rollen zu setzen gehört zu „Leute" — den
-              Bildschirm gibt es noch nicht.</span></span>
+          <span className="settings-row-label"><b>Deine Rolle</b><span>Was du hier darfst. Rollen setzt man unter „Leute".</span></span>
           <div className="settings-row-value">
             {owner ? 'Eigentümer' : 'Mitglied'}
           </div>
@@ -172,7 +171,7 @@ export function WorkspaceMark({
         <h2>Zeichen</h2>
         <div className="settings-row">
           <span className="settings-row-label"><b>Vorschau</b></span>
-          <div className="set-value ws-preview">
+          <div className="settings-row-value ws-preview">
             <ProjectMark
               icon={icon?.icon}
               kind="folder"

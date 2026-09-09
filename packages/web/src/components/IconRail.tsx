@@ -38,7 +38,7 @@ export function IconRail({
   onSignOut: () => void;
 }) {
   return (
-    <nav className="rail icon-rail" aria-label="Bereiche">
+    <nav className="rail" aria-label="Bereiche">
       {/*
         SONEs Schiene: die Marke ist der erste Eintrag (`rail-brand`), die
         Bereiche stehen in einer eigenen Gruppe (`rail-nav`) mit 2px Lücke, das

@@ -17,10 +17,9 @@
  *
  * ## Was hier nicht steht
  *
- * **Einladungen.** Ein Konto anzulegen ist Sache der Instanz (ADR-0073), und
- * eine Einladung braucht den Mailweg, den SOTE nicht hat. Ein Feld dafür wäre
- * ein Feld, das nichts tut — der Fehler, den SONE vierzehn Mal hatte
- * (ADR-0112). Es steht als Satz da, damit niemand danach sucht.
+ * **Einladungen** gibt es — unter Verwaltung › Einladungen, mit oder ohne
+ * Mailweg (ohne steht der Link zum Weitergeben in der Liste). Hier steht nur
+ * der Verweis: dieser Bildschirm fügt hinzu, wer schon ein Konto hat.
  */
 
 import { useCallback, useEffect, useState } from 'react';
@@ -93,10 +92,13 @@ export function People({ workspace, you }: { workspace: string | undefined; you:
       {data.mayManage ? (
         <section className="settings-card">
           <h2>Jemanden hinzufügen</h2>
+          {/* Hier stand: „eine Einladung per Mail gibt es noch nicht, weil dieser
+              Server keinen Mailweg hat." Ehrlich damals; falsch seit a1d2f54. Im
+              Bild gefunden — der Satz war nach vier Runden Einladungen nie
+              wieder angesehen worden. */}
           <p className="muted">
-            Wer schon ein Konto auf diesem Server hat. Ein Konto <em>anzulegen</em>{' '}
-            ist Sache der Verwaltung — und eine Einladung per Mail gibt es noch
-            nicht, weil dieser Server keinen Mailweg hat.
+            Wer schon ein Konto auf diesem Server hat. Wer keines hat, bekommt
+            eine <em>Einladung</em> — unter Verwaltung › Einladungen.
           </p>
           <div className="settings-row">
             <span className="settings-row-label"><b>Suchen</b></span>

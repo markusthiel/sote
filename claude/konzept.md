@@ -1991,6 +1991,25 @@ erfunden.
   `.settings-row-value select` hielten noch 32/34 px — eigene Regeln, die die
   globale schlugen; jetzt leer. `primary` heißt „Hauptsache", nicht „breit":
   volle Breite nur in Anmelde- und Einrichtungskarte.
+- **Der Wächter `check-styles`**, zwei Fragen aus dieser Angleichung:
+  - **Jede Klasse im Markup hat eine Regel.** Die nackten Panels und die vier
+    gelöschten Tabellenregeln waren dieselbe Frage. Beim ersten Lauf fand er
+    acht — vier davon (`ws-table`, `ws-here`, `ws-dot`, `ws-preview`) hatte
+    **ich** bei Fläche 6 mit gelöscht: mein Regex für die `.ws-*`-Regeln des
+    Wählers traf alles mit diesem Anfang. Vier Bildschirme ohne
+    Tabellengestalt, und niemand hat es gesehen.
+  - **Harte Pixel wachsen nicht** — eine Sperrklinke auf `font-size`, `padding`,
+    `gap`, `margin`, `min-height` in px. Die Grenze zieht nur nach unten nach,
+    von Hand. Er griff sofort: an den Regeln, die ich gerade zurückgeholt hatte
+    — also nicht zurückkopiert, sondern auf die Skala gesetzt.
+  - Und beim Zurückholen hatte ich `ws-preview` einen Rahmen **erfunden**; die
+    alte Regel war eine Zeile mit Lücke. Nachgesehen in 489e3f3, nicht aus dem
+    Gedächtnis.
+- **Drei falsche Sätze im Bild gefunden**, alle „gibt es noch nicht" über
+  Dinge, die es längst gibt: Einladungen (People), Rollen setzen
+  (WorkspaceMark), weitere Arbeitsbereiche (Overview). Ein Satz, der einen
+  Zustand beschreibt, veraltet leiser als Code — der Code fällt beim Bauen um,
+  der Satz nicht.
 - **Noch offen, in dieser Reihenfolge:**
   Einstellungen (`settings-card`, `settings-row`, `section-nav`), Knöpfe und
   Felder, Dialoge — und zuletzt ein Wächter gegen harte Pixelwerte, wo eine

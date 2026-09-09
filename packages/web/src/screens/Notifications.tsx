@@ -182,7 +182,7 @@ export function Notifications({
         ) : null}
       </div>
 
-      <div className="main-body">
+      <div className="body">
         {notice === undefined ? null : <p className="note-error">{notice}</p>}
         {gezeigt.length === 0 ? (
           <div className="empty">

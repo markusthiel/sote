@@ -85,7 +85,7 @@ export function Roles({ workspace }: { workspace: string | undefined }) {
       </section>
 
       {data.roles.map((r) => (
-        <section className="settings-card role-card" key={r.id}>
+        <section className="settings-card" key={r.id}>
           <div className="role-head">
             {r.system || !data.mayManage ? (
               <h2>{r.name}</h2>
