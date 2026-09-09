@@ -35,6 +35,8 @@
  * selbst umschreibt.
  */
 
+import type { ReactNode } from 'react';
+
 import { buildTaskQuery, parseTaskQuery } from '@sote/core';
 
 import type { Project } from '../api.js';
@@ -63,7 +65,25 @@ export function SearchPanel({
   const gelesen = parseTaskQuery(q);
 
   /** Eine Zeile: gesetzt oder nicht, und ein Klick setzt oder nimmt zurück. */
-  const zeile = (
+  /*
+   * Eine Pille, nicht eine Zeile — SONEs `search-facet-tag`.
+   *
+   * Gemeldet: „Da könnten die Möglichkeiten in der linken Leiste etwas schöner
+   * aufgebaut sein. Da steht nach wie vor einfach Text untereinander. Status
+   * hat ja nur 2 Möglichkeiten, kann man da nicht nebeneinander 2 schöne
+   * Buttons setzen … damit es klarere Bereiche gibt und man nicht erst alles
+   * lesen muss."
+   *
+   * Zutreffend, und mein Fehler war die Wahl des Bauteils: `panel-menu-item`
+   * ist eine Zeile für einen ORT, an den man geht. Ein Filter ist keiner — er
+   * ist ein Schalter, der an oder aus ist. Neun gleich aussehende Zeilen
+   * untereinander muss man lesen; neun Pillen in drei Gruppen sieht man.
+   *
+   * `aria-pressed` und keine Klasse: *„the state is ‚this filter is on', which
+   * the browser and a screen reader both already know how to say from
+   * aria-pressed"* (SONE).
+   */
+  const pille = (
     label: string,
     an: boolean,
     facet: Parameters<typeof buildTaskQuery>[1],
@@ -72,84 +92,86 @@ export function SearchPanel({
     <button
       key={`${facet}-${value ?? ''}`}
       type="button"
-      className="panel-menu-item"
+      className="search-facet-tag"
       aria-pressed={an}
-      onClick={() =>
-        // Derselbe Klick nimmt zurück: ein Filter, den man nur setzen kann,
-        // braucht einen zweiten Weg zum Entfernen — und der wäre die Syntax,
-        // die dieses Panel gerade ersetzt.
-        onQuery(buildTaskQuery(q, facet, an ? undefined : value))
-      }
+      onClick={() => onQuery(buildTaskQuery(q, facet, an ? undefined : value))}
     >
-      <span className="panel-menu-label">{label}</span>
-      {an ? (
-        <span className="panel-menu-count" aria-hidden="true">
-          ✓
-        </span>
-      ) : null}
+      {label}
     </button>
+  );
+
+  /* Eine Gruppe: Beschriftung, darunter die Pillen nebeneinander. */
+  const gruppe = (label: string, kinder: ReactNode) => (
+    <div className="search-facet">
+      <div className="sidebar-label">{label}</div>
+      <div className="search-facet-tags">{kinder}</div>
+    </div>
   );
 
   return (
     <>
-      {/* SONEs Aufbau: eine `.panel-menu-group` je Gruppe, mit `.sidebar-label`
-          darin — der Abstand zwischen den Gruppen kommt aus der Gruppe, nicht
-          aus der Beschriftung. */}
-      <div className="panel-menu-group">
-        <div className="sidebar-label">Status</div>
-        {zeile('Offen', gelesen.status === 'open', 'status', 'offen')}
-        {zeile('Erledigt', gelesen.status === 'done', 'status', 'erledigt')}
-      </div>
-
-      <div className="panel-menu-group">
-        <div className="sidebar-label">Frist</div>
-        {zeile('Überfällig', gelesen.due === 'overdue', 'frist', 'überfällig')}
-        {zeile('Heute', gelesen.due === 'today', 'frist', 'heute')}
-        {zeile('Diese Woche', gelesen.due === 'week', 'frist', 'woche')}
-      </div>
-
-      <div className="panel-menu-group">
-      <div className="sidebar-label">Priorität</div>
       {/*
-        Vier Stufen, nicht drei: „Später" ist eine davon, und im ersten Anlauf
-        fehlte sie hier — ein Filter für eine Stufe, die es gibt, ist keine
-        Auswahl, sondern eine Lücke.
+        Drei Gruppen, jede eine Reihe Pillen — SONEs `search-facet`. Die
+        Beschriftung sagt, worum es geht; die Pillen sagen, was man wählen kann,
+        und beides sieht man auf einen Blick statt es zu lesen.
       */}
-      {[1, 2, 3, 4].map((p) =>
-        // `'priorität'` ist der Facettenname im Kern, nicht `'prio'` — das ist
-        // eine der getippten Kurzformen, und der Übersetzer hat es gemeldet.
-        zeile(
-          PRIORITY_NAMES[p] ?? String(p),
-          gelesen.priorities.includes(p),
-          'priorität',
-          String(p),
+      {gruppe(
+        'Status',
+        <>
+          {pille('Offen', gelesen.status === 'open', 'status', 'offen')}
+          {pille('Erledigt', gelesen.status === 'done', 'status', 'erledigt')}
+        </>,
+      )}
+
+      {gruppe(
+        'Frist',
+        <>
+          {pille('Überfällig', gelesen.due === 'overdue', 'frist', 'überfällig')}
+          {pille('Heute', gelesen.due === 'today', 'frist', 'heute')}
+          {pille('Diese Woche', gelesen.due === 'week', 'frist', 'woche')}
+        </>,
+      )}
+
+      {gruppe(
+        'Priorität',
+        /*
+          Vier Stufen, nicht drei: „Später" ist eine davon, und im ersten Anlauf
+          fehlte sie hier. `'priorität'` ist der Facettenname im Kern, nicht
+          `'prio'` — das ist eine der getippten Kurzformen.
+        */
+        [1, 2, 3, 4].map((p) =>
+          pille(
+            PRIORITY_NAMES[p] ?? String(p),
+            gelesen.priorities.includes(p),
+            'priorität',
+            String(p),
+          ),
         ),
       )}
-      </div>
 
       {/*
         Projekte: nur die, die es gibt, und nur wenn es mehr als eines gibt.
-        Eine Gruppe „Projekt" über einer einzigen Zeile ist eine Überschrift für
+        Eine Gruppe „Projekt" über einer einzigen Pille ist eine Überschrift für
         etwas, das keine Wahl ist.
       */}
-      {projects.filter((p) => p.kind === 'list').length > 1 ? (
-        <div className="panel-menu-group">
-          <div className="sidebar-label">Projekt</div>
-          {projects
-            .filter((p) => p.kind === 'list')
-            .map((p) =>
-              zeile(
-                p.name,
-                // Verglichen ohne Rücksicht auf Groß- und Kleinschreibung: die
-                // Abfrage wird getippt, und `#Haus` und `#haus` sind dasselbe
-                // Projekt.
-                gelesen.projects.some((x) => x.toLowerCase() === p.name.toLowerCase()),
-                'projekt',
-                p.name,
+      {projects.filter((p) => p.kind === 'list').length > 1
+        ? gruppe(
+            'Projekt',
+            projects
+              .filter((p) => p.kind === 'list')
+              .map((p) =>
+                pille(
+                  p.name,
+                  // Verglichen ohne Rücksicht auf Groß- und Kleinschreibung:
+                  // die Abfrage wird getippt, und `#Haus` und `#haus` sind
+                  // dasselbe Projekt.
+                  gelesen.projects.some((x) => x.toLowerCase() === p.name.toLowerCase()),
+                  'projekt',
+                  p.name,
+                ),
               ),
-            )}
-        </div>
-      ) : null}
+          )
+        : null}
 
       {/*
         Und ein Weg heraus, wenn etwas gesetzt ist.

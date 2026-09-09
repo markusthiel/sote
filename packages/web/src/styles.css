@@ -4301,8 +4301,68 @@ label.btn {
   font-size: var(--sone-text-md);
 }
 
-/* Eine Filterzeile, die zurückgenommen wird: leiser als die Filter selbst,
-   weil sie nichts findet, sondern etwas aufhebt. */
+/* ══════════════════════════════════════════════════════════════════════════
+ * Die Filter der Suche — SONEs `search-facet`, wörtlich.
+ *
+ * Gemeldet: „Da steht nach wie vor einfach Text untereinander. Status hat ja
+ * nur 2 Möglichkeiten, kann man da nicht nebeneinander 2 schöne Buttons setzen
+ * … damit es klarere Bereiche gibt und man nicht erst alles lesen muss."
+ *
+ * Der Fehler war das Bauteil: `panel-menu-item` ist eine Zeile für einen ORT,
+ * an den man geht — ein Filter ist keiner, er ist ein Schalter. SONEs Antwort
+ * sind Pillen in einer Reihe unter der Beschriftung.
+ * ═══════════════════════════════════════════════════════════════════════ */
+
+.search-facet {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sone-space-2);
+  padding-inline: var(--sone-space-4);
+  margin-block-end: var(--sone-space-5);
+}
+.search-facet .sidebar-label { padding-inline: 0; }
+
+.search-facet-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sone-space-2);
+}
+
+.search-facet-tag {
+  display: inline-flex;
+  align-items: baseline;
+  /* SONE hat hier 5px — eine Zahl neben der Skala, und der Wächter hat sie
+     gemeldet. Space-2 (4px) ist die Stelle in der Reihe; der Unterschied ist
+     ein Pixel zwischen einem Wort und einer Zahl, die es hier nicht gibt. */
+  gap: var(--sone-space-2);
+  padding: var(--sone-space-1) var(--sone-space-4);
+  border: 1px solid var(--border-default);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: var(--sone-text-xs);
+  cursor: pointer;
+}
+.search-facet-tag:hover { background: var(--surface-hover); }
+/* Pressed, not a class: the state is "this filter is on", which the browser
+   and a screen reader both already know how to say from aria-pressed. (SONE) */
+.search-facet-tag[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: var(--surface-hover);
+  color: var(--text-primary);
+}
+
+/*
+ * „Filter zurücknehmen" bleibt eine ZEILE, keine Pille — und das ist Absicht:
+ * eine Pille sagt „dieser Filter ist an oder aus", und Zurücknehmen ist kein
+ * Filter, sondern ein Handgriff. Ein Bedienelement in der Gestalt seiner
+ * Nachbarn, das etwas anderes tut, ist die Sorte Fehler, die man erst beim
+ * Klicken merkt. Leiser als die Filter, weil es nichts findet, sondern etwas
+ * aufhebt — und mit dem Rand der Gruppen daneben, damit es auf derselben
+ * Linie beginnt. */
+.panel-menu-item.quiet { margin-inline: var(--sone-space-2); }
+
 /*
  * Die Zeilen der Panels tragen jetzt `p-item` und `group-label` — die
  * gewachsenen Klassen der Leiste.

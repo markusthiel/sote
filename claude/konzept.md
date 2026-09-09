@@ -2045,6 +2045,20 @@ erfunden.
   gemessen). Der Hinweis bleibt als `title` und in der Vorleseansage — er ist
   nicht falsch, er gehört nur nicht in die Zeile. 17 Zeilen über drei Bereiche
   jetzt einzeilig.
+- **Fläche 13, die Filter der Suche sind Pillen.** Gemeldet: *„Da steht nach
+  wie vor einfach Text untereinander. Status hat ja nur 2 Möglichkeiten, kann
+  man da nicht nebeneinander 2 schöne Buttons setzen … damit man nicht erst
+  alles lesen muss."* **Der Fehler war die Wahl des Bauteils:**
+  `panel-menu-item` ist eine Zeile für einen ORT, an den man geht — ein Filter
+  ist keiner, er ist ein Schalter. SONEs `search-facet-tag` (Pillen mit
+  `aria-pressed`, in einer Reihe unter der Beschriftung) ist die Antwort, und
+  sie stand die ganze Zeit da. Gemessen: Status 2 in einer Zeile, Frist 3,
+  Priorität 4 auf zwei, Projekt 2.
+  - **„Filter zurücknehmen" bleibt eine Zeile:** ein Bedienelement in der
+    Gestalt seiner Nachbarn, das etwas anderes tut, ist die Sorte Fehler, die
+    man erst beim Klicken merkt.
+  - Der Wächter meldete SONEs eigene `gap: 5px` — eine Zahl neben der Skala.
+    Space-2 (4 px) ist die Stelle in der Reihe.
 - **Noch offen:** der Umbau der Verwaltungslisten von `<table>` auf
   `admin-row`.
 - **Noch offen (alt):**
