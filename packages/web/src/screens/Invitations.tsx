@@ -121,14 +121,7 @@ export function Invitations() {
         {data.invitations.length === 0 ? (
           <p className="muted">Keine.</p>
         ) : (
-          <table className="ws-table">
-            <thead>
-              <tr>
-                <th>Adresse</th>
-                <th>Gilt bis</th>
-                <th />
-              </tr>
-            </thead>
+          <table className="admin-table">
             <tbody>
               {data.invitations.map((i) => (
                 <tr key={i.id}>

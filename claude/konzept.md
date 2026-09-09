@@ -2010,7 +2010,16 @@ erfunden.
   (WorkspaceMark), weitere Arbeitsbereiche (Overview). Ein Satz, der einen
   Zustand beschreibt, veraltet leiser als Code — der Code fällt beim Bauen um,
   der Satz nicht.
-- **Noch offen, in dieser Reihenfolge:**
+- **Fläche 9, die Verwaltungslisten:** SONEs `admin-table`-Gestalt (Rahmen,
+  `surface-chrome`, Radius, 8 px Zeilen, Linie dazwischen, `admin-name` 500,
+  `admin-meta` mono-xs, **keine Kopfzeile**) auf sechs Bildschirmen. **Eine
+  benannte Abweichung:** SOTE zeichnet die Liste als `<table>`, SONE als
+  Flex-Zeilen; sechs Bildschirme umzubauen ist eine eigene Runde, und was hier
+  gleich ist, sind die Pixel. Die Kopfzeilen fielen weg: eine Beschriftung über
+  zwei Spalten, die man am Inhalt erkennt, ist eine Beschriftung für nichts.
+- **Noch offen, in dieser Reihenfolge:** Dialoge, die umbrechenden Hinweise in
+  der Workspace-Navigation, und der Umbau der Listen auf `admin-row`.
+- **Noch offen (alt):**
   Einstellungen (`settings-card`, `settings-row`, `section-nav`), Knöpfe und
   Felder, Dialoge — und zuletzt ein Wächter gegen harte Pixelwerte, wo eine
   Skala existiert.

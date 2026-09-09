@@ -26,13 +26,7 @@ export function WorkspaceOverview({
     <div className="settings">
       <section className="settings-card">
         <h2>Alle Workspaces</h2>
-        <table className="ws-table">
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Deine Rolle</th>
-            </tr>
-          </thead>
+        <table className="admin-table">
           <tbody>
             {workspaces.map((w) => (
               <tr key={w.id} aria-current={w.id === current}>

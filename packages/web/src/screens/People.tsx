@@ -151,21 +151,14 @@ export function People({ workspace, you }: { workspace: string | undefined; you:
 
       <section className="settings-card">
         <h2>Wer hier ist</h2>
-        <table className="ws-table">
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Rolle</th>
-              <th />
-            </tr>
-          </thead>
+        <table className="admin-table">
           <tbody>
             {data.people.map((p) => (
               <tr key={p.userId}>
                 <td>
-                  {p.displayName}
+                  <span className="admin-name">{p.displayName}</span>
                   {p.userId === you ? <span className="ws-here"> · das bist du</span> : null}
-                  <div className="muted small">{p.email}</div>
+                  <div className="admin-meta">{p.email}</div>
                 </td>
                 <td>
                   {p.isOwner ? (

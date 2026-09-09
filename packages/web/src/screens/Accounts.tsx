@@ -71,22 +71,14 @@ export function Accounts() {
           mitarbeitet, steht dort unter „Leute" — zwei Fragen, zwei Orte.
         </p>
 
-        <table className="ws-table">
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Verwaltet</th>
-              <th>Arbeitsbereiche</th>
-              <th />
-            </tr>
-          </thead>
+        <table className="admin-table">
           <tbody>
             {data.accounts.map((a) => (
               <tr key={a.id}>
                 <td>
-                  {a.displayName}
+                  <span className="admin-name">{a.displayName}</span>
                   {a.id === data.you ? <span className="ws-here"> · das bist du</span> : null}
-                  <div className="muted small">{a.email}</div>
+                  <div className="admin-meta">{a.email}</div>
                 </td>
                 <td>
                   <label className="admin-flag">

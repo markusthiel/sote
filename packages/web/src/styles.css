@@ -4206,30 +4206,44 @@ label.btn {
  * zurückkopiert, sondern auf SONEs Skala gesetzt: Text-md, Text-xs, Space-3/-4.
  * SONEs `.admin-table` ist die Fläche, in die diese Tabellen später wandern.
  * ═══════════════════════════════════════════════════════════════════════ */
-.ws-table {
+/*
+ * SONEs `.admin-table` — dieselbe Gestalt, mit EINER benannten Abweichung: SOTE
+ * zeichnet die Liste als `<table>`, SONE als Flex-Zeilen (`.admin-row`). Sechs
+ * Bildschirme umzubauen wäre eine eigene Runde; was hier gleich ist, sind die
+ * Pixel — Rahmen, `surface-chrome`, Radius, Zeilenabstand, Linie zwischen den
+ * Zeilen, Name mit 500, Meta in mono-xs. Und keine Kopfzeile: SONEs Liste hat
+ * keine, denn eine Beschriftung über zwei Spalten, die man am Inhalt erkennt,
+ * ist eine Beschriftung für nichts.
+ *
+ * „A framed list is the same kind of box as a card, so it takes the same
+ * surface. Two boxes on one screen that differ by a percent of grey is a
+ * difference somebody notices without being able to name." (SONE)
+ */
+.admin-table {
   width: 100%;
   border-collapse: collapse;
+  border: 1px solid var(--border-default);
+  border-radius: var(--sone-radius);
+  background: var(--surface-chrome);
   font-size: var(--sone-text-md);
+  overflow: hidden;
 }
 
-.ws-table th {
-  text-align: left;
-  padding: var(--sone-space-3) var(--sone-space-4);
-  border-bottom: 1px solid var(--border-subtle);
+.admin-table td {
+  padding: var(--sone-space-4);
+  border-block-end: 1px solid var(--border-default);
+  vertical-align: middle;
+}
+.admin-table tr:last-child td { border-block-end: 0; }
+/* Die letzte Spalte trägt die Aktionen, rechts wie SONEs `.admin-row-actions`. */
+.admin-table td:last-child { text-align: end; }
+.admin-table tr[aria-current='true'] td { background: var(--surface-hover); }
+
+.admin-name { font-weight: 500; }
+.admin-meta {
   font-family: var(--sone-font-mono);
   font-size: var(--sone-text-xs);
-  font-weight: 500;
-  letter-spacing: 0.04em;
   color: var(--text-muted);
-}
-
-.ws-table td {
-  padding: var(--sone-space-4);
-  border-bottom: 1px solid var(--border-subtle);
-}
-
-.ws-table tr[aria-current='true'] {
-  background: var(--surface-hover);
 }
 
 .ws-here {

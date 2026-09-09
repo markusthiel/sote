@@ -82,14 +82,7 @@ export function Maintenance() {
             Diese Aufträge sind fünfmal fehlgeschlagen und laufen nicht mehr von
             selbst. Sie stehen hier, statt zu verschwinden.
           </p>
-          <table className="ws-table">
-            <thead>
-              <tr>
-                <th>Auftrag</th>
-                <th>Versuche</th>
-                <th>Letzter Fehler</th>
-              </tr>
-            </thead>
+          <table className="admin-table">
             <tbody>
               {liegen.map((j, i) => (
                 <tr key={`${j.kind}-${i}`}>
@@ -110,14 +103,7 @@ export function Maintenance() {
         {data.open.length === 0 ? (
           <p className="muted">Nichts. Alles abgearbeitet.</p>
         ) : (
-          <table className="ws-table">
-            <thead>
-              <tr>
-                <th>Auftrag</th>
-                <th>Frühestens</th>
-                <th>Versuche</th>
-              </tr>
-            </thead>
+          <table className="admin-table">
             <tbody>
               {data.open.map((j, i) => (
                 <tr key={`${j.kind}-${i}`}>

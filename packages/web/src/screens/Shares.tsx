@@ -245,16 +245,7 @@ export function Shares({
         {data.shares.length === 0 ? (
           <p className="muted">Nichts. Kein Link führt derzeit von außen hierher.</p>
         ) : (
-          <table className="ws-table">
-            <thead>
-              <tr>
-                <th>Projekt</th>
-                <th>Recht</th>
-                <th>Zuletzt benutzt</th>
-                <th>Ablauf</th>
-                <th />
-              </tr>
-            </thead>
+          <table className="admin-table">
             <tbody>
               {gezeigt.map((s) => (
                 <tr key={s.id}>
