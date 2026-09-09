@@ -42,6 +42,14 @@ export function WorkspaceMark({
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | undefined>(undefined);
   const [find, setFind] = useState('');
+  /*
+   * Die laufende eigene Farbe, je Feld.
+   *
+   * Nur zum Anzeigen, während man im Farbfeld zieht: der gespeicherte Wert
+   * kommt aus `icon`, und ein Feld, das seinen eigenen Zwischenstand nicht
+   * kennt, springt beim Ziehen zurück.
+   */
+  const [eigen, setEigen] = useState<{ iconColor?: string; titleColor?: string }>({});
   const [ready, setReady] = useState(false);
 
   // Der Zeichensatz kommt, wenn dieser Bildschirm offen ist — nicht beim Laden
@@ -122,6 +130,59 @@ export function WorkspaceMark({
             onClick={() => setMark({ [which]: c })}
           />
         ))}
+        {/*
+          Und eine EIGENE Farbe — wie SONEs Pipette neben der Palette.
+
+          Gemeldet: „Bei den Farben ist auch das Vorbild SONE. Da kann ich zb
+          auch eine eigene Farbe definieren." Der Kern konnte es die ganze Zeit:
+          `ChosenColor = PaletteName | \`#${string}\`` und `colorValue` gibt für
+          einen Hex-Wert den Wert selbst zurück. Nur die Oberfläche bot es nicht
+          an — eine Möglichkeit, die im Kern steht und nirgends anklickbar ist,
+          gibt es für niemanden.
+
+          `onInput` und nicht `onChange`: ein Farbfeld schickt beim Ziehen
+          laufend `input`, und `change` erst beim Schließen — mit `change`
+          allein sieht man die Wirkung nicht, während man wählt. Der Wert geht
+          erst mit dem Loslassen (`onBlur`) an den Server, sonst wäre jedes
+          Zwischenbild ein Schreibvorgang.
+        */}
+        <input
+          type="color"
+          className="own-color"
+          aria-label={`${label}: eigene Farbe`}
+          /*
+            Nur ein Hex-Wert taugt hier. `colorValue` gäbe für einen
+            Palettennamen `var(--sote-palette-…)` zurück, und ein Farbfeld mit
+            einem `var()` darin zeigt schwarz — der Übersetzer merkt das nicht,
+            der Browser sagt nichts, und man sieht es erst im Bild.
+          */
+          value={eigen[which] ?? (current?.startsWith('#') === true ? current : '#888888')}
+          disabled={busy}
+          /*
+            `onInput` zeigt, `onChange` speichert.
+            
+            Ein Farbfeld schickt beim Ziehen laufend `input` und `change` erst
+            beim Bestätigen — so sieht man die Farbe, während man wählt, und
+            geschrieben wird einmal. Vorher stand hier `onBlur` mit
+            `e.currentTarget`, und das ist nach dem Ereignis `null`: der Test
+            meldete „Cannot read properties of null (reading 'value')".
+          */
+          onInput={(e) => {
+            /*
+             * Den Wert ZUERST lesen, dann den Zustand ändern.
+             *
+             * `setEigen((v) => … e.currentTarget.value …)` sah richtig aus und
+             * war es nicht: die Aktualisierungsfunktion läuft SPÄTER, und dann
+             * ist `currentTarget` schon `null`. Der Browser meldete „Cannot
+             * read properties of null (reading 'value')" — sichtbar nur, weil
+             * das Prüfskript auf `pageerror` hört; die Farbe wurde trotzdem
+             * gesetzt, also hätte man es im Bild nicht gemerkt.
+             */
+            const wert = e.currentTarget.value;
+            setEigen((v) => ({ ...v, [which]: wert }));
+          }}
+          onChange={(e) => setMark({ [which]: e.currentTarget.value })}
+        />
       </div>
     </div>
   );

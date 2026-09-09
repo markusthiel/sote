@@ -138,7 +138,9 @@ test('ohne Tönung ist jede Fläche exakt ihr Grundton', () => {
    * und er prüft es an den Werten und nicht an der Absicht.
    */
   const grounds: readonly [string, 'light' | 'dark', string][] = [
-    ['page', 'light', '#faf8f4'],
+    // Weiss, nicht Papier: die Seite ist die Schreibfläche und hebt sich von
+    // den Leisten ab (SONE). Papier bleibt als `--paper` für das Schwebende.
+    ['page', 'light', '#ffffff'],
     ['surface', 'light', '#f7f5f0'],
     ['sunken', 'light', '#f0ede5'],
     ['page', 'dark', '#161615'],

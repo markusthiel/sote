@@ -2072,6 +2072,27 @@ erfunden.
     `LAST_WORKSPACE_KEY` in `localStorage`, samt der Reihenfolge (mitgegeben →
     gemerkt → erster) und der Prüfung auf Mitgliedschaft; beim Abmelden
     weggeräumt, wie in SONE.
+- **Die Seite ist WEISS, die Leisten sind Papier.** Gemeldet: *„Der eigentliche
+  Content-Bereich ist bei SONE eigentlich weiß und hebt sich von den Leisten
+  ab."* SOTE hatte überall `#faf8f4` — also keine Grenze zwischen dem, was man
+  liest, und dem, was die Anwendung sagt. SONEs Begründung: *„The writing
+  surface. White in light, the darkest surface in dark — either way the thing
+  you are reading, with the furniture a step away from it."* Der Kontrast-Test
+  prüft die Palette gegen `page` und ist auf Weiß strenger — und grün.
+- **Zwei Fehler aus meinen eigenen Regeln:**
+  - **Der Zeichenwähler war einspaltig.** Nicht das Raster war schuld, sondern
+    `align-items: flex-end` aus Fläche 7b: das presst jedes Kind auf seine
+    Mindestbreite, und ein `repeat(auto-fill, …)` ist dann eine Spalte. Zeilen
+    mit einem Raster stapeln jetzt (wie bei SONE steht „SYMBOL" *über* dem
+    Raster): 187 px → 654 px, 6 → 21 Zeichen je Zeile.
+  - **`setEigen((v) => … e.currentTarget.value …)`** — die Aktualisierungs­funktion
+    läuft *später*, und dann ist `currentTarget` `null`. Den Wert zuerst lesen.
+    Sichtbar nur, weil das Prüfskript auf `pageerror` hört; die Farbe wurde
+    trotzdem gesetzt, also hätte man es im Bild nicht gemerkt.
+- **Eine eigene Farbe für Symbol und Name.** Der Kern konnte es die ganze Zeit
+  (`ChosenColor = PaletteName | '#…'`, `colorValue` gibt Hex durch) — nur die
+  Oberfläche bot es nicht an. **Eine Möglichkeit, die im Kern steht und nirgends
+  anklickbar ist, gibt es für niemanden.**
 - **Noch offen:** der Umbau der Verwaltungslisten von `<table>` auf
   `admin-row`.
 - **Noch offen (alt):**

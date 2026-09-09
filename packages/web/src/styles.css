@@ -107,7 +107,21 @@
      bei, sondern vierzehn Prozent von *gar nichts* — jede Fläche kam bei 0,86
      Alpha heraus und war leicht durchsichtig. Eine Farbe mit sich selbst
      gemischt ist sie selbst, also ist der ungetönte Fall genau der Grundton. */
-  --page: color-mix(in srgb, var(--tint, var(--paper)) 3%, var(--paper));
+  /*
+   * Die Seite ist WEISS, wie in SONE — nicht Papier.
+   *
+   * Gemeldet: „Der eigentliche Content-Bereich ist bei SONE eigentlich weiß und
+   * hebt sich von den Leisten ab. Macht das nicht Sinn bei SOTE?" Ja, und es
+   * ist derselbe Gedanke wie dort: *„The writing surface. White in light, the
+   * darkest surface in dark — either way the thing you are reading, with the
+   * furniture a step away from it."*
+   *
+   * SOTE hatte hier Papier (#faf8f4) — dieselbe Farbe wie die Leisten, also
+   * ohne Grenze zwischen dem, was man liest, und dem, was die Anwendung sagt.
+   * Papier bleibt als `--paper` und trägt weiter das Schwebende
+   * (`surface-overlay`), wo eine Fläche über der Seite liegen soll.
+   */
+  --page: color-mix(in srgb, var(--tint, #ffffff) 3%, #ffffff);
   --surface: color-mix(in srgb, var(--tint, #f7f5f0) 8%, #f7f5f0);
   --raised: color-mix(in srgb, var(--tint, var(--paper-raised)) 3%, var(--paper-raised));
   --sunken: color-mix(in srgb, var(--tint, var(--ink-50)) 14%, var(--ink-50));
@@ -2456,6 +2470,42 @@ select.target { }
 }
 .settings-row > .settings-row-value > .muted { text-align: start; align-self: stretch; }
 
+/*
+ * Ein Raster, ein Feld oder eine Reihe darin nimmt die ganze Spalte.
+ *
+ * `align-items: flex-end` presst jedes Kind auf seine MINDESTBREITE — und ein
+ * `grid-template-columns: repeat(auto-fill, …)` ist dann eine Spalte. Genau so
+ * wurde der Zeichenwähler einspaltig: gemeldet als „Der Icon Picker ist
+ * einspaltig", und die Ursache war meine Regel aus Fläche 7b, nicht das Raster.
+ *
+ * Was von sich aus breit ist, darf breit sein; ein Knopf oder ein Wort bleibt
+ * rechts, weil `flex-end` für die anderen Kinder weiter gilt.
+ */
+.settings-row > .settings-row-value > :where(.entry-icon-grid, .block-menu-swatches,
+  .entry-icon-search, .set-choice, input, select, textarea) {
+  align-self: stretch;
+}
+
+/*
+ * Eine Zeile mit einem RASTER darin stapelt: Beschriftung oben, Raster unten
+ * über die ganze Breite.
+ *
+ * Bei SONE steht „SYMBOL" über dem Zeichenraster und nicht daneben, und der
+ * Grund ist im Bild zu sehen: neben einer Beschriftung bleiben 187px, und ein
+ * Wähler mit hundert Zeichen in sechs Spalten ist ein Wähler, in dem man
+ * scrollt statt zu sehen. Was von Natur breit ist, bekommt die Breite.
+ */
+.settings-row:has(.entry-icon-grid) {
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--sone-space-3);
+}
+.settings-row:has(.entry-icon-grid) > .settings-row-value {
+  max-inline-size: none;
+  align-items: stretch;
+}
+.settings-row:has(.entry-icon-grid) .entry-icon-search { max-inline-size: 22rem; }
+
 /* Below that, side by side stops working: the label wraps to two lines and the
    field has nowhere to go. Stacked, both get the full width. (SONE) */
 @media (max-width: 620px) {
@@ -3943,6 +3993,22 @@ label.btn {
   outline-offset: 2px;
 }
 .block-menu-swatch:disabled { opacity: 0.35; }
+
+/* Das Feld für eine eigene Farbe, in der Größe eines Farbfelds daneben —
+   SONEs Pipette steht auch in der Reihe der Palette und nicht darunter. */
+.own-color {
+  inline-size: 22px;
+  block-size: 22px;
+  min-height: 0;
+  padding: 0;
+  border: 1px solid var(--border-default);
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+}
+.own-color::-webkit-color-swatch-wrapper { padding: 0; }
+.own-color::-webkit-color-swatch { border: 0; border-radius: 50%; }
+.own-color::-moz-color-swatch { border: 0; border-radius: 50%; }
 
 /* ══════════════════════════════════════════════════════════════════════════
  * Das Kontomenü — SONEs `sidebar-footer` / `sidebar-account` /
