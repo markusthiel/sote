@@ -2059,6 +2059,19 @@ erfunden.
     man erst beim Klicken merkt.
   - Der Wächter meldete SONEs eigene `gap: 5px` — eine Zahl neben der Skala.
     Space-2 (4 px) ist die Stelle in der Reihe.
+- **Zwei Fehler beim Wechsel des Arbeitsbereichs:**
+  - **Der Ladeeffekt hatte `[]`** — geladen wurde einmal, nie beim Wechsel. Und
+    der Schaden war größer als eine falsche Anzeige: `save` baut die neue Ebene
+    aus `data.levels` auf, also aus dem Stand des **Vorgängers**. Wer dann
+    irgendetwas anderes einstellte, schrieb dessen Akzentfarbe in diesen
+    Bereich. **Ein stehengebliebener Stand, aus dem geschrieben wird, ist kein
+    Anzeigefehler, sondern Datenverlust.** `data` wird beim Wechsel
+    zurückgesetzt, sonst zeigt die Maske kurz die alten Werte — und ein Klick in
+    diesem Augenblick schreibt sie fest.
+  - **Nach dem Neuladen war man wieder im ersten Bereich.** SONEs
+    `LAST_WORKSPACE_KEY` in `localStorage`, samt der Reihenfolge (mitgegeben →
+    gemerkt → erster) und der Prüfung auf Mitgliedschaft; beim Abmelden
+    weggeräumt, wie in SONE.
 - **Noch offen:** der Umbau der Verwaltungslisten von `<table>` auf
   `admin-row`.
 - **Noch offen (alt):**

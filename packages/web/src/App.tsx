@@ -60,6 +60,15 @@ import {
 } from './screens/Settings.js';
 import { Trash } from './screens/Trash.js';
 
+/**
+ * Wo man zuletzt war, je Browser — SONEs `sone.lastWorkspace`.
+ *
+ * Ein gemerkter Arbeitsbereich ist keine Einstellung, sondern der Stand DIESES
+ * Browsers: an zwei Geräten arbeitet man an zwei Stellen. Darum lokal und
+ * nicht am Konto.
+ */
+const LAST_WORKSPACE = 'sote.lastWorkspace';
+
 export function App() {
   const [me, setMe] = useState<Me | null | undefined>(undefined);
   const [needsSetup, setNeedsSetup] = useState(false);
@@ -164,10 +173,23 @@ export function App() {
        * `keep` wird geprüft und nicht geglaubt: eine Id, die es nicht (mehr)
        * gibt, wäre ein Arbeitsbereich, in dem jede Anfrage fehlschlägt.
        */
+      /*
+       * Nach dem Neuladen derselbe Arbeitsbereich.
+       *
+       * Gemeldet: „Wenn ich einen Reload mache, lande ich auch immer wieder in
+       * meinem Workspace anstatt in dem, den ich ausgewählt hatte. Das geht bei
+       * SONE korrekt." Zutreffend — SOTE merkte sich nichts, also fiel jeder
+       * Neustart auf `workspaces[0]`.
+       *
+       * SONEs Reihenfolge: erst der mitgegebene (nach dem Anlegen), dann der
+       * gemerkte, dann der erste. Und *„prefer the last workspace, but only if
+       * the user is still a member — a remembered id from a workspace they were
+       * removed from would otherwise leave them staring at an empty sidebar."*
+       */
+      const gibt = (id: string | undefined) =>
+        id !== undefined && data.workspaces.some((w) => w.id === id) ? id : undefined;
       const bleibt =
-        keep !== undefined && data.workspaces.some((w) => w.id === keep)
-          ? keep
-          : data.workspaces[0]?.id;
+        gibt(keep) ?? gibt(localStorage.getItem(LAST_WORKSPACE) ?? undefined) ?? data.workspaces[0]?.id;
       setWorkspace(bleibt);
     } catch {
       setMe(null);
@@ -385,6 +407,12 @@ export function App() {
    */
 
   const signOut = () => {
+    /*
+     * Der gemerkte Bereich geht mit der Sitzung — SONE räumt ihn beim Abmelden
+     * ebenso weg. Sonst landet die nächste Person an diesem Browser im
+     * Arbeitsbereich der vorigen (oder in einer Id, die ihr nichts sagt).
+     */
+    localStorage.removeItem(LAST_WORKSPACE);
     void api
       .signOut()
       .catch(() => undefined)
@@ -554,6 +582,8 @@ export function App() {
             current={workspace}
             onPick={(id) => {
               setWorkspace(id);
+              // Gemerkt, damit ein Neuladen hier bleibt.
+              localStorage.setItem(LAST_WORKSPACE, id);
               /*
                * Der Ort bleibt, wenn er im neuen Arbeitsbereich existiert.
                *

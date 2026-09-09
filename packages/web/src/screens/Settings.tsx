@@ -303,9 +303,28 @@ export function Settings({
     }
   };
 
+  /*
+   * Neu laden, wenn der Arbeitsbereich wechselt.
+   *
+   * Hier stand `[]` — geladen wurde EINMAL. Gemeldet: „Wenn ich bei Workspaces
+   * Einstellungen mache und den Workspace wechsle und da auch Einstellungen
+   * machen will, dann übernimmt er die vom Vorgänger."
+   *
+   * Und der Schaden ist größer als eine falsche Anzeige: `save` baut die neue
+   * Ebene aus `data.levels` auf, also aus dem Stand des VORGÄNGERS. Wer dann
+   * irgendetwas anderes einstellte, schrieb dessen Akzentfarbe in diesen
+   * Arbeitsbereich — „wenn ich jetzt irgendwas anderes dort eingestellt habe,
+   * hat er auch die Farbe übernommen." Ein stehengebliebener Stand, aus dem
+   * geschrieben wird, ist kein Anzeigefehler, sondern Datenverlust.
+   *
+   * `data` wird beim Wechsel zurückgesetzt: sonst zeigt die Maske für einen
+   * Augenblick die Werte des alten Bereichs, und ein Klick in diesem Augenblick
+   * schreibt sie fest.
+   */
   useEffect(() => {
+    setData(undefined);
     void load();
-  }, []);
+  }, [workspaceId]);
 
   async function save(scope: 'user' | 'workspace' | 'instance', changes: Record<string, unknown>) {
     setBusy(true);
