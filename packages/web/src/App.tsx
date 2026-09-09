@@ -508,33 +508,40 @@ export function App() {
             Namen erkennt.
           */}
           {route.kind === 'search' ? (
-          <div className="panel-title">
-            <strong>Suche</strong>
-            {/*
-              Was gefunden wurde, sagt der Inhalt — hier steht, wo gesucht
-              wird. Eine Trefferzahl an zwei Stellen wären zwei Antworten auf
-              dieselbe Frage.
-            */}
-            <span className="panel-scope">
-              {route.q.trim() === '' ? 'tippe oben' : wsName}
-            </span>
-          </div>
-        ) : route.kind === 'notifications' ? (
-          <div className="panel-title">
-            <strong>Benachrichtigungen</strong>
-            {/*
-              Kein Arbeitsbereich im Kopf, und das ist die Aussage: eine
-              Glocke gilt über Arbeitsbereiche hinweg, also kann hier keiner
-              stehen — es gibt keine einzige Antwort (wie in SONE, ADR-0052).
-              „Wo" ist stattdessen eine Achse im Menü darunter.
-            */}
-            <span className="panel-scope">über alle Arbeitsbereiche</span>
-          </div>
-        ) : SECTION_NAV !== null && route.kind !== 'workspaces' ? (
-            <div className="panel-title">
-              <strong>{SECTION_NAV.title}</strong>
-              <span className="panel-scope">{SECTION_NAV.note}</span>
-            </div>
+            <>
+              {/*
+                SONEs Kopf: `sidebar-head` ist die Zeile mit dem Titel (und
+                ggf. Knöpfen), `panel-scope` steht als eigene Zeile DARUNTER —
+                nicht in einer Spalte im Titel. Was gefunden wurde, sagt der
+                Inhalt; hier steht, wo gesucht wird.
+              */}
+              <div className="sidebar-head">
+                <div className="panel-title">Suche</div>
+              </div>
+              <div className="panel-scope">
+                {route.q.trim() === '' ? 'tippe oben' : wsName}
+              </div>
+            </>
+          ) : route.kind === 'notifications' ? (
+            <>
+              <div className="sidebar-head">
+                <div className="panel-title">Benachrichtigungen</div>
+              </div>
+              {/*
+                Kein Arbeitsbereich im Kopf, und das ist die Aussage: eine
+                Glocke gilt über Arbeitsbereiche hinweg, also kann hier keiner
+                stehen — es gibt keine einzige Antwort (wie in SONE, ADR-0052).
+                „Wo" ist stattdessen eine Achse im Menü darunter.
+              */}
+              <div className="panel-scope">über alle Arbeitsbereiche</div>
+            </>
+          ) : SECTION_NAV !== null && route.kind !== 'workspaces' ? (
+            <>
+              <div className="sidebar-head">
+                <div className="panel-title">{SECTION_NAV.title}</div>
+              </div>
+              <div className="panel-scope">{SECTION_NAV.note}</div>
+            </>
           ) : (
           <WorkspaceMenu
             workspaces={me.workspaces}

@@ -604,8 +604,9 @@ input {
 }
 
 .panel-head {
-  padding: 10px 12px;
-  border-bottom: 1px solid var(--line);
+  flex: none;
+  padding: 10px 12px 9px;
+  border-block-end: 1px solid var(--border-subtle);
 }
 
 .ws {
@@ -2746,22 +2747,38 @@ select.target {
 /* Der Kopf der Leiste in einem Einstellungsbereich: Titel und Geltungsbereich.
    Keine Gruppenüberschrift darunter — die würde nur wiederholen, was hier
    schon steht (SONEs ADR-0072). */
-.panel-title {
+/* ── Der Panel-Kopf — SONEs `.sidebar-head`, `.panel-title`, `.panel-scope` ──
+ *
+ * Wörtlich übernommen. Vorher war `.panel-title` hier eine SPALTE mit einem
+ * `strong` und dem Scope darin; bei SONE ist es eine Zeile (Text-md, 600, mit
+ * Ellipse), und der Scope steht als eigene Zeile darunter — mono, klein,
+ * gesperrt, „wie jede andere Beschriftung, die einen Ort benennt statt etwas
+ * zu sagen". */
+.sidebar-head {
   display: flex;
-  flex-direction: column;
-  gap: 1px;
-  padding: 3px 4px;
+  align-items: center;
+  justify-content: space-between;
+  position: relative;
 }
 
-.panel-title strong {
-  font-size: 14px;
-  font-weight: 500;
+.panel-title {
+  flex-grow: 1;
+  min-inline-size: 0;
+  font-size: var(--sone-text-md);
+  font-weight: 600;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
+/* What the mode is looking at. Mono and small, like every other label that
+   names a place rather than saying something. (SONE) */
 .panel-scope {
-  font-family: var(--sote-mono);
-  font-size: 10px;
-  color: var(--text-faint);
+  margin-block-start: 5px;
+  font-family: var(--sone-font-mono);
+  font-size: var(--sone-text-xs);
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
 }
 
 .set-input {

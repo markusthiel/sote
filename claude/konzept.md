@@ -1922,7 +1922,11 @@ erfunden.
   - **Das `+` steht im Abschnittskopf** neben „Projekte", nicht als Zeile unter
     der Liste — immer gezeichnet, aus demselben Grund.
   - Klappen dreht **ein** Zeichen statt zwei zu tauschen: zwei Zeichen springen.
-- **Noch offen, in dieser Reihenfolge:** der Panel-Kopf, das Zeilenmenü
+- **Fläche 3, der Panel-Kopf:** SONEs `sidebar-head`, `panel-title`,
+  `panel-scope`. Vorher war der Titel eine Spalte mit dem Scope *darin*; bei
+  SONE ist er eine Zeile und der Scope steht darunter. Vier Köpfe gemessen:
+  14,4 px / 600, Scope 12 px mit 0,08 em Sperrung.
+- **Noch offen, in dieser Reihenfolge:** das Zeilenmenü
   (`entry-menu`), Kontomenü, Workspace-Wähler, Einstellungen (`settings-card`,
   `settings-row`, `section-nav`), Knöpfe und Felder, Dialoge — und zuletzt ein
   Wächter gegen harte Pixelwerte, wo eine Skala existiert.
