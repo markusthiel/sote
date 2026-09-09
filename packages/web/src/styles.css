@@ -3501,6 +3501,215 @@ label.btn {
   color: var(--text-muted);
 }
 
+/* ══════════════════════════════════════════════════════════════════════════
+ * Die Baumzeile — SONEs `tree-row`, wörtlich übernommen.
+ *
+ * Aus `sone/packages/web/src/styles.css`: `.tree-row`, `.tree-twisty`,
+ * `.tree-link`, `.entry-more`, `.sidebar-section*`, `.sidebar-empty`. SONEs
+ * ältere Token-Namen (`--sone-bg-hover`, `--sone-text`, `--sone-text-muted`)
+ * sind auf die heutigen abgebildet (`--surface-hover`, `--text-primary`,
+ * `--text-muted`) — die Werte sind dieselben.
+ *
+ * Ein Fund dabei, und er ist SONEs ADR-0016: SOTEs Menüpunkt `⋮` hatte
+ * `opacity: 0` und erschien erst beim Hover. Ein Element, das erst beim Hover
+ * erscheint, existiert auf einem Telefon nicht. SONEs `.entry-more` hat 0.35 —
+ * gedämpft, nicht verborgen, und jederzeit antippbar.
+ * ═══════════════════════════════════════════════════════════════════════ */
+
+.tree-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sone-space-1);
+  min-height: 34px;
+  /* The frame both of the row's menus hang off. (SONE) */
+  position: relative;
+  /* No text selection in the tree: a row is `draggable`, and on a touch device
+     a long press otherwise began selecting the label. (SONE) */
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  border-radius: 6px;
+}
+
+/* Disclosure triangle. Always present in the layout — as a transparent
+   placeholder for a page with no children — so page titles line up whether or
+   not the row can expand. (SONE) */
+.tree-twisty {
+  flex: none;
+  inline-size: 20px;
+  min-block-size: var(--sone-control);
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.65rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: transform 120ms ease;
+}
+
+.tree-twisty:hover { background: var(--surface-hover); color: var(--text-primary); }
+.tree-twisty[aria-expanded='true'] { transform: rotate(90deg); }
+.tree-twisty[data-placeholder='true'] {
+  visibility: hidden;
+  cursor: default;
+}
+
+.tree-link {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--sone-space-4);
+  padding: var(--sone-space-3) var(--sone-space-4);
+  border: 0;
+  border-radius: var(--sone-radius);
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: var(--sone-text-md);
+  text-align: start;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tree-link:hover { background: var(--surface-hover); text-decoration: none; }
+.tree-link[aria-current='page'] { background: var(--surface-hover); font-weight: 600; }
+
+/* Der Name in der Zeile: er darf enden, das Zeichen und die Zahl nicht. */
+.tree-link .p-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tree-link .n {
+  margin-left: auto;
+  font-family: var(--sone-font-mono);
+  font-size: var(--sone-text-xs);
+  color: var(--text-muted);
+}
+
+.entry-more {
+  inline-size: var(--sone-control);
+  min-block-size: var(--sone-control);
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  /* De-emphasised, not hidden. The button is in the DOM and hittable at all
+     times; opacity only lowers its visual weight on a pointer device where
+     hover exists. A control *revealed* by hover would not exist on a phone
+     (ADR-0016), which is why this is 0.35 and not 0. (SONE) */
+  opacity: 0.35;
+  transition: opacity 120ms ease;
+}
+
+.tree-row:hover .entry-more,
+.entry-more:hover,
+.entry-more:focus-visible,
+.entry-more[aria-expanded='true'] { opacity: 1; }
+
+.entry-more:hover,
+.entry-more[aria-expanded='true'] {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+}
+
+/* Das Umbenennen-Feld sitzt an der Stelle des Namens, in derselben Höhe. */
+.tree-rename {
+  flex: 1;
+  min-width: 0;
+  min-block-size: var(--sone-control);
+  padding: 0 var(--sone-space-4);
+  border: 1px solid var(--border-default);
+  border-radius: var(--sone-radius);
+  background: var(--surface-raised);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: var(--sone-text-md);
+}
+
+/* ── Der Abschnitt: Überschrift, Zahl, und das Plus daneben ──────────────
+ *
+ * Always drawn, never on hover: a control that appears when a pointer is near
+ * it does not exist on a phone, and this is the way to make a folder now that
+ * the button at the foot of the tree is gone. (SONE) */
+
+.sidebar-section + .sidebar-section {
+  margin-block-start: var(--sone-space-4);
+  padding-block-start: var(--sone-space-4);
+  border-block-start: 1px solid var(--border-subtle);
+}
+
+.sidebar-section-head {
+  display: flex;
+  align-items: center;
+  gap: var(--sone-space-2);
+  padding-inline-end: var(--sone-space-2);
+}
+
+.sidebar-section-toggle {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: var(--sone-space-2);
+  min-block-size: 28px;
+  padding: 0 var(--sone-space-2);
+  border: 0;
+  border-radius: var(--sone-radius-sm);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.sidebar-section-toggle:hover { background: var(--surface-hover); }
+.sidebar-section-toggle svg {
+  inline-size: 12px;
+  block-size: 12px;
+  color: var(--text-muted);
+  transition: transform 140ms ease;
+}
+.sidebar-section-toggle[aria-expanded='true'] svg { transform: rotate(90deg); }
+/* Die Beschriftung im Kopf trägt keinen eigenen Rand — der Kopf hat ihn. */
+.sidebar-section-toggle .sidebar-label { margin: 0; padding-inline: 0; }
+
+/* What is behind a closed section, so it does not read as an empty one. (SONE) */
+.sidebar-section-count {
+  font-family: var(--sone-font-mono);
+  color: var(--text-muted);
+  font-size: var(--sone-text-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+.sidebar-section-add {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  inline-size: 24px;
+  block-size: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--sone-radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.sidebar-section-add:hover { background: var(--surface-hover); color: var(--text-primary); }
+.sidebar-section-add svg { inline-size: 14px; block-size: 14px; }
+
+.sidebar-empty {
+  padding: var(--sone-space-2) var(--sone-space-3);
+  font-size: var(--sone-text-xs);
+}
+
 /* Eine Filterzeile, die zurückgenommen wird: leiser als die Filter selbst,
    weil sie nichts findet, sondern etwas aufhebt. */
 /*

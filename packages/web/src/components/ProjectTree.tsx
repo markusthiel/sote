@@ -28,6 +28,7 @@ import {
   FolderPlusIcon,
   ListIcon,
   PencilIcon,
+  PlusIcon,
   ShareIcon,
 } from './icons.js';
 import { iconsFor, IconPreview, loadIcons, ProjectMark } from './ProjectMark.js';
@@ -212,14 +213,14 @@ export function ProjectTree({
 
   function rows(parentId: string | null, depth: number): React.ReactNode[] {
     return childrenOf(parentId).flatMap((p) => [
-      <div className="p-row" key={p.id}>
+      <div className="tree-row" key={p.id}>
         {renaming === p.id ? (
           <input
-            className="p-rename"
+            className="tree-rename"
             defaultValue={p.name}
             autoFocus
             aria-label={`${p.name} umbenennen`}
-            style={{ marginInlineStart: depth * 14 }}
+            style={{ marginInlineStart: depth * 18 }}
             onBlur={(e) => {
               const next = e.target.value.trim();
               setRenaming(null);
@@ -245,10 +246,10 @@ export function ProjectTree({
             */}
             {childrenOf(p.id).length > 0 ? (
               <button
-                className="p-twist"
+                className="tree-twisty"
                 aria-label={`${p.name} ${closed.has(p.id) ? 'aufklappen' : 'zuklappen'}`}
                 aria-expanded={!closed.has(p.id)}
-                style={{ marginInlineStart: depth * 14 }}
+                style={{ marginInlineStart: depth * 18 }}
                 onClick={() =>
                   setClosed((was) => {
                     const next = new Set(was);
@@ -258,13 +259,20 @@ export function ProjectTree({
                   })
                 }
               >
-                <span aria-hidden="true">{closed.has(p.id) ? '▸' : '▾'}</span>
+                {/* Ein Zeichen, gedreht -- wie in SONE: zwei verschiedene Zeichen
+                    springen beim Umschalten, eine Drehung nicht. */}
+                <span aria-hidden="true">▸</span>
               </button>
             ) : (
-              <span className="p-twist-gap" style={{ marginInlineStart: depth * 14 }} />
+              <span
+                className="tree-twisty"
+                data-placeholder="true"
+                aria-hidden="true"
+                style={{ marginInlineStart: depth * 18 }}
+              />
             )}
             <button
-              className="p-item"
+              className="tree-link"
               /*
                * Die Beschriftung nennt den Namen und die Zahl getrennt.
                *
@@ -280,7 +288,7 @@ export function ProjectTree({
                 `${p.kind === 'folder' ? 'Ordner' : 'Projekt'} ${p.name}` +
                 (p.open === null ? '' : `, ${p.open} offen`)
               }
-              aria-current={activeId === p.id}
+              aria-current={activeId === p.id ? 'page' : undefined}
               onClick={() => onOpen(p.id)}
             >
               <ProjectMark
@@ -304,7 +312,7 @@ export function ProjectTree({
               )}
             </button>
             <button
-              className="p-dots"
+              className="entry-more"
               aria-label={`Menü für ${p.name}`}
               aria-haspopup="menu"
               /*
@@ -603,7 +611,7 @@ export function ProjectTree({
         ? [
             <input
               key={`add-${p.id}`}
-              className="p-rename"
+              className="tree-rename"
               autoFocus
               placeholder={adding.kind === 'folder' ? 'Name des Unterordners' : 'Name des Projekts'}
               aria-label={adding.kind === 'folder' ? 'Name des Unterordners' : 'Name des Projekts'}
@@ -629,21 +637,38 @@ export function ProjectTree({
 
   return (
     <>
-      {/* SONEs Beschriftung einer Gruppe in der Leiste: mono, gesperrt,
-          Kapitälchen — sie benennt einen Ort, man liest sie nicht, man findet
-          sie. Dieselbe Klasse wie in den drei Panels daneben. */}
-      <div className="sidebar-label">Projekte</div>
-      {projects.length === 0 && adding === null ? (
-        <div className="p-item" style={{ color: 'var(--text-faint)' }}>
-          noch keine
+      {/*
+        SONEs Abschnittskopf: Beschriftung und das Plus DANEBEN — nicht als
+        Zeile unter der Liste. Immer gezeichnet, nie erst beim Hover: ein
+        Bedienelement, das erscheint, wenn ein Zeiger in der Nähe ist, existiert
+        auf einem Telefon nicht (ADR-0016). Der Kopf klappt hier nicht — SOTE
+        hat einen Abschnitt, und ein Umschalter für eine Sache ohne Alternative
+        wäre ein Knopf, der nur zuklappt.
+      */}
+      <div className="sidebar-section-head">
+        <div className="sidebar-section-toggle" role="presentation">
+          <span className="sidebar-label">Projekte</span>
         </div>
+        <button
+          type="button"
+          className="sidebar-section-add"
+          aria-label="Ordner anlegen"
+          title="Ordner anlegen"
+          disabled={busy}
+          onClick={() => setAdding({ parentId: null, kind: 'folder' })}
+        >
+          <PlusIcon size={14} />
+        </button>
+      </div>
+      {projects.length === 0 && adding === null ? (
+        <p className="sidebar-empty muted">noch keine</p>
       ) : (
         rows(null, 0)
       )}
 
       {adding !== null && adding.parentId === null ? (
         <input
-          className="p-rename"
+          className="tree-rename"
           autoFocus
           placeholder="Name des Ordners"
           aria-label="Name des Ordners"
@@ -661,25 +686,7 @@ export function ProjectTree({
             }
           }}
         />
-      ) : (
-        <button
-          className="p-item add"
-          onClick={() => setAdding({ parentId: null, kind: 'folder' })}
-          disabled={busy}
-        >
-          <span className="plus" aria-hidden="true">
-            +
-          </span>
-          {/*
-            „Ordner" und nicht „Projekt": ganz oben kann nur ein Ordner stehen
-            (Konzept 10d). Der Knopf sagte „Projekt anlegen" und legte einen
-            Ordner an — im Bild aufgefallen. Eine Beschriftung, die etwas
-            anderes verspricht als sie tut, ist schlimmer als eine, die nichts
-            verspricht.
-          */}
-          Ordner anlegen
-        </button>
-      )}
+      ) : null}
     </>
   );
 }

@@ -1912,11 +1912,20 @@ erfunden.
   `panel-menu-item`, `panel-menu-label`, `panel-menu-count`, `sidebar-label`
   kopiert (Zeilen 1027–1078 und 6101–6117 dort). Alle vier Panels gemessen: 32
   px, `0 8px`, 14,4 px (= 0,9 rem, SONEs Wert), Radius 2 px.
-- **Noch offen, in dieser Reihenfolge:** die Projekt-Baumzeile (SONEs
-  Baumzeile statt `.p-item` mit angepassten Maßen), der Panel-Kopf, das
-  Zeilenmenü (`entry-menu`), Kontomenü, Workspace-Wähler, Einstellungen
-  (`settings-card`, `settings-row`, `section-nav`), Knöpfe und Felder, Dialoge —
-  und zuletzt ein Wächter gegen harte Pixelwerte, wo eine Skala existiert.
+- **Fläche 2, die Baumzeile:** SONEs `tree-row`, `tree-twisty`, `tree-link`,
+  `entry-more`, `sidebar-section-head/-toggle/-add`, `sidebar-empty` kopiert.
+  Gemessen: Zeitansichten 32 px, Baumzeilen 34 px, **eine** Schriftgröße
+  (14,4 px) in der ganzen Leiste. Zwei Funde dabei, beide SONEs ADRs:
+  - **`⋮` hatte `opacity: 0`** und erschien erst beim Hover — ein Element, das
+    erst beim Hover erscheint, existiert auf einem Telefon nicht (ADR-0016).
+    SONE: 0.35, gedämpft statt verborgen.
+  - **Das `+` steht im Abschnittskopf** neben „Projekte", nicht als Zeile unter
+    der Liste — immer gezeichnet, aus demselben Grund.
+  - Klappen dreht **ein** Zeichen statt zwei zu tauschen: zwei Zeichen springen.
+- **Noch offen, in dieser Reihenfolge:** der Panel-Kopf, das Zeilenmenü
+  (`entry-menu`), Kontomenü, Workspace-Wähler, Einstellungen (`settings-card`,
+  `settings-row`, `section-nav`), Knöpfe und Felder, Dialoge — und zuletzt ein
+  Wächter gegen harte Pixelwerte, wo eine Skala existiert.
 - **Der Token-Wächter liest nur den ersten `:root`.** Meine Aliase standen in
   einem zweiten und galten als „nur im Dunkeln deklariert". Sie gehören in den
   ersten — nicht der Wächter zu mir.
