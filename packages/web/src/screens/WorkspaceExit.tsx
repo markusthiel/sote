@@ -101,7 +101,7 @@ export function WorkspaceExit({
               />
               <button
                 type="button"
-                className="btn danger"
+                className="btn destructive"
                 /*
                  * Gesperrt, bis der Name stimmt — und der Server prüft es
                  * nochmal. Nicht doppelt aus Misstrauen: die Sperre hier

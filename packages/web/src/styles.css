@@ -422,6 +422,69 @@ input {
   font-size: max(1rem, 16px);
 }
 
+/*
+ * Ein Feld ist eine Fläche, kein Kasten. (SONE, wörtlich: styles.css 803–848)
+ *
+ * SONE gestaltet Textfelder GLOBAL. SOTE hat vier Felder mit eigener Gestalt —
+ * die Schnellerfassung, die Suche über dem Baum, das Umbenennen im Baum und
+ * die Zeichensuche im Menü —, und die sind ausgenommen, weil sie in SONE
+ * Gegenstücke mit eigenen Regeln haben. Alles andere ist ein Formularfeld und
+ * sieht aus wie SONEs.
+ */
+input:not(:where([type='checkbox'], [type='radio'], [type='color'], [type='file'], [type='time'],
+  .quick-field input, .seek input, .tree-rename, .entry-icon-search)),
+textarea {
+  font: inherit;
+  color: inherit;
+  width: 100%;
+  min-height: var(--sone-tap);
+  padding: var(--sone-space-4) var(--sone-space-5);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--sone-radius);
+  background: var(--surface-sunken);
+  transition: border-color 120ms ease, background 120ms ease;
+}
+input:not(:where([type='checkbox'], [type='radio'], [type='color'], [type='file'], [type='time'],
+  .quick-field input, .seek input, .tree-rename, .entry-icon-search)):hover,
+textarea:hover { border-color: var(--border-default); }
+input:not(:where([type='checkbox'], [type='radio'], [type='color'], [type='file'], [type='time'],
+  .quick-field input, .seek input, .tree-rename, .entry-icon-search)):focus,
+textarea:focus {
+  /* The accent border replaces the outline rather than joining it: two rings
+     around one field is the tell of a control nobody looked at. (SONE) */
+  outline: none;
+  border-color: var(--accent);
+  background: var(--surface-page);
+}
+input::placeholder, textarea::placeholder { color: var(--text-muted); }
+
+/* A mark beside a label, in the interface's own accent rather than the
+   platform's blue. (SONE) */
+input[type='checkbox'], input[type='radio'] {
+  inline-size: 16px;
+  block-size: 16px;
+  min-height: 0;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+select {
+  font: inherit;
+  color: inherit;
+  min-height: var(--sone-tap);
+  padding: 6px 10px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--sone-radius);
+  background: var(--surface-page);
+}
+
+/* Everything else keeps a real focus ring. Fields are the exception above, and
+   only because they replace it with something at least as visible. (SONE) */
+button:focus-visible, a:focus-visible, select:focus-visible, [tabindex]:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   * {
     animation-duration: 0.01ms !important;
@@ -1070,21 +1133,48 @@ input {
   padding: 8px 10px;
 }
 
+/* ══════════════════════════════════════════════════════════════════════════
+ * Knöpfe und Felder — SONEs Grundstil, wörtlich (styles.css dort, 723–860).
+ *
+ * „Three weights of button, and no more": ein Rahmen, `primary` mit Akzent,
+ * `quiet` ohne Rahmen; dazu `destructive` in Gefahrfarbe. Als `.btn` und nicht
+ * `button.btn`, weil SOTE drei Elemente als Knopf zeichnet — `button`, `a`
+ * (der SSO-Link) und `label` (das Bildfeld) — und drei Selektoren für eine Form
+ * wären drei Stellen, die zueinander passen müssen.
+ * ═══════════════════════════════════════════════════════════════════════ */
 .btn {
-  border: 1px solid var(--line-strong);
-  border-radius: var(--sote-radius-md);
-  padding: 7px 14px;
-  background: var(--page);
-  min-height: var(--sote-tap);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sone-space-2);
+  min-height: var(--sone-tap);
+  padding-inline: 14px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--sone-radius);
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease;
 }
+/* Only a button with no colour of its own gets the grey hover. (SONE) */
+.btn:not(.primary):hover:not(:disabled) { background: var(--surface-hover); }
+.btn:disabled { opacity: 0.45; cursor: default; }
 
 .btn.primary {
   background: var(--accent);
   border-color: var(--accent);
-  color: var(--accent-on);
-  font-weight: 500;
-  width: 100%;
+  color: var(--accent-contrast);
+  font-weight: 550;
 }
+.btn.primary:hover:not(:disabled) { filter: brightness(1.08); }
+
+/* In der Anmeldekarte und der Einrichtung ist der Hauptknopf so breit wie das
+   Formular — SONEs Auth-Formulare tun dasselbe. Hier und nicht am Gewicht:
+   `primary` heißt „Hauptsache", nicht „breit". */
+.signin-card .btn.primary,
+.setup-card .btn.primary,
+.guest-body .btn.primary { width: 100%; }
 
 .note-error {
   color: var(--danger);
@@ -1435,8 +1525,12 @@ input {
 .btn.quiet {
   border-color: transparent;
   background: transparent;
-  color: var(--text-muted);
+  color: var(--text-secondary);
 }
+.btn.quiet:hover:not(:disabled) { color: var(--text-primary); }
+
+.btn.destructive { border-color: var(--danger); color: var(--danger); }
+.btn.destructive:hover:not(:disabled) { background: var(--danger); color: #fff; }
 
 .btn.small {
   min-height: 32px;
@@ -1444,15 +1538,10 @@ input {
   font-size: 13px;
 }
 
-select.target {
-  border: 1px solid var(--line-strong);
-  border-radius: var(--sote-radius-md);
-  background: var(--page);
-  color: var(--text);
-  padding: 6px 9px;
-  font-size: 13px;
-  min-height: 32px;
-}
+/* `select.target` trägt nichts Eigenes mehr: die globale `select`-Regel (SONE)
+   gilt. Hier stand 32px auf 13px — ein Auswahlfeld, das kleiner war als jedes
+   andere Bedienelement daneben. */
+select.target { }
 
 /* ── Die Detailspalte ─────────────────────────────────────────────────────
    Ab 1100 px eine Spalte, darunter ein Drawer von rechts — dieselbe Regel wie
@@ -2464,19 +2553,9 @@ select.target {
   cursor: default;
 }
 
-.settings-row-value select {
-  min-height: 34px;
-  padding: 5px 8px;
-  border: 1px solid var(--line-strong);
-  border-radius: var(--sote-radius-md);
-  background: var(--page);
-  color: var(--text);
-  font: inherit;
-  font-size: 13.5px;
-}
-
+/* SONEs Größe für Kleintext (0.85rem = 12.75px); SOTE hatte 12px. */
 .small {
-  font-size: 12px;
+  font-size: var(--sone-text-sm);
 }
 
 /* ── Die Zeile über dem Inhalt ─────────────────────────────────────────────
@@ -2737,17 +2816,9 @@ select.target {
   color: var(--text-muted);
 }
 
-.set-input {
-  width: 100%;
-  min-height: 34px;
-  padding: 5px 8px;
-  border: 1px solid var(--line-strong);
-  border-radius: var(--sote-radius-md);
-  background: var(--page);
-  color: var(--text);
-  font: inherit;
-  font-size: 13.5px;
-}
+/* `.set-input` trägt nichts Eigenes mehr: die globale Feldregel (SONE) gilt.
+   Die Klasse bleibt im Markup, bis die Bildschirme sie ablegen. */
+.set-input { }
 
 
 /* Farbwähler und Zurücksetzen in einer Zeile. */
@@ -3098,10 +3169,7 @@ select.target {
   color: var(--danger);
 }
 
-.btn.danger {
-  border-color: var(--danger);
-  color: var(--danger);
-}
+
 
 /* Ein Formular, kein Bildschirm voll: die Einladung fragt zwei Dinge. */
 .guest-body.narrow {
@@ -4117,7 +4185,11 @@ label.btn {
 
 /* The same inset as a row, so a message does not sit on a different rail from
    the list it replaces. (SONE) */
-.small { font-size: 0.85rem; padding-inline: var(--sone-space-2); }
+/* Im Wähler eine Meldung statt einer Liste: derselbe Rand wie eine Zeile, „so
+   a message does not sit on a different rail from the list it replaces" (SONE).
+   Nur dort — SOTE benutzt `.small` überall als Kleintext, und ein Rand an
+   jedem Hinweis wäre ein Rand, den niemand gewollt hat. */
+.switcher-menu .small { padding-inline: var(--sone-space-2); }
 
 /* Eine Filterzeile, die zurückgenommen wird: leiser als die Filter selbst,
    weil sie nichts findet, sondern etwas aufhebt. */

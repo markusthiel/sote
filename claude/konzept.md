@@ -1981,6 +1981,16 @@ erfunden.
     Genau so kam „der Hover im Profil ist schwarz" zustande.
   - **Name und Adresse im Kontomenü bleiben** — Markus findet sie praktisch,
     und sie sind ein Vorschlag für SONE. In SONEs Maßen gezeichnet.
+- **Fläche 8, Knöpfe und Felder:** SONEs Grundstil wörtlich (Zeilen 723–860
+  dort). *Three weights of button, and no more* — Rahmen, `primary`, `quiet`,
+  dazu `destructive`; `.btn` statt `button.btn`, weil SOTE drei Elemente als
+  Knopf zeichnet (`button`, `a`, `label`). Felder sind eine Fläche
+  (`surface-sunken`, 44 px); SOTEs vier Felder mit eigener Gestalt
+  (Schnellerfassung, Baumsuche, Umbenennen, Zeichensuche) sind ausgenommen,
+  weil sie in SONE Gegenstücke mit eigenen Regeln haben. `select.target` und
+  `.settings-row-value select` hielten noch 32/34 px — eigene Regeln, die die
+  globale schlugen; jetzt leer. `primary` heißt „Hauptsache", nicht „breit":
+  volle Breite nur in Anmelde- und Einrichtungskarte.
 - **Noch offen, in dieser Reihenfolge:**
   Einstellungen (`settings-card`, `settings-row`, `section-nav`), Knöpfe und
   Felder, Dialoge — und zuletzt ein Wächter gegen harte Pixelwerte, wo eine
