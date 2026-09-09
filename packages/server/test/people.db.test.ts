@@ -19,6 +19,7 @@ const URL_ =
 
 let pool: Pool;
 let anna: string;
+const NACHNAME = `Bauer${process.pid}`;
 let bert: string;
 
 before(async () => {
@@ -34,7 +35,17 @@ before(async () => {
     );
     return u!.id;
   };
-  anna = await mk(`anna-${process.pid}@example.org`, 'Anna Bauer');
+  /*
+   * Ein eigener Nachname je Lauf.
+   *
+   * Die Suche liefert höchstens acht Treffer, und ein Test, der immer „Bauer"
+   * anlegt, hinterlässt auf einer nicht neu angelegten Datenbank nach zehn
+   * Läufen zehn Bauers — dann fällt der aktuelle aus den acht heraus, und der
+   * Test meldet einen Fehler in der Suche, den es nicht gibt. Auf frischer
+   * Datenbank (wie in der CI) war er immer grün; hier lokal ein Wackler, den
+   * ich zweimal weggeklickt habe, statt ihn zu beheben.
+   */
+  anna = await mk(`anna-${process.pid}@example.org`, `Anna ${NACHNAME}`);
   bert = await mk(`bert-${process.pid}@example.org`, 'Bert Kunz');
 });
 
@@ -85,9 +96,9 @@ test('gesucht wird nach Name UND Adresse', async () => {
   // Das ist, was ADR-0119 wirklich neu bringt: Name → Adresse. Darum nimmt der
   // Weg dasselbe Recht wie das Hinzufügen und kein lockereres.
   const { ws } = await scratch('p-find');
-  const nachName = await findPeople(pool, ws, 'Bauer');
+  const nachName = await findPeople(pool, ws, NACHNAME);
   assert.ok(nachName.some((p) => p.userId === anna));
-  const nachMail = await findPeople(pool, ws, 'bert-');
+  const nachMail = await findPeople(pool, ws, `bert-${process.pid}`);
   assert.ok(nachMail.some((p) => p.userId === bert));
 });
 
@@ -97,7 +108,7 @@ test('wer schon hier ist, wird mitgeliefert und markiert', async () => {
    * Verwirrung, die ADR-0119 behebt, nur von der anderen Seite.
    */
   const { ws } = await scratch('p-marked');
-  const gefunden = await findPeople(pool, ws, 'Bauer');
+  const gefunden = await findPeople(pool, ws, NACHNAME);
   const treffer = gefunden.find((p) => p.userId === anna);
   assert.ok(treffer, 'Anna steht in der Liste');
   assert.equal(treffer.alreadyMember, true, 'und ist markiert');
