@@ -2529,18 +2529,6 @@ select.target { }
   background: var(--surface-hover);
   font-weight: 600;
 }
-.settings-nav-label { font-size: var(--sone-text-sm); }
-.settings-nav-hint {
-  margin-inline-start: auto;
-  font-size: var(--sone-text-xs);
-  color: var(--text-muted);
-}
-/* On a phone the hint goes: the navigation is a list to get past, not to
-   read. (SONE) */
-@media (max-width: 720px) {
-  .settings-nav-hint { display: none; }
-}
-.settings-nav-item[aria-current='page'] .settings-nav-hint { color: inherit; }
 
 .set-choice {
   min-width: 0;

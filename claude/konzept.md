@@ -2037,8 +2037,16 @@ erfunden.
   dafür sind drei Handschriften.** Jetzt überall SONEs 1,6 rem / 300 / −0,02 em,
   gemessen identisch in Hauptkopf und Gast-Bildschirm. Der Gast hat kein
   Gegenstück in SONE, also nicht kopiert, sondern auf die Skala gesetzt.
-- **Noch offen:** die umbrechenden Hinweise in der Workspace-Navigation und der
-  Umbau der Listen auf `admin-row`.
+- **Fläche 12, die Abschnittsnavigation trägt nur den Namen.** SONEs
+  `SectionNav` zeigt keinen Hinweis in der Zeile, und der Grund steht dort:
+  *„A line of explanation under each entry made every one three lines tall, and
+  a navigation that has to be read is a page about the navigation."* SOTE zeigte
+  ihn daneben, und bei 272 px Spalte brachen zwei Zeilen um (42 px statt 34,
+  gemessen). Der Hinweis bleibt als `title` und in der Vorleseansage — er ist
+  nicht falsch, er gehört nur nicht in die Zeile. 17 Zeilen über drei Bereiche
+  jetzt einzeilig.
+- **Noch offen:** der Umbau der Verwaltungslisten von `<table>` auf
+  `admin-row`.
 - **Noch offen (alt):**
   Einstellungen (`settings-card`, `settings-row`, `section-nav`), Knöpfe und
   Felder, Dialoge — und zuletzt ein Wächter gegen harte Pixelwerte, wo eine

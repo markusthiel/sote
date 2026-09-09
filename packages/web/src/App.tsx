@@ -668,11 +668,23 @@ export function App() {
                   key={entry.id}
                   className="settings-nav-item"
                   aria-current={SECTION_NAV.active === entry.id ? 'page' : undefined}
+                  /*
+                    DER NAME ALLEIN — SONEs `SectionNav`, und die Begründung ist
+                    dort geschrieben: *„A line of explanation under each entry
+                    made every one three lines tall, and a navigation that has
+                    to be read is a page about the navigation."*
+
+                    SOTE zeigte den Hinweis daneben, und bei 272 px Spalte
+                    brachen zwei Zeilen um („Name und Zeichen", „Mitnehmen und
+                    wegwerfen" — 42 px statt 34, gemessen). Der Hinweis bleibt
+                    als `title` und in der Vorleseansage: er ist nicht falsch,
+                    er gehört nur nicht in die Zeile.
+                  */
+                  title={entry.hint}
                   aria-label={`${entry.label} — ${entry.hint}`}
                   onClick={() => SECTION_NAV.go(entry.id)}
                 >
-                  <span className="settings-nav-label">{entry.label}</span>
-                  <span className="settings-nav-hint">{entry.hint}</span>
+                  {entry.label}
                 </button>
               ))}
               </div>
