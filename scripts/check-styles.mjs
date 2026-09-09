@@ -72,13 +72,13 @@ const ohneRegel = [...used.keys()].filter((c) => !rules.has(c) && !markupOnly.ha
 /* ── 2. Sperrklinke für harte Pixel ───────────────────────────────────── */
 
 /*
- * Die Grenze. Nachgezogen nach Flaeche 10 (Dialoge und Formularfelder):
- * font-size 81, padding 76, gap 46, margin 48, min-height 13.
+ * Die Grenze. Nachgezogen nach Flaeche 11 (Gast-Bildschirm, eine
+ * Ueberschriftgroesse): font-size 76, padding 75, gap 45, margin 46, min-height 13.
  * Vorher stand hier font-size 84, padding 76, gap 46, margin 52, min-height 13.
  * Wer eine senkt, zieht die Zahl hier nach -- von Hand, damit es ein bewusster
  * Schritt ist und kein Nebeneffekt.
  */
-const LIMIT = { 'font-size': 81, padding: 76, gap: 46, margin: 48, 'min-height': 13 };
+const LIMIT = { 'font-size': 76, padding: 75, gap: 45, margin: 46, 'min-height': 13 };
 const count = (prop) =>
   [...css.matchAll(new RegExp(`^\\s*${prop}[a-z-]*:\\s*[^;]*\\b\\d+px`, 'gm'))].length;
 const gewachsen = Object.entries(LIMIT)

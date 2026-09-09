@@ -2030,8 +2030,15 @@ erfunden.
   - SONEs `.dialog*` gibt es hier nicht: SOTE hat keine schwebenden Dialoge —
     Anmelden, Einrichtung, Einladung annehmen und der Gast-Bildschirm sind
     ganze Bildschirme. Der Block kommt, wenn der erste Dialog kommt.
-- **Noch offen:** die umbrechenden Hinweise in der Workspace-Navigation, der
-  Umbau der Listen auf `admin-row`, und der Gast-Bildschirm.
+- **Fläche 11, der Gast-Bildschirm und EINE Überschriftgröße.** Es gab drei
+  Zahlen für dieselbe Ebene — 27 px im Hauptkopf, 26 px in Einstellungen und
+  beim Gast, 1,6 rem in der Anmeldekarte —, dazu zwei Sperrungen (−0,02 und
+  −0,01 em). Alle meinen den Titel dessen, was man offen hat; **drei Zahlen
+  dafür sind drei Handschriften.** Jetzt überall SONEs 1,6 rem / 300 / −0,02 em,
+  gemessen identisch in Hauptkopf und Gast-Bildschirm. Der Gast hat kein
+  Gegenstück in SONE, also nicht kopiert, sondern auf die Skala gesetzt.
+- **Noch offen:** die umbrechenden Hinweise in der Workspace-Navigation und der
+  Umbau der Listen auf `admin-row`.
 - **Noch offen (alt):**
   Einstellungen (`settings-card`, `settings-row`, `section-nav`), Knöpfe und
   Felder, Dialoge — und zuletzt ein Wächter gegen harte Pixelwerte, wo eine

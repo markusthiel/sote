@@ -823,8 +823,12 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex]:focus-vi
 }
 
 .main-head h1 {
-  font-weight: var(--sote-heading-weight);
-  font-size: 27px;
+  /* EINE Überschriftgröße für diese Ebene: es gab drei (27px im Hauptkopf,
+     26px in den Einstellungen und im Gast-Bildschirm, 1.6rem in der
+     Anmeldekarte), und alle drei meinen dasselbe — der Titel dessen, was man
+     offen hat. SONEs Abschnittstitel ist 1.6rem/300/−0.02em. */
+  font-weight: 300;
+  font-size: 1.6rem;
   letter-spacing: -0.02em;
   margin: 0;
 }
@@ -2337,9 +2341,10 @@ select.target { }
 
 .settings h1 {
   margin: 0;
-  font-size: 26px;
-  font-weight: var(--sote-heading-weight);
-  letter-spacing: -0.01em;
+  font-size: 1.6rem;
+  font-weight: 300;
+  /* −0.02em wie überall sonst; −0.01em war die dritte Zahl für dieselbe Sache. */
+  letter-spacing: -0.02em;
 }
 
 /* Ein Kasten je Ebene, und die Überschrift sagt, WESSEN Einstellung es ist.
@@ -3023,45 +3028,47 @@ select.target { }
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 12px 18px;
-  border-bottom: 1px solid var(--line);
+  gap: var(--sone-space-5);
+  padding: var(--sone-space-5) var(--sone-space-6);
+  border-block-end: 1px solid var(--border-subtle);
   color: var(--text-muted);
 }
 
 /* Das Recht steht oben und nicht in einer Fußnote: „darf ich hier etwas
    ändern" ist die erste Frage, die jemand an eine geteilte Liste hat. */
 .guest-right {
-  font-family: var(--sote-mono);
-  font-size: 11px;
-  color: var(--text-faint);
+  font-family: var(--sone-font-mono);
+  font-size: var(--sone-text-xs);
+  color: var(--text-muted);
 }
 
 .guest-body {
   width: 100%;
   max-width: 720px;
   margin: 0 auto;
-  padding: 22px 18px 60px;
+  padding: var(--sone-space-7) var(--sone-space-6) 60px;
 }
 
+/* Dieselbe Überschrift wie im Hauptkopf: ein Gast sieht denselben Titel wie
+   ein Mitglied, nur ohne die Hülle darum. */
 .guest-body h1 {
   margin: 0;
-  font-size: 26px;
+  font-size: 1.6rem;
   font-weight: 300;
   letter-spacing: -0.02em;
 }
 
 .guest-toggle {
   position: static;
-  margin-top: 18px;
+  margin-block-start: var(--sone-space-6);
 }
 
 .share-link code {
   display: inline-block;
-  margin-top: 3px;
-  font-family: var(--sote-mono);
-  font-size: 11px;
-  color: var(--text-faint);
+  margin-block-start: var(--sone-space-1);
+  font-family: var(--sone-font-mono);
+  font-size: var(--sone-text-xs);
+  color: var(--text-muted);
   word-break: break-all;
 }
 
