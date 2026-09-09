@@ -1947,7 +1947,11 @@ erfunden.
     .account-menu`, `right: 4px`). Die Regel — in der Fußleiste von rechts
     verankert, darf schmaler werden — gilt weiter; er prüft sie jetzt am neuen
     Selektor mit logischen Eigenschaften.
-- **Noch offen, in dieser Reihenfolge:** Workspace-Wähler,
+- **Fläche 6, der Workspace-Wähler:** SONEs `switcher-*` (Knopf, Name, Pfeil,
+  Menü an die Spalte gepinnt, Einträge 1,6 × `control-lg`, Fuß mit
+  `workspace-create`). Der Pfeil ist SONEs Rechts-Chevron, um 90° gedreht — mit
+  dem Zeichen ▾ zeigte dieselbe Drehung nach *links*.
+- **Noch offen, in dieser Reihenfolge:**
   Einstellungen (`settings-card`, `settings-row`, `section-nav`), Knöpfe und
   Felder, Dialoge — und zuletzt ein Wächter gegen harte Pixelwerte, wo eine
   Skala existiert.

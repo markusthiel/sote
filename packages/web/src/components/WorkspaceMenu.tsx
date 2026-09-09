@@ -6,7 +6,7 @@
  * Workspace".
  *
  * **Der dritte tote Knopf dieser Art.** Er stand als
- * `<button className="ws" aria-label="Workspace wechseln">` da — mit Pfeil und
+ * `<button className="switcher-button" aria-label="Workspace wechseln">` da — mit Pfeil und
  * ohne `onClick`. Vorher waren es der Kontoknopf (`() => void 0`) und die
  * Schublade (ein Flag, das nirgends auf `true` gesetzt wurde). Dass es dreimal
  * dasselbe Muster ist, ist kein Zufall: ein Knopf, der aussieht wie einer, ist
@@ -25,7 +25,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 import { api, ApiError } from '../api.js';
-import { PlusIcon } from './icons.js';
+import { ChevronRightIcon, PlusIcon } from './icons.js';
 import { ProjectMark } from './ProjectMark.js';
 
 export function WorkspaceMenu({
@@ -104,7 +104,13 @@ export function WorkspaceMenu({
   const name = here?.name ?? 'Kein Workspace';
 
   /** Zeichen und Name eines Eintrags — an zwei Stellen gebraucht, also einmal. */
-  const mark = (w: (typeof workspaces)[number]) => (
+  /*
+   * `inItem`: im Knopf heißt der Name bei SONE `switcher-name`, in einem
+   * Eintrag `switcher-item-name` — dieselbe Kürzung, andere Breite. Ein
+   * Parameter statt zweier Funktionen, weil Zeichen und Name sonst zweimal
+   * zusammengesetzt würden.
+   */
+  const mark = (w: (typeof workspaces)[number], inItem = false) => (
     <>
       <ProjectMark
         icon={w.icon?.icon}
@@ -117,7 +123,7 @@ export function WorkspaceMenu({
         }
       />
       <span
-        className="ws-name"
+        className={inItem ? 'switcher-item-name' : 'switcher-name'}
         style={
           w.icon?.titleColor === undefined
             ? undefined
@@ -130,11 +136,11 @@ export function WorkspaceMenu({
   );
 
   return (
-    <div className="ws-menu" ref={box}>
+    <div className="switcher-wrap" ref={box}>
       <button
         ref={knob}
         type="button"
-        className="ws"
+        className="switcher-button"
         // Der Name gehört in die Beschriftung: „Workspace wechseln" allein
         // sagt einer Vorleseansage nicht, in welchem man steht.
         aria-label={`Workspace ${name} — wechseln`}
@@ -143,23 +149,24 @@ export function WorkspaceMenu({
         onClick={() => setOpen((o) => !o)}
       >
         {here === undefined ? (
-          <span className="ws-name">{name}</span>
+          <span className="switcher-name">{name}</span>
         ) : (
           mark(here)
         )}
-        <span aria-hidden="true" className="ws-caret">
-          ▾
-        </span>
+        {/* SONEs Pfeil: ein Rechts-Chevron, per CSS um 90° gedreht. Mit dem
+            Zeichen ▾ zeigte die Drehung nach LINKS — das Zeichen zeigt schon
+            nach unten, und die Regel dreht, was kommt. */}
+        <ChevronRightIcon size={12} className="switcher-caret" aria-hidden="true" />
       </button>
 
       {open ? (
-        <div className="ws-pop" role="menu">
+        <div className="switcher-menu" role="menu">
           {workspaces.map((w) => (
             <button
               key={w.id}
               type="button"
               role="menuitem"
-              className="ws-item"
+              className="switcher-item"
               aria-current={w.id === current}
               onClick={() => {
                 setOpen(false);
@@ -168,7 +175,7 @@ export function WorkspaceMenu({
                 onPick(w.id);
               }}
             >
-              {mark(w)}
+              {mark(w, true)}
             </button>
           ))}
           {/*
@@ -183,9 +190,9 @@ export function WorkspaceMenu({
             Hier stand vorher: „Nur einer. Weitere anzulegen gibt es noch
             nicht." Das war ehrlich und ist jetzt falsch.
           */}
-          <div className="ws-foot">
+          <div className="switcher-footer">
             {creating ? (
-              <div className="ws-create">
+              <div className="workspace-create">
                 <input
                   className="set-input"
                   autoFocus
@@ -218,14 +225,14 @@ export function WorkspaceMenu({
               <button
                 type="button"
                 role="menuitem"
-                className="ws-item"
+                className="switcher-item"
                 onClick={() => setCreating(true)}
               >
                 <PlusIcon size={15} />
                 Neuer Arbeitsbereich
               </button>
             )}
-            {fehler === undefined ? null : <p className="ws-none">{fehler}</p>}
+            {fehler === undefined ? null : <p className="small muted">{fehler}</p>}
           </div>
         </div>
       ) : null}
