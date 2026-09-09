@@ -691,7 +691,10 @@ export function App() {
         route.kind === 'search' ? null : (
           <>
           {/* Die Zahlen kommen aus derselben Abfrage wie die Listen. Keine
-              Null: eine Zahl über nichts ist Rauschen in einer ruhigen Zeile. */}
+              Null: eine Zahl über nichts ist Rauschen in einer ruhigen Zeile.
+              Und eine `.panel-menu-group` darum, wie in SONE: der Abstand zum
+              Projektbaum kommt aus der Gruppe. */}
+          <div className="panel-menu-group">
           {(
             [
               ['today', 'Heute', counts.today],
@@ -711,7 +714,7 @@ export function App() {
           ).map(([kind, label, n]) => (
             <button
               key={kind}
-              className="p-item"
+              className="panel-menu-item"
               /*
                * Die Beschriftung nennt Name und Zahl getrennt.
                *
@@ -722,17 +725,18 @@ export function App() {
                * hatte eine, diese drei nicht.
                */
               aria-label={n === 0 ? label : `${label}, ${n} offen`}
-              aria-current={route.kind === kind}
+              aria-current={route.kind === kind ? 'page' : undefined}
               onClick={() => go({ kind })}
             >
-              {label}
+              <span className="panel-menu-label">{label}</span>
               {n === 0 ? null : (
-                <span className="n" aria-hidden="true">
+                <span className="panel-menu-count" aria-hidden="true">
                   {n}
                 </span>
               )}
             </button>
           ))}
+          </div>
 
           <ProjectTree
             projects={projects}

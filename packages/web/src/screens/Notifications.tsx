@@ -81,15 +81,15 @@ export function NotificationsPanel({
       <button
         key={`${v.of}-${'kind' in v ? v.kind : 'workspaceId' in v ? v.workspaceId : ''}`}
         type="button"
-        className="p-item"
-        aria-current={gleich(v, view)}
+        className="panel-menu-item"
+        aria-current={gleich(v, view) ? 'page' : undefined}
         onClick={() => onPick(v)}
       >
-        <span>{label}</span>
+        <span className="panel-menu-label">{label}</span>
         {/* Keine Null: eine Zahl über nichts ist Rauschen in einer ruhigen
             Zeile (SONEs ADR-0092) — und „0" neben einem Namen sieht aus wie
             ein Fehler, nicht wie eine Auskunft. */}
-        {n > 0 ? <span className="n">{n}</span> : null}
+        {n > 0 ? <span className="panel-menu-count">{n}</span> : null}
       </button>
     );
   };
@@ -100,19 +100,24 @@ export function NotificationsPanel({
 
   return (
     <>
-      {zeile({ of: 'unread' }, 'Ungelesen')}
-      {zeile({ of: 'all' }, 'Alles')}
+      {/* SONEs Aufbau: eine `.panel-menu-group` je Gruppe. */}
+      <div className="panel-menu-group">
+        {zeile({ of: 'unread' }, 'Ungelesen')}
+        {zeile({ of: 'all' }, 'Alles')}
+      </div>
 
-      <div className="group-label">Art</div>
-      {(['assigned', 'commented'] as const).map((k) => zeile({ of: 'kind', kind: k }, KIND_SAYS[k]))}
+      <div className="panel-menu-group">
+        <div className="sidebar-label">Art</div>
+        {(['assigned', 'commented'] as const).map((k) => zeile({ of: 'kind', kind: k }, KIND_SAYS[k]))}
+      </div>
 
       {bereiche.length > 1 ? (
-        <>
+        <div className="panel-menu-group">
           {/* Erst ab zwei: eine Gruppe „Wo" über einer einzigen Zeile ist eine
               Überschrift für eine Sache, die keine Wahl ist (ADR-0072). */}
-          <div className="group-label">Wo</div>
+          <div className="sidebar-label">Wo</div>
           {bereiche.map(([id, name]) => zeile({ of: 'workspace', workspaceId: id }, name))}
-        </>
+        </div>
       ) : null}
     </>
   );

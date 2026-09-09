@@ -1894,6 +1894,33 @@ erfunden.
   die Suche selbst: über der Liste der Freigabelinks stand „Aufgaben
   durchsuchen". Mit einer Aufzählung der Orte, an die es gehört, erbt ein neuer
   Bereich kein Feld, das dort nichts findet.
+## Gestaltung: SONE ist der Maßstab, wörtlich
+
+- **Der Befund:** SONE hat 156 Gestaltungsvariablen, SOTE hatte 80, und **nur
+  fünf** hießen gleich. Die Werte stimmten weitgehend (Archivo, JetBrains Mono,
+  15 px, Radien 2/4 px) — aber jedes Bauteil war mit einem eigenen Vokabular
+  und harten Pixelzahlen neu gestaltet. Das sah in jedem Bereich ein bisschen
+  anders aus und zusammen wie eine andere Anwendung. Gemeldet: *„Vor allem
+  alles Optische hätte ich gerne identisch."*
+- **Aliase zuerst, dann Fläche für Fläche.** SONEs Namen (`--sone-space-*`,
+  `--sone-text-*`, `--sone-control*`, `--surface-*`, `--text-*`, `--border-*`,
+  `--sone-shadow-*`) zeigen auf SOTEs Werte. Mit gleichen Namen lässt sich
+  SONEs CSS **wörtlich** einsetzen — danach sind es dieselben Pixel, nicht
+  ähnliche. Ein Alias bricht nichts; die alten Namen werden am Ende Aliase der
+  neuen.
+- **Fläche 1, das Menü in der Leiste:** SONEs `panel-menu-group`,
+  `panel-menu-item`, `panel-menu-label`, `panel-menu-count`, `sidebar-label`
+  kopiert (Zeilen 1027–1078 und 6101–6117 dort). Alle vier Panels gemessen: 32
+  px, `0 8px`, 14,4 px (= 0,9 rem, SONEs Wert), Radius 2 px.
+- **Noch offen, in dieser Reihenfolge:** die Projekt-Baumzeile (SONEs
+  Baumzeile statt `.p-item` mit angepassten Maßen), der Panel-Kopf, das
+  Zeilenmenü (`entry-menu`), Kontomenü, Workspace-Wähler, Einstellungen
+  (`settings-card`, `settings-row`, `section-nav`), Knöpfe und Felder, Dialoge —
+  und zuletzt ein Wächter gegen harte Pixelwerte, wo eine Skala existiert.
+- **Der Token-Wächter liest nur den ersten `:root`.** Meine Aliase standen in
+  einem zweiten und galten als „nur im Dunkeln deklariert". Sie gehören in den
+  ersten — nicht der Wächter zu mir.
+
 - **`pnpm check` ist genau das, was die CI fährt.** Erst standen die Prüfungen
   einzeln in der Workflow-Datei, und `pnpm -r typecheck` scheiterte dort — in
   einem frischen Klon gibt es kein `dist`, und `@sote/core` zeigt mit `types`

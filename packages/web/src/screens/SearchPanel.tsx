@@ -72,7 +72,7 @@ export function SearchPanel({
     <button
       key={`${facet}-${value ?? ''}`}
       type="button"
-      className="p-item"
+      className="panel-menu-item"
       aria-pressed={an}
       onClick={() =>
         // Derselbe Klick nimmt zurück: ein Filter, den man nur setzen kann,
@@ -81,9 +81,9 @@ export function SearchPanel({
         onQuery(buildTaskQuery(q, facet, an ? undefined : value))
       }
     >
-      <span>{label}</span>
+      <span className="panel-menu-label">{label}</span>
       {an ? (
-        <span className="n" aria-hidden="true">
+        <span className="panel-menu-count" aria-hidden="true">
           ✓
         </span>
       ) : null}
@@ -92,16 +92,24 @@ export function SearchPanel({
 
   return (
     <>
-      <div className="group-label">Status</div>
-      {zeile('Offen', gelesen.status === 'open', 'status', 'offen')}
-      {zeile('Erledigt', gelesen.status === 'done', 'status', 'erledigt')}
+      {/* SONEs Aufbau: eine `.panel-menu-group` je Gruppe, mit `.sidebar-label`
+          darin — der Abstand zwischen den Gruppen kommt aus der Gruppe, nicht
+          aus der Beschriftung. */}
+      <div className="panel-menu-group">
+        <div className="sidebar-label">Status</div>
+        {zeile('Offen', gelesen.status === 'open', 'status', 'offen')}
+        {zeile('Erledigt', gelesen.status === 'done', 'status', 'erledigt')}
+      </div>
 
-      <div className="group-label">Frist</div>
-      {zeile('Überfällig', gelesen.due === 'overdue', 'frist', 'überfällig')}
-      {zeile('Heute', gelesen.due === 'today', 'frist', 'heute')}
-      {zeile('Diese Woche', gelesen.due === 'week', 'frist', 'woche')}
+      <div className="panel-menu-group">
+        <div className="sidebar-label">Frist</div>
+        {zeile('Überfällig', gelesen.due === 'overdue', 'frist', 'überfällig')}
+        {zeile('Heute', gelesen.due === 'today', 'frist', 'heute')}
+        {zeile('Diese Woche', gelesen.due === 'week', 'frist', 'woche')}
+      </div>
 
-      <div className="group-label">Priorität</div>
+      <div className="panel-menu-group">
+      <div className="sidebar-label">Priorität</div>
       {/*
         Vier Stufen, nicht drei: „Später" ist eine davon, und im ersten Anlauf
         fehlte sie hier — ein Filter für eine Stufe, die es gibt, ist keine
@@ -117,6 +125,7 @@ export function SearchPanel({
           String(p),
         ),
       )}
+      </div>
 
       {/*
         Projekte: nur die, die es gibt, und nur wenn es mehr als eines gibt.
@@ -124,8 +133,8 @@ export function SearchPanel({
         etwas, das keine Wahl ist.
       */}
       {projects.filter((p) => p.kind === 'list').length > 1 ? (
-        <>
-          <div className="group-label">Projekt</div>
+        <div className="panel-menu-group">
+          <div className="sidebar-label">Projekt</div>
           {projects
             .filter((p) => p.kind === 'list')
             .map((p) =>
@@ -139,7 +148,7 @@ export function SearchPanel({
                 p.name,
               ),
             )}
-        </>
+        </div>
       ) : null}
 
       {/*
@@ -151,11 +160,11 @@ export function SearchPanel({
       {gelesen.read.length > 0 ? (
         <button
           type="button"
-          className="p-item quiet"
+          className="panel-menu-item quiet"
           onClick={() => onQuery(gelesen.text)}
         >
-          <span>Filter zurücknehmen</span>
-          <span className="n" aria-hidden="true">
+          <span className="panel-menu-label">Filter zurücknehmen</span>
+          <span className="panel-menu-count" aria-hidden="true">
             {gelesen.read.length}
           </span>
         </button>

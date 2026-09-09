@@ -92,14 +92,14 @@ export function SharesPanel({
       <button
         key={`${v.of}-${'projectId' in v ? v.projectId : ''}`}
         type="button"
-        className="p-item"
-        aria-current={gleich(v, view)}
+        className="panel-menu-item"
+        aria-current={gleich(v, view) ? 'page' : undefined}
         onClick={() => onPick(v)}
       >
-        <span>{label}</span>
+        <span className="panel-menu-label">{label}</span>
         {/* Keine Null: eine Zahl über nichts ist Rauschen in einer ruhigen
             Zeile (SONEs ADR-0092). */}
-        {n > 0 ? <span className="n">{n}</span> : null}
+        {n > 0 ? <span className="panel-menu-count">{n}</span> : null}
       </button>
     );
   };
@@ -110,20 +110,24 @@ export function SharesPanel({
 
   return (
     <>
-      {zeile({ of: 'active' }, 'Aktiv')}
-      {zeile({ of: 'all' }, 'Alle')}
+      <div className="panel-menu-group">
+        {zeile({ of: 'active' }, 'Aktiv')}
+        {zeile({ of: 'all' }, 'Alle')}
+      </div>
 
-      <div className="group-label">Aufräumen</div>
-      {zeile({ of: 'unused' }, 'Nie benutzt')}
-      {zeile({ of: 'expired' }, 'Abgelaufen')}
+      <div className="panel-menu-group">
+        <div className="sidebar-label">Aufräumen</div>
+        {zeile({ of: 'unused' }, 'Nie benutzt')}
+        {zeile({ of: 'expired' }, 'Abgelaufen')}
+      </div>
 
       {projekte.length > 1 ? (
-        <>
+        <div className="panel-menu-group">
           {/* Erst ab zwei: eine Gruppe über einer einzigen Zeile ist eine
               Überschrift für etwas, das keine Wahl ist. */}
-          <div className="group-label">Projekt</div>
+          <div className="sidebar-label">Projekt</div>
           {projekte.map(([id, name]) => zeile({ of: 'project', projectId: id }, name))}
-        </>
+        </div>
       ) : null}
     </>
   );

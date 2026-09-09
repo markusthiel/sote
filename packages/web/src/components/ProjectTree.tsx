@@ -629,7 +629,10 @@ export function ProjectTree({
 
   return (
     <>
-      <div className="group-label">Projekte</div>
+      {/* SONEs Beschriftung einer Gruppe in der Leiste: mono, gesperrt,
+          Kapitälchen — sie benennt einen Ort, man liest sie nicht, man findet
+          sie. Dieselbe Klasse wie in den drei Panels daneben. */}
+      <div className="sidebar-label">Projekte</div>
       {projects.length === 0 && adding === null ? (
         <div className="p-item" style={{ color: 'var(--text-faint)' }}>
           noch keine

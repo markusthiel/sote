@@ -181,6 +181,123 @@
   --sote-heading-weight: 300;
   --sote-sans: Archivo, -apple-system, "Segoe UI", Roboto, sans-serif;
   --sote-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+/* ══════════════════════════════════════════════════════════════════════════
+ * SONEs Vokabular — als Aliase auf SOTEs Werte.
+ *
+ * Der Befund, der das nötig macht: SONE hat 156 Gestaltungsvariablen, SOTE
+ * hatte 80, und NUR FÜNF hießen gleich. Die Werte stimmten weitgehend
+ * (Archivo, JetBrains Mono, 15px, Radien 2/4px) — aber jedes Bauteil war mit
+ * einem eigenen Vokabular und harten Pixelzahlen neu gestaltet. Das sah in
+ * jedem Bereich ein bisschen anders aus und zusammen wie eine andere Anwendung.
+ * Gemeldet: „Du hast alle Menüs, Einstellungen usw. anders gebaut als wir es
+ * bei SONE schon hatten. Vor allem alles Optische hätte ich gerne identisch."
+ *
+ * ## Warum Aliase zuerst
+ *
+ * Mit gleichen Namen lässt sich SONEs CSS WÖRTLICH einsetzen — danach sind es
+ * dieselben Pixel, nicht ähnliche. Und ein Alias bricht nichts: alles, was
+ * SOTEs alte Namen benutzt, funktioniert weiter, bis es Fläche für Fläche
+ * umgestellt ist. Die alten Namen werden dabei nicht gelöscht, sondern am Ende
+ * zu Aliasen der neuen — die Richtung dreht sich, wenn die letzte Fläche
+ * umgestellt ist.
+ *
+ * ## Die Skalen sind SONEs Skalen, mit SONEs Zahlen
+ *
+ * Nicht „ungefähr": `--sone-space-4` ist 8px, `--sone-control` 26px,
+ * `--sone-text-md` 0.9rem. Wo SOTE bisher 30px und 14px hatte, ist das eine
+ * sichtbare Verdichtung — und genau die Verdichtung, die SONE hat.
+ * ═══════════════════════════════════════════════════════════════════════ */
+
+  /* Abstände, eine Reihe. Was dazwischen liegt, ist eine Entscheidung, die
+     jemand begründen muss (SONE). */
+  --sone-space-1: 2px;
+  --sone-space-2: 4px;
+  --sone-space-3: 6px;
+  --sone-space-4: 8px;
+  --sone-space-5: 12px;
+  --sone-space-6: 16px;
+  --sone-space-7: 24px;
+
+  /* Bedienelemente: das kleine für Zeilen und Menüs, das große für Formulare.
+     `--sote-tap` (44px) bleibt die Untergrenze für einen Daumen. */
+  --sone-control: 26px;
+  --sone-control-lg: 34px;
+  --sone-tap: var(--sote-tap);
+
+  /* Radien folgen dem Bedienelement, auf dem sie sitzen. */
+  --sone-radius-sm: var(--sote-radius-sm);
+  --sone-radius: var(--sote-radius-md);
+  --sone-radius-lg: var(--sote-radius-lg);
+
+  /* Textgrößen der Oberfläche, in rem — bei 15px Grundschrift sind das
+     11.25 / 12.75 / 13.5px. */
+  --sone-text-xs: 0.75rem;
+  --sone-text-sm: 0.85rem;
+  --sone-text-md: 0.9rem;
+  --sone-title-weight: 700;
+  --sone-title-tracking: -0.035em;
+
+  /* Schriften: dieselben, unter SONEs Namen. */
+  --sone-font-sans: var(--sote-sans);
+  --sone-font-mono: var(--sote-mono);
+
+  /* Flächen. SOTEs `--page/--raised/--sunken` tragen schon SONEs Rechnung mit
+     dem Farbstich, also zeigen die Aliase darauf. `chrome`, `hover` und
+     `overlay` gab es in SOTE nicht als eigene Werte — sie bekommen SONEs
+     helle Zahlen und werden im Dunkelblock überschrieben. */
+  --surface-page: var(--page);
+  --surface-raised: var(--raised);
+  --surface-sunken: var(--sunken);
+  --surface-chrome: color-mix(in srgb, var(--tint, #faf8f4) 15%, #faf8f4);
+  --surface-hover: color-mix(in srgb, var(--tint, #f0eee8) 12%, #f0eee8);
+  --surface-overlay: color-mix(in srgb, var(--tint, var(--paper)) 5%, var(--paper));
+
+  /* Text. SONE kennt drei Stufen unter `text-*`; SOTE hatte `--text`,
+     `--text-muted`, `--text-faint`. `secondary` liegt dazwischen. */
+  --text-primary: var(--text);
+  --text-secondary: var(--ink-600);
+  /* `--text-muted` gibt es in beiden — derselbe Name, hier bleibt SOTEs Wert. */
+
+  /* Linien. */
+  --border-subtle: var(--line);
+  --border-default: var(--line-strong);
+  --border-strong: var(--ink-300);
+
+  /* Akzent. */
+  --accent-quiet: var(--accent-100);
+  --accent-text: var(--accent-700);
+  --accent-contrast: var(--accent-on);
+
+  /* Schatten — SONEs helle Zahlen. */
+  --sone-shadow-sm: 0 1px 3px rgb(0 0 0 / 12%);
+  --sone-shadow-md: 0 4px 16px rgb(0 0 0 / 14%), 0 1px 3px rgb(0 0 0 / 8%);
+  --sone-shadow-lg: 0 8px 28px rgb(0 0 0 / 18%), 0 1px 2px rgb(0 0 0 / 10%);
+  --sone-shadow-floating: var(--sone-shadow-md);
+
+}
+
+
+/* Dichte — wie in SONE, und mit derselben Begründung dort: wo ein Finger der
+   Zeiger ist, ist kompakt nicht kompakt. Nur die Größen gehen zurück, die
+   Abstände dürfen eng bleiben. */
+:root[data-density="compact"] {
+  --sone-space-5: 8px;
+  --sone-space-6: 12px;
+  --sone-space-7: 16px;
+  --sone-control-lg: 30px;
+}
+
+@media (pointer: coarse) {
+  :root[data-density="compact"] {
+    --sone-control-lg: 34px;
+  }
+}
+
+:root[data-density="comfortable"] {
+  --sone-space-5: 16px;
+  --sone-space-6: 24px;
+  --sone-space-7: 32px;
+  --sone-control-lg: 38px;
 }
 
 :root[data-theme="light"] {
@@ -201,6 +318,18 @@
   --text: #f7f5f0;
   --text-muted: var(--ink-350);
   --text-faint: var(--ink-400);
+
+  /* SONEs Aliase im Dunkeln — dieselben Namen, SONEs dunkle Zahlen. */
+  --surface-chrome: color-mix(in srgb, var(--tint, #1f1e1c) 9%, #1f1e1c);
+  --surface-hover: color-mix(in srgb, var(--tint, #262623) 5%, #262623);
+  --surface-overlay: color-mix(in srgb, var(--tint, #2b2a27) 5%, #2b2a27);
+  --text-secondary: var(--ink-300);
+  --border-strong: var(--ink-600);
+  --accent-quiet: var(--accent-700);
+  --accent-text: var(--accent-300);
+  --sone-shadow-sm: 0 1px 3px rgb(0 0 0 / 30%);
+  --sone-shadow-md: 0 4px 16px rgb(0 0 0 / 40%);
+  --sone-shadow-lg: 0 12px 32px rgb(0 0 0 / 48%);
   --accent: var(--accent-300);
   --accent-line: var(--accent-300);
   --accent-base: var(--accent-300);
@@ -559,32 +688,44 @@ input {
   letter-spacing: 0.03em;
 }
 
+/*
+ * Die Projektzeile im Baum — mit SONEs Maßen, bis sie SONEs Baumzeile wird.
+ *
+ * Vorher 14px auf 30px mit 9px Lücke; SONEs Leistenzeile ist `--sone-text-md`
+ * (13.5px) auf 32px mit `--sone-space-4` (8px). Zwei Zeilenhöhen in EINER
+ * Leiste — die Zeitansichten oben, die Projekte darunter — waren der
+ * sichtbarste Teil von „alles anders gebaut". Die Maße kommen jetzt aus
+ * denselben Token wie `.panel-menu-item`; was die Zeile mehr hat (Zeichen,
+ * Menüpunkt, Ziehen) bleibt, und der vollständige Umbau auf SONEs Baumzeile
+ * ist die nächste Fläche.
+ */
 .p-item {
   display: flex;
   align-items: center;
-  gap: 9px;
-  padding: 5px 8px;
-  border-radius: var(--sote-radius-md);
+  gap: var(--sone-space-4);
+  min-block-size: 32px;
+  padding-inline: var(--sone-space-4);
+  border-radius: var(--sone-radius);
   width: 100%;
   text-align: left;
-  font-size: 14px;
-  min-height: 30px;
+  font-size: var(--sone-text-md);
 }
 
 .p-item:hover {
-  background: var(--sunken);
+  background: var(--surface-hover);
 }
 
 .p-item[aria-current="true"] {
-  background: var(--sunken);
-  font-weight: 500;
+  background: var(--surface-hover);
+  font-weight: 600;
 }
 
+/* Dieselbe Zahl wie in `.panel-menu-count`: mono, klein, gedämpft. */
 .p-item .n {
   margin-left: auto;
-  font-family: var(--sote-mono);
-  font-size: 11.5px;
-  color: var(--text-faint);
+  font-family: var(--sone-font-mono);
+  font-size: var(--sone-text-xs);
+  color: var(--text-muted);
 }
 
 .p-sq {
@@ -3268,6 +3409,96 @@ a.btn {
    darin, nicht einem Umweg über JavaScript. */
 label.btn {
   cursor: pointer;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * Das Menü in der Leiste — SONEs `panel-menu`, wörtlich übernommen.
+ *
+ * Aus `sone/packages/web/src/styles.css`, Zeilen 1027–1078 und 6101–6117.
+ * Nicht angeglichen, sondern kopiert: mit den gleichen Token (siehe den
+ * Alias-Block oben) sind es dieselben Pixel.
+ *
+ * Die Form: eine `.panel-menu-group` je Gruppe, darin ein `.sidebar-label` und
+ * die `.panel-menu-item`-Zeilen mit `.panel-menu-label` und
+ * `.panel-menu-count`. `aria-current="page"` markiert die gewählte.
+ * ═══════════════════════════════════════════════════════════════════════ */
+
+.panel-menu-group {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin-block-end: 10px;
+}
+
+.panel-menu-item {
+  display: flex;
+  align-items: center;
+  gap: var(--sone-space-4);
+  min-block-size: 32px;
+  padding-inline: var(--sone-space-4);
+  border: 0;
+  border-radius: var(--sone-radius);
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: var(--sone-text-md);
+  text-align: start;
+  cursor: pointer;
+}
+
+.panel-menu-item:hover { background: var(--surface-hover); }
+
+.panel-menu-item[aria-current='page'] {
+  background: var(--surface-hover);
+  font-weight: 600;
+}
+
+/* Ein gesetzter Filter sieht aus wie eine gewählte Seite: in SONE gibt es die
+   Unterscheidung nicht (dort sind Filter Orte), hier kommt sie dazu — mit
+   demselben Bild, damit es EINE Sprache bleibt. */
+.panel-menu-item[aria-pressed='true'] {
+  background: var(--surface-hover);
+  font-weight: 600;
+}
+
+.panel-menu-item svg {
+  flex: none;
+  inline-size: 1.05em;
+  block-size: 1.05em;
+  color: var(--text-muted);
+}
+
+.panel-menu-label {
+  flex-grow: 1;
+  min-inline-size: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* A count you compare, so mono — and absent at nought, because a zero on every
+   quiet row is noise saying what the empty space already says. (SONE) */
+.panel-menu-count {
+  margin-inline-start: auto;
+  font-family: var(--sone-font-mono);
+  font-size: var(--sone-text-xs);
+  color: var(--text-muted);
+}
+
+.sidebar-label {
+  margin: 0 0 var(--sone-space-1);
+  padding-inline: var(--sone-space-4);
+  /* Mono, and set wider than it reads comfortably as a word.
+   *
+   * A label names a place; it is not something you read, it is something you
+   * find. The monospaced face and the tracking are what separate it from the
+   * page titles under it without spending a colour or a rule on the job. (SONE) */
+  font-family: var(--sone-font-mono);
+  font-size: var(--sone-text-xs);
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-muted);
 }
 
 /* Eine Filterzeile, die zurückgenommen wird: leiser als die Filter selbst,
