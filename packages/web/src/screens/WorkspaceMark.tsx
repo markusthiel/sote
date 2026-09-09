@@ -114,7 +114,7 @@ export function WorkspaceMark({
             key={c}
             type="button"
             role="radio"
-            className="swatch-btn"
+            className="block-menu-swatch"
             aria-label={`${label}: ${c}`}
             aria-checked={current === c}
             disabled={busy}
@@ -203,15 +203,15 @@ export function WorkspaceMark({
           <span className="settings-row-label"><b>Symbol</b></span>
           <div className="settings-row-value">
             <input
-              className="mark-find"
+              className="entry-icon-search"
               value={find}
               placeholder="Zeichen suchen — home, briefcase, star"
               aria-label="Zeichen suchen"
               onChange={(e) => setFind(e.target.value)}
             />
-            <div className="swatches marks">
+            <div className="entry-icon-grid">
               <button
-                className="mark-btn"
+                className="entry-icon"
                 aria-label="ohne Zeichen"
                 aria-current={icon?.icon === undefined}
                 disabled={busy}
@@ -222,7 +222,7 @@ export function WorkspaceMark({
               {shown.map((n) => (
                 <button
                   key={n}
-                  className="mark-btn"
+                  className="entry-icon"
                   aria-label={n}
                   title={n}
                   aria-current={icon?.icon === n}
@@ -234,7 +234,7 @@ export function WorkspaceMark({
               ))}
             </div>
             {shown.length > 0 ? null : (
-              <p className="fpop-none">
+              <p className="entry-menu-empty">
                 {ready ? 'Kein Zeichen mit diesem Namen.' : 'Zeichen werden geladen…'}
               </p>
             )}
