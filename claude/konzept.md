@@ -1951,6 +1951,18 @@ erfunden.
   Menü an die Spalte gepinnt, Einträge 1,6 × `control-lg`, Fuß mit
   `workspace-create`). Der Pfeil ist SONEs Rechts-Chevron, um 90° gedreht — mit
   dem Zeichen ▾ zeigte dieselbe Drehung nach *links*.
+- **Fläche 7, die Einstellungen:** SONEs `settings-card`, `settings-row`,
+  `settings-row-label` (fett, Hinweis darunter), `settings-note`,
+  `settings-heading`, `settings-actions`, `settings-nav-*` — in zwölf Dateien
+  die Klassen umgestellt. Gemessen: Karte 16 px Polster / 4 px Radius, Zeile 8
+  px, Beschriftung 550, Navigation 34 px / 14,4 px.
+  - **Restarbeit, benannt:** die Hinweise stehen noch in der Bedienspalte (links
+    ausgerichtet, 42 ch), nicht unter der Beschriftung wie bei SONE. Sie wandern
+    Bildschirm für Bildschirm — 33 Zeilen in acht Bildschirmen, das ist
+    Handarbeit je Zeile.
+  - **Spezifität, zum zweiten Mal:** SONEs `.settings-row > :not(.settings-row-label)`
+    richtet die Bedienspalte rechts aus und schlägt eine einzelne Klasse. Drei
+    Zeilen Hinweistext standen rechtsbündig unter einem Knopf.
 - **Noch offen, in dieser Reihenfolge:**
   Einstellungen (`settings-card`, `settings-row`, `section-nav`), Knöpfe und
   Felder, Dialoge — und zuletzt ein Wächter gegen harte Pixelwerte, wo eine

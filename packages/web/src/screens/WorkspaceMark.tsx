@@ -97,8 +97,8 @@ export function WorkspaceMark({
     label: string,
     current: string | undefined,
   ) => (
-    <div className="set-row">
-      <span className="set-label">{label}</span>
+    <div className="settings-row">
+      <span className="settings-row-label"><b>{label}</b></span>
       <div className="set-choice" role="radiogroup" aria-label={label}>
         <button
           type="button"
@@ -130,12 +130,12 @@ export function WorkspaceMark({
     <div className="settings">
       {notice === undefined ? null : <p className="note-error">{notice}</p>}
 
-      <section className="set-card">
+      <section className="settings-card">
         <h2>Name und Zeichen</h2>
 
-        <div className="set-row">
-          <span className="set-label">Name</span>
-          <div className="set-value">
+        <div className="settings-row">
+          <span className="settings-row-label"><b>Name</b></span>
+          <div className="settings-row-value">
             <input
               className="set-input"
               aria-label="Name des Workspace"
@@ -160,9 +160,9 @@ export function WorkspaceMark({
           </div>
         </div>
 
-        <div className="set-row">
-          <span className="set-label">Deine Rolle</span>
-          <div className="set-value">
+        <div className="settings-row">
+          <span className="settings-row-label"><b>Deine Rolle</b></span>
+          <div className="settings-row-value">
             {owner ? 'Eigentümer' : 'Mitglied'}
             <p className="muted small">
               Was du hier darfst. Rollen zu setzen gehört zu „Leute" — den
@@ -172,10 +172,10 @@ export function WorkspaceMark({
         </div>
       </section>
 
-      <section className="set-card">
+      <section className="settings-card">
         <h2>Zeichen</h2>
-        <div className="set-row">
-          <span className="set-label">Vorschau</span>
+        <div className="settings-row">
+          <span className="settings-row-label"><b>Vorschau</b></span>
           <div className="set-value ws-preview">
             <ProjectMark
               icon={icon?.icon}
@@ -199,9 +199,9 @@ export function WorkspaceMark({
           </div>
         </div>
 
-        <div className="set-row">
-          <span className="set-label">Symbol</span>
-          <div className="set-value">
+        <div className="settings-row">
+          <span className="settings-row-label"><b>Symbol</b></span>
+          <div className="settings-row-value">
             <input
               className="mark-find"
               value={find}

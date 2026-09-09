@@ -69,7 +69,7 @@ export function Roles({ workspace }: { workspace: string | undefined }) {
     <div className="settings">
       {notice === undefined ? null : <p className="note-error">{notice}</p>}
 
-      <section className="set-card">
+      <section className="settings-card">
         <h2>Rollen</h2>
         <p className="muted">
           Eine Rolle sagt <strong>zwei</strong> Dinge: was jemand in den Projekten
@@ -85,7 +85,7 @@ export function Roles({ workspace }: { workspace: string | undefined }) {
       </section>
 
       {data.roles.map((r) => (
-        <section className="set-card role-card" key={r.id}>
+        <section className="settings-card role-card" key={r.id}>
           <div className="role-head">
             {r.system || !data.mayManage ? (
               <h2>{r.name}</h2>
@@ -131,9 +131,9 @@ export function Roles({ workspace }: { workspace: string | undefined }) {
             </p>
           ) : null}
 
-          <div className="set-row">
-            <span className="set-label">In den Projekten</span>
-            <div className="set-value">
+          <div className="settings-row">
+            <span className="settings-row-label"><b>In den Projekten</b></span>
+            <div className="settings-row-value">
               <div className="set-choice" role="radiogroup" aria-label={`Stufe von ${r.name}`}>
                 {(['none', ...LIST_LEVELS] as const).map((lvl) => (
                   <button
@@ -163,9 +163,9 @@ export function Roles({ workspace }: { workspace: string | undefined }) {
             </div>
           </div>
 
-          <div className="set-row">
-            <span className="set-label">Im Arbeitsbereich</span>
-            <div className="set-value">
+          <div className="settings-row">
+            <span className="settings-row-label"><b>Im Arbeitsbereich</b></span>
+            <div className="settings-row-value">
               {/*
                 Jeder Schalter hier bewacht wirklich etwas — ein Wächter im
                 Testlauf verlangt das (ADR-0087: „a settings screen offering a
@@ -205,9 +205,9 @@ export function Roles({ workspace }: { workspace: string | undefined }) {
           </div>
 
           {!r.system && data.mayManage ? (
-            <div className="set-row">
-              <span className="set-label" />
-              <div className="set-value">
+            <div className="settings-row">
+              <span className="settings-row-label" />
+              <div className="settings-row-value">
                 {r.members > 0 ? (
                   /* Kein Knopf, sondern der Grund: eine Rolle zu löschen, die
                      jemand hält, hieße zu entscheiden, was der dann darf. */
@@ -234,11 +234,11 @@ export function Roles({ workspace }: { workspace: string | undefined }) {
       ))}
 
       {data.mayManage ? (
-        <section className="set-card">
+        <section className="settings-card">
           <h2>Eine Rolle anlegen</h2>
-          <div className="set-row">
-            <span className="set-label">Name</span>
-            <div className="set-value">
+          <div className="settings-row">
+            <span className="settings-row-label"><b>Name</b></span>
+            <div className="settings-row-value">
               <div className="pick">
                 <input
                   className="set-input"

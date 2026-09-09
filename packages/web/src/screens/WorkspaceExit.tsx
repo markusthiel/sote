@@ -34,7 +34,7 @@ export function WorkspaceExit({
     <div className="settings">
       {notice === undefined ? null : <p className="note-error">{notice}</p>}
 
-      <section className="set-card">
+      <section className="settings-card">
         <h2>Mitnehmen</h2>
         <p className="muted">
           Eine Datei mit allem, was sich wiederherstellen ließe: Projekte,
@@ -79,16 +79,16 @@ export function WorkspaceExit({
         </p>
       </section>
 
-      <section className="set-card danger">
+      <section className="settings-card danger">
         <h2>Wegwerfen</h2>
         <p className="muted">
           Löscht diesen Arbeitsbereich mit allem darin. Das ist{' '}
           <strong>nicht</strong> wiederherstellbar — es gibt keinen Papierkorb
           dafür.
         </p>
-        <div className="set-row">
-          <span className="set-label">Name abtippen</span>
-          <div className="set-value">
+        <div className="settings-row">
+          <span className="settings-row-label"><b>Name abtippen</b></span>
+          <div className="settings-row-value">
             <div className="pick">
               <input
                 className="set-input"

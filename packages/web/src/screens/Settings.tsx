@@ -383,7 +383,7 @@ export function Settings({
   };
 
   const lookCard = (scope: 'workspace' | 'instance', look: Look) => (
-    <section className="set-card">
+    <section className="settings-card">
       <h2>Farben und Flächen</h2>
       <p className="muted">
         Gewählt wird eine <strong>Beziehung</strong> und keine Farbe: „umgekehrt"
@@ -392,8 +392,8 @@ export function Settings({
       </p>
 
       {SURFACES.map((surface) => (
-        <div className="set-row" key={surface}>
-          <span className="set-label">{SURFACE_LABELS[surface]}</span>
+        <div className="settings-row" key={surface}>
+          <span className="settings-row-label"><b>{SURFACE_LABELS[surface]}</b></span>
           <div className="set-choice" role="radiogroup" aria-label={SURFACE_LABELS[surface]}>
             {TREATMENTS.map((t) => (
               <button
@@ -420,9 +420,9 @@ export function Settings({
         </div>
       ))}
 
-      <div className="set-row">
-        <span className="set-label">Schrift</span>
-        <div className="set-value">
+      <div className="settings-row">
+        <span className="settings-row-label"><b>Schrift</b></span>
+        <div className="settings-row-value">
           <div className="set-choice" role="radiogroup" aria-label="Schrift">
             {FONTS.map((f) => (
               <button
@@ -449,8 +449,8 @@ export function Settings({
         </div>
       </div>
 
-      <div className="set-row">
-        <span className="set-label">Ecken</span>
+      <div className="settings-row">
+        <span className="settings-row-label"><b>Ecken</b></span>
         <div className="set-choice" role="radiogroup" aria-label="Ecken">
           {CORNERS.map((c) => (
             <button
@@ -475,9 +475,9 @@ export function Settings({
         existiert. Ein zweiter Endpunkt wäre eine zweite Stelle, an der ein
         Thema geprüft wird.
       */}
-      <div className="set-row">
-        <span className="set-label">Als Datei</span>
-        <div className="set-value">
+      <div className="settings-row">
+        <span className="settings-row-label"><b>Als Datei</b></span>
+        <div className="settings-row-value">
           <div className="pick">
             <button
               type="button"
@@ -552,9 +552,9 @@ export function Settings({
         </div>
       </div>
 
-      <div className="set-row">
-        <span className="set-label">Tönung</span>
-        <div className="set-value">
+      <div className="settings-row">
+        <span className="settings-row-label"><b>Tönung</b></span>
+        <div className="settings-row-value">
           <div className="pick">
             {/*
               Ein freier Wähler und keine Palette: eine Tönung ist die
@@ -586,9 +586,9 @@ export function Settings({
         </div>
       </div>
 
-      <div className="set-row">
-        <span className="set-label">Akzent</span>
-        <div className="set-value">
+      <div className="settings-row">
+        <span className="settings-row-label"><b>Akzent</b></span>
+        <div className="settings-row-value">
           <div className="set-choice" role="radiogroup" aria-label="Akzent">
             <button
               type="button"
@@ -648,7 +648,7 @@ export function Settings({
     mine: Landing | undefined,
     workspaceSays: Landing | undefined,
   ) => (
-    <section className="set-card">
+    <section className="settings-card">
       <h2>{scope === 'user' ? 'Wo du landest' : 'Standard-Seite'}</h2>
       <p className="muted">
         {scope === 'user'
@@ -743,8 +743,8 @@ export function Settings({
      */
     inherited: string | null,
   ) => (
-    <div className="set-row">
-      <span className="set-label">Erscheinung</span>
+    <div className="settings-row">
+      <span className="settings-row-label"><b>Erscheinung</b></span>
       <div className="set-choice" role="radiogroup" aria-label={`Erscheinung — ${scope}`}>
         {inherited === null ? null : (
           <button
@@ -785,11 +785,11 @@ export function Settings({
       */}
 
       {section === 'profil' ? (
-        <section className="set-card">
+        <section className="settings-card">
           <h2>Profil</h2>
-          <div className="set-row">
-            <span className="set-label">Bild</span>
-            <div className="set-value">
+          <div className="settings-row">
+            <span className="settings-row-label"><b>Bild</b></span>
+            <div className="settings-row-value">
               <div className="pic-row">
                 {/*
                   Der Schlüssel `picStand` zwingt den Browser, neu zu holen.
@@ -863,13 +863,13 @@ export function Settings({
               )}
             </div>
           </div>
-          <div className="set-row">
-            <span className="set-label">Name</span>
-            <div className="set-value">{displayName}</div>
+          <div className="settings-row">
+            <span className="settings-row-label"><b>Name</b></span>
+            <div className="settings-row-value">{displayName}</div>
           </div>
-          <div className="set-row">
-            <span className="set-label">E-Mail</span>
-            <div className="set-value">
+          <div className="settings-row">
+            <span className="settings-row-label"><b>E-Mail</b></span>
+            <div className="settings-row-value">
               {email}
               <p className="muted small">
                 Sie erkennt das Konto beim Anmelden. Sie zu ändern braucht einen
@@ -882,7 +882,7 @@ export function Settings({
       ) : null}
 
       {section === 'aussehen' ? (
-        <section className="set-card">
+        <section className="settings-card">
           <h2>Aussehen</h2>
           <p className="muted">
             Reist mit dir: wer hier dunkel wählt, bekommt am Telefon auch dunkel.
@@ -892,7 +892,7 @@ export function Settings({
       ) : null}
 
       {section === 'erinnern' ? (
-        <section className="set-card">
+        <section className="settings-card">
           <h2>Erinnerungen</h2>
           <p className="muted">
             <strong>Ein</strong> Brief am Tag, zu deiner Zeit — mit dem, was
@@ -900,9 +900,9 @@ export function Settings({
             Mails am Tag heißen einen Filter im Postfach, und danach erinnert
             nichts mehr an nichts.
           </p>
-          <div className="set-row">
-            <span className="set-label">Post am Morgen</span>
-            <div className="set-value">
+          <div className="settings-row">
+            <span className="settings-row-label"><b>Post am Morgen</b></span>
+            <div className="settings-row-value">
               <div className="pick">
                 <input
                   type="time"
@@ -951,11 +951,11 @@ export function Settings({
       ) : null}
 
       {section === 'zeit' ? (
-        <section className="set-card">
+        <section className="settings-card">
           <h2>Zeit</h2>
-          <div className="set-row">
-            <span className="set-label">Zeitzone</span>
-            <div className="set-value">
+          <div className="settings-row">
+            <span className="settings-row-label"><b>Zeitzone</b></span>
+            <div className="settings-row-value">
               <select
                 aria-label="Deine Zeitzone"
                 disabled={busy}
@@ -984,7 +984,7 @@ export function Settings({
       {/* ── Unter „Workspaces" ── */}
       {section === 'ws-aussehen' ? (
         <>
-          <section className="set-card">
+          <section className="settings-card">
             <h2>{workspaceName}</h2>
             <p className="muted">
               Gilt für alle Mitglieder, solange sie selbst nichts anderes gewählt
@@ -999,7 +999,7 @@ export function Settings({
       {/* ── Unter „Verwaltung" ── */}
       {section === 'instanz' ? (
         <>
-          <section className="set-card">
+          <section className="settings-card">
             <h2>Diese Instanz</h2>
             <p className="muted">
               Die Vorgabe für alle Arbeitsbereiche, die nichts eigenes sagen.

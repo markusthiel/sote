@@ -2185,43 +2185,166 @@ select.target {
 /* Ein Kasten je Ebene, und die Überschrift sagt, WESSEN Einstellung es ist.
    In SONE liegen die drei in getrennten Bereichen; hier auf einem Bildschirm,
    also muss die Zugehörigkeit an der Sache selbst stehen. */
-.set-card {
-  border: 1px solid var(--line);
-  border-radius: var(--sote-radius-lg);
-  background: var(--raised);
-  padding: 16px 18px;
-  margin-bottom: 16px;
-}
+/* ══════════════════════════════════════════════════════════════════════════
+ * Einstellungen — SONEs `settings-*`, wörtlich übernommen.
+ *
+ * Die Form dort: eine Karte hält Zeilen; jede Zeile hat LINKS die Beschriftung
+ * — fett, mit dem Hinweis darunter — und RECHTS das Bedienelement, das seine
+ * Breite behält. SOTE hatte eine 88px schmale Mono-Beschriftung links und den
+ * Hinweis unter dem Element. Wo ein Hinweis noch unter dem Element steht, ist
+ * das die verbleibende Abweichung — sie wandert Bildschirm für Bildschirm in
+ * die Beschriftung.
+ * ═══════════════════════════════════════════════════════════════════════ */
 
-.set-card h2 {
-  margin: 0 0 4px;
-  font-size: 15px;
+.settings-section { margin-block-start: var(--sone-space-7); }
+.settings-section:first-child { margin-block-start: 0; }
+.settings-section h2 {
+  font-size: 1.6rem;
+  font-weight: 300;
+  letter-spacing: -0.02em;
+  margin-block-end: var(--sone-space-6);
+}
+.settings-section > h3 { margin-block-start: var(--sone-space-7); }
+.settings-section > p { max-inline-size: 42rem; line-height: 1.55; }
+
+.settings-card {
+  margin-block: var(--sone-space-4) var(--sone-space-6);
+  padding: var(--sone-space-6);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--sone-radius-lg);
+  background: var(--surface-raised);
+}
+/* Die Überschrift IN der Karte: SOTEs Karten tragen ihren Titel selbst, SONEs
+   Abschnitte über der Karte. Bis die Bildschirme umgebaut sind, bekommt der
+   Kartentitel SONEs Schrift einen Schritt kleiner. */
+.settings-card > h2 {
+  margin: 0 0 var(--sone-space-2);
+  font-size: 1.1rem;
   font-weight: 500;
+  letter-spacing: -0.01em;
+}
+.settings-card > .muted {
+  margin: 0 0 var(--sone-space-5);
+  color: var(--text-muted);
+  font-size: var(--sone-text-sm);
+  line-height: 1.5;
+  max-inline-size: 68ch;
 }
 
-.set-card > .muted {
-  margin: 0 0 14px;
-  font-size: 13px;
-}
-
-.set-row {
+.settings-row {
   display: flex;
-  align-items: baseline;
-  gap: 14px;
-  padding: 10px 0 2px;
-  border-top: 1px solid var(--line);
+  align-items: center;
+  gap: var(--sone-space-6);
+  padding-block: var(--sone-space-4);
+  border-block-end: 1px solid var(--border-subtle);
+}
+.settings-row:first-child { padding-block-start: 0; }
+.settings-row:last-child { padding-block-end: 0; border-block-end: 0; }
+
+.settings-row .settings-row-label {
+  flex: 1 1 auto;
+  min-inline-size: 14rem;
+}
+.settings-row .settings-row-label b { display: block; font-weight: 550; }
+.settings-row .settings-row-label span {
+  color: var(--text-muted);
+  font-size: var(--sone-text-sm);
+}
+/* The control keeps a definite width instead of asking for all of it. It may
+   shrink on a narrow screen; it may not grow into the label's space. (SONE) */
+.settings-row > :not(.settings-row-label) {
+  flex: 0 1 auto;
+  inline-size: auto;
+  text-align: end;
+}
+/*
+ * SOTEs Bedienelement-Spalte, solange Hinweise noch darin stehen.
+ *
+ * SONEs Regel darüber richtet die Spalte nach rechts aus (`text-align: end`),
+ * und sie ist spezifischer als eine einzelne Klasse — im Bild standen darum
+ * drei Zeilen Hinweistext rechtsbündig unter einem Knopf. Der Selektor hier
+ * hat dieselbe Spezifität und steht später, also gewinnt er; er gilt nur für
+ * die Spalte, die einen Hinweis trägt. Die eigentliche Antwort ist SONEs: der
+ * Hinweis gehört in die Beschriftung links, und dorthin wandert er Bildschirm
+ * für Bildschirm.
+ */
+.settings-row > .settings-row-value {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sone-space-2);
+  min-inline-size: 0;
+  text-align: start;
+}
+.settings-row > .settings-row-value > .muted {
+  margin: 0;
+  max-inline-size: 42ch;
+  color: var(--text-muted);
+  font-size: var(--sone-text-sm);
+  line-height: 1.5;
 }
 
-.set-label {
-  font-family: var(--sote-mono);
-  font-size: 10.5px;
-  color: var(--text-faint);
-  width: 88px;
-  flex: none;
-  letter-spacing: 0.02em;
+.settings-note {
+  margin-block: 0 var(--sone-space-6);
+  color: var(--text-muted);
+  font-size: var(--sone-text-sm);
+  line-height: 1.5;
+  max-inline-size: 68ch;
 }
 
-.set-value,
+.settings-heading {
+  margin-block: var(--sone-space-5) var(--sone-space-1);
+  font-family: var(--sone-font-mono);
+  font-size: var(--sone-text-xs);
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.settings-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sone-space-5);
+  margin-block: var(--sone-space-4) var(--sone-space-6);
+}
+
+.settings-nav-group { display: flex; flex-direction: column; gap: 1px; }
+.settings-nav-item {
+  display: flex;
+  align-items: center;
+  gap: var(--sone-space-3);
+  inline-size: 100%;
+  min-block-size: var(--sone-control-lg);
+  padding-inline: var(--sone-space-4);
+  border: 0;
+  border-radius: var(--sone-radius);
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  text-decoration: none;
+  text-align: start;
+  font-size: var(--sone-text-md);
+  cursor: pointer;
+}
+.settings-nav-item:hover { background: var(--surface-hover); }
+.settings-nav-item[aria-current='page'] {
+  background: var(--surface-hover);
+  font-weight: 600;
+}
+.settings-nav-label { font-size: var(--sone-text-sm); }
+.settings-nav-hint {
+  margin-inline-start: auto;
+  font-size: var(--sone-text-xs);
+  color: var(--text-muted);
+}
+/* On a phone the hint goes: the navigation is a list to get past, not to
+   read. (SONE) */
+@media (max-width: 720px) {
+  .settings-nav-hint { display: none; }
+}
+.settings-nav-item[aria-current='page'] .settings-nav-hint { color: inherit; }
+
 .set-choice {
   min-width: 0;
   flex: 1;
@@ -2274,7 +2397,7 @@ select.target {
   cursor: default;
 }
 
-.set-value select {
+.settings-row-value select {
   min-height: 34px;
   padding: 5px 8px;
   border: 1px solid var(--line-strong);
@@ -2331,19 +2454,7 @@ select.target {
 
 /* Die Abschnitte der Einstellungen in der Seitenleiste — kein zweiter Rahmen
    über der Anwendung, sondern dieselbe Leiste mit anderem Inhalt. */
-.set-nav {
-  flex-direction: column;
-  align-items: flex-start !important;
-  gap: 1px;
-  height: auto;
-  padding-block: 7px;
-}
 
-.set-nav-hint {
-  font-family: var(--sote-mono);
-  font-size: 10px;
-  color: var(--text-faint);
-}
 
 .settings {
   padding-top: 8px;
@@ -2892,11 +3003,11 @@ select.target {
 
 /* Eine Karte, die etwas Endgültiges tut. Nur ein Rahmen und eine Überschrift in
    der Warnfarbe — kein roter Kasten: wenn alles schreit, hört niemand hin. */
-.set-card.danger {
+.settings-card.danger {
   border-color: var(--danger);
 }
 
-.set-card.danger h2 {
+.settings-card.danger h2 {
   color: var(--danger);
 }
 

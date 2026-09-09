@@ -117,7 +117,7 @@ export function Shares({
      */
     return (
       <div className="settings">
-        <section className="set-card">
+        <section className="settings-card">
           <h2>Freigaben</h2>
           <p className="muted">
             Dieser Server hat keinen Schlüssel für Freigaben, also gibt es hier
@@ -137,16 +137,16 @@ export function Shares({
     <div className="settings">
       {notice === undefined ? null : <p className="note-error">{notice}</p>}
 
-      <section className="set-card">
+      <section className="settings-card">
         <h2>Einen Link anlegen</h2>
         <p className="muted">
           Gilt für <strong>ein Projekt</strong> — nicht für einen Ordner und
           nicht für den Arbeitsbereich. Wer den Link hat, braucht kein Konto.
         </p>
 
-        <div className="set-row">
-          <span className="set-label">Projekt</span>
-          <div className="set-value">
+        <div className="settings-row">
+          <span className="settings-row-label"><b>Projekt</b></span>
+          <div className="settings-row-value">
             <select
               aria-label="Projekt für den Link"
               value={ziel}
@@ -163,8 +163,8 @@ export function Shares({
           </div>
         </div>
 
-        <div className="set-row">
-          <span className="set-label">Recht</span>
+        <div className="settings-row">
+          <span className="settings-row-label"><b>Recht</b></span>
           <div className="set-choice" role="radiogroup" aria-label="Recht">
             <button
               type="button"
@@ -187,9 +187,9 @@ export function Shares({
           </div>
         </div>
 
-        <div className="set-row">
-          <span className="set-label">Ablauf</span>
-          <div className="set-value">
+        <div className="settings-row">
+          <span className="settings-row-label"><b>Ablauf</b></span>
+          <div className="settings-row-value">
             <input
               type="date"
               aria-label="Ablauf"
@@ -243,7 +243,7 @@ export function Shares({
         )}
       </section>
 
-      <section className="set-card">
+      <section className="settings-card">
         <h2>Was hinausgegeben ist</h2>
         {data.shares.length === 0 ? (
           <p className="muted">Nichts. Kein Link führt derzeit von außen hierher.</p>

@@ -46,16 +46,16 @@ export function Maintenance() {
 
   return (
     <div className="settings">
-      <section className="set-card">
+      <section className="settings-card">
         <h2>Was von selbst läuft</h2>
         <p className="muted">
           Aufträge laufen im Serverprozess, alle halbe Minute wird nachgesehen.
           Die Zusage ist <strong>mindestens einmal</strong> — ein Auftrag kann
           zweimal laufen, und jeder ist so gebaut, dass das nichts schadet.
         </p>
-        <div className="set-row">
-          <span className="set-label">Bearbeiter</span>
-          <div className="set-value">
+        <div className="settings-row">
+          <span className="settings-row-label"><b>Bearbeiter</b></span>
+          <div className="settings-row-value">
             {data.kinds.length === 0 ? (
               <span className="muted">keine</span>
             ) : (
@@ -67,9 +67,9 @@ export function Maintenance() {
             </p>
           </div>
         </div>
-        <div className="set-row">
-          <span className="set-label">Erledigt</span>
-          <div className="set-value">
+        <div className="settings-row">
+          <span className="settings-row-label"><b>Erledigt</b></span>
+          <div className="settings-row-value">
             {data.done.count} Aufträge
             {data.done.last === null
               ? ''
@@ -79,7 +79,7 @@ export function Maintenance() {
       </section>
 
       {liegen.length > 0 ? (
-        <section className="set-card danger">
+        <section className="settings-card danger">
           <h2>Liegen geblieben</h2>
           <p className="muted">
             Diese Aufträge sind fünfmal fehlgeschlagen und laufen nicht mehr von
@@ -108,7 +108,7 @@ export function Maintenance() {
         </section>
       ) : null}
 
-      <section className="set-card">
+      <section className="settings-card">
         <h2>In der Schlange</h2>
         {data.open.length === 0 ? (
           <p className="muted">Nichts. Alles abgearbeitet.</p>

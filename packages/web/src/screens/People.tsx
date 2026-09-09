@@ -91,16 +91,16 @@ export function People({ workspace, you }: { workspace: string | undefined; you:
       {notice === undefined ? null : <p className="note-error">{notice}</p>}
 
       {data.mayManage ? (
-        <section className="set-card">
+        <section className="settings-card">
           <h2>Jemanden hinzufügen</h2>
           <p className="muted">
             Wer schon ein Konto auf diesem Server hat. Ein Konto <em>anzulegen</em>{' '}
             ist Sache der Verwaltung — und eine Einladung per Mail gibt es noch
             nicht, weil dieser Server keinen Mailweg hat.
           </p>
-          <div className="set-row">
-            <span className="set-label">Suchen</span>
-            <div className="set-value">
+          <div className="settings-row">
+            <span className="settings-row-label"><b>Suchen</b></span>
+            <div className="settings-row-value">
               <input
                 className="set-input"
                 aria-label="Person suchen"
@@ -147,7 +147,7 @@ export function People({ workspace, you }: { workspace: string | undefined; you:
         </section>
       ) : null}
 
-      <section className="set-card">
+      <section className="settings-card">
         <h2>Wer hier ist</h2>
         <table className="ws-table">
           <thead>

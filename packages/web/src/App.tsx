@@ -643,18 +643,22 @@ export function App() {
                 Server". Die verdient ihren Platz: sie ist die Tatsache, die auf
                 dem Bildschirm stehen soll, wenn jemand etwas für alle ändert.
               */}
+              {/* SONEs Abschnittsnavigation: eine Gruppe, Zeilen mit Beschriftung
+                  und Hinweis daneben — der Hinweis fällt auf dem Telefon weg. */}
+              <div className="settings-nav-group">
               {SECTION_NAV.entries.map((entry) => (
                 <button
                   key={entry.id}
-                  className="p-item set-nav"
-                  aria-current={SECTION_NAV.active === entry.id}
+                  className="settings-nav-item"
+                  aria-current={SECTION_NAV.active === entry.id ? 'page' : undefined}
                   aria-label={`${entry.label} — ${entry.hint}`}
                   onClick={() => SECTION_NAV.go(entry.id)}
                 >
-                  <span className="p-name">{entry.label}</span>
-                  <span className="set-nav-hint">{entry.hint}</span>
+                  <span className="settings-nav-label">{entry.label}</span>
+                  <span className="settings-nav-hint">{entry.hint}</span>
                 </button>
               ))}
+              </div>
             </>
           ) : null}
 

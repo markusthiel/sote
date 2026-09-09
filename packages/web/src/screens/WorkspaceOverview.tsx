@@ -24,7 +24,7 @@ export function WorkspaceOverview({
 }) {
   return (
     <div className="settings">
-      <section className="set-card">
+      <section className="settings-card">
         <h2>Alle Workspaces</h2>
         <table className="ws-table">
           <thead>

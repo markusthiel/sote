@@ -57,7 +57,7 @@ export function Groups({ workspace }: { workspace: string | undefined }) {
     <div className="settings">
       {notice === undefined ? null : <p className="note-error">{notice}</p>}
 
-      <section className="set-card">
+      <section className="settings-card">
         <h2>Gruppen</h2>
         <p className="muted">
           Eine Gruppe ist eine Liste von Leuten und kann eine Rolle tragen. Was
@@ -67,7 +67,7 @@ export function Groups({ workspace }: { workspace: string | undefined }) {
       </section>
 
       {data.groups.map((g) => (
-        <section className="set-card" key={g.id}>
+        <section className="settings-card" key={g.id}>
           <div className="role-head">
             {data.mayManage ? (
               <input
@@ -101,9 +101,9 @@ export function Groups({ workspace }: { workspace: string | undefined }) {
             </span>
           </div>
 
-          <div className="set-row">
-            <span className="set-label">Trägt die Rolle</span>
-            <div className="set-value">
+          <div className="settings-row">
+            <span className="settings-row-label"><b>Trägt die Rolle</b></span>
+            <div className="settings-row-value">
               <select
                 aria-label={`Rolle der Gruppe ${g.name}`}
                 value={g.roleId ?? ''}
@@ -127,9 +127,9 @@ export function Groups({ workspace }: { workspace: string | undefined }) {
             </div>
           </div>
 
-          <div className="set-row">
-            <span className="set-label">Darin</span>
-            <div className="set-value">
+          <div className="settings-row">
+            <span className="settings-row-label"><b>Darin</b></span>
+            <div className="settings-row-value">
               {g.members.map((m) => (
                 <div className="found-row" key={m.userId}>
                   <span className="fr-who">
@@ -182,9 +182,9 @@ export function Groups({ workspace }: { workspace: string | undefined }) {
           </div>
 
           {data.mayManage ? (
-            <div className="set-row">
-              <span className="set-label" />
-              <div className="set-value">
+            <div className="settings-row">
+              <span className="settings-row-label" />
+              <div className="settings-row-value">
                 <button
                   type="button"
                   className="btn quiet small"
@@ -208,7 +208,7 @@ export function Groups({ workspace }: { workspace: string | undefined }) {
       ))}
 
       {data.mayManage ? (
-        <section className="set-card">
+        <section className="settings-card">
           <h2>Eine Gruppe anlegen</h2>
           <div className="pick">
             <input

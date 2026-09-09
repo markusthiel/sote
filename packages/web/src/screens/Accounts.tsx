@@ -64,7 +64,7 @@ export function Accounts() {
     <div className="settings">
       {notice === undefined ? null : <p className="note-error">{notice}</p>}
 
-      <section className="set-card">
+      <section className="settings-card">
         <h2>Konten</h2>
         <p className="muted">
           Wer auf diesem Server ein Konto hat. Wer in einem <em>Arbeitsbereich</em>{' '}

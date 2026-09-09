@@ -70,7 +70,7 @@ export function Invitations() {
     <div className="settings">
       {notice === undefined ? null : <p className="note-error">{notice}</p>}
 
-      <section className="set-card">
+      <section className="settings-card">
         <h2>Einladen</h2>
         <p className="muted">
           Ein neues Konto auf diesem Server. Wer schon eines hat, kommt unter{' '}
@@ -116,7 +116,7 @@ export function Invitations() {
         </div>
       </section>
 
-      <section className="set-card">
+      <section className="settings-card">
         <h2>Offene Einladungen</h2>
         {data.invitations.length === 0 ? (
           <p className="muted">Keine.</p>

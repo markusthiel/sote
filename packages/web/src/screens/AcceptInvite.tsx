@@ -66,9 +66,9 @@ export function AcceptInvite({ token, onDone }: { token: string; onDone: () => v
 
         {notice === undefined ? null : <p className="note-error">{notice}</p>}
 
-        <div className="set-row">
-          <span className="set-label">Dein Name</span>
-          <div className="set-value">
+        <div className="settings-row">
+          <span className="settings-row-label"><b>Dein Name</b></span>
+          <div className="settings-row-value">
             <input
               className="set-input"
               aria-label="Dein Name"
@@ -78,9 +78,9 @@ export function AcceptInvite({ token, onDone }: { token: string; onDone: () => v
             />
           </div>
         </div>
-        <div className="set-row">
-          <span className="set-label">Kennwort</span>
-          <div className="set-value">
+        <div className="settings-row">
+          <span className="settings-row-label"><b>Kennwort</b></span>
+          <div className="settings-row-value">
             <input
               className="set-input"
               type="password"
