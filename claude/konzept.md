@@ -2017,8 +2017,21 @@ erfunden.
   Flex-Zeilen; sechs Bildschirme umzubauen ist eine eigene Runde, und was hier
   gleich ist, sind die Pixel. Die Kopfzeilen fielen weg: eine Beschriftung über
   zwei Spalten, die man am Inhalt erkennt, ist eine Beschriftung für nichts.
-- **Noch offen, in dieser Reihenfolge:** Dialoge, die umbrechenden Hinweise in
-  der Workspace-Navigation, und der Umbau der Listen auf `admin-row`.
+- **Fläche 10, Formularfelder und die Anmeldekarte:** SONEs `.field`
+  (Beschriftung ist ein **Wort in Textschrift**, Text-sm/550 — SOTEs war eine
+  Mono-Beschriftung in 10,5 px, wie eine Ortsangabe) und SONEs `.centered` /
+  `.card`: 24 rem, gestapelt, **ohne Rahmen und ohne Schatten**. Die Ruhe kommt
+  vom leeren Raum darum, nicht von einer Umrandung. Die Überschrift trägt
+  dieselbe Schrift wie ein Abschnittstitel — zwei Größen für dieselbe Ebene sind
+  zwei Handschriften.
+  - **Im Bild gefunden:** `.field + .field` setzt den Abstand nur *zwischen*
+    Feldern, also klebte der Anmelden-Knopf am Kennwortfeld. Jetzt auch nach dem
+    letzten.
+  - SONEs `.dialog*` gibt es hier nicht: SOTE hat keine schwebenden Dialoge —
+    Anmelden, Einrichtung, Einladung annehmen und der Gast-Bildschirm sind
+    ganze Bildschirme. Der Block kommt, wenn der erste Dialog kommt.
+- **Noch offen:** die umbrechenden Hinweise in der Workspace-Navigation, der
+  Umbau der Listen auf `admin-row`, und der Gast-Bildschirm.
 - **Noch offen (alt):**
   Einstellungen (`settings-card`, `settings-row`, `section-nav`), Knöpfe und
   Felder, Dialoge — und zuletzt ein Wächter gegen harte Pixelwerte, wo eine

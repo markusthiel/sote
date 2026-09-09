@@ -1087,42 +1087,78 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex]:focus-vi
 /* ── Anmelden ── */
 
 .signin {
-  height: 100%;
-  display: grid;
-  place-items: center;
-  padding: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100%;
+  padding: 20px;
 }
 
 .signin-card {
-  width: 340px;
-  max-width: 100%;
+  width: 100%;
+  max-width: 24rem;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sone-space-5);
 }
 
+/* Die Überschrift der Karte: dieselbe Schrift wie ein Abschnittstitel in den
+   Einstellungen (1.6rem, 300, −0.02em) — eine Anwendung mit zwei
+   Überschriftgrößen für dieselbe Ebene hat zwei Handschriften. Die Abstände
+   macht die Karte mit ihrer Lücke; Ränder am h1 wären ein zweiter Abstand. */
 .signin-card h1 {
-  font-weight: var(--sote-heading-weight);
-  font-size: 26px;
+  font-weight: 300;
+  font-size: 1.6rem;
   letter-spacing: -0.02em;
-  margin: 18px 0 3px;
+  margin: 0;
 }
 
 .signin-card .claim {
   color: var(--text-muted);
-  font-size: 13.5px;
-  margin: 0 0 22px;
+  font-size: var(--sone-text-sm);
+  margin: 0;
 }
 
+/* ══════════════════════════════════════════════════════════════════════════
+ * Formularfeld und Anmeldekarte — SONEs `.field`, `.centered`, `.card`.
+ *
+ * SONEs Beschriftung über einem Feld ist ein **Wort in Textschrift** (Text-sm,
+ * 550) — SOTEs war eine Mono-Beschriftung in 10,5 px, wie eine Ortsangabe.
+ * Und SONEs Anmeldekarte ist **kein Kasten**: `.centered` mit `.card`
+ * (24 rem, gestapelt mit Space-5), ohne Rahmen und ohne Schatten. Die Ruhe
+ * kommt vom leeren Raum darum, nicht von einer Umrandung.
+ * ═══════════════════════════════════════════════════════════════════════ */
 .field {
-  display: block;
-  margin-bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sone-space-3);
+  max-inline-size: 32rem;
+}
+.field + .field { margin-block-start: var(--sone-space-6); }
+/*
+ * Und nach dem LETZTEN Feld ebenso.
+ *
+ * `.field + .field` setzt den Abstand nur ZWISCHEN Feldern — im Bild klebte
+ * der Anmelden-Knopf am Kennwortfeld, während überall sonst die Lücke der
+ * Karte (Space-5) steht. SONEs Auth-Formular hat den Knopf in einem eigenen
+ * Block; hier reicht die Regel, weil die Karte gestapelt ist.
+ */
+.field + :not(.field) { margin-block-start: var(--sone-space-6); }
+
+.field label,
+.field > span {
+  font-size: var(--sone-text-sm);
+  font-weight: 550;
+  color: var(--text-primary);
 }
 
-.field span {
-  display: block;
-  font-family: var(--sote-mono);
-  font-size: 10.5px;
-  color: var(--text-faint);
-  margin-bottom: 4px;
-  letter-spacing: 0.02em;
+/* The sentence under a field, which is an explanation and not a second
+   label. (SONE) */
+.field .muted,
+.field p {
+  margin: 0;
+  font-size: var(--sone-text-sm);
+  color: var(--text-muted);
 }
 
 .field input {
