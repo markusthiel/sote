@@ -82,19 +82,24 @@ export function Maintenance() {
             Diese Aufträge sind fünfmal fehlgeschlagen und laufen nicht mehr von
             selbst. Sie stehen hier, statt zu verschwinden.
           </p>
-          <table className="admin-table">
-            <tbody>
-              {liegen.map((j, i) => (
-                <tr key={`${j.kind}-${i}`}>
-                  <td>
+          {/* SONEs `admin-list`. Ein liegengebliebener Auftrag ist eine
+              Sache mit Namen und Umständen, keine Tabellenzeile: die Umstände
+              (Versuche, letzter Fehler) stehen als Beiwerk darunter. */}
+          <div className="admin-list">
+            {liegen.map((j, i) => (
+              <div className="admin-row" key={`${j.kind}-${i}`}>
+                <div className="admin-row-main">
+                  <span className="admin-name">
                     <code>{j.kind}</code>
-                  </td>
-                  <td>{j.attempts}</td>
-                  <td className="small">{j.lastError ?? '—'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                  </span>
+                  <span className="admin-meta">
+                    {j.attempts} Versuch{j.attempts === 1 ? '' : 'e'}
+                    {j.lastError === null ? '' : ` · ${j.lastError}`}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
         </section>
       ) : null}
 
@@ -103,24 +108,22 @@ export function Maintenance() {
         {data.open.length === 0 ? (
           <p className="muted">Nichts. Alles abgearbeitet.</p>
         ) : (
-          <table className="admin-table">
-            <tbody>
-              {data.open.map((j, i) => (
-                <tr key={`${j.kind}-${i}`}>
-                  <td>
+          <div className="admin-list">
+            {data.open.map((j, i) => (
+              <div className="admin-row" key={`${j.kind}-${i}`}>
+                <div className="admin-row-main">
+                  <span className="admin-name">
                     <code>{j.kind}</code>
-                  </td>
-                  <td>{new Date(j.runAt).toLocaleString('de-DE')}</td>
-                  <td>
-                    {j.attempts}
-                    {j.lastError === null ? null : (
-                      <div className="muted small">{j.lastError}</div>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                  </span>
+                  <span className="admin-meta">
+                    ab {new Date(j.runAt).toLocaleString('de-DE')}
+                    {j.attempts > 0 ? ` · ${j.attempts} Versuch${j.attempts === 1 ? '' : 'e'}` : ''}
+                    {j.lastError === null ? '' : ` · ${j.lastError}`}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
         )}
       </section>
     </div>

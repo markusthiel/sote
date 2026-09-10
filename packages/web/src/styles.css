@@ -4316,25 +4316,51 @@ label.btn {
  * surface. Two boxes on one screen that differ by a percent of grey is a
  * difference somebody notices without being able to name." (SONE)
  */
-.admin-table {
-  width: 100%;
-  border-collapse: collapse;
+/* ══════════════════════════════════════════════════════════════════════════
+ * Die Verwaltungslisten — SONEs `admin-list` / `admin-row`, wörtlich.
+ *
+ * Sechs Bildschirme zeichneten `<table>`. Eine Tabelle behauptet, ihre Spalten
+ * seien vergleichbar; hier standen ein Name, ein Häkchen, eine Zahl und ein
+ * Knopf nebeneinander, und die vergleicht niemand spaltenweise. SONEs Zeile
+ * sagt dasselbe ohne die Behauptung: links Name und Beiwerk
+ * (`admin-row-main`), rechts, was man damit tun kann (`admin-row-actions`).
+ *
+ * Damit fielen auch die Kopfzeilen weg, die es hier nie gab, und die
+ * Spaltenwörter wandern ins Beiwerk: „Mitarbeiten · noch nie benutzt · ohne
+ * Ablauf" ist eine Zeile statt dreier Überschriften für drei Wörter.
+ * ═══════════════════════════════════════════════════════════════════════ */
+
+.admin-list {
   border: 1px solid var(--border-default);
   border-radius: var(--sone-radius);
   background: var(--surface-chrome);
-  font-size: var(--sone-text-md);
-  overflow: hidden;
 }
 
-.admin-table td {
+.admin-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sone-space-4);
   padding: var(--sone-space-4);
-  border-block-end: 1px solid var(--border-default);
-  vertical-align: middle;
+  border-block-end: 1px solid var(--border-subtle);
 }
-.admin-table tr:last-child td { border-block-end: 0; }
-/* Die letzte Spalte trägt die Aktionen, rechts wie SONEs `.admin-row-actions`. */
-.admin-table td:last-child { text-align: end; }
-.admin-table tr[aria-current='true'] td { background: var(--surface-hover); }
+.admin-row:last-child { border-block-end: 0; }
+.admin-row[aria-current='true'] { background: var(--surface-hover); }
+
+.admin-row-main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sone-space-1);
+  min-inline-size: 0;
+}
+
+.admin-row-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sone-space-5);
+  flex-wrap: wrap;
+}
 
 .admin-name { font-weight: 500; }
 .admin-meta {
@@ -4342,6 +4368,15 @@ label.btn {
   font-size: var(--sone-text-xs);
   color: var(--text-muted);
 }
+
+/* Ein Häkchen mit seinem Wort daneben. (SONEs `admin-toggle`) */
+.admin-flag {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sone-space-2);
+  font-size: var(--sone-text-sm);
+}
+
 
 .ws-here {
   color: var(--text-muted);

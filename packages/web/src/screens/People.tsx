@@ -151,68 +151,58 @@ export function People({ workspace, you }: { workspace: string | undefined; you:
 
       <section className="settings-card">
         <h2>Wer hier ist</h2>
-        <table className="admin-table">
-          <tbody>
-            {data.people.map((p) => (
-              <tr key={p.userId}>
-                <td>
-                  <span className="admin-name">{p.displayName}</span>
+        {/* SONEs `admin-list`: links wer, rechts Rolle und Handgriff. */}
+        <div className="admin-list">
+          {data.people.map((p) => (
+            <div className="admin-row" key={p.userId}>
+              <div className="admin-row-main">
+                <span className="admin-name">
+                  {p.displayName}
                   {p.userId === you ? <span className="ws-here"> · das bist du</span> : null}
-                  <div className="admin-meta">{p.email}</div>
-                </td>
-                <td>
-                  {p.isOwner ? (
-                    /*
-                     * Eigentümerschaft ist eine Spalte und kein Recht (SONEs
-                     * ADR-0102), also steht sie hier als Wort und nicht als
-                     * Auswahl. Sie über das Rollenfeld ändern zu können wäre
-                     * ein zweiter Weg zu einer anderen Sache.
-                     */
-                    'Eigentümer'
-                  ) : data.mayManage ? (
-                    <select
-                      aria-label={`Rolle von ${p.displayName}`}
-                      value={p.roleId ?? ''}
-                      disabled={busy}
-                      onChange={(e) =>
-                        void tun(
-                          () => api.setRole(p.userId, e.target.value, workspace),
-                          'Rolle ändern ging nicht.',
-                        )
-                      }
-                    >
-                      {data.roles.map((r) => (
-                        <option key={r.id} value={r.id}>
-                          {r.name}
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    (p.roleName ?? '—')
-                  )}
-                </td>
-                <td>
-                  {data.mayManage && !p.isOwner ? (
-                    <button
-                      type="button"
-                      className="btn quiet small"
-                      disabled={busy}
-                      aria-label={`${p.displayName} entfernen`}
-                      onClick={() =>
-                        void tun(
-                          () => api.removePerson(p.userId, workspace),
-                          'Entfernen ging nicht.',
-                        )
-                      }
-                    >
-                      Entfernen
-                    </button>
-                  ) : null}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                </span>
+                <span className="admin-meta">{p.email}</span>
+              </div>
+              <div className="admin-row-actions">
+                {p.isOwner ? (
+                  'Eigentümer'
+                ) : data.mayManage ? (
+                  <select
+                    aria-label={`Rolle von ${p.displayName}`}
+                    value={p.roleId ?? ''}
+                    disabled={busy}
+                    onChange={(e) =>
+                      void tun(
+                        () => api.setRole(p.userId, e.target.value, workspace),
+                        'Rolle ändern ging nicht.',
+                      )
+                    }
+                  >
+                    {data.roles.map((r) => (
+                      <option key={r.id} value={r.id}>
+                        {r.name}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  (p.roleName ?? '—')
+                )}
+                {data.mayManage && !p.isOwner ? (
+                  <button
+                    type="button"
+                    className="btn quiet small"
+                    disabled={busy}
+                    aria-label={`${p.displayName} entfernen`}
+                    onClick={() =>
+                      void tun(() => api.removePerson(p.userId, workspace), 'Entfernen ging nicht.')
+                    }
+                  >
+                    Entfernen
+                  </button>
+                ) : null}
+              </div>
+            </div>
+          ))}
+        </div>
         {data.mayManage ? null : (
           <p className="muted small">
             Wer hier mitarbeitet, darfst du sehen. Ändern darf es, wer den

@@ -71,49 +71,43 @@ export function Accounts() {
           mitarbeitet, steht dort unter „Leute" — zwei Fragen, zwei Orte.
         </p>
 
-        <table className="admin-table">
-          <tbody>
-            {data.accounts.map((a) => (
-              <tr key={a.id}>
-                <td>
-                  <span className="admin-name">{a.displayName}</span>
+        {/* SONEs `admin-list`: links wer, rechts die Schalter und der
+            Handgriff. Eine Tabelle behauptet vergleichbare Spalten — ein
+            Häkchen, eine Zahl und ein Knopf sind keine. */}
+        <div className="admin-list">
+          {data.accounts.map((a) => (
+            <div className="admin-row" key={a.id}>
+              <div className="admin-row-main">
+                <span className="admin-name">
+                  {a.displayName}
                   {a.id === data.you ? <span className="ws-here"> · das bist du</span> : null}
-                  <div className="admin-meta">{a.email}</div>
-                </td>
-                <td>
-                  <label className="admin-flag">
-                    <input
-                      type="checkbox"
-                      aria-label={`${a.displayName} verwaltet die Instanz`}
-                      checked={a.isAdmin}
-                      /*
-                       * Der letzte Administrator kann sein Recht nicht
-                       * abgeben, und der Kasten sagt es VORHER: der Server
-                       * lehnt es ohnehin ab, aber ein Kasten, den man
-                       * anklicken kann und der dann eine Meldung bringt, ist
-                       * ein Kasten, der etwas verspricht.
-                       */
-                      disabled={busy || (a.isAdmin && admins <= 1)}
-                      onChange={(e) =>
-                        void tun(
-                          () => api.setAdmin(a.id, e.target.checked),
-                          'Ändern ging nicht.',
-                        )
-                      }
-                    />
-                    {a.isAdmin && admins <= 1 ? (
-                      <span className="muted small">der letzte</span>
-                    ) : null}
-                  </label>
-                </td>
-                <td>
-                  {a.workspaces === 0 ? (
-                    <span className="muted">in keinem</span>
-                  ) : (
-                    a.workspaces
-                  )}
-                </td>
-                <td>
+                </span>
+                {/* Die Zahl der Arbeitsbereiche steht jetzt IM Beiwerk statt in
+                    einer eigenen Spalte: sie erklärt, warum Löschen geht oder
+                    nicht, und gehört damit neben die Adresse. */}
+                <span className="admin-meta">
+                  {a.email}
+                  {a.workspaces === 0
+                    ? ' · in keinem Arbeitsbereich'
+                    : ` · ${a.workspaces} Arbeitsbereich${a.workspaces === 1 ? '' : 'e'}`}
+                </span>
+              </div>
+              <div className="admin-row-actions">
+                <label className="admin-flag">
+                  <input
+                    type="checkbox"
+                    aria-label={`${a.displayName} verwaltet die Instanz`}
+                    checked={a.isAdmin}
+                    disabled={busy || (a.isAdmin && admins <= 1)}
+                    onChange={(e) =>
+                      void tun(() => api.setAdmin(a.id, e.target.checked), 'Ändern ging nicht.')
+                    }
+                  />
+                  verwaltet
+                  {a.isAdmin && admins <= 1 ? (
+                    <span className="muted small">· der letzte</span>
+                  ) : null}
+                </label>
                   {/*
                     Löschen gibt es nur, wo es gehen kann.
                     Ein Konto, das noch mitarbeitet, lehnt der Server ab — und
@@ -138,15 +132,19 @@ export function Accounts() {
                       Löschen
                     </button>
                   )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+              </div>
+            </div>
+          ))}
+        </div>
 
         <p className="muted small">
-          Neue Konten entstehen beim Anmelden — eine Einladung per Mail gibt es
-          noch nicht, weil dieser Server keinen Mailweg hat.
+          {/* Stand hier: „…eine Einladung per Mail gibt es noch nicht, weil
+              dieser Server keinen Mailweg hat." Derselbe Satz wie in People,
+              und derselbe Fund: er ist seit a1d2f54 falsch. Zweimal derselbe
+              veraltete Satz an zwei Orten — beim ersten Mal habe ich nur die
+              eine Stelle berichtigt, statt nach der Formulierung zu suchen. */}
+          Neue Konten entstehen beim Anmelden oder über eine{' '}
+          <em>Einladung</em> — siehe „Einladungen".
         </p>
       </section>
     </div>

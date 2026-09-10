@@ -245,60 +245,57 @@ export function Shares({
         {data.shares.length === 0 ? (
           <p className="muted">Nichts. Kein Link führt derzeit von außen hierher.</p>
         ) : (
-          <table className="admin-table">
-            <tbody>
-              {gezeigt.map((s) => (
-                <tr key={s.id}>
-                  <td>
-                    {s.projectName}
-                    <div className="share-link">
-                      {s.token === null ? (
-                        /* Der Schlüssel ist getauscht oder verloren. Die
-                           Freigabe bleibt sichtbar, damit man sie widerrufen
-                           kann — das ist die Funktion, auf die es ankommt. */
-                        <span className="muted small">
-                          Mit dem jetzigen Schlüssel nicht anzeigbar.
-                        </span>
-                      ) : (
-                        <code>{linkFor(s.token)}</code>
-                      )}
-                    </div>
-                  </td>
-                  <td>{s.right === 'edit' ? 'Mitarbeiten' : 'Nur lesen'}</td>
-                  <td>
-                    {s.lastUsedAt === null ? (
-                      // „Noch nie" ist eine eigene Auskunft und kein leeres
-                      // Feld: ein Link, der nie benutzt wurde, ist ein anderer
-                      // Fall als einer von gestern.
-                      <span className="muted">noch nie</span>
+          /* SONEs `admin-list`: links Projekt und Link, rechts der Handgriff.
+             Die vier Spalten von vorher (Recht, benutzt, läuft ab, widerrufen)
+             waren vier Überschriften für vier Wörter. Blockkommentar und nicht
+             `{/* … *​/}`: nach `? (` folgt ein Ausdruck, und ein JSX-Kommentar
+             wäre ein Kind — derselbe Fehler wie eben in Invitations. */
+          <div className="admin-list">
+            {gezeigt.map((s) => (
+              <div className="admin-row" key={s.id}>
+                <div className="admin-row-main">
+                  <span className="admin-name">{s.projectName}</span>
+                  <div className="share-link">
+                    {s.token === null ? (
+                      /* Ohne den Schlüssel von damals lässt sich der Link nicht
+                         mehr zeigen. Die Freigabe bleibt sichtbar, damit man sie
+                         widerrufen kann — das ist die Funktion, auf die es
+                         ankommt. */
+                      <span className="admin-meta">
+                        Mit dem jetzigen Schlüssel nicht anzeigbar.
+                      </span>
                     ) : (
-                      new Date(s.lastUsedAt).toLocaleDateString('de-DE')
+                      <code>{linkFor(s.token)}</code>
                     )}
-                  </td>
-                  <td>
-                    {s.expiresAt === null ? (
-                      <span className="muted">ohne</span>
-                    ) : (
-                      new Date(s.expiresAt).toLocaleDateString('de-DE')
-                    )}
-                  </td>
-                  <td>
-                    <button
-                      type="button"
-                      className="btn quiet small"
-                      disabled={busy}
-                      aria-label={`Freigabe für ${s.projectName} widerrufen`}
-                      onClick={() =>
-                        void tun(() => api.revokeShare(s.id, workspace), 'Widerrufen ging nicht.')
-                      }
-                    >
-                      Widerrufen
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                  </div>
+                  <span className="admin-meta">
+                    {s.right === 'edit' ? 'Mitarbeiten' : 'Nur lesen'}
+                    {' · '}
+                    {s.lastUsedAt === null
+                      ? 'noch nie benutzt'
+                      : `benutzt ${new Date(s.lastUsedAt).toLocaleDateString('de-DE')}`}
+                    {' · '}
+                    {s.expiresAt === null
+                      ? 'ohne Ablauf'
+                      : `bis ${new Date(s.expiresAt).toLocaleDateString('de-DE')}`}
+                  </span>
+                </div>
+                <div className="admin-row-actions">
+                  <button
+                    type="button"
+                    className="btn quiet small"
+                    disabled={busy}
+                    aria-label={`Freigabe für ${s.projectName} widerrufen`}
+                    onClick={() =>
+                      void tun(() => api.revokeShare(s.id, workspace), 'Widerrufen ging nicht.')
+                    }
+                  >
+                    Widerrufen
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
         )}
         <p className="muted small">
           Widerrufen wirkt sofort und lässt sich nicht zurücknehmen — „widerrufen,

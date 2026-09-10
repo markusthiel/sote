@@ -121,51 +121,49 @@ export function Invitations() {
         {data.invitations.length === 0 ? (
           <p className="muted">Keine.</p>
         ) : (
-          <table className="admin-table">
-            <tbody>
-              {data.invitations.map((i) => (
-                <tr key={i.id}>
-                  <td>
-                    {i.email}
-                    <div className="share-link">
-                      {i.acceptedAt !== null ? (
-                        <span className="muted small">
-                          eingelöst am {new Date(i.acceptedAt).toLocaleDateString('de-DE')}
-                        </span>
-                      ) : i.token === null ? (
-                        // Schlüssel getauscht: die Einladung bleibt sichtbar,
-                        // damit man sie zurücknehmen kann.
-                        <span className="muted small">
-                          Mit dem jetzigen Schlüssel nicht anzeigbar.
-                        </span>
-                      ) : (
-                        <code>{linkFor(i.token)}</code>
-                      )}
-                    </div>
-                  </td>
-                  <td>{new Date(i.expiresAt).toLocaleDateString('de-DE')}</td>
-                  <td>
-                    {i.acceptedAt === null ? (
-                      <button
-                        type="button"
-                        className="btn quiet small"
-                        disabled={busy}
-                        aria-label={`Einladung für ${i.email} zurücknehmen`}
-                        onClick={() =>
-                          void tun(
-                            () => api.revokeInvitation(i.id),
-                            'Zurücknehmen ging nicht.',
-                          )
-                        }
-                      >
-                        Zurücknehmen
-                      </button>
-                    ) : null}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          /* SONEs `admin-list`: links wer und der Link, rechts wann es abläuft
+             und der Handgriff. Ein `{/* … *​/}` steht hier NICHT — nach `? (`
+             folgt ein Ausdruck, und ein JSX-Kommentar ist ein Kind. */
+          <div className="admin-list">
+            {data.invitations.map((i) => (
+              <div className="admin-row" key={i.id}>
+                <div className="admin-row-main">
+                  <span className="admin-name">{i.email}</span>
+                  <div className="share-link">
+                    {i.acceptedAt !== null ? (
+                      <span className="admin-meta">
+                        eingelöst am {new Date(i.acceptedAt).toLocaleDateString('de-DE')}
+                      </span>
+                    ) : i.token === null ? (
+                      <span className="admin-meta">
+                        Mit dem jetzigen Schlüssel nicht anzeigbar.
+                      </span>
+                    ) : (
+                      <code>{linkFor(i.token)}</code>
+                    )}
+                  </div>
+                </div>
+                <div className="admin-row-actions">
+                  <span className="admin-meta">
+                    bis {new Date(i.expiresAt).toLocaleDateString('de-DE')}
+                  </span>
+                  {i.acceptedAt === null ? (
+                    <button
+                      type="button"
+                      className="btn quiet small"
+                      disabled={busy}
+                      aria-label={`Einladung für ${i.email} zurücknehmen`}
+                      onClick={() =>
+                        void tun(() => api.revokeInvitation(i.id), 'Zurücknehmen ging nicht.')
+                      }
+                    >
+                      Zurücknehmen
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+            ))}
+          </div>
         )}
       </section>
     </div>

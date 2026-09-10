@@ -26,22 +26,29 @@ export function WorkspaceOverview({
     <div className="settings">
       <section className="settings-card">
         <h2>Alle Workspaces</h2>
-        <table className="admin-table">
-          <tbody>
-            {workspaces.map((w) => (
-              <tr key={w.id} aria-current={w.id === current}>
-                <td>
+        {/*
+          SONEs `admin-list`: Zeilen, keine Tabelle.
+          
+          Eine Tabelle behauptet, ihre Spalten seien vergleichbar — hier ist
+          links ein Name und rechts eine Rolle, und die vergleicht niemand
+          spaltenweise. SONEs Zeile sagt dasselbe ohne die Behauptung: links
+          Name und Beiwerk, rechts, was man damit tun kann.
+        */}
+        <div className="admin-list">
+          {workspaces.map((w) => (
+            <div className="admin-row" key={w.id} aria-current={w.id === current}>
+              <div className="admin-row-main">
+                <span className="admin-name">
                   <span className="ws-dot" aria-hidden="true" />
                   {w.name}
                   {w.id === current ? <span className="ws-here"> · du bist hier</span> : null}
-                </td>
-                {/* Die Lücke von vorhin ist zu: die Rolle kommt jetzt aus
-                    `/api/me` und steht nicht mehr fest. */}
-                <td>{w.owner ? 'Eigentümer' : 'Mitglied'}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                </span>
+              </div>
+              {/* Die Lücke von vorhin ist zu: die Rolle kommt aus `/api/me`. */}
+              <div className="admin-row-actions">{w.owner ? 'Eigentümer' : 'Mitglied'}</div>
+            </div>
+          ))}
+        </div>
         {/* Stand hier: „Weitere anzulegen gibt es noch nicht." Ehrlich damals,
             falsch seit dem Fuß im Wähler — und im Bild gefunden, nicht im Code. */}
         <p className="muted small">

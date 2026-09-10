@@ -2093,8 +2093,18 @@ erfunden.
   (`ChosenColor = PaletteName | '#…'`, `colorValue` gibt Hex durch) — nur die
   Oberfläche bot es nicht an. **Eine Möglichkeit, die im Kern steht und nirgends
   anklickbar ist, gibt es für niemanden.**
-- **Noch offen:** der Umbau der Verwaltungslisten von `<table>` auf
-  `admin-row`.
+- **Fläche 14, die Verwaltungslisten sind Zeilen.** SONEs `admin-list` /
+  `admin-row` / `-main` / `-actions` in sechs Bildschirmen, sieben Listen.
+  **Eine Tabelle behauptet, ihre Spalten seien vergleichbar** — ein Name, ein
+  Häkchen, eine Zahl und ein Knopf sind es nicht. Die Spaltenwörter wandern ins
+  Beiwerk: „Mitarbeiten · noch nie benutzt · ohne Ablauf" ist eine Zeile statt
+  dreier Überschriften für drei Wörter.
+  - **Zweimal derselbe Fehler in einer Runde:** ein JSX-Kommentar direkt nach
+    `? (` — dort steht ein Ausdruck, und `{/* … */}` ist ein Kind. Beim zweiten
+    Mal hätte ich es wissen müssen.
+  - **Und zweimal derselbe veraltete Satz:** „eine Einladung per Mail gibt es
+    noch nicht" stand in People *und* in Accounts. Beim ersten Fund habe ich nur
+    die eine Stelle berichtigt, statt nach der Formulierung zu suchen.
 - **Noch offen (alt):**
   Einstellungen (`settings-card`, `settings-row`, `section-nav`), Knöpfe und
   Felder, Dialoge — und zuletzt ein Wächter gegen harte Pixelwerte, wo eine
