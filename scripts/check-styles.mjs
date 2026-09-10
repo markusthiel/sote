@@ -73,12 +73,14 @@ const ohneRegel = [...used.keys()].filter((c) => !rules.has(c) && !markupOnly.ha
 
 /*
  * Die Grenze. Nachgezogen nach Flaeche 11 (Gast-Bildschirm, eine
- * Ueberschriftgroesse): font-size 76, padding 75, gap 45, margin 46, min-height 13.
- * Vorher stand hier font-size 84, padding 76, gap 46, margin 52, min-height 13.
+ * Ueberschriftgroesse): font-size 75, padding 75, gap 45, margin 46, min-height 13.
+ * Vorher stand hier font-size 84, padding 76, gap 46, margin 52, min-height 13, und
+ * dann 76 — die Dauer und die Feld-Ablehnung nehmen ihre Groesse aus der Skala,
+ * also faellt die Grenze um eins. Sie zieht nur nach unten nach.
  * Wer eine senkt, zieht die Zahl hier nach -- von Hand, damit es ein bewusster
  * Schritt ist und kein Nebeneffekt.
  */
-const LIMIT = { 'font-size': 76, padding: 75, gap: 45, margin: 46, 'min-height': 13 };
+const LIMIT = { 'font-size': 75, padding: 75, gap: 45, margin: 46, 'min-height': 13 };
 const count = (prop) =>
   [...css.matchAll(new RegExp(`^\\s*${prop}[a-z-]*:\\s*[^;]*\\b\\d+px`, 'gm'))].length;
 const gewachsen = Object.entries(LIMIT)

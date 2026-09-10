@@ -8,6 +8,8 @@
  * eine halbe Sekunde Warten für die häufigste Handlung der Anwendung.
  */
 
+import { formatDuration } from '@sote/core';
+
 import type { Task } from '../api.js';
 import { isOverdue, whenLabel } from '../dates.js';
 
@@ -89,6 +91,15 @@ export function TaskRow({
           {due !== null ? (
             <span className={isOverdue(due, now) ? 'due late' : 'due'}>
               fällig {whenLabel(due, true, now)}
+            </span>
+          ) : null}
+          {/* Die Dauer NACH den Zeitpunkten und vor dem Projekt: sie sagt,
+              wie lange etwas dauert, nicht wann es ist — und ein „1:30 h"
+              zwischen „morgen" und „fällig Freitag" liest sich als drittes
+              Datum. */}
+          {task.duration !== null ? (
+            <span className="span" title="geschätzte Dauer">
+              {formatDuration(task.duration)}
             </span>
           ) : null}
           {task.recurrence !== null ? (

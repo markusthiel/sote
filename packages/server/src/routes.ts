@@ -121,6 +121,16 @@ function readPatch(body: Record<string, unknown>): import('./tasks.js').Patch {
     out['projectId'] = body['projectId'] === null ? null : String(body['projectId']);
   }
   /*
+   * Die Dauer: MINUTEN, `null` nimmt sie weg.
+   *
+   * Kein Auslegen von „1h30" hier. Das Vokabular gehört dem Kern, und eine
+   * Route, die es ein zweites Mal kennt, ist die zweite Sprache, in der
+   * dasselbe gemeint ist — die Oberfläche legt aus und schickt die Zahl.
+   */
+  if ('duration' in body) {
+    out['duration'] = body['duration'] === null ? null : Number(body['duration']);
+  }
+  /*
    * Wiederholung: `null` nimmt sie weg, sonst eine der zwei Formen.
    *
    * Die Form wird hier ERKANNT und nicht erfragt: was `rrule` trägt, ist eine
@@ -250,6 +260,10 @@ function taskView(row: TaskRow) {
     // Der Satz kommt aus `core`, damit die Oberfläche ihn nicht nachbaut und
     // irgendwann etwas anderes behauptet als die Regel tut (Blatt 08).
     recurrence: rec === undefined ? null : { kind: rec.kind, says: describeRecurrence(rec) },
+    /* Die Zahl und nicht der Satz: die Oberfläche schreibt sie zurück, und
+       ein „1:30 h" müsste sie dafür erst wieder auseinandernehmen. Wie es
+       aussieht, sagt `formatDuration` an der Stelle, an der es steht. */
+    duration: row.duration_min,
     sortKey: row.sort_key,
   };
 }

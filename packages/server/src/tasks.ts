@@ -7,6 +7,7 @@
 
 import {
   generateKeyBetween,
+  MAX_DURATION,
   nextAfterCompletion,
   nextOccurrence,
   parseQuickAdd,
@@ -36,6 +37,7 @@ export interface TaskRow {
   recur_dtstart: Date | null;
   recur_after_n: number | null;
   recur_after_unit: string | null;
+  duration_min: number | null;
   sort_key: string;
 }
 
@@ -104,7 +106,7 @@ const RETURNING = `
   id, workspace_id, project_id, parent_id, title, note,
   planned_at, planned_all_day, due_at, due_all_day, priority,
   completed_at, recur_rrule, recur_dtstart, recur_after_n,
-  recur_after_unit, sort_key`;
+  recur_after_unit, duration_min, sort_key`;
 
 const SELECT = `SELECT ${RETURNING} FROM tasks`;
 
@@ -265,8 +267,8 @@ export async function createFromLine(pool: Pool, input: CreateFromLine): Promise
          workspace_id, project_id, title,
          planned_at, planned_all_day, due_at, due_all_day, priority,
          recur_rrule, recur_dtstart, recur_after_n, recur_after_unit,
-         sort_key, created_by)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+         duration_min, sort_key, created_by)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
        RETURNING ${RETURNING}`,
       [
         input.workspaceId,
@@ -284,6 +286,9 @@ export async function createFromLine(pool: Pool, input: CreateFromLine): Promise
         rec?.kind === 'calendar' ? rec.dtstart : null,
         rec?.kind === 'afterCompletion' ? rec.n : null,
         rec?.kind === 'afterCompletion' ? rec.unit : null,
+        // Was der Kern gelesen hat, wird nicht nachgeprüft: `parseQuickAdd`
+        // gibt Minuten oder nichts, und der CHECK in 0024 haelt die Grenzen.
+        q.duration ?? null,
         sortKey,
         input.userId,
       ],
@@ -460,7 +465,7 @@ export async function complete(
          workspace_id, project_id, parent_id, title, note,
          planned_at, planned_all_day, due_at, due_all_day, priority,
          recur_rrule, recur_dtstart, recur_after_n, recur_after_unit,
-         sort_key, created_by)
+         duration_min, sort_key, created_by)
        SELECT workspace_id, project_id, parent_id, title, note,
               $2::timestamptz, planned_all_day,
               CASE WHEN due_at IS NULL THEN NULL
@@ -468,7 +473,10 @@ export async function complete(
               END,
               due_all_day, priority,
               recur_rrule, $3::timestamptz, recur_after_n, recur_after_unit,
-              $4, $5
+              -- Die Schaetzung geht mit: derselbe Vorgang dauert beim
+              -- naechsten Mal dasselbe. Sie ist eine Eigenschaft der
+              -- Aufgabe und nicht dieses Termins.
+              duration_min, $4, $5
          FROM tasks WHERE id = $1
        RETURNING ${RETURNING}`,
       [
@@ -619,6 +627,15 @@ export interface Patch {
    */
   readonly recurrence?: Recurrence | null;
   /**
+   * Die geschätzte Dauer in Minuten — `null` nimmt sie weg.
+   *
+   * Als Zahl und nicht als Text: das Auslegen von „1h30" gehört dem Kern
+   * (`parseDuration`), und zwei Auslegungen — eine im Feld, eine hier — wären
+   * zwei Sprachen für dieselbe Angabe. Wer über die Route schreibt, schickt
+   * Minuten.
+   */
+  readonly duration?: number | null;
+  /**
    * Wer zuständig ist, vollständig — `[]` nimmt alle weg.
    *
    * Ganz und nicht als Zu-/Abgang: eine Liste, die man nur ergänzen kann, hat
@@ -658,6 +675,31 @@ export async function patch(
     set('priority', fields.priority);
   }
   if (fields.projectId !== undefined) set('project_id', fields.projectId);
+
+  /*
+   * Die Dauer, geprüft und nicht geglaubt.
+   *
+   * Der CHECK in Migration 0024 hält dieselben Grenzen — und trotzdem stehen
+   * sie hier: ein Verstoß gegen den CHECK kommt als Postgres-Fehler zurück und
+   * wird ein 500, also „der Server hat etwas falsch gemacht". Falsch ist aber
+   * die Eingabe, und das ist ein 409 mit einem Satz, den man lesen kann. Die
+   * Grenze selbst kommt aus dem Kern, damit sie nicht an zwei Stellen wächst.
+   */
+  if (fields.duration !== undefined) {
+    const d = fields.duration;
+    if (d === null) set('duration_min', null);
+    else {
+      if (!Number.isInteger(d) || d <= 0) {
+        throw new OutOfOrder('eine Dauer ist eine ganze Zahl von Minuten ab 1');
+      }
+      if (d > MAX_DURATION) {
+        throw new OutOfOrder(
+          'länger als eine Woche ist keine Schätzung mehr — das ist ein Projekt mit Teilaufgaben',
+        );
+      }
+      set('duration_min', d);
+    }
+  }
 
   /*
    * Wiederholung: vier Spalten, zwei Formen, und immer ALLE vier gesetzt.

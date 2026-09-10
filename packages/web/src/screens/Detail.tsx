@@ -19,11 +19,11 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { COMMON_LEAD_MINUTES, saysLead } from '@sote/core';
+import { COMMON_LEAD_MINUTES, formatDuration, saysLead } from '@sote/core';
 
 import { api, ApiError, type Detail as DetailData, type Project, type Task } from '../api.js';
 import { toggleDone } from '../tasks/toggleDone.js';
-import { FieldRow, FreeDate } from '../components/FieldRow.js';
+import { FieldRow, FreeDate, FreeDuration } from '../components/FieldRow.js';
 import { whenOptions } from '../components/HandleMenu.js';
 import { whenLabel } from '../dates.js';
 
@@ -696,6 +696,63 @@ export function Detail({
             </button>
           ))
         }
+      </FieldRow>
+
+      {/*
+        Die Dauer — eine Schätzung, kein gemessener Wert.
+
+        Vier schnelle Angaben und ein freies Feld, dieselbe Form wie beim
+        Datum: 15 Minuten, eine halbe, eine ganze, zwei Stunden deckt das
+        Meiste, „2:45" deckt es nicht.
+
+        „ohne" nimmt sie weg und steht ZULETZT — wie überall hier ist das
+        Wegnehmen das eine, was man nicht durch nochmaliges Wählen zurückholt.
+      */}
+      <FieldRow
+        label="dauer"
+        value={task.duration === null ? null : formatDuration(task.duration)}
+        empty="nicht geschätzt"
+        disabled={busy}
+      >
+        {(close) => (
+          <>
+            {[15, 30, 60, 120].map((minutes) => (
+              <button
+                key={minutes}
+                type="button"
+                role="menuitem"
+                className="fpop-row"
+                aria-current={minutes === task.duration}
+                onClick={() => {
+                  close();
+                  void save(() => anbindung.patch({ duration: minutes }));
+                }}
+              >
+                {formatDuration(minutes)}
+              </button>
+            ))}
+            {task.duration === null ? null : (
+              <button
+                type="button"
+                role="menuitem"
+                className="fpop-row"
+                onClick={() => {
+                  close();
+                  void save(() => anbindung.patch({ duration: null }));
+                }}
+              >
+                ohne Schätzung
+              </button>
+            )}
+            <FreeDuration
+              label="oder genau"
+              onPick={(minutes) => {
+                close();
+                void save(() => anbindung.patch({ duration: minutes }));
+              }}
+            />
+          </>
+        )}
       </FieldRow>
 
       {/*

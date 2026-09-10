@@ -28,6 +28,7 @@
  * schlimmer als eins, das eine halbe Sekunde braucht.
  */
 
+import { parseDuration } from '@sote/core';
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 
 export function FieldRow({
@@ -105,6 +106,59 @@ export function FieldRow({
           {children(close)}
         </div>
       ) : null}
+    </div>
+  );
+}
+
+/**
+ * Eine freie Dauer.
+ *
+ * Neben den schnellen Angaben, aus demselben Grund wie beim Datum: „15 min" und
+ * „1 h" deckt das Meiste, „2:45" deckt es nicht.
+ *
+ * EIN TEXTFELD UND KEIN ZAHLENFELD MIT EINHEITENWAHL. Zwei Bedienelemente für
+ * eine Angabe sind zwei Handgriffe, und die Frage „Stunden oder Minuten" stellt
+ * sich nur, weil das Feld sie stellt. Wer „90" tippt, meint neunzig Minuten;
+ * wer „1,5h" tippt, meint dasselbe — und `parseDuration` im Kern weiß das,
+ * einmal für alle drei Stellen, die eine Dauer lesen.
+ *
+ * Übernommen wird erst mit Enter und nicht bei jedem Zeichen: „1h30" ist
+ * unterwegs zweimal eine gültige Dauer („1", dann „1h"), und ein Feld, das
+ * jeden Zwischenstand speichert, schreibt drei Werte für eine Eingabe.
+ *
+ * Was nicht gelesen werden kann, sagt das FELD und nicht der Server: die
+ * Ablehnung steht neben der Eingabe, in der Sprache, in der sie getippt wurde.
+ */
+export function FreeDuration({
+  onPick,
+  label,
+}: {
+  onPick: (minutes: number) => void;
+  label: string;
+}) {
+  const [text, setText] = useState('');
+  const bad = text.trim() !== '' && parseDuration(text) === undefined;
+  return (
+    <div className="fpop-date">
+      <label>
+        <span>{label}</span>
+        <input
+          type="text"
+          inputMode="text"
+          value={text}
+          placeholder="90, 2h, 1:30"
+          aria-invalid={bad}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key !== 'Enter') return;
+            e.preventDefault();
+            const minutes = parseDuration(text);
+            if (minutes === undefined) return;
+            onPick(minutes);
+          }}
+        />
+      </label>
+      {bad ? <div className="fpop-note">so kann ich das nicht lesen</div> : null}
     </div>
   );
 }

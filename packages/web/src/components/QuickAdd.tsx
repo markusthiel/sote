@@ -12,7 +12,7 @@
  * sofort antwortet, und einem, das auf eine Runde wartet.
  */
 
-import { parseQuickAdd, describe as describeRecurrence } from '@sote/core';
+import { formatDuration, parseQuickAdd, describe as describeRecurrence } from '@sote/core';
 import { useMemo, useState } from 'react';
 
 import { whenLabel } from '../dates.js';
@@ -71,6 +71,9 @@ export function QuickAdd({
     }
     for (const label of parsed.labels) chips.push({ label: 'schlagwort', value: label });
     for (const who of parsed.assignees) chips.push({ label: 'zugewiesen', value: who });
+    if (parsed.duration !== undefined) {
+      chips.push({ label: 'dauer', value: formatDuration(parsed.duration) });
+    }
     if (parsed.priority !== undefined) {
       chips.push({ label: 'priorität', value: PRIORITY_NAMES[parsed.priority]! });
     }

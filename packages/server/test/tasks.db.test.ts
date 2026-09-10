@@ -17,7 +17,18 @@ import type { Pool } from 'pg';
 import { makePool, queryOne } from '../src/db.js';
 import { makeList } from './support/tree.js';
 import { migrate } from '../src/migrate.js';
-import { complete, createFromLine, NotFound, recurrenceOf, reopen } from '../src/tasks.js';
+import { MAX_DURATION } from '@sote/core';
+
+import { detail } from '../src/detail.js';
+import { search } from '../src/search.js';
+import {
+  complete,
+  createFromLine,
+  NotFound,
+  patch,
+  recurrenceOf,
+  reopen,
+} from '../src/tasks.js';
 import { list, splitOverdue } from '../src/views.js';
 
 const URL_ =
@@ -441,4 +452,128 @@ test('nach dem Wiedereröffnen steht sie wieder in ihrer Ansicht', async () => {
     (await list(pool, 'today', workspaceId, NOW)).map((x) => x.title),
     ['Bericht'],
   );
+});
+
+/* ── Die Dauer ─────────────────────────────────────────────────────────── */
+
+test('~2h landet als 120 Minuten in der Zeile', async () => {
+  const { workspaceId } = await scratch('ws-dauer');
+  const out = await createFromLine(pool, {
+    workspaceId,
+    userId,
+    line: 'Heizung entlüften ~2h',
+    now: NOW,
+  });
+  assert.equal(out.task.duration_min, 120);
+  assert.equal(out.task.title, 'Heizung entlüften');
+});
+
+test('ohne Angabe steht NULL und nicht 0', async () => {
+  // Eine zweite Schreibweise für „keine Angabe“ müsste jede Summe kennen.
+  const { workspaceId } = await scratch('ws-dauer-leer');
+  const out = await createFromLine(pool, {
+    workspaceId,
+    userId,
+    line: 'Irgendwas',
+    now: NOW,
+  });
+  assert.equal(out.task.duration_min, null);
+});
+
+test('die Dauer lässt sich nachträglich setzen, ändern und wegnehmen', async () => {
+  const { workspaceId } = await scratch('ws-dauer-patch');
+  const out = await createFromLine(pool, { workspaceId, userId, line: 'Streichen', now: NOW });
+
+  const gesetzt = await patch(pool, out.task.id, workspaceId, { duration: 45 });
+  assert.equal(gesetzt.duration_min, 45);
+
+  const geaendert = await patch(pool, out.task.id, workspaceId, { duration: 90 });
+  assert.equal(geaendert.duration_min, 90);
+
+  const weg = await patch(pool, out.task.id, workspaceId, { duration: null });
+  assert.equal(weg.duration_min, null);
+});
+
+test('ein Patch ohne Dauer lässt sie stehen', async () => {
+  /*
+   * `undefined` heißt „nicht angefasst“, `null` heißt „leeren“. Die beiden zu
+   * vermischen wäre ein Menü, das beim Setzen eines Datums die Schätzung
+   * mitnimmt.
+   */
+  const { workspaceId } = await scratch('ws-dauer-unberuehrt');
+  const out = await createFromLine(pool, { workspaceId, userId, line: 'Fegen ~30', now: NOW });
+  const nachher = await patch(pool, out.task.id, workspaceId, { priority: 1 });
+  assert.equal(nachher.duration_min, 30);
+});
+
+test('Unsinniges wird abgelehnt, mit Grund und nicht als 500', async () => {
+  const { workspaceId } = await scratch('ws-dauer-grenzen');
+  const out = await createFromLine(pool, { workspaceId, userId, line: 'Etwas', now: NOW });
+  for (const wert of [0, -5, 1.5, MAX_DURATION + 1]) {
+    await assert.rejects(
+      () => patch(pool, out.task.id, workspaceId, { duration: wert }),
+      (e: Error) => e.name === 'OutOfOrder',
+      `${wert} hätte abgelehnt werden müssen`,
+    );
+  }
+  // Und die Grenze selbst gilt noch.
+  const grenze = await patch(pool, out.task.id, workspaceId, { duration: MAX_DURATION });
+  assert.equal(grenze.duration_min, MAX_DURATION);
+});
+
+test('der CHECK hält die Grenzen auch am Server vorbei', async () => {
+  // Die Prüfung im Code gibt einen lesbaren Satz; die in der Tabelle gilt für
+  // jeden weiteren Schreibweg, den es einmal gibt.
+  const { workspaceId } = await scratch('ws-dauer-check');
+  const out = await createFromLine(pool, { workspaceId, userId, line: 'Etwas', now: NOW });
+  await assert.rejects(() =>
+    pool.query('UPDATE tasks SET duration_min = 0 WHERE id = $1', [out.task.id]),
+  );
+  await assert.rejects(() =>
+    pool.query('UPDATE tasks SET duration_min = 99999 WHERE id = $1', [out.task.id]),
+  );
+});
+
+test('die nächste Folge einer Wiederholung erbt die Schätzung', async () => {
+  /*
+   * Sie ist eine Eigenschaft der Aufgabe und nicht dieses Termins: derselbe
+   * Vorgang dauert beim nächsten Mal dasselbe. Ohne das müsste man sie jede
+   * Woche neu eintippen.
+   */
+  const { workspaceId } = await scratch('ws-dauer-wieder');
+  const out = await createFromLine(pool, {
+    workspaceId,
+    userId,
+    line: 'Rasen mähen jeden Montag ~45',
+    now: NOW,
+  });
+  assert.equal(out.task.duration_min, 45);
+  const done = await complete(pool, out.task.id, userId, NOW);
+  assert.notEqual(done.next, undefined);
+  assert.equal(done.next?.duration_min, 45);
+});
+
+test('jede Ansicht liefert die Dauer mit', async () => {
+  /*
+   * Vier Spaltenlisten stehen im Server (tasks, views, detail, search). Eine
+   * neue Spalte in nur drei davon ist eine Zeile, die in einer Ansicht eine
+   * Schätzung hat und in der nächsten nicht — und das sieht wie ein
+   * Datenverlust aus.
+   */
+  const { workspaceId } = await scratch('ws-dauer-ansichten');
+  const out = await createFromLine(pool, {
+    workspaceId,
+    userId,
+    line: 'Ablage sortieren heute ~30',
+    now: NOW,
+  });
+  const rows = await list(pool, 'today', workspaceId, NOW);
+  const drin = rows.find((r) => r.id === out.task.id);
+  assert.equal(drin?.duration_min, 30);
+
+  const d = await detail(pool, out.task.id, workspaceId);
+  assert.equal(d.task.duration_min, 30);
+
+  const gefunden = await search(pool, workspaceId, 'Ablage', NOW);
+  assert.equal(gefunden.tasks.find((r) => r.id === out.task.id)?.duration_min, 30);
 });

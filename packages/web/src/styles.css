@@ -270,8 +270,19 @@
   --sone-radius: var(--sote-radius-md);
   --sone-radius-lg: var(--sote-radius-lg);
 
-  /* Textgrößen der Oberfläche, in rem — bei 15px Grundschrift sind das
-     11.25 / 12.75 / 13.5px. */
+  /* Textgrößen der Oberfläche, in rem — dieselben Zahlen wie in SONE.
+   *
+   * ACHTUNG, DIE FRÜHERE ANGABE HIER WAR FALSCH. Es stand „bei 15px
+   * Grundschrift sind das 11.25 / 12.75 / 13.5px". Die 15px sitzen aber auf
+   * `body`, und `rem` rechnet gegen die WURZEL — `html` bekommt keine Größe,
+   * also sind es die 16px des Browsers: 12 / 13.6 / 14.4px. Im Browser
+   * gemessen, nicht gerechnet.
+   *
+   * Die Werte bleiben, denn SONE ist genauso gebaut (Tokens in rem, 15px auf
+   * `body`, `html` ohne Größe) — dieselben Pixel dort und hier ist der Zweck
+   * der Angleichung. Falsch war die Behauptung, nicht die Zahl. Wer sich an
+   * „11.25px" orientiert und daneben harte Pixel setzt, setzt sie um sieben
+   * Prozent zu klein. */
   --sone-text-xs: 0.75rem;
   --sone-text-sm: 0.85rem;
   --sone-text-md: 0.9rem;
@@ -1009,6 +1020,20 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex]:focus-vi
 .due.late {
   color: var(--danger);
   border-color: var(--danger);
+}
+
+/* Die Dauer, in derselben Schmalschrift wie die Zeitpunkte — sie ist eine
+   Zahl und keine Auskunft. Ohne Rahmen: der Rahmen an der Frist bedeutet
+   „Grenze", und eine Schätzung ist keine.
+
+   Die Größe kommt aus der Skala (`--sone-text-xs`, 11.25px) und nicht als
+   harte 11 wie bei den Nachbarn darunter: der Stil-Wächter zählt harte
+   Pixelwerte und lässt sie nicht wachsen — die 11 der Nachbarn sind Reste,
+   die noch umzustellen sind, und keine Vorlage. */
+.span {
+  font-family: var(--sote-mono);
+  font-size: var(--sone-text-xs);
+  color: var(--text-muted);
 }
 
 .rep,
@@ -2251,6 +2276,18 @@ select.target { }
   color: var(--text);
   font: inherit;
   font-size: 13px;
+}
+
+.fpop-date input[aria-invalid="true"] {
+  border-color: var(--danger);
+}
+
+/* Die Ablehnung steht NEBEN der Eingabe und nicht als Fehler oben am Feld:
+   was falsch ist, ist das Getippte, und man sieht beides zusammen. */
+.fpop-note {
+  padding: 2px 9px 4px;
+  font-size: var(--sone-text-xs);
+  color: var(--danger);
 }
 
 /* ── Projektzeile: Zeichen, Aufklappen ─────────────────────────────────────

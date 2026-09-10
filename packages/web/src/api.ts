@@ -115,6 +115,8 @@ export interface Task {
   priority: number;
   completed: string | null;
   recurrence: { kind: 'calendar' | 'afterCompletion'; says: string } | null;
+  /** Geschätzte Dauer in Minuten, `null` heißt keine Angabe. */
+  duration: number | null;
   sortKey: string;
 }
 
@@ -247,6 +249,8 @@ export interface TaskPatch {
    * und braucht kein `kind` dazu.
    */
   recurrence?: { rrule: string; dtstart?: string } | { n: number; unit: string } | null;
+  /** Geschätzte Dauer in Minuten — `null` nimmt sie weg. */
+  duration?: number | null;
   /** Wer zuständig ist, vollständig. `[]` nimmt alle weg. */
   assignees?: readonly string[];
 }

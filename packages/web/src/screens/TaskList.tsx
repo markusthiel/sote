@@ -11,6 +11,8 @@
  * dort zu ziehen, würde einen Schlüssel setzen, den niemand sieht.
  */
 
+import { formatDuration } from '@sote/core';
+
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { useNudge } from '../hooks/useNudge.js';
@@ -310,6 +312,25 @@ export function TaskList({
     route.kind === 'project' ? (project?.name ?? 'Projekt') : (TITLES[view] ?? 'Aufgaben');
   const count = overdue.length + rows.filter((r) => r.completed === null).length;
   /*
+   * Die Summe der Schätzungen — der eigentliche Zweck einer Dauer.
+   *
+   * Eine Zahl an einer Aufgabe sagt wenig; „3:20 h" über einem Tag sagt, ob er
+   * aufgeht. Darum steht sie im Kopf und nicht nur in der Zeile.
+   *
+   * GERECHNET AUS DERSELBEN LISTE, DIE GEZEICHNET WIRD, und nicht vom Server
+   * geholt: eine zweite Abfrage wäre eine zweite Antwort auf „was steht hier",
+   * und die beiden wären genau in dem Moment verschieden, in dem jemand etwas
+   * abhakt. Nur Offenes zählt, aus demselben Grund — eine Summe, die Erledigtes
+   * mitnimmt, wächst beim Abarbeiten.
+   *
+   * Und sie sagt nichts, wenn nichts geschätzt ist: „0 min geplant" über einer
+   * Liste ohne Angaben wäre eine Auskunft über eine Angabe, die es nicht gibt.
+   */
+  const geschaetzt = [...overdue, ...rows]
+    .filter((r) => r.completed === null)
+    .reduce((sum, r) => sum + (r.duration ?? 0), 0);
+  const summe = geschaetzt === 0 ? '' : `, ${formatDuration(geschaetzt)} geschätzt`;
+  /*
    * Offen und erledigt, aus derselben Liste.
    *
    * Die Grenze zieht der Server über die Sortierung (`completed_at IS NOT
@@ -322,9 +343,9 @@ export function TaskList({
 
   const subtitle =
     route.kind === 'project'
-      ? `${count === 0 ? 'nichts offen' : `${count} offen`}${canDrag ? ' — Zeilen lassen sich ziehen' : ''}`
+      ? `${count === 0 ? 'nichts offen' : `${count} offen${summe}`}${canDrag ? ' — Zeilen lassen sich ziehen' : ''}`
       : view === 'today'
-        ? `${longDate(now)}${loaded ? ` — ${count === 0 ? 'nichts offen' : `${count} ${count === 1 ? 'Aufgabe' : 'Aufgaben'}`}${overdue.length > 0 ? `, ${overdue.length} überfällig` : ''}` : ''}`
+        ? `${longDate(now)}${loaded ? ` — ${count === 0 ? 'nichts offen' : `${count} ${count === 1 ? 'Aufgabe' : 'Aufgaben'}`}${overdue.length > 0 ? `, ${overdue.length} überfällig` : ''}${count === 0 ? '' : summe}` : ''}`
         : view === 'upcoming'
           ? 'Was einen Zeitpunkt hat, aber später'
           : view === 'inbox'

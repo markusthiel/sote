@@ -225,3 +225,58 @@ test('ein Datum über die Sommerzeitgrenze meint die Uhrzeit dort, nicht hier', 
   const q = parseQuickAdd('Sommerfest 1.7. 9 Uhr', { now, zone: 'Europe/Berlin' });
   assert.equal(q.planned?.toISOString(), '2026-07-01T07:00:00.000Z');
 });
+
+test('~ liest eine Dauer', () => {
+  const q = parseQuickAdd('Rasen mähen ~45', { now: NOW });
+  assert.equal(q.duration, 45);
+  assert.equal(q.title, 'Rasen mähen');
+});
+
+test('die Dauer nimmt alle Formen, die der Kern kennt', () => {
+  for (const [text, minutes] of [
+    ['~90', 90],
+    ['~2h', 120],
+    ['~1h30', 90],
+    ['~1:30', 90],
+    ['~1,5h', 90],
+  ] as const) {
+    const q = parseQuickAdd(`Etwas ${text}`, { now: NOW });
+    assert.equal(q.duration, minutes, text);
+    assert.equal(q.title, 'Etwas', text);
+  }
+});
+
+test('eine nackte Zahl im Titel bleibt im Titel', () => {
+  /*
+   * Der Grund für das Zeichen. Ohne Tilde wäre „Rechnung 2024 zahlen“ ein
+   * Vorgang über ein Kalenderjahr und „Hausnummer 30 prüfen“ eine halbe Stunde
+   * — eine Erfassung, die Zahlen aus dem Titel nimmt, nimmt Rechnungsnummern
+   * mit.
+   */
+  const q = parseQuickAdd('Rechnung 2024 zahlen', { now: NOW });
+  assert.equal(q.duration, undefined);
+  assert.equal(q.title, 'Rechnung 2024 zahlen');
+});
+
+test('was hinter der Tilde nicht zu lesen ist, bleibt stehen', () => {
+  // Nicht stillschweigend wegwerfen: was aus der Zeile fällt, findet niemand
+  // wieder — dieselbe Regel wie beim zweiten `#`.
+  const q = parseQuickAdd('Erledigen ~bald', { now: NOW });
+  assert.equal(q.duration, undefined);
+  assert.equal(q.title, 'Erledigen ~bald');
+});
+
+test('die Dauer wird zurückgemeldet, damit das Feld sie hervorheben kann', () => {
+  const q = parseQuickAdd('Etwas ~2h', { now: NOW });
+  const token = q.read.find((t) => t.field === 'duration');
+  assert.notEqual(token, undefined);
+  assert.equal(token?.text, '~2h');
+});
+
+test('Dauer und Priorität stören sich nicht', () => {
+  const q = parseQuickAdd('Etwas ~30 !! #haus', { now: NOW });
+  assert.equal(q.duration, 30);
+  assert.equal(q.priority, 2);
+  assert.equal(q.project, 'haus');
+  assert.equal(q.title, 'Etwas');
+});

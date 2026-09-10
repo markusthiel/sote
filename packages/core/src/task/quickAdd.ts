@@ -23,12 +23,14 @@
  *   `@schlagwort` Schlagwort, mehrfach
  *   `+person`    Zuweisung, mehrfach
  *   `!` `!!` `!!!` bzw. `p1`–`p4`  Priorität
+ *   `~90` `~2h` `~1:30`  Dauer
  *
  * Was **nicht** erkannt wird, bleibt Titel. Eine Erfassung, die bei
  * Unbekanntem stehen bleibt, ist eine, die man nicht benutzt.
  */
 
 import { fromWallClock, toWallClock } from '../time/zone.js';
+import { parseDuration } from './duration.js';
 import type { Recurrence, Unit } from './recurrence.js';
 
 /** 1 = dringend … 4 = später. Vier innen, drei nach draußen (Blatt 13). */
@@ -43,7 +45,8 @@ export interface ReadToken {
     | 'project'
     | 'label'
     | 'assignee'
-    | 'priority';
+    | 'priority'
+    | 'duration';
   /** Der Ausschnitt der Eingabe, aus dem es kommt. Für die Hervorhebung. */
   readonly text: string;
   readonly start: number;
@@ -60,6 +63,13 @@ export interface QuickAdd {
   readonly labels: readonly string[];
   readonly assignees: readonly string[];
   readonly priority: Priority | undefined;
+  /**
+   * Die geschätzte Dauer in Minuten.
+   *
+   * Als Zahl und nicht als Text: was der Kern gelesen hat, hat er verstanden —
+   * die Oberfläche und der Server sollen es nicht ein zweites Mal auslegen.
+   */
+  readonly duration: number | undefined;
   readonly read: readonly ReadToken[];
 }
 
@@ -196,6 +206,7 @@ function parseInUtc(input: string, options: QuickAddOptions): QuickAdd {
   let recurrence: Recurrence | undefined;
   let project: string | undefined;
   let priority: Priority | undefined;
+  let duration: number | undefined;
   const labels: string[] = [];
   const assignees: string[] = [];
 
@@ -228,6 +239,33 @@ function parseInUtc(input: string, options: QuickAddOptions): QuickAdd {
     assignees.push(m[2]!);
     r.take('assignee', at, at + 1 + m[2]!.length);
   }
+  /*
+   * Die Dauer trägt eine Tilde: `~90`, `~2h`, `~1:30`.
+   *
+   * EIN ZEICHEN UND NICHT DIE NACKTE ZAHL. „Rasen mähen 30" wäre sonst eine
+   * halbe Stunde, und „Rechnung 2024 zahlen\" ein Kalenderjahr Arbeit — eine
+   * Erfassung, die Zahlen aus dem Titel wegnimmt, nimmt Rechnungsnummern und
+   * Hausnummern mit. Die Tilde ist ausserdem die, die man ohnehin schreibt,
+   * wenn man „etwa" meint.
+   *
+   * Was dahinter steht, legt `parseDuration` aus, nicht dieser Ausdruck: die
+   * Formen (Komma, Doppelpunkt, `std`) stehen an einer Stelle, und der
+   * Ausdruck hier greift nur so weit, wie ein Wort reicht.
+   *
+   * Passt es nicht, BLEIBT ES STEHEN. `~alles` ist kein Fehler, sondern ein
+   * Titel — und `r.take` wird nicht gerufen, also fällt nichts aus der Zeile,
+   * das niemand wiederfindet.
+   */
+  for (const m of input.matchAll(/(^|\s)~([^\s#@+!~]+)/g)) {
+    const at = m.index + m[1]!.length;
+    const end = at + 1 + m[2]!.length;
+    if (!r.free(at, end)) continue;
+    const minutes = parseDuration(m[2]!);
+    if (minutes === undefined) continue;
+    duration = minutes;
+    r.take('duration', at, end);
+  }
+
   for (const m of input.matchAll(/(^|\s)(!{1,3}|[pP][1-4])(?=\s|$)/g)) {
     const at = m.index + m[1]!.length;
     if (!r.free(at, at + m[2]!.length)) continue;
@@ -379,6 +417,7 @@ function parseInUtc(input: string, options: QuickAddOptions): QuickAdd {
     labels,
     assignees,
     priority,
+    duration,
     read: r.tokens,
   };
 }
