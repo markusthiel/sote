@@ -218,6 +218,14 @@ export interface Detail {
     sentAt: string | null;
     dueAt: string | null;
   }[];
+  /** Die Anhänge. Beim Gast leer — Dateien hängen an einem Konto. */
+  files: {
+    id: string;
+    filename: string;
+    mimeType: string;
+    sizeBytes: number;
+    createdAt: string;
+  }[];
   /** Fehlt, wenn es keine Herkunft gibt — kein „Herkunft: keine". */
   origin?: { url: string; pageTitle: string; seenAt: string };
 }
@@ -807,6 +815,34 @@ export const api = {
       `/api/tasks/${id}/reminders/${reminderId}${workspace === undefined ? '' : `?workspace=${workspace}`}`,
       { method: 'DELETE' },
     ),
+  /**
+   * Einen Anhang hochladen — rohe Bytes, wie beim Profilbild.
+   *
+   * Der Name reist als Abfrageparameter, weil der Körper die Datei IST. Kein
+   * Multipart: das wäre ein Parser für einen Vorteil, den niemand sieht.
+   */
+  addFile: (id: string, file: File, workspace?: string) => {
+    const p = new URLSearchParams({ name: file.name });
+    if (workspace !== undefined) p.set('workspace', workspace);
+    return call<{ file: { id: string; filename: string } }>(
+      `/api/tasks/${id}/files?${p}`,
+      {
+        method: 'POST',
+        body: file,
+        // Der Typ der Datei, nicht JSON — `call` setzt sonst
+        // `application/json`, und der Server würde ihn so speichern.
+        headers: { 'content-type': file.type === '' ? 'application/octet-stream' : file.type },
+      },
+    );
+  },
+  removeFile: (id: string, fileId: string, workspace?: string) =>
+    call<{ ok: true }>(
+      `/api/tasks/${id}/files/${fileId}${workspace === undefined ? '' : `?workspace=${workspace}`}`,
+      { method: 'DELETE' },
+    ),
+  /** Wo ein Anhang liegt. Ein Link und kein Abruf: der Browser lädt ihn. */
+  fileHref: (id: string, fileId: string, workspace?: string) =>
+    `/api/tasks/${id}/files/${fileId}${workspace === undefined ? '' : `?workspace=${workspace}`}`,
   detail: (id: string, workspace?: string) =>
     call<Detail>(
       `/api/tasks/${id}${workspace === undefined ? '' : `?workspace=${workspace}`}`,

@@ -53,6 +53,10 @@ export interface DetailIO {
    */
   addReminder?: (body: { minutes: number } | { at: string }) => Promise<unknown>;
   removeReminder?: (reminderId: string) => Promise<unknown>;
+  /** Anhänge. Fehlen beim Gast: eine Datei hängt an einem Konto. */
+  addFile?: (file: File) => Promise<unknown>;
+  removeFile?: (fileId: string) => Promise<unknown>;
+  fileHref?: (fileId: string) => string;
   addComment: (body: string) => Promise<unknown>;
 }
 
@@ -67,6 +71,9 @@ export const memberIO = (taskId: string, workspace: string | undefined): DetailI
   people: () => api.people(workspace).then((r) => r.people),
   addReminder: (body) => api.addReminder(taskId, body, workspace),
   removeReminder: (rid) => api.removeReminder(taskId, rid, workspace),
+  addFile: (file) => api.addFile(taskId, file, workspace),
+  removeFile: (fid) => api.removeFile(taskId, fid, workspace),
+  fileHref: (fid) => api.fileHref(taskId, fid, workspace),
   patch: (fields) => api.patch(taskId, fields as never, workspace),
   addChild: (title) => api.addChild(taskId, title, workspace),
   addComment: (body) => api.addComment(taskId, body, workspace),
@@ -87,6 +94,20 @@ export const guestIO = (token: string, taskId: string): DetailIO => ({
   addComment: (body) => api.shareAddComment(token, taskId, body),
   // Kein `people`: siehe `memberIO`.
 });
+
+/**
+ * Eine Größe, wie man sie sagt.
+ *
+ * Kein „1048576 Bytes": eine Zahl, die man erst umrechnet, ist eine Zahl, die
+ * man nicht liest. Basis 1024, weil das die Zahl ist, die Betriebssysteme
+ * anzeigen — eine andere Rechnung hier hiesse, dass dieselbe Datei bei uns
+ * anders groß ist als im Dateimanager.
+ */
+function kilobytes(n: number): string {
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${Math.round(n / 1024)} KB`;
+  return `${(n / 1024 / 1024).toFixed(1)} MB`;
+}
 
 export function Detail({
   taskId,
@@ -443,6 +464,72 @@ export function Detail({
         Liste bleibt dann eine Anzeige. Ein Feld, das nichts verschicken kann,
         wäre ein Versprechen ohne Deckung.
       */}
+      {/*
+        Anhänge — eine Liste, wie die Erinnerungen.
+        
+        Das Feld ist ein `label` mit einem versteckten `input type=file`, wie
+        beim Profilbild: ein `input[type=file]` sieht in jedem Browser anders
+        aus, ein `label` sieht aus wie unsere Knöpfe.
+
+        Nur wenn die Anbindung es kann: ohne `SOTE_FILES_DIR` antwortet der
+        Server 501, und ein Feld, das darauf läuft, wäre eines, das nichts tut.
+        Beim Gast fehlt es ebenso — eine Datei hängt an einem Konto.
+      */}
+      {anbindung.addFile === undefined ? null : (
+        <div className="frow frow-stack">
+          <span className="fl">anhänge</span>
+          <div className="rem-list">
+            {data.files.length === 0 ? (
+              <span className="empty-value">keine</span>
+            ) : (
+              data.files.map((f) => (
+                <span className="file" key={f.id}>
+                  {/*
+                    Ein echter Link und kein Abruf: der Browser lädt die Datei
+                    selbst, mit Fortschritt und Wiederaufnahme. Ein `fetch`, das
+                    Bytes in den Arbeitsspeicher holt, um sie dann als Blob
+                    anzubieten, wäre derselbe Weg mit mehr Schritten.
+                  */}
+                  <a href={anbindung.fileHref?.(f.id) ?? '#'} download={f.filename}>
+                    {f.filename}
+                  </a>
+                  <span className="file-size">{kilobytes(f.sizeBytes)}</span>
+                  {anbindung.removeFile === undefined ? null : (
+                    <button
+                      type="button"
+                      className="rem-off"
+                      aria-label={`Anhang „${f.filename}" wegnehmen`}
+                      disabled={busy}
+                      onClick={() => {
+                        void save(() => anbindung.removeFile!(f.id));
+                      }}
+                    >
+                      ×
+                    </button>
+                  )}
+                </span>
+              ))
+            )}
+          </div>
+          <label className={busy ? 'btn quiet small as-label' : 'btn quiet small as-label'}>
+            Datei anhängen
+            <input
+              type="file"
+              disabled={busy}
+              onChange={(e) => {
+                const file = e.currentTarget.files?.[0];
+                if (file === undefined) return;
+                // Das Feld leeren: sonst löst dieselbe Datei beim zweiten Mal
+                // kein `change` aus, und es sieht aus, als täte der Knopf
+                // nichts.
+                e.currentTarget.value = '';
+                void save(() => anbindung.addFile!(file));
+              }}
+            />
+          </label>
+        </div>
+      )}
+
       {anbindung.addReminder === undefined ? null : (
         <div className="frow frow-stack">
           <span className="fl">erinnern</span>

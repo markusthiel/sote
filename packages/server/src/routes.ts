@@ -75,6 +75,7 @@ import { addPerson, findPeople, people, removePerson, roles, setRole } from './p
 import { shareRoutes } from './shareRoutes.js';
 import { createShare, listShares, revokeShare, shareKeyPresent } from './shares.js';
 import { makeStatic } from './http/static.js';
+import { addFile, filesDir, filesOf, maxBytes, readFileOf, removeFile } from './taskFiles.js';
 import { addReminder, remindersOf, removeReminder } from './taskReminders.js';
 import {
   complete,
@@ -190,6 +191,14 @@ export function detailView(
     sentAt: Date | null;
     dueAt: Date | null;
   }[] = [],
+  /* Ebenso als Parameter: der Gastweg hat keine Anhänge zu zeigen. */
+  files: readonly {
+    id: string;
+    filename: string;
+    mimeType: string;
+    sizeBytes: number;
+    createdAt: Date;
+  }[] = [],
 ) {
   return {
     task: taskView(d.task),
@@ -203,6 +212,13 @@ export function detailView(
       says: r.says,
       sentAt: r.sentAt?.toISOString() ?? null,
       dueAt: r.dueAt?.toISOString() ?? null,
+    })),
+    files: files.map((f) => ({
+      id: f.id,
+      filename: f.filename,
+      mimeType: f.mimeType,
+      sizeBytes: f.sizeBytes,
+      createdAt: f.createdAt.toISOString(),
     })),
     // Kein Feld „Herkunft: keine".
     ...(d.origin === undefined
@@ -1824,6 +1840,103 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
   }
 
   /*
+   * Anhänge: hochladen, holen, wegnehmen.
+   *
+   * ROHE BYTES und kein Multipart — dieselbe Bauart wie beim Profilbild
+   * (`PUT /api/me/picture`). Der Dateiname kommt als `?name=`, der Typ aus
+   * `content-type`. Ein Multipart-Leser wäre ein Parser, den ich schreiben
+   * müsste, für einen Vorteil, den niemand sieht: der Browser kann `fetch` mit
+   * einem `File` als Körper genauso gut.
+   *
+   * Die Größe wird STÜCKWEISE geprüft und die Verbindung abgebrochen. Erst
+   * alles einzulesen und dann zu messen heißt, dass eine Datei von zwei
+   * Gigabyte zuerst im Arbeitsspeicher liegt.
+   */
+  const fileList = /^\/api\/tasks\/([0-9a-f-]{36})\/files$/.exec(path);
+  if (fileList && method === 'POST') {
+    const taskId = fileList[1]!;
+    if (filesDir() === undefined) {
+      fail(res, 501, 'files_off', 'dieser Server nimmt keine Anhänge');
+      return;
+    }
+    // Liegt die Aufgabe in DIESEM Arbeitsbereich? Sonst legt eine geratene Id
+    // eine Datei an etwas, das man nicht sehen darf.
+    await detail(ctx.pool, taskId, workspaceId);
+
+    const grenze = maxBytes();
+    const stücke: Buffer[] = [];
+    let größe = 0;
+    let zuGroß = false;
+    for await (const stück of req) {
+      größe += (stück as Buffer).length;
+      if (größe > grenze) {
+        zuGroß = true;
+        break;
+      }
+      stücke.push(stück as Buffer);
+    }
+    if (zuGroß) {
+      req.destroy();
+      fail(res, 413, 'too_big', `größer als ${Math.floor(grenze / 1024 / 1024)} MB`);
+      return;
+    }
+    if (größe === 0) {
+      fail(res, 400, 'empty', 'keine Datei dabei');
+      return;
+    }
+    const f = await addFile(ctx.pool, {
+      taskId,
+      workspaceId,
+      userId,
+      filename: url.searchParams.get('name') ?? 'Datei',
+      mimeType: (req.headers['content-type'] ?? 'application/octet-stream').split(';')[0]!.trim(),
+      bytes: Buffer.concat(stücke),
+    });
+    json(res, 200, { file: { ...f, createdAt: f.createdAt.toISOString() } });
+    return;
+  }
+
+  const fileOne = /^\/api\/tasks\/([0-9a-f-]{36})\/files\/([0-9a-f-]{36})$/.exec(path);
+  if (fileOne && method === 'GET') {
+    const got = await readFileOf(ctx.pool, {
+      id: fileOne[2]!,
+      taskId: fileOne[1]!,
+      workspaceId,
+    });
+    if (got === undefined) {
+      fail(res, 404, 'no_file', 'diesen Anhang gibt es nicht');
+      return;
+    }
+    /*
+     * `attachment` und ein gesetzter Name: ohne das öffnet der Browser eine
+     * hochgeladene HTML-Datei IM Kontext dieser Anwendung, und damit kann sie
+     * an die Sitzung. `nosniff` dazu, damit er den Typ nicht selbst errät.
+     */
+    res.writeHead(200, {
+      'content-type': got.file.mimeType,
+      'content-length': String(got.bytes.length),
+      'x-content-type-options': 'nosniff',
+      'content-disposition': `attachment; filename*=UTF-8''${encodeURIComponent(got.file.filename)}`,
+    });
+    res.end(got.bytes);
+    return;
+  }
+
+  if (fileOne && method === 'DELETE') {
+    const weg = await removeFile(ctx.pool, {
+      id: fileOne[2]!,
+      taskId: fileOne[1]!,
+      workspaceId,
+    });
+    if (!weg) {
+      fail(res, 404, 'no_file', 'diesen Anhang gibt es nicht');
+      return;
+    }
+    json(res, 200, { ok: true });
+    return;
+  }
+
+  /*
    * Erinnerungen an einer Aufgabe: setzen und wegnehmen.
    *
    * Eigene Wege und kein Feld in `PATCH`: eine Aufgabe hat MEHRERE, und ein
@@ -1852,7 +1965,15 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
       throw new OutOfOrder('`at` ist kein Zeitpunkt');
     }
     await addReminder(ctx.pool, { taskId, userId, reminder: rem });
-    json(res, 200, detailView(d, await remindersOf(ctx.pool, taskId, d.task.planned_at, zone)));
+    json(
+      res,
+      200,
+      detailView(
+        d,
+        await remindersOf(ctx.pool, taskId, d.task.planned_at, zone),
+        await filesOf(ctx.pool, taskId),
+      ),
+    );
     return;
   }
 
@@ -1863,7 +1984,15 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
     // Nur die eigene — die Bedingung steht im Schreibweg selbst.
     const weg = await removeReminder(ctx.pool, { id: remDel[2]!, taskId, userId });
     if (!weg) throw new NotFound('diese Erinnerung gibt es nicht (oder sie ist nicht deine)');
-    json(res, 200, detailView(d, await remindersOf(ctx.pool, taskId, d.task.planned_at, zone)));
+    json(
+      res,
+      200,
+      detailView(
+        d,
+        await remindersOf(ctx.pool, taskId, d.task.planned_at, zone),
+        await filesOf(ctx.pool, taskId),
+      ),
+    );
     return;
   }
 
@@ -1876,7 +2005,11 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
       // `zone` steht schon bereit — aus der Anfrage, wie überall hier. Meine
       // erfundene `zoneOf` hätte eine zweite Quelle für dieselbe Angabe
       // gewesen.
-      detailView(d, await remindersOf(ctx.pool, one[1]!, d.task.planned_at, zone)),
+      detailView(
+        d,
+        await remindersOf(ctx.pool, one[1]!, d.task.planned_at, zone),
+        await filesOf(ctx.pool, one[1]!),
+      ),
     );
     return;
   }

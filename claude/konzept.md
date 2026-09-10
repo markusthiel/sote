@@ -1894,7 +1894,28 @@ erfunden.
   die Suche selbst: über der Liste der Freigabelinks stand „Aufgaben
   durchsuchen". Mit einer Aufzählung der Orte, an die es gehört, erbt ein neuer
   Bereich kein Feld, das dort nichts findet.
-## Anhänge: Speicher und Zeilen (Routen und Oberfläche fehlen noch)
+## Anhänge
+
+- **Rohe Bytes, kein Multipart** — dieselbe Bauart wie beim Profilbild. Der
+  Name reist als `?name=`, weil der Körper die Datei *ist*. Die Größe wird
+  **stückweise** geprüft und die Verbindung abgebrochen: erst alles einlesen
+  und dann messen heißt, dass eine Datei von zwei Gigabyte zuerst im
+  Arbeitsspeicher liegt.
+- **`attachment` und `nosniff` beim Ausliefern.** Ohne das öffnet der Browser
+  eine hochgeladene HTML-Datei *im Kontext dieser Anwendung* — und damit kommt
+  sie an die Sitzung.
+- **Ein echter Link zum Herunterladen**, kein `fetch`: der Browser lädt selbst,
+  mit Fortschritt und Wiederaufnahme. Bytes in den Arbeitsspeicher zu holen, um
+  sie als Blob anzubieten, wäre derselbe Weg mit mehr Schritten.
+- **Das Feld ist ein `label`** mit verstecktem `input type=file` (wie beim
+  Profilbild): ein `input[type=file]` sieht in jedem Browser anders aus, ein
+  `label` sieht aus wie unsere Knöpfe. Und es leert sich nach dem Anhängen —
+  sonst löst dieselbe Datei beim zweiten Mal kein `change` aus, und der Knopf
+  scheint nichts zu tun.
+- **Ohne `SOTE_FILES_DIR` erscheint das Feld nicht.** Der Server antwortet 501,
+  und ein Feld, das darauf läuft, wäre eines, das nichts tut.
+
+## Anhänge: Speicher und Zeilen
 
 - **Die Bytes liegen im Dateisystem**, nicht in Postgres — wie SONEs `files`
   mit `storage_key`. Bei den Profilbildern ist `bytea` vertretbar (256 KB, eines

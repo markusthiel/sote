@@ -4496,6 +4496,30 @@ label.btn {
 }
 .rem-off:hover { background: var(--surface-page); color: var(--text-primary); }
 
+/* Ein Anhang: Name als Link, Größe daneben, Kreuz zum Wegnehmen. Dieselbe
+   Pillenform wie eine Erinnerung, weil es dieselbe Art Liste ist — nur ohne
+   Akzentrand, denn ein Anhang ist kein Zustand, der an oder aus ist. */
+.file {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sone-space-2);
+  max-inline-size: 100%;
+  padding: var(--sone-space-1) var(--sone-space-3);
+  border: 1px solid var(--border-default);
+  border-radius: 999px;
+  font-size: var(--sone-text-xs);
+}
+.file a {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.file-size {
+  flex: none;
+  font-family: var(--sone-font-mono);
+  color: var(--text-muted);
+}
+
 .rem-add {
   display: flex;
   flex-wrap: wrap;
