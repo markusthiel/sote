@@ -1894,6 +1894,36 @@ erfunden.
   die Suche selbst: über der Liste der Freigabelinks stand „Aufgaben
   durchsuchen". Mit einer Aufzählung der Orte, an die es gehört, erbt ein neuer
   Bereich kein Feld, das dort nichts findet.
+## Erinnerungen je Aufgabe (Serverteil)
+
+- **Bisher gab es eine Sorte:** eine Mail am Morgen mit dem Tagesüberblick
+  (`reminders_sent`, ein Brief je Person und Tag). Das ist bei TickTick und
+  Todoist das Kernmerkmal, und SOTE hatte die Hälfte.
+- **Relativ gespeichert, nicht absolut.** Ein absoluter Zeitpunkt wäre nach
+  jedem Verschieben falsch, und ein Programm, das nach dem Verschieben zur
+  alten Zeit klingelt, ist eines, dem man nicht mehr glaubt. „30 Minuten vor
+  nichts" gibt `undefined` und keinen Fehler: die Erinnerung wartet auf den
+  Termin.
+- **Quittung und Brief in EINER Transaktion**, Quittung zuerst mit `sent_at IS
+  NULL` als Bedingung — laufen zwei Bearbeiter gleichzeitig, gewinnt einer.
+  Nachgewiesen: zwei Durchgänge, ein Brief.
+- **Eigene Routen statt eines Felds in `PATCH`:** eine Aufgabe hat mehrere
+  Erinnerungen, und jede gehört *einer Person*. Ein Feld, das die Liste ganz
+  ersetzt, würde die des Anderen wegnehmen. (Bei den Zuständigen ist die ganze
+  Liste richtig — dort ist sie eine Aussage über die Aufgabe.)
+- **`UNIQUE` mit NULL ist keine Sperre.** `UNIQUE (task_id, user_id,
+  offset_minutes, at)` griff genau bei den relativen Erinnerungen nicht, weil
+  `at` dort NULL ist und Postgres NULLs als verschieden hält. `NULLS NOT
+  DISTINCT` war nötig — sonst Doppelbriefe für fast alle.
+- **Zwei eigene Fehler beim Bauen:** ein **Backtick im SQL-Kommentar** beendet
+  das Template-Literal (der Übersetzer meldete dann einen Klammerfehler zwanzig
+  Zeilen weiter), und ich fragte `settings.value`/`.key` — die Tagesmail macht
+  es längst richtig mit `data->>'zone'`.
+- **Zwei Wächter haben mich korrigiert:** die Kopfzeile der Migration muss ihre
+  Nummer nennen, und „diese Migration hat sich seit dem Lauf geändert" —
+  richtig, ich hatte sie nach dem ersten Lauf angefasst.
+- **Noch offen:** die Oberfläche (ein Feld in der Detailspalte).
+
 ## Wiederholung und Zuständige sind änderbar
 
 - **Beide waren halbe Versprechen:** setzbar nur beim Anlegen (`jeden Montag`,

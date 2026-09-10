@@ -11,6 +11,7 @@ import { scheduleRecurring } from './handlers.js';
 import { startRunner } from './jobs.js';
 import { startListening } from './nudge.js';
 import { scheduleReminders } from './reminders.js';
+import { scheduleTaskReminders } from './taskReminders.js';
 import { migrate } from './migrate.js';
 import { makeServer } from './routes.js';
 
@@ -78,6 +79,17 @@ server.listen(config.port, () => {
       if (!an) console.log('Erinnerungen aus: dieser Server verschickt keine Mail');
     })
     .catch((e: unknown) => console.error('Erinnerungen:', e));
+  /*
+   * Und der Bearbeiter für die Erinnerungen AN AUFGABEN — ein zweiter, weil es
+   * zwei verschiedene Dinge sind: die Tagesmail kommt einmal am Morgen, diese
+   * kommen zu ihrer Zeit. Ein Bearbeiter für beides müsste zwei Zeitpläne
+   * kennen.
+   */
+  void scheduleTaskReminders(pool)
+    .then((an) => {
+      if (!an) console.log('Aufgaben-Erinnerungen aus: dieser Server verschickt keine Mail');
+    })
+    .catch((e: unknown) => console.error('Aufgaben-Erinnerungen:', e));
   startRunner(pool);
   /*
    * Die lauschende Verbindung, außerhalb des Pools.

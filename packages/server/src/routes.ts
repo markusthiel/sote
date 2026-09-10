@@ -75,6 +75,7 @@ import { addPerson, findPeople, people, removePerson, roles, setRole } from './p
 import { shareRoutes } from './shareRoutes.js';
 import { createShare, listShares, revokeShare, shareKeyPresent } from './shares.js';
 import { makeStatic } from './http/static.js';
+import { addReminder, remindersOf, removeReminder } from './taskReminders.js';
 import {
   complete,
   reopen,
@@ -173,13 +174,36 @@ function readPatch(body: Record<string, unknown>): import('./tasks.js').Patch {
  * habe das im Kommentar über `DetailIO` selbst geschrieben und es einen Zweig
  * weiter falsch gemacht.
  */
-export function detailView(d: Awaited<ReturnType<typeof detail>>) {
+export function detailView(
+  d: Awaited<ReturnType<typeof detail>>,
+  /*
+   * Die Erinnerungen kommen als Parameter und nicht aus `detail()`.
+   *
+   * Der Gastweg (`shareRoutes`) benutzt dieselbe Abbildung und hat keine — ein
+   * Gast hat kein Konto, also auch keine Erinnerung. Ohne Parameter wäre die
+   * Liste dort entweder leer gelogen oder eine Abfrage, die nichts findet.
+   */
+  reminders: readonly {
+    id: string;
+    userId: string;
+    says: string;
+    sentAt: Date | null;
+    dueAt: Date | null;
+  }[] = [],
+) {
   return {
     task: taskView(d.task),
     projectName: d.projectName,
     children: d.children.map(taskView),
     comments: d.comments.map((c) => ({ ...c, createdAt: c.createdAt.toISOString() })),
     assignees: d.assignees,
+    reminders: reminders.map((r) => ({
+      id: r.id,
+      userId: r.userId,
+      says: r.says,
+      sentAt: r.sentAt?.toISOString() ?? null,
+      dueAt: r.dueAt?.toISOString() ?? null,
+    })),
     // Kein Feld „Herkunft: keine".
     ...(d.origin === undefined
       ? {}
@@ -1799,9 +1823,61 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
     return;
   }
 
+  /*
+   * Erinnerungen an einer Aufgabe: setzen und wegnehmen.
+   *
+   * Eigene Wege und kein Feld in `PATCH`: eine Aufgabe hat MEHRERE, und ein
+   * Feld, das eine Liste ganz ersetzt, wäre hier falsch — zwei Leute setzen
+   * jeder ihre eigene, und wer als Zweiter schreibt, würde die des Ersten
+   * wegnehmen. (Bei den Zuständigen ist es umgekehrt richtig: dort ist die
+   * Liste eine Aussage über die Aufgabe, hier ist jede Zeile eine über eine
+   * Person.)
+   */
+  const remOne = /^\/api\/tasks\/([0-9a-f-]{36})\/reminders$/.exec(path);
+  if (remOne && method === 'POST') {
+    const taskId = remOne[1]!;
+    // Erst prüfen, ob die Aufgabe in DIESEM Arbeitsbereich liegt: sonst setzt
+    // eine geratene Id eine Erinnerung an etwas, das man nicht sehen darf.
+    const d = await detail(ctx.pool, taskId, workspaceId);
+    // Der Körper wird je Route gelesen — es gibt kein globales `body`.
+    const b = (await readJson(req)) as Record<string, unknown>;
+    const rem =
+      'minutes' in b
+        ? ({ kind: 'before', minutes: Number(b['minutes']) } as const)
+        : ({ kind: 'at', at: new Date(String(b['at'])) } as const);
+    if (rem.kind === 'before' && (!Number.isInteger(rem.minutes) || rem.minutes < 0)) {
+      throw new OutOfOrder('ein Vorlauf ist eine ganze Zahl Minuten, nicht negativ');
+    }
+    if (rem.kind === 'at' && Number.isNaN(rem.at.getTime())) {
+      throw new OutOfOrder('`at` ist kein Zeitpunkt');
+    }
+    await addReminder(ctx.pool, { taskId, userId, reminder: rem });
+    json(res, 200, detailView(d, await remindersOf(ctx.pool, taskId, d.task.planned_at, zone)));
+    return;
+  }
+
+  const remDel = /^\/api\/tasks\/([0-9a-f-]{36})\/reminders\/([0-9a-f-]{36})$/.exec(path);
+  if (remDel && method === 'DELETE') {
+    const taskId = remDel[1]!;
+    const d = await detail(ctx.pool, taskId, workspaceId);
+    // Nur die eigene — die Bedingung steht im Schreibweg selbst.
+    const weg = await removeReminder(ctx.pool, { id: remDel[2]!, taskId, userId });
+    if (!weg) throw new NotFound('diese Erinnerung gibt es nicht (oder sie ist nicht deine)');
+    json(res, 200, detailView(d, await remindersOf(ctx.pool, taskId, d.task.planned_at, zone)));
+    return;
+  }
+
   const one = /^\/api\/tasks\/([0-9a-f-]{36})$/.exec(path);
   if (one && method === 'GET') {
-    json(res, 200, detailView(await detail(ctx.pool, one[1]!, workspaceId)));
+    const d = await detail(ctx.pool, one[1]!, workspaceId);
+    json(
+      res,
+      200,
+      // `zone` steht schon bereit — aus der Anfrage, wie überall hier. Meine
+      // erfundene `zoneOf` hätte eine zweite Quelle für dieselbe Angabe
+      // gewesen.
+      detailView(d, await remindersOf(ctx.pool, one[1]!, d.task.planned_at, zone)),
+    );
     return;
   }
 
