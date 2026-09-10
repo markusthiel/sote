@@ -968,6 +968,9 @@ export function App() {
       {openTask !== null ? (
         <Detail
           taskId={openTask}
+          /* Für „nur meine Erinnerung wegnehmen": der Server prüft es, und die
+             Oberfläche zeigt den Handgriff nur da, wo er auch geht. */
+          me={me.id}
           workspace={workspace}
           now={now}
           onClose={() => setOpenTask(null)}

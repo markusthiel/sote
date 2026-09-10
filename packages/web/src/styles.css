@@ -4440,6 +4440,75 @@ label.btn {
  * sind Pillen in einer Reihe unter der Beschriftung.
  * ═══════════════════════════════════════════════════════════════════════ */
 
+/* ── Erinnerungen an einer Aufgabe ────────────────────────────────────────
+ *
+ * Eine Liste von Pillen und eine Reihe Knöpfe darunter — dieselbe Gestalt wie
+ * die Filter der Suche, weil es dieselbe Art Sache ist: mehrere kleine Werte,
+ * die man sieht statt liest.
+ */
+
+.frow-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--sone-space-3);
+}
+
+.rem-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sone-space-2);
+}
+
+.rem {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sone-space-2);
+  padding: var(--sone-space-1) var(--sone-space-3);
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  background: var(--surface-hover);
+  font-size: var(--sone-text-xs);
+}
+/* Verschickt: gedämpft, aber da — eine Erinnerung, die verschwindet, sobald
+   sie ihren Zweck erfüllt hat, lässt einen rätseln, ob sie kam. */
+.rem[data-sent='true'] {
+  border-color: var(--border-default);
+  background: transparent;
+  color: var(--text-muted);
+}
+.rem-who {
+  font-family: var(--sone-font-mono);
+  color: var(--text-muted);
+}
+.rem-off {
+  inline-size: 16px;
+  block-size: 16px;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: var(--sone-text-sm);
+  line-height: 1;
+  cursor: pointer;
+}
+.rem-off:hover { background: var(--surface-page); color: var(--text-primary); }
+
+.rem-add {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sone-space-2);
+}
+/* Kleiner als ein Formularknopf: das sind Anhänge an eine Liste, keine
+   Hauptsachen. */
+.rem-add .btn.small {
+  min-height: var(--sone-control);
+  padding-inline: var(--sone-space-4);
+  font-size: var(--sone-text-xs);
+}
+
 .search-facet {
   display: flex;
   flex-direction: column;

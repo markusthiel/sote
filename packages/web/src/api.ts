@@ -204,6 +204,20 @@ export interface Detail {
   children: Task[];
   comments: Comment[];
   assignees: { userId: string | null; name: string | null; guestKey: string | null }[];
+  /**
+   * Die Erinnerungen an dieser Aufgabe — alle, nicht nur die eigenen.
+   *
+   * Wer eine Aufgabe sieht, sieht auch, dass jemand anders erinnert wird: sonst
+   * setzt man eine zweite, weil man die erste nicht kennt. Beim Gast ist die
+   * Liste leer — er hat kein Konto und damit keine Erinnerung.
+   */
+  reminders: {
+    id: string;
+    userId: string;
+    says: string;
+    sentAt: string | null;
+    dueAt: string | null;
+  }[];
   /** Fehlt, wenn es keine Herkunft gibt — kein „Herkunft: keine". */
   origin?: { url: string; pageTitle: string; seenAt: string };
 }
@@ -776,6 +790,23 @@ export const api = {
     if (workspace !== undefined) q.set('workspace', workspace);
     return call<{ kind: string; entries: TrashEntry[] }>(`/api/trash?${q}`);
   },
+  /** Eine Erinnerung setzen. Antwortet mit dem ganzen Detail — eine Antwort
+      statt zweier Abrufe. */
+  addReminder: (
+    id: string,
+    body: { minutes: number } | { at: string },
+    workspace?: string,
+  ) =>
+    call<Detail>(
+      `/api/tasks/${id}/reminders${workspace === undefined ? '' : `?workspace=${workspace}`}`,
+      { method: 'POST', body: JSON.stringify(body) },
+    ),
+  /** Und wegnehmen — nur die eigene, das prüft der Server. */
+  removeReminder: (id: string, reminderId: string, workspace?: string) =>
+    call<Detail>(
+      `/api/tasks/${id}/reminders/${reminderId}${workspace === undefined ? '' : `?workspace=${workspace}`}`,
+      { method: 'DELETE' },
+    ),
   detail: (id: string, workspace?: string) =>
     call<Detail>(
       `/api/tasks/${id}${workspace === undefined ? '' : `?workspace=${workspace}`}`,

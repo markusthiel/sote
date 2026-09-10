@@ -19,6 +19,8 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+import { COMMON_LEAD_MINUTES, saysLead } from '@sote/core';
+
 import { api, ApiError, type Detail as DetailData, type Project, type Task } from '../api.js';
 import { toggleDone } from '../tasks/toggleDone.js';
 import { FieldRow, FreeDate } from '../components/FieldRow.js';
@@ -45,6 +47,12 @@ export interface DetailIO {
   addChild: (title: string) => Promise<unknown>;
   /** Wer zuständig sein kann. Fehlt beim Gast — er darf die Leute nicht sehen. */
   people?: () => Promise<readonly { userId: string; displayName: string }[]>;
+  /**
+   * Erinnerungen setzen und wegnehmen. Fehlen beim Gast: eine Erinnerung
+   * braucht ein Konto, an das sie geht.
+   */
+  addReminder?: (body: { minutes: number } | { at: string }) => Promise<unknown>;
+  removeReminder?: (reminderId: string) => Promise<unknown>;
   addComment: (body: string) => Promise<unknown>;
 }
 
@@ -57,6 +65,8 @@ export const memberIO = (taskId: string, workspace: string | undefined): DetailI
    * Namensliste zeigt, wäre eine Auskunft, die er nicht haben soll.
    */
   people: () => api.people(workspace).then((r) => r.people),
+  addReminder: (body) => api.addReminder(taskId, body, workspace),
+  removeReminder: (rid) => api.removeReminder(taskId, rid, workspace),
   patch: (fields) => api.patch(taskId, fields as never, workspace),
   addChild: (title) => api.addChild(taskId, title, workspace),
   addComment: (body) => api.addComment(taskId, body, workspace),
@@ -83,6 +93,7 @@ export function Detail({
   workspace,
   io,
   canWrite,
+  me,
   now,
   onClose,
   onChanged,
@@ -109,6 +120,8 @@ export function Detail({
    * mit.
    */
   canWrite?: boolean;
+  /** Die eigene Konto-Id. Fehlt beim Gast — er hat keine. */
+  me?: string;
   now: Date;
   onClose: () => void;
   onChanged: () => void;
@@ -418,6 +431,78 @@ export function Detail({
         kann. Hier steht, was man an einer bestehenden Aufgabe braucht — das
         Übliche, und der Weg zurück.
       */}
+      {/*
+        Erinnerungen — mehrere, und jede gehört einer Person.
+        
+        Darum KEIN FieldRow mit einer Auswahl: das Bauteil wählt eine Sache aus
+        (Projekt, Priorität, Wiederholung). Hier steht eine Liste, an die man
+        etwas anhängt. Der Knopf öffnet die üblichen Vorläufe; jede gesetzte
+        Erinnerung steht als Zeile darunter, mit ihrem Weg zurück.
+
+        Nur wo es einen Mailweg gibt: `addReminder` fehlt beim Gast, und die
+        Liste bleibt dann eine Anzeige. Ein Feld, das nichts verschicken kann,
+        wäre ein Versprechen ohne Deckung.
+      */}
+      {anbindung.addReminder === undefined ? null : (
+        <div className="frow frow-stack">
+          <span className="fl">erinnern</span>
+          <div className="rem-list">
+            {data.reminders.length === 0 ? (
+              <span className="empty-value">keine</span>
+            ) : (
+              data.reminders.map((r) => (
+                <span className="rem" key={r.id} data-sent={r.sentAt !== null}>
+                  {r.says}
+                  {/* Wessen sie ist, steht dran — sonst nimmt man eine fremde
+                      für die eigene und wundert sich, dass nichts kommt. */}
+                  {r.userId === me ? null : <span className="rem-who">für jemand anderen</span>}
+                  {r.sentAt === null ? null : <span className="rem-who">verschickt</span>}
+                  {r.userId === me && anbindung.removeReminder !== undefined ? (
+                    <button
+                      type="button"
+                      className="rem-off"
+                      aria-label={`Erinnerung „${r.says}" wegnehmen`}
+                      disabled={busy}
+                      onClick={() => {
+                        void save(() => anbindung.removeReminder!(r.id));
+                      }}
+                    >
+                      ×
+                    </button>
+                  ) : null}
+                </span>
+              ))
+            )}
+          </div>
+          <div className="rem-add">
+            {COMMON_LEAD_MINUTES.map((m) => (
+              <button
+                key={m}
+                type="button"
+                className="btn quiet small"
+                disabled={busy || data.reminders.some((r) => r.userId === me && r.says === saysLead(m))}
+                onClick={() => {
+                  void save(() => anbindung.addReminder!({ minutes: m }));
+                }}
+              >
+                {saysLead(m)}
+              </button>
+            ))}
+          </div>
+          {/*
+            Und der ehrliche Satz, wenn die Aufgabe keinen Termin hat: ein
+            Vorlauf ohne Termin klingelt nicht, und das gehört gesagt statt
+            stillschweigend hingenommen — der Kern gibt dafür `dueAt: null`.
+          */}
+          {task.planned === null && data.reminders.some((r) => r.dueAt === null) ? (
+            <p className="muted small">
+              Ohne geplanten Zeitpunkt klingelt ein Vorlauf nicht. Sobald die
+              Aufgabe einen Termin hat, gilt er.
+            </p>
+          ) : null}
+        </div>
+      )}
+
       <FieldRow
         label="wiederholt"
         value={task.recurrence?.says.replace(/\.$/, '') ?? null}

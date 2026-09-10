@@ -1922,7 +1922,18 @@ erfunden.
 - **Zwei Wächter haben mich korrigiert:** die Kopfzeile der Migration muss ihre
   Nummer nennen, und „diese Migration hat sich seit dem Lauf geändert" —
   richtig, ich hatte sie nach dem ersten Lauf angefasst.
-- **Noch offen:** die Oberfläche (ein Feld in der Detailspalte).
+- **Die Oberfläche ist eine LISTE, kein `FieldRow`.** Das Bauteil wählt *eine*
+  Sache aus (Projekt, Priorität, Wiederholung); hier hängt man etwas an eine
+  Liste an. Gesetzte Erinnerungen stehen als Pillen mit ihrem Weg zurück, die
+  üblichen Vorläufe als Knopfreihe darunter — dieselbe Gestalt wie die Filter
+  der Suche, weil es dieselbe Art Sache ist.
+  - **Verschickte bleiben stehen, gedämpft:** eine Erinnerung, die verschwindet,
+    sobald sie ihren Zweck erfüllt hat, lässt einen rätseln, ob sie kam.
+  - **Wessen sie ist, steht dran** — sonst nimmt man eine fremde für die eigene
+    und wundert sich, dass nichts kommt. Wegnehmen gibt es nur bei der eigenen,
+    und der Server prüft es unabhängig davon.
+  - Das Feld erscheint nur, wenn die Anbindung `addReminder` hat: beim Gast
+    nicht, denn eine Erinnerung braucht ein Konto.
 
 ## Wiederholung und Zuständige sind änderbar
 
