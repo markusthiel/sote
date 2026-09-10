@@ -1896,6 +1896,17 @@ erfunden.
   Bereich kein Feld, das dort nichts findet.
 ## Anhänge
 
+- **Der Aufräumer und seine Altersgrenze.** Verwaiste Dateien entstehen auf
+  zwei gewollten Wegen: eine gelöschte Aufgabe nimmt ihre Zeilen mit, nicht die
+  Bytes; und bricht es zwischen `writeFile` und `INSERT`, liegt eine Datei ohne
+  Zeile da. **Die Grenze ist das Entscheidende:** eine Datei, die gerade
+  geschrieben wird, hat noch keine Zeile und sieht genau wie eine Waise aus.
+  Ein Aufräumer ohne Altersgrenze löscht darum irgendwann einen Anhang, den
+  jemand in dieser Sekunde hochlädt — ein Datenverlust, den niemand
+  nachvollziehen kann. Eine Stunde ist so viel länger als jeder Upload, dass
+  die Frage nicht mehr auftaucht.
+- **`now` als Parameter** statt `utimes` im Test: dieselbe Naht, an der auch
+  der Erinnerungs-Bearbeiter prüfbar ist.
 - **Rohe Bytes, kein Multipart** — dieselbe Bauart wie beim Profilbild. Der
   Name reist als `?name=`, weil der Körper die Datei *ist*. Die Größe wird
   **stückweise** geprüft und die Verbindung abgebrochen: erst alles einlesen

@@ -11,6 +11,7 @@ import { scheduleRecurring } from './handlers.js';
 import { startRunner } from './jobs.js';
 import { startListening } from './nudge.js';
 import { scheduleReminders } from './reminders.js';
+import { scheduleFileSweep } from './taskFiles.js';
 import { scheduleTaskReminders } from './taskReminders.js';
 import { migrate } from './migrate.js';
 import { makeServer } from './routes.js';
@@ -90,6 +91,15 @@ server.listen(config.port, () => {
       if (!an) console.log('Aufgaben-Erinnerungen aus: dieser Server verschickt keine Mail');
     })
     .catch((e: unknown) => console.error('Aufgaben-Erinnerungen:', e));
+  /*
+   * Und der Aufräumer für verwaiste Anhänge. Kein Mailweg nötig — hier geht es
+   * um Platz auf dem Datenträger, nicht um Briefe.
+   */
+  void scheduleFileSweep(pool)
+    .then((an) => {
+      if (!an) console.log('Anhänge aus: SOTE_FILES_DIR fehlt');
+    })
+    .catch((e: unknown) => console.error('Anhang-Aufräumer:', e));
   startRunner(pool);
   /*
    * Die lauschende Verbindung, außerhalb des Pools.

@@ -22,12 +22,13 @@
  */
 
 import { randomUUID } from 'node:crypto';
-import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 
 import type { Pool } from 'pg';
 
 import { queryOne, queryRows } from './db.js';
+import { enqueue, handle } from './jobs.js';
 
 /** Wohin die Bytes gehen. Ohne die Variable gibt es keine Anhänge. */
 export function filesDir(): string | undefined {
@@ -168,7 +169,99 @@ export async function addFile(
   return view(row);
 }
 
+/**
+ * Verwaiste Dateien wegräumen.
+ *
+ * Sie entstehen auf zwei Wegen, und beide sind gewollt: eine gelöschte Aufgabe
+ * nimmt ihre Zeilen mit (`ON DELETE CASCADE`), aber nicht die Bytes; und wenn
+ * es zwischen `writeFile` und `INSERT` bricht, liegt eine Datei ohne Zeile da.
+ * Beides ist harmlos — belegter Platz, sichtbar für niemanden — und sammelt
+ * sich über Jahre trotzdem an.
+ *
+ * ## Die Altersgrenze ist das Entscheidende
+ *
+ * Eine Datei, die gerade geschrieben wird, hat noch keine Zeile: zwischen
+ * `writeFile` und `INSERT` liegen Millisekunden, in denen sie genau wie ein
+ * Waise aussieht. Ein Aufräumer ohne Altersgrenze löscht darum irgendwann
+ * einen Anhang, den jemand in dieser Sekunde hochlädt — und das ist ein
+ * Datenverlust, den niemand nachvollziehen kann. Eine Stunde ist so viel
+ * länger als jeder Upload, dass die Frage nicht mehr auftaucht.
+ *
+ * ## Gelesen wird die Datenbank, nicht das Verzeichnis
+ *
+ * Erst alle Schlüssel holen, dann den Baum durchgehen. Andersherum — je Datei
+ * eine Abfrage — wären das bei zehntausend Anhängen zehntausend Abfragen für
+ * eine Antwort, die eine gibt.
+ */
+export async function sweepFiles(
+  pool: Pool,
+  input: { now?: Date; minAgeMs?: number } = {},
+): Promise<{ geprüft: number; entfernt: number }> {
+  const dir = filesDir();
+  if (dir === undefined) return { geprüft: 0, entfernt: 0 };
+  const now = input.now ?? new Date();
+  const minAge = input.minAgeMs ?? 60 * 60 * 1000;
+
+  const bekannt = new Set(
+    (await queryRows<{ storage_key: string }>(pool, 'SELECT storage_key FROM task_files')).map(
+      (r) => r.storage_key,
+    ),
+  );
+
+  let geprüft = 0;
+  let entfernt = 0;
+  // `recursive` gibt Pfade relativ zu `dir`; die Blätter sind die Schlüssel.
+  for (const rel of await readdir(dir, { recursive: true })) {
+    const p = join(dir, rel);
+    let s;
+    try {
+      s = await stat(p);
+    } catch {
+      continue; // Zwischen Auflisten und Ansehen verschwunden — dann eben.
+    }
+    if (!s.isFile()) continue;
+    geprüft += 1;
+    const key = rel.split(/[/\\]/).pop() ?? '';
+    if (bekannt.has(key)) continue;
+    if (now.getTime() - s.mtimeMs < minAge) continue;
+    await rm(p, { force: true });
+    entfernt += 1;
+  }
+  return { geprüft, entfernt };
+}
+
 /** Die Bytes eines Anhangs — geprüft gegen Aufgabe UND Arbeitsbereich. */
+/**
+ * Wie oft aufgeräumt wird.
+ *
+ * Einmal am Tag: es geht um belegten Platz, nicht um Richtigkeit, und ein
+ * Durchgang liest das ganze Verzeichnis. Stündlich wäre Arbeit für nichts.
+ */
+const SWEEP_MS = 24 * 60 * 60 * 1000;
+
+handle('files.sweep', async (ctx) => {
+  const out = await sweepFiles(ctx.pool, { now: ctx.now });
+  if (out.entfernt > 0) {
+    console.log(`files.sweep: ${out.entfernt} von ${out.geprüft} Dateien waren verwaist`);
+  }
+  await enqueue(ctx.pool, 'files.sweep', {
+    runAt: new Date(ctx.now.getTime() + SWEEP_MS),
+    uniqueKey: 'files.sweep',
+  });
+});
+
+/** Startet den Aufräumer — nur wenn es überhaupt einen Speicher gibt. */
+export async function scheduleFileSweep(pool: Pool): Promise<boolean> {
+  if (filesDir() === undefined) return false;
+  await enqueue(pool, 'files.sweep', {
+    // Nicht sofort: beim Start hat der Server anderes zu tun, und ein
+    // Durchgang, der eine Stunde später läuft, ist genauso gut.
+    runAt: new Date(Date.now() + 5 * 60 * 1000),
+    uniqueKey: 'files.sweep',
+  });
+  return true;
+}
+
 export async function readFileOf(
   pool: Pool,
   input: { id: string; taskId: string; workspaceId: string },

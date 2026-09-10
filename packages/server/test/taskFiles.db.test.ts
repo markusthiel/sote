@@ -7,16 +7,16 @@
 
 import { strict as assert } from 'node:assert';
 import { after, before, test } from 'node:test';
-import { mkdtemp, readdir, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 
 import type { Pool } from 'pg';
 
 import { createWorkspace } from '../src/bootstrap.js';
 import { makePool, queryOne, queryRows } from '../src/db.js';
 import { migrate } from '../src/migrate.js';
-import { addFile, filesOf, readFileOf, removeFile } from '../src/taskFiles.js';
+import { addFile, filesOf, readFileOf, removeFile, sweepFiles } from '../src/taskFiles.js';
 import { createFromLine } from '../src/tasks.js';
 
 const URL_ =
@@ -167,6 +167,47 @@ test('wegnehmen löscht Zeile UND Datei', async () => {
   const blätter = alle.filter((n) => /[0-9a-f]{32}$/.test(n));
   assert.ok(!blätter.some((n) => n.endsWith(f.id)), 'kein Blatt mit dieser Id');
   assert.ok(vorher >= 0, 'nur zur Sicherheit, dass der Baum lesbar war');
+});
+
+test('der Aufräumer nimmt Waisen — aber nicht die frischen', async () => {
+  const t = await neu('Aufraeumprobe');
+  const bleibt = await addFile(pool, {
+    taskId: t,
+    workspaceId: ws,
+    userId: ich,
+    filename: 'bleibt.txt',
+    mimeType: 'text/plain',
+    bytes: Buffer.from('bleibt'),
+  });
+
+  /*
+   * Eine Waise von Hand: eine Datei im Baum, zu der es keine Zeile gibt. Genau
+   * das hinterlässt eine gelöschte Aufgabe.
+   */
+  const key = 'a1b2'.padEnd(32, '0');
+  const p = join(dir, key.slice(0, 2), key.slice(2, 4), key);
+  await mkdir(dirname(p), { recursive: true });
+  await writeFile(p, 'waise');
+
+  // Erst mit Altersgrenze: die Waise ist Sekunden alt und bleibt.
+  const frisch = await sweepFiles(pool, {});
+  assert.equal(frisch.entfernt, 0, 'eine frische Waise könnte ein laufender Upload sein');
+  assert.ok(await stat(p).then(() => true).catch(() => false), 'noch da');
+
+  /*
+   * Und mit einem Blick aus der Zukunft: jetzt ist sie alt genug. So geprüft
+   * und nicht mit `utimes`, weil der Aufräumer `now` bekommt — dieselbe Naht,
+   * an der auch der Erinnerungs-Bearbeiter prüfbar ist.
+   */
+  const spaeter = await sweepFiles(pool, {
+    now: new Date(Date.now() + 2 * 60 * 60 * 1000),
+  });
+  assert.equal(spaeter.entfernt, 1, 'die Waise ist weg');
+  assert.equal(await stat(p).then(() => true).catch(() => false), false);
+
+  // Und der echte Anhang steht unangetastet da.
+  const noch = await readFileOf(pool, { id: bleibt.id, taskId: t, workspaceId: ws });
+  assert.ok(noch !== undefined, 'was eine Zeile hat, bleibt — egal wie alt');
 });
 
 test('mit der Aufgabe geht die Zeile — die Datei bleibt liegen, und das steht so da', async () => {
