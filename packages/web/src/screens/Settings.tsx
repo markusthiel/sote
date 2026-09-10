@@ -407,44 +407,26 @@ export function Settings({
     void save(scope, { look: Object.keys(next).length === 0 ? null : next });
   };
 
-  const lookCard = (scope: 'workspace' | 'instance', look: Look) => (
+  /*
+   * Schrift und Ecken haben eine EIGENE Karte — SONEs Trennung.
+   *
+   * Gemeldet dort: *„der Bereich Typografie [sollte] aufgeteilt werden. Schrift
+   * Design kann gerne alleine stehen, aber die Oberfläche, Tönung,
+   * Akzent-Farbe gehört da nicht hin."* Und die Antwort im Code: *„the surfaces
+   * and the type scale have nothing to do with each other, and only the second
+   * is typography."*
+   *
+   * In SOTE standen beide in „Farben und Flächen" — eine Karte, die zwei
+   * verschiedene Dinge sagt. Die Ecken gehen mit der Schrift und nicht mit den
+   * Farben: beide sind die Form der Oberfläche, nicht ihre Färbung.
+   */
+  const typeCard = (scope: 'workspace' | 'instance', look: Look) => (
     <section className="settings-card">
-      <h2>Farben und Flächen</h2>
+      <h2>Schrift und Form</h2>
       <p className="muted">
-        Gewählt wird eine <strong>Beziehung</strong> und keine Farbe: „umgekehrt"
-        ist im hellen Design dunkel und im dunklen hell — aus einem gespeicherten
-        Wert. Ein festes Grau wäre in beiden dasselbe Grau.
+        Wie die Oberfläche gesetzt ist. Die Farben stehen darüber — zwei Fragen,
+        zwei Karten.
       </p>
-
-      {SURFACES.map((surface) => (
-        <div className="settings-row" key={surface}>
-          <span className="settings-row-label"><b>{SURFACE_LABELS[surface]}</b></span>
-          <div className="set-choice" role="radiogroup" aria-label={SURFACE_LABELS[surface]}>
-            {TREATMENTS.map((t) => (
-              <button
-                key={t}
-                type="button"
-                role="radio"
-                aria-checked={(look.surfaces?.[surface] ?? 'follow') === t}
-                disabled={busy}
-                onClick={() =>
-                  saveLook(scope, look, {
-                    surfaces:
-                      t === 'follow'
-                        ? Object.fromEntries(
-                            Object.entries(look.surfaces ?? {}).filter(([k]) => k !== surface),
-                          )
-                        : { ...look.surfaces, [surface]: t },
-                  })
-                }
-              >
-                {TREATMENT_LABELS[t]}
-              </button>
-            ))}
-          </div>
-        </div>
-      ))}
-
       <div className="settings-row">
         <span className="settings-row-label"><b>Schrift</b><span>Ein benanntes Paar und keine Schriftfamilie: eine eingetippte Schrift
             ist eine, die die Maschine der anderen vielleicht nicht hat — und wer
@@ -489,7 +471,47 @@ export function Settings({
             </button>
           ))}
         </div>
-      </div>
+      </div>    </section>
+  );
+
+  const lookCard = (scope: 'workspace' | 'instance', look: Look) => (
+    <section className="settings-card">
+      <h2>Farben und Flächen</h2>
+      <p className="muted">
+        Gewählt wird eine <strong>Beziehung</strong> und keine Farbe: „umgekehrt"
+        ist im hellen Design dunkel und im dunklen hell — aus einem gespeicherten
+        Wert. Ein festes Grau wäre in beiden dasselbe Grau.
+      </p>
+
+      {SURFACES.map((surface) => (
+        <div className="settings-row" key={surface}>
+          <span className="settings-row-label"><b>{SURFACE_LABELS[surface]}</b></span>
+          <div className="set-choice" role="radiogroup" aria-label={SURFACE_LABELS[surface]}>
+            {TREATMENTS.map((t) => (
+              <button
+                key={t}
+                type="button"
+                role="radio"
+                aria-checked={(look.surfaces?.[surface] ?? 'follow') === t}
+                disabled={busy}
+                onClick={() =>
+                  saveLook(scope, look, {
+                    surfaces:
+                      t === 'follow'
+                        ? Object.fromEntries(
+                            Object.entries(look.surfaces ?? {}).filter(([k]) => k !== surface),
+                          )
+                        : { ...look.surfaces, [surface]: t },
+                  })
+                }
+              >
+                {TREATMENT_LABELS[t]}
+              </button>
+            ))}
+          </div>
+        </div>
+      ))}
+
 
       {/*
         Ein Thema als Datei — und KEINE Route dafür (SONEs ADR-0125).
@@ -997,6 +1019,7 @@ export function Settings({
             {schemeRow('workspace', data.levels.workspace.scheme, 'Wie die Instanz')}
           </section>
           {lookCard('workspace', data.levels.workspace.look ?? {})}
+          {typeCard('workspace', data.levels.workspace.look ?? {})}
         </>
       ) : null}
 
@@ -1011,6 +1034,7 @@ export function Settings({
             {schemeRow('instance', data.levels.instance.scheme, null)}
           </section>
           {lookCard('instance', data.levels.instance.look ?? {})}
+          {typeCard('instance', data.levels.instance.look ?? {})}
         </>
       ) : null}
 

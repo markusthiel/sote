@@ -2093,6 +2093,17 @@ erfunden.
   (`ChosenColor = PaletteName | '#…'`, `colorValue` gibt Hex durch) — nur die
   Oberfläche bot es nicht an. **Eine Möglichkeit, die im Kern steht und nirgends
   anklickbar ist, gibt es für niemanden.**
+- **Fläche 15, Schrift und Form haben eine eigene Karte.** SONEs Trennung, und
+  dort mit derselben Meldung begründet: *„Schrift Design kann gerne alleine
+  stehen, aber die Oberfläche, Tönung, Akzent-Farbe gehört da nicht hin"* —
+  *„the surfaces and the type scale have nothing to do with each other."* Die
+  Ecken gehen mit der Schrift: beide sind die **Form** der Oberfläche, nicht
+  ihre Färbung. Und die Auswahlknöpfe tragen jetzt SONEs Maß (34 px, Text-sm)
+  statt eigener 32/13 px.
+  - **Zwei Regeln für einen Zustand sind eine zu viel:** der gewählte Knopf
+    hatte eine zweite Regel mit voller Akzentfläche und `--accent-on`. Nach der
+    Angleichung gewann teils die eine, teils die andere — im Bild stand heller
+    Text auf heller Fläche, unlesbar.
 - **Fläche 14, die Verwaltungslisten sind Zeilen.** SONEs `admin-list` /
   `admin-row` / `-main` / `-actions` in sechs Bildschirmen, sieben Listen.
   **Eine Tabelle behauptet, ihre Spalten seien vergleichbar** — ein Name, ein

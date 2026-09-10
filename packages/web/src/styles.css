@@ -2590,29 +2590,53 @@ select.target { }
 .set-choice {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
+  align-items: center;
+  gap: var(--sone-space-2);
 }
 
-.set-choice button {
-  min-height: 32px;
-  padding: 5px 11px;
-  border: 1px solid var(--line-strong);
-  border-radius: var(--sote-radius-md);
-  background: var(--page);
-  color: var(--text);
+.set-choice button:not(.block-menu-swatch) {
+  /* Nicht die runden Farbfelder: die sind Farbe und nicht Wort, und eine
+     Pillenform mit 34px Höhe wäre aus einem Punkt ein Knopf.
+   *
+   * Auf der Skala und in der Größe der Pillen der Suche: eine Auswahl ist eine
+   * Auswahl, egal ob sie filtert oder eine Fläche setzt. Vorher 32px auf 13px
+   * mit eigenen Zahlen — sichtbar kleiner als jedes Bedienelement daneben.
+   */
+  min-block-size: var(--sone-control-lg);
+  padding-inline: var(--sone-space-5);
+  border: 1px solid var(--border-default);
+  border-radius: var(--sone-radius);
+  background: transparent;
+  color: var(--text-primary);
   font: inherit;
-  font-size: 13px;
+  font-size: var(--sone-text-sm);
   cursor: pointer;
+}
+.set-choice button:not(.block-menu-swatch):hover:not(:disabled) { background: var(--surface-hover); }
+.set-choice button:not(.block-menu-swatch)[aria-checked='true'] {
+  border-color: var(--accent);
+  background: var(--surface-hover);
+  font-weight: 600;
 }
 
 .set-choice button:hover:not(:disabled) {
   background: var(--sunken);
 }
 
-.set-choice button[aria-checked='true'] {
+/*
+ * Der gewählte Knopf: Akzentrand und die Fläche des Hovers — wie SONEs
+ * gedrückte Pille, und wie die gewählte Zeile in der Leiste.
+ *
+ * Hier stand eine ZWEITE Antwort auf dieselbe Frage: volle Akzentfläche mit
+ * `--accent-on` als Textfarbe. Nach der Angleichung gewann teils die eine und
+ * teils die andere, und im Bild stand heller Text auf heller Fläche —
+ * unlesbar. Zwei Regeln für einen Zustand sind eine zu viel.
+ */
+.set-choice button:not(.block-menu-swatch)[aria-checked='true'] {
   border-color: var(--accent);
-  background: var(--accent);
-  color: var(--accent-on);
+  background: var(--surface-hover);
+  color: var(--text-primary);
+  font-weight: 600;
 }
 
 /*
@@ -2901,11 +2925,12 @@ select.target { }
 
 
 /* Farbwähler und Zurücksetzen in einer Zeile. */
+/* Die eigene Farbe steht IN der Reihe, nicht darunter — wie SONEs Pipette
+   neben der Palette und wie im Zeichen-Bildschirm. */
 .pick {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-top: 4px;
+  gap: var(--sone-space-3);
 }
 
 .pick input[type='color'] {
@@ -3988,6 +4013,7 @@ label.btn {
 }
 .block-menu-swatch.none { background: var(--surface-page); }
 .block-menu-swatch.current,
+.block-menu-swatch[aria-checked='true'],
 .block-menu-swatch[aria-current='true'] {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
