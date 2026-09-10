@@ -217,6 +217,16 @@ export interface TaskPatch {
   dueAllDay?: boolean;
   priority?: 1 | 2 | 3 | 4;
   projectId?: string | null;
+  /**
+   * Die Wiederholung — `null` nimmt sie weg.
+   *
+   * Zwei Formen: eine Kalenderregel (`rrule`, mit `dtstart` als Anker) oder
+   * gezählt ab dem Abhaken (`n` und `unit`). Der Server erkennt sie am Feld
+   * und braucht kein `kind` dazu.
+   */
+  recurrence?: { rrule: string; dtstart?: string } | { n: number; unit: string } | null;
+  /** Wer zuständig ist, vollständig. `[]` nimmt alle weg. */
+  assignees?: readonly string[];
 }
 
 export const api = {

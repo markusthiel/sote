@@ -11,6 +11,7 @@ import {
   nextOccurrence,
   parseQuickAdd,
   type Priority,
+  parseRrule,
   type Recurrence,
 } from '@sote/core';
 import type { Pool } from 'pg';
@@ -608,6 +609,23 @@ export interface Patch {
   readonly dueAllDay?: boolean;
   readonly priority?: number;
   readonly projectId?: string | null;
+  /**
+   * Die Wiederholung — `null` nimmt sie weg.
+   *
+   * Sie war nur beim Anlegen setzbar (über `jeden Montag` im Schnellerfasser),
+   * und danach nie mehr. Die Spalten, der Kern und das Abhaken waren die ganze
+   * Zeit fertig; es fehlte der Weg dorthin. Ein Feld, das man einmal setzen und
+   * nie ändern kann, ist ein halbes Versprechen.
+   */
+  readonly recurrence?: Recurrence | null;
+  /**
+   * Wer zuständig ist, vollständig — `[]` nimmt alle weg.
+   *
+   * Ganz und nicht als Zu-/Abgang: eine Liste, die man nur ergänzen kann, hat
+   * keinen Weg zurück, und zwei Wege (hinzu, weg) wären zwei Routen für eine
+   * Frage. Der Aufrufer schickt, wer es sein soll.
+   */
+  readonly assignees?: readonly string[];
 }
 
 export async function patch(
@@ -641,17 +659,101 @@ export async function patch(
   }
   if (fields.projectId !== undefined) set('project_id', fields.projectId);
 
-  if (sets.length === 0) throw new OutOfOrder('nichts zu ändern');
+  /*
+   * Wiederholung: vier Spalten, zwei Formen, und immer ALLE vier gesetzt.
+   *
+   * Sonst bleibt beim Wechsel von „jeden Montag" auf „3 Tage nach Erledigung"
+   * die alte RRULE stehen, und `recurrenceOf` liest die zuerst — die Aufgabe
+   * würde weiter montags kommen, obwohl etwas anderes dasteht.
+   */
+  if (fields.recurrence !== undefined) {
+    const r = fields.recurrence;
+    if (r === null) {
+      set('recur_rrule', null);
+      set('recur_dtstart', null);
+      set('recur_after_n', null);
+      set('recur_after_unit', null);
+    } else if (r.kind === 'calendar') {
+      // Geprüft und nicht geglaubt: `parseRrule` wirft bei allem, was der Kern
+      // nicht anbietet, und eine ungültige Regel in der Spalte wäre eine
+      // Aufgabe, die beim Abhaken fehlschlägt.
+      parseRrule(r.rrule);
+      set('recur_rrule', r.rrule);
+      set('recur_dtstart', r.dtstart);
+      set('recur_after_n', null);
+      set('recur_after_unit', null);
+    } else {
+      if (!Number.isInteger(r.n) || r.n < 1) {
+        throw new OutOfOrder('eine Wiederholung nach Erledigung braucht eine ganze Zahl ab 1');
+      }
+      set('recur_rrule', null);
+      set('recur_dtstart', null);
+      set('recur_after_n', r.n);
+      set('recur_after_unit', r.unit);
+    }
+  }
 
-  const row = await queryOne<TaskRow>(
-    pool,
-    `UPDATE tasks SET ${sets.join(', ')}, updated_at = now()
-      WHERE id = $1 AND workspace_id = $2
-     RETURNING ${RETURNING}`,
-    params,
-  );
-  if (row === undefined) throw new NotFound(`Aufgabe ${taskId} gibt es nicht`);
-  return row;
+  if (sets.length === 0 && fields.assignees === undefined) {
+    throw new OutOfOrder('nichts zu ändern');
+  }
+
+  /*
+   * Eine Transaktion, weil Zuständige eine zweite Tabelle sind.
+   *
+   * Ohne sie könnte die Zuweisung stehen und das Feld daneben nicht (oder
+   * umgekehrt) — zwei Wahrheiten über einen Vorgang, für den es eine gibt.
+   */
+  return withTransaction(pool, async (client) => {
+    let row: TaskRow | undefined;
+    if (sets.length > 0) {
+      const out = await client.query<TaskRow>(
+        `UPDATE tasks SET ${sets.join(', ')}, updated_at = now()
+          WHERE id = $1 AND workspace_id = $2
+         RETURNING ${RETURNING}`,
+        params,
+      );
+      row = out.rows[0];
+    } else {
+      // Nur Zuständige: die Aufgabe wird trotzdem angefasst, damit `updated_at`
+      // stimmt und die Türklingel läutet.
+      const out = await client.query<TaskRow>(
+        `UPDATE tasks SET updated_at = now()
+          WHERE id = $1 AND workspace_id = $2
+         RETURNING ${RETURNING}`,
+        [taskId, workspaceId],
+      );
+      row = out.rows[0];
+    }
+    if (row === undefined) throw new NotFound(`Aufgabe ${taskId} gibt es nicht`);
+
+    if (fields.assignees !== undefined) {
+      const wanted = [...new Set(fields.assignees)];
+      /*
+       * Nur Mitglieder DIESES Arbeitsbereichs.
+       *
+       * Sonst schreibt eine Id von außen eine Zuständigkeit, die niemand
+       * einsehen kann — und die Benachrichtigung ginge an jemanden, der die
+       * Aufgabe nicht öffnen darf.
+       */
+      if (wanted.length > 0) {
+        const ok = await client.query<{ user_id: string }>(
+          `SELECT user_id FROM workspace_members WHERE workspace_id = $1 AND user_id = ANY($2::uuid[])`,
+          [workspaceId, wanted],
+        );
+        if (ok.rows.length !== wanted.length) {
+          throw new OutOfOrder('nur Mitglieder dieses Arbeitsbereichs können zuständig sein');
+        }
+      }
+      await client.query('DELETE FROM task_assignees WHERE task_id = $1', [taskId]);
+      for (const userId of wanted) {
+        await client.query(
+          'INSERT INTO task_assignees (task_id, user_id) VALUES ($1,$2) ON CONFLICT DO NOTHING',
+          [taskId, userId],
+        );
+      }
+    }
+    return row;
+  });
 }
 
 /* ── Papierkorb ────────────────────────────────────────────────────────────

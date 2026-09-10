@@ -1894,6 +1894,28 @@ erfunden.
   die Suche selbst: über der Liste der Freigabelinks stand „Aufgaben
   durchsuchen". Mit einer Aufzählung der Orte, an die es gehört, erbt ein neuer
   Bereich kein Feld, das dort nichts findet.
+## Wiederholung und Zuständige sind änderbar
+
+- **Beide waren halbe Versprechen:** setzbar nur beim Anlegen (`jeden Montag`,
+  `+name` im Schnellerfasser), danach kein Weg mehr — kein Feld in `Patch`,
+  keine Route. Spalten, Kern und Abhaken waren fertig.
+- **Der Wechsel der Wiederholungsform muss die alten Spalten mitnehmen.**
+  `recurrenceOf` liest die Kalenderregel zuerst; bliebe sie stehen, käme die
+  Aufgabe weiter montags, obwohl „3 Tage nach Erledigung" dasteht.
+- **Zuständige werden ganz gesetzt**, nicht als Zu-/Abgang: eine Liste, die man
+  nur ergänzen kann, hat keinen Weg zurück. Geprüft gegen `workspace_members` —
+  eine Id von außen schriebe eine Zuständigkeit, die niemand einsehen kann.
+- **Die Gegenprobe steht jetzt** (482 Tests): Abhaken einer täglichen Aufgabe
+  erzeugt genau eine offene Folge, mit Regel und Plan. Vorher unbewiesen.
+- **Vier Fehlschläge, alle in meiner Prüfung, keiner im Code:** `memberships`
+  statt `workspace_members` (das *war* echt, im Server, und der Test fand es);
+  `closePool`/`createAccountIn`/`describe` geraten statt am Nachbartest
+  abgelesen; `complete(pool, id, ws, ich)` statt `(pool, id, userId, at)`;
+  `detail` mit vier statt drei Parametern (nur `tsc` fand es, `tsx` nicht); und
+  **vier Aufgaben mit demselben Titel**, sodass ich eine andere prüfte als
+  geklickt. Dazu `canWrite` statt `darfSchreiben` — das Feld war immer gesperrt,
+  und im Bild sieht ein gesperrtes Feld aus wie ein ruhiges.
+
 ## Gestaltung: SONE ist der Maßstab, wörtlich
 
 - **Der Befund:** SONE hat 156 Gestaltungsvariablen, SOTE hatte 80, und **nur

@@ -43,12 +43,20 @@ export interface DetailIO {
   load: () => Promise<DetailData>;
   patch: (fields: Record<string, unknown>) => Promise<unknown>;
   addChild: (title: string) => Promise<unknown>;
+  /** Wer zuständig sein kann. Fehlt beim Gast — er darf die Leute nicht sehen. */
+  people?: () => Promise<readonly { userId: string; displayName: string }[]>;
   addComment: (body: string) => Promise<unknown>;
 }
 
 /** Die Anbindung eines Mitglieds. */
 export const memberIO = (taskId: string, workspace: string | undefined): DetailIO => ({
   load: () => api.detail(taskId, workspace),
+  /*
+   * Wer zuständig sein KANN. Nur die Mitglieder-Anbindung hat das: ein Gast
+   * darf die Leute des Arbeitsbereichs nicht sehen, und ein Feld, das ihm eine
+   * Namensliste zeigt, wäre eine Auskunft, die er nicht haben soll.
+   */
+  people: () => api.people(workspace).then((r) => r.people),
   patch: (fields) => api.patch(taskId, fields as never, workspace),
   addChild: (title) => api.addChild(taskId, title, workspace),
   addComment: (body) => api.addComment(taskId, body, workspace),
@@ -67,6 +75,7 @@ export const guestIO = (token: string, taskId: string): DetailIO => ({
   patch: (fields) => api.sharePatch(token, taskId, fields),
   addChild: (title) => api.shareAddChild(token, taskId, title),
   addComment: (body) => api.shareAddComment(token, taskId, body),
+  // Kein `people`: siehe `memberIO`.
 });
 
 export function Detail({
@@ -107,6 +116,14 @@ export function Detail({
   const anbindung = io ?? memberIO(taskId, workspace);
   const darfSchreiben = canWrite !== false;
   const [data, setData] = useState<DetailData | undefined>(undefined);
+  /*
+   * Die Leute des Arbeitsbereichs, einmal geholt.
+   *
+   * Nicht in `load()`: die Detailantwort beschreibt EINE Aufgabe, und wer im
+   * Arbeitsbereich ist, ändert sich nicht mit ihr. Ein zweiter Abruf hier ist
+   * billiger als ein Feld, das an jeder Aufgabe dieselbe Liste mitschleppt.
+   */
+  const [people, setPeople] = useState<readonly { userId: string; displayName: string }[]>([]);
   const [notice, setNotice] = useState<string | undefined>(undefined);
   const [busy, setBusy] = useState(false);
   const [childLine, setChildLine] = useState('');
@@ -125,6 +142,15 @@ export function Detail({
   const load = useCallback(async () => {
     try {
       setData(await anbindung.load());
+      if (anbindung.people !== undefined && people.length === 0) {
+        // Ein Fehlschlag hier nimmt die Aufgabe nicht mit: ohne Liste bleibt
+        // das Feld lesbar, nur nicht wählbar.
+        try {
+          setPeople(await anbindung.people());
+        } catch {
+          /* dann eben nicht */
+        }
+      }
     } catch (e) {
       setNotice(e instanceof ApiError ? e.message : 'Laden ging nicht.');
     }
@@ -379,12 +405,72 @@ export function Detail({
         )}
       </FieldRow>
 
-      {task.recurrence !== null ? (
-        <div className="frow">
-          <span className="fl">wiederholt</span>
-          <span className="fv">{task.recurrence.says}</span>
-        </div>
-      ) : null}
+      {/*
+        Wiederholt — jetzt ÄNDERBAR, und immer da.
+        
+        Die Zeile erschien nur, WENN es eine Wiederholung gab: setzen konnte man
+        sie danach nirgends, denn `TaskPatch` hatte kein Feld dafür. Der Kern
+        konnte die ganze Zeit echte RRULEs samt INTERVAL, BYDAY und COUNT — es
+        fehlte der Weg dorthin.
+
+        Angeboten wird eine kurze Liste und nicht ein Regel-Baukasten: „jeden
+        Montag" tippt man im Schnellerfasser genauer, als ein Menü es anbieten
+        kann. Hier steht, was man an einer bestehenden Aufgabe braucht — das
+        Übliche, und der Weg zurück.
+      */}
+      <FieldRow
+        label="wiederholt"
+        value={task.recurrence?.says.replace(/\.$/, '') ?? null}
+        empty="einmalig"
+        disabled={busy || !darfSchreiben}
+      >
+        {(close) => (
+          <>
+            <button
+              type="button"
+              role="menuitem"
+              className="fpop-row"
+              disabled={task.recurrence === null}
+              onClick={() => {
+                close();
+                void save(() => anbindung.patch({ recurrence: null }));
+              }}
+            >
+              <span className="empty-value">einmalig</span>
+            </button>
+            {(
+              [
+                ['täglich', { rrule: 'FREQ=DAILY' }],
+                ['wöchentlich', { rrule: 'FREQ=WEEKLY' }],
+                ['alle zwei Wochen', { rrule: 'FREQ=WEEKLY;INTERVAL=2' }],
+                ['monatlich', { rrule: 'FREQ=MONTHLY' }],
+                ['jährlich', { rrule: 'FREQ=YEARLY' }],
+                /*
+                 * Und die zweite Form, die es in SOTE gibt und in vielen
+                 * Programmen nicht: gezählt wird vom ABHAKEN, nicht vom Plan.
+                 * Für alles, was „alle drei Tage, nachdem ich es gemacht habe"
+                 * ist — putzen, gießen, nachfragen.
+                 */
+                ['3 Tage nach Erledigung', { n: 3, unit: 'day' }],
+                ['1 Woche nach Erledigung', { n: 1, unit: 'week' }],
+              ] as const
+            ).map(([says, rec]) => (
+              <button
+                key={says}
+                type="button"
+                role="menuitem"
+                className="fpop-row"
+                onClick={() => {
+                  close();
+                  void save(() => anbindung.patch({ recurrence: rec }));
+                }}
+              >
+                {says}
+              </button>
+            ))}
+          </>
+        )}
+      </FieldRow>
 
       <FieldRow
         label="priorität"
@@ -412,18 +498,87 @@ export function Detail({
         }
       </FieldRow>
 
-      <div className="frow">
-        <span className="fl">zuständig</span>
-        <span className="fv">
-          {data.assignees.length === 0 ? (
-            <span className="empty-value">niemand</span>
-          ) : (
-            data.assignees
-              .map((a) => a.name ?? a.guestKey?.replace(/^guest:/, '') ?? '?')
-              .join(', ')
-          )}
-        </span>
-      </div>
+      {/*
+        Zuständig — jetzt ÄNDERBAR.
+        
+        Es stand als Text da, während die Tabelle, das Recht, die
+        Benachrichtigung und die Anzeige fertig waren: geschrieben wurde nur
+        beim Anlegen über `+name` im Schnellerfasser. Ein Feld, das die
+        Oberfläche zeigt und nicht bedienen lässt, ist ein halbes Versprechen.
+
+        Gäste stehen in der Liste, sind aber nicht wählbar: sie haben kein
+        Konto, und `task_assignees` verlangt eines. Darum werden sie angezeigt
+        und beim Schreiben nicht mitgeschickt — sonst würde ein Klick auf eine
+        Person den Gast stillschweigend entfernen.
+      */}
+      <FieldRow
+        label="zuständig"
+        value={
+          data.assignees.length === 0
+            ? null
+            : data.assignees.map((a) => a.name ?? a.guestKey?.replace(/^guest:/, '') ?? '?').join(', ')
+        }
+        empty="niemand"
+        /*
+         * `darfSchreiben`, nicht `canWrite`.
+         *
+         * `canWrite` ist die PROP (`boolean | undefined`); `darfSchreiben` ist
+         * das daraus gerechnete `canWrite !== false`. Bei einem Mitglied kommt
+         * die Prop nicht mit, also war `!canWrite` immer wahr und das Feld
+         * immer gesperrt. Gefunden, weil das Prüfskript `disabled: true`
+         * gemeldet hat — im Bild sieht ein gesperrtes Feld aus wie ein
+         * ruhiges.
+         */
+        disabled={busy || !darfSchreiben}
+      >
+        {(close) => (
+          <>
+            <button
+              type="button"
+              role="menuitem"
+              className="fpop-row"
+              disabled={data.assignees.filter((a) => a.userId !== null).length === 0}
+              onClick={() => {
+                close();
+                void save(() => anbindung.patch({ assignees: [] }));
+              }}
+            >
+              <span className="empty-value">niemand</span>
+            </button>
+            {people.map((p) => {
+              const drin = data.assignees.some((a) => a.userId === p.userId);
+              return (
+                <button
+                  key={p.userId}
+                  type="button"
+                  role="menuitem"
+                  className="fpop-row"
+                  aria-current={drin}
+                  onClick={() => {
+                    close();
+                    /*
+                     * Die ganze Liste, nicht ein Zu- oder Abgang: der Server
+                     * nimmt sie vollständig, und derselbe Klick nimmt zurück.
+                     */
+                    const jetzt = data.assignees
+                      .filter((a) => a.userId !== null)
+                      .map((a) => a.userId as string);
+                    void save(() =>
+                      anbindung.patch({
+                        assignees: drin
+                          ? jetzt.filter((id) => id !== p.userId)
+                          : [...jetzt, p.userId],
+                      }),
+                    );
+                  }}
+                >
+                  {p.displayName}
+                </button>
+              );
+            })}
+          </>
+        )}
+      </FieldRow>
 
       {/* Nur wenn es eine Herkunft gibt. Gespeicherte URL und Titel, damit der
           Rückweg auch ohne SONE funktioniert. */}

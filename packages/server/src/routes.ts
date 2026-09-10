@@ -118,6 +118,44 @@ function readPatch(body: Record<string, unknown>): import('./tasks.js').Patch {
   if ('projectId' in body) {
     out['projectId'] = body['projectId'] === null ? null : String(body['projectId']);
   }
+  /*
+   * Wiederholung: `null` nimmt sie weg, sonst eine der zwei Formen.
+   *
+   * Die Form wird hier ERKANNT und nicht erfragt: was `rrule` trägt, ist eine
+   * Kalenderregel; was `n` trägt, zählt nach dem Abhaken. Ein zusätzliches
+   * `kind` im Körper wäre eine dritte Stelle, an der dasselbe steht — und
+   * eine, die dem Rest widersprechen kann.
+   */
+  if ('recurrence' in body) {
+    const r = body['recurrence'];
+    if (r === null) {
+      out['recurrence'] = null;
+    } else if (typeof r === 'object' && 'rrule' in (r as object)) {
+      const raw = r as { rrule: unknown; dtstart?: unknown };
+      out['recurrence'] = {
+        kind: 'calendar',
+        rrule: String(raw.rrule),
+        // Ohne Anker: jetzt. Bei INTERVAL > 1 entscheidet er, welche Wochen
+        // zählen, und ein fehlender Anker wäre eine Regel ohne Bezug.
+        dtstart: raw.dtstart === undefined ? new Date() : new Date(String(raw.dtstart)),
+      };
+    } else if (typeof r === 'object' && 'n' in (r as object)) {
+      const raw = r as { n: unknown; unit: unknown };
+      out['recurrence'] = {
+        kind: 'afterCompletion',
+        n: Number(raw.n),
+        unit: String(raw.unit),
+      };
+    } else {
+      throw new OutOfOrder('eine Wiederholung braucht `rrule` oder `n` und `unit`');
+    }
+  }
+  /* Zuständige: eine vollständige Liste von Ids, `[]` nimmt alle weg. */
+  if ('assignees' in body) {
+    const a = body['assignees'];
+    if (!Array.isArray(a)) throw new OutOfOrder('`assignees` ist eine Liste von Konto-Ids');
+    out['assignees'] = a.map((x) => String(x));
+  }
   return out as import('./tasks.js').Patch;
 }
 
