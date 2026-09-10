@@ -4503,6 +4503,15 @@ label.btn {
 }
 /* Kleiner als ein Formularknopf: das sind Anhänge an eine Liste, keine
    Hauptsachen. */
+/* Das Feld für eine feste Zeit steht IN der Reihe der Vorläufe: es ist eine
+   weitere Möglichkeit, keine andere Art Sache. */
+.rem-at {
+  min-height: var(--sone-control);
+  inline-size: auto;
+  padding-inline: var(--sone-space-3);
+  font-size: var(--sone-text-xs);
+}
+
 .rem-add .btn.small {
   min-height: var(--sone-control);
   padding-inline: var(--sone-space-4);

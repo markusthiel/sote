@@ -475,6 +475,34 @@ export function Detail({
             )}
           </div>
           <div className="rem-add">
+            {/*
+              Und eine feste Uhrzeit — die absolute Form, die der Server von
+              Anfang an konnte und die Oberfläche nicht anbot. Für alles, was
+              nicht am Termin hängt: „ruf am 24.12. um 18 Uhr an", auch wenn
+              die Aufgabe selbst ungeplant ist.
+
+              `datetime-local` und nicht zwei Felder: Datum und Uhrzeit sind
+              hier EINE Angabe, und zwei Felder wären zwei Zustände, die
+              zueinander passen müssen. Der Wert ist Ortszeit ohne Zone —
+              `new Date(wert)` liest ihn in der Zone des Browsers, und das ist
+              genau die, in der man ihn getippt hat.
+            */}
+            <input
+              type="datetime-local"
+              className="rem-at"
+              aria-label="Erinnerung zu einer festen Zeit"
+              disabled={busy}
+              onChange={(e) => {
+                const wert = e.currentTarget.value;
+                if (wert === '') return;
+                const at = new Date(wert);
+                if (Number.isNaN(at.getTime())) return;
+                // Das Feld leeren, sonst steht die gesetzte Zeit darin und
+                // sieht aus wie eine Auswahl, die noch offen ist.
+                e.currentTarget.value = '';
+                void save(() => anbindung.addReminder!({ at: at.toISOString() }));
+              }}
+            />
             {COMMON_LEAD_MINUTES.map((m) => (
               <button
                 key={m}
