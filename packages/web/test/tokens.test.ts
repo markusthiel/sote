@@ -234,3 +234,89 @@ test('ein Klappmenü am rechten Rand öffnet nach links', () => {
   // sehr engen Gerät auch von rechts nicht immer hinein.
   assert.match(regel, /max-inline-size:\s*calc\(100vw/, 'darf schmaler werden');
 });
+
+/**
+ * Ein Aufsatz gehört nicht zu dem Möbel, aus dem er aufgeht.
+ *
+ * Gemeldet als „das Submenü auf dem Profil passt nicht mit den
+ * Farbeinstellungen": auf einer Akzent-Schiene stand weißer Text auf hellem
+ * Papier. Der Grund war keine falsche Farbe, sondern eine Fläche zu viel — das
+ * Menü erbte die Textfarben der behandelten Schiene und zeichnete seinen Grund
+ * mit `--surface-overlay`, den keine Behandlung anfasst.
+ *
+ * DIESER TEST VERGLEICHT NICHT ZWEI LISTEN, DIE ICH BEIDE SCHREIBE. Genau
+ * daran ist SONEs ADR-0131 gescheitert: „Two lists agreeing with each other is
+ * not a check." Er liest die Tokennamen **aus den Behandlungsblöcken selbst**
+ * und verlangt, dass der Aufsatz-Block jeden davon zurücksetzt. Wer morgen
+ * einer Behandlung ein Token hinzufügt, ohne die Aufsätze mitzunehmen, fällt
+ * hier durch — und das ist der Fehler, den es zu fangen gibt.
+ */
+const TREATMENTS = [
+  '.app[data-surface-rail="raised"]',
+  '.app[data-surface-rail="sunken"]',
+  '.app[data-surface-rail="inverted"]',
+  '.app[data-surface-rail="accent"]',
+];
+
+/** Der Block, der die Aufsätze auf die Werte der Seite zurückstellt. */
+const POPOVER = block(':is(.rail, .panel, .detail)');
+
+test('jedes Token, das eine Flächenbehandlung umschreibt, wird im Aufsatz zurückgestellt', () => {
+  const behandelt = new Set<string>();
+  for (const sel of TREATMENTS) {
+    for (const token of declared(block(sel))) behandelt.add(token);
+  }
+  // `--surface` gehört dazu und wird im Aufsatz auf die schwebende Fläche
+  // gestellt statt auf den Seitengrund: der Aufsatz IST eine eigene Fläche.
+  const zurueck = declared(POPOVER);
+  const fehlend = [...behandelt].filter((t) => !zurueck.has(t)).sort();
+  assert.deepEqual(
+    fehlend,
+    [],
+    `im Aufsatz nicht zurückgestellt: ${fehlend.join(', ')}`,
+  );
+});
+
+test('der Aufsatz-Block liest nur Namen, die keine Behandlung umschreibt', () => {
+  /*
+   * Der Kreis, den CSS nicht meldet: `--text: var(--text)` ist ungültig, und
+   * ungültig heißt hier nicht „Vorgabe", sondern *unset* — die Farbe fällt auf
+   * das zurück, was das Elternteil hat, also auf die behandelte Fläche. Der
+   * Fehler sähe damit genau so aus wie der, den dieser Block behebt.
+   *
+   * Erlaubt sind darum nur die Basiskopien, die Akzentkopien und
+   * `--surface-overlay` — Namen, die in keinem Behandlungsblock links vom
+   * Doppelpunkt stehen.
+   */
+  const behandelt = new Set<string>();
+  for (const sel of TREATMENTS) {
+    for (const token of declared(block(sel))) behandelt.add(token);
+  }
+  const gelesen = [...POPOVER.matchAll(/var\((--[a-z0-9-]+)/g)].map((m) => m[1]!);
+  const kreise = [...new Set(gelesen.filter((t) => behandelt.has(t)))].sort();
+  assert.deepEqual(kreise, [], `im Kreis gelesen: ${kreise.join(', ')}`);
+});
+
+test('die Basiskopien stehen an der Wurzel und nirgends sonst', () => {
+  // An der Wurzel, weil dort `var(...)` gegen das gewinnende Thema aufgelöst
+  // wird — eine zweite Deklaration im Dunkelblock wäre dieselbe Zeile zweimal
+  // und liefe irgendwann auseinander.
+  const basen = [...POPOVER.matchAll(/var\((--base-[a-z0-9-]+)/g)].map((m) => m[1]!);
+  assert.ok(basen.length > 0, 'der Aufsatz-Block liest keine Basiskopie');
+  for (const name of new Set(basen)) {
+    assert.ok(ROOT.has(name), `${name} fehlt in :root`);
+    assert.equal(DARK.has(name), false, `${name} steht doppelt im Dunkelblock`);
+  }
+});
+
+test('alle vier Aufsätze und alle drei Flächen stehen im Selektor', () => {
+  // Der gemeldete Fall war das Kontomenü auf der Schiene. Drei weitere
+  // Aufsätze haben dieselbe Bauart, und zwei weitere Flächen sind behandelbar
+  // — eine Reparatur nur für den gemeldeten Fall lässt fünf gleiche übrig.
+  const at = CSS.indexOf(':is(.rail, .panel, .detail)');
+  assert.notEqual(at, -1, 'der Aufsatz-Block fehlt');
+  const selektor = CSS.slice(at, CSS.indexOf('{', at));
+  for (const klasse of ['.sidebar-account-menu', '.switcher-menu', '.menu', '.entry-menu']) {
+    assert.ok(selektor.includes(klasse), `${klasse} fehlt im Aufsatz-Selektor`);
+  }
+});

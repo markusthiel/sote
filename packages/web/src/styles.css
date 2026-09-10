@@ -150,6 +150,33 @@
   /* Die Kopie, die kein Flächenblock überschreibt — siehe `theme.ts`. */
   --accent-base: var(--accent-500);
   --accent-base-on: var(--accent-on);
+  /* ── Was diese Namen auf der SEITE bedeuten ─────────────────────────────
+     Eine behandelte Fläche schreibt `--text`, `--surface-hover` und die
+     anderen für ihren Teilbaum um (ADR-0131), damit alles darin folgt, ohne
+     die Behandlung zu kennen. Ein Menü, das aus so einer Fläche aufgeht,
+     liegt aber nicht AUF ihr — es schwebt über der Seite und braucht die
+     Werte zurück, die die Namen dort haben. Mit den Namen selbst geht das
+     nicht: `--text: var(--text)` ist ein Kreis, und CSS macht daraus keinen
+     Fehler, sondern eine ungültige Farbe.
+
+     WARUM DAS NICHT ZWEIMAL DASTEHT, auch nicht im Dunkelblock: eine
+     Eigenschaft mit `var(...)` darin wird auf DEM ELEMENT aufgelöst, auf dem
+     sie steht — hier an der Wurzel, mit dem Thema, das dort gewinnt. Der
+     Dunkelblock steht auf derselben Wurzel, also stimmen diese Kopien in
+     beiden Themen von selbst. Nur ein Kind, das den Quellnamen umschreibt,
+     erreicht sie nicht mehr, und genau das ist der Zweck.
+
+     Dieselbe Bauart wie SONEs `--sone-base-*`. */
+  --base-text: var(--text);
+  --base-text-muted: var(--text-muted);
+  --base-text-faint: var(--text-faint);
+  --base-line: var(--line);
+  --base-line-strong: var(--line-strong);
+  --base-hover: var(--surface-hover);
+  --base-sunken: var(--sunken);
+  --base-raised: var(--raised);
+  --base-accent-quiet: var(--accent-quiet);
+  --base-accent-text: var(--accent-text);
   --accent-on: var(--page);
   --danger: var(--danger-500);
   --warning: var(--warning-500);
@@ -2832,6 +2859,57 @@ select.target { }
 .app[data-surface-detail="inverted"] .detail,
 .app[data-surface-detail="accent"] .detail {
   border-left-color: var(--line);
+}
+
+/* ── Ein Menü gehört nicht zu dem Möbel, aus dem es aufgeht ────────────────
+   SONEs Satz dazu, wörtlich: „A popup is not part of the furniture it opened
+   from" (ADR-0122).
+
+   GEMELDET: „Das Submenü auf dem Profil passt noch nicht mit den
+   Farbeinstellungen." Der Befund dazu: die Schiene stand auf Akzent, der
+   Block dafür schreibt für seinen Teilbaum `--text-primary` auf die
+   Kontrastfarbe um — weißer Text, richtig auf Marineblau. Das Kontomenü
+   liegt im DOM in der Schiene, holt sich also diesen weißen Text, zeichnet
+   seinen Grund aber mit `--surface-overlay` — und DAS überschreibt kein
+   Flächenblock, weil eine schwebende Fläche keine behandelte ist. Weiß auf
+   Papier, unlesbar.
+
+   Die Behandlung nachziehen (also `--surface-overlay` in jeden Flächenblock
+   schreiben) wäre die falsche Reparatur: dann läge ein marineblaues Menü
+   über einer weißen Seite, und der Schatten darunter hätte nichts zu
+   erklären. Ein Menü liegt über der SEITE, nicht auf der Schiene — also
+   gelten darin die Namen der Seite.
+
+   ALLE VIER Aufsätze und ALLE DREI Flächen, nicht nur der gemeldete Fall:
+   dasselbe passiert dem Wechsler, dem Zeilenmenü und dem Projektmenü,
+   sobald jemand Leiste oder Detail behandelt. Eine Reparatur, die nur den
+   gemeldeten Fall trifft, lässt drei gleiche zum Ansehen übrig — SONEs
+   Erfahrung aus demselben ADR. */
+:is(.rail, .panel, .detail)
+  :is(.sidebar-account-menu, .switcher-menu, .menu, .entry-menu) {
+  --text: var(--base-text);
+  --text-primary: var(--base-text);
+  --text-muted: var(--base-text-muted);
+  --text-faint: var(--base-text-faint);
+  --line: var(--base-line);
+  --line-strong: var(--base-line-strong);
+  --border-subtle: var(--base-line);
+  --border-default: var(--base-line-strong);
+  /* Der Grund im Menü IST die schwebende Fläche — die einzige, die hier
+     ohnehin schon stimmt. */
+  --surface: var(--surface-overlay);
+  --surface-hover: var(--base-hover);
+  --sunken: var(--base-sunken);
+  --raised: var(--base-raised);
+  --accent: var(--accent-base);
+  --accent-on: var(--accent-base-on);
+  --accent-contrast: var(--accent-base-on);
+  --accent-line: var(--accent-base);
+  --accent-quiet: var(--base-accent-quiet);
+  --accent-text: var(--base-accent-text);
+  /* Geerbt und nicht über ein Token gelesen: die Flächenblöcke setzen
+     `color` auf der Fläche selbst, und das erbt in das Menü hinein. */
+  color: var(--base-text);
 }
 
 /* ── Ecken ─────────────────────────────────────────────────────────────────
