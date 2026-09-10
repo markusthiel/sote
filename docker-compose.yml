@@ -57,6 +57,11 @@ services:
       # beides nicht, und die Bildschirme sagen das.
       #   openssl rand -hex 32
       SOTE_SHARE_KEY: ${SOTE_SHARE_KEY:-}
+      # Wohin Anhänge gehen. Ohne die Variable nimmt der Server keine —
+      # bewusst so: ein Verzeichnis, das niemand gewählt hat, wäre eines, das
+      # beim nächsten Neustart des Containers leer ist.
+      SOTE_FILES_DIR: ${SOTE_FILES_DIR:-/data/files}
+      SOTE_FILE_MAX_MB: ${SOTE_FILE_MAX_MB:-}
 
       # Der Mailweg. Fehlt er, geht keine Mail — Einladen funktioniert
       # trotzdem, der Link steht dann in der Liste.
@@ -75,6 +80,13 @@ services:
       # Wie der Knopf heißt. Ohne das steht dort „Single-Sign-on", was nichts
       # über den Anbieter sagt.
       SOTE_OIDC_LABEL: ${SOTE_OIDC_LABEL:-Single-Sign-on}
+    volumes:
+      # Die Anhänge liegen im Dateisystem und nicht in der Datenbank — ohne
+      # diesen Datenträger wäre das Verzeichnis nach jedem Neustart des
+      # Containers leer, und die Zeilen in `task_files` zeigten auf nichts.
+      # (Ich hatte den Datenträger zuerst nur DEKLARIERT und nicht angehängt:
+      # genau dieser Fehler.)
+      - sote_files:/data/files
     ports:
       # Host-Port links, der feste Port des Containers rechts.
       #
@@ -121,3 +133,7 @@ services:
 
 volumes:
   sote_db:
+  # Die Anhänge. Ein eigener Datenträger, weil sie NICHT in der Datenbank
+  # liegen: ein Datenbank-Abzug allein reicht damit nicht zum
+  # Wiederherstellen, und das muss man wissen.
+  sote_files:

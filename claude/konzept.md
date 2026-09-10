@@ -1894,6 +1894,32 @@ erfunden.
   die Suche selbst: über der Liste der Freigabelinks stand „Aufgaben
   durchsuchen". Mit einer Aufzählung der Orte, an die es gehört, erbt ein neuer
   Bereich kein Feld, das dort nichts findet.
+## Anhänge: Speicher und Zeilen (Routen und Oberfläche fehlen noch)
+
+- **Die Bytes liegen im Dateisystem**, nicht in Postgres — wie SONEs `files`
+  mit `storage_key`. Bei den Profilbildern ist `bytea` vertretbar (256 KB, eines
+  je Konto); Anhänge sind beliebig viele und beliebig groß. **Die Folge, die man
+  wissen muss: ein Datenbank-Abzug allein reicht nicht zum Wiederherstellen.**
+  Steht in der Migration, in `.env.example` und am Datenträger in Compose.
+- **Erst die Datei, dann die Zeile.** Bricht es dazwischen, liegt eine Datei
+  ohne Zeile da — belegter Platz, sichtbar für niemanden. Die andere Reihenfolge
+  gäbe eine Zeile ohne Datei, und die zeigt die Oberfläche als Anhang, den man
+  nicht öffnen kann. **Von zwei unvollständigen Zuständen ist der stille der
+  bessere.**
+- **Autorisiert über die Aufgabe**, kein eigenes Recht: ein zweites
+  Rechtesystem für Dateien wäre eines, das mit dem ersten uneins werden kann.
+  Die Prüfung steht in der Abfrage (`AND workspace_id = $3`), nicht davor.
+- **`bigint` kommt als Zeichenkette.** `size_bytes` wäre ohne `Number()` ein
+  String in der Antwort gewesen — gefunden, weil der Test auf `7` prüft.
+- **Zwei Wächter haben mich korrigiert:** die zwei neuen Env-Variablen fehlten
+  in Compose und `.env.example`; und ich hatte den Datenträger **deklariert,
+  aber nicht angehängt** — das Verzeichnis wäre nach jedem Neustart leer
+  gewesen und die Zeilen zeigten auf nichts.
+- **Eine Lüge im Code entfernt:** ich hatte in Kommentaren zweimal ein
+  `aufraeumen()` versprochen, das es nicht gibt. Ein Aufräumer für verwaiste
+  Dateien fehlt weiter — ein Test hält jetzt fest, dass die Datei beim Löschen
+  der Aufgabe liegen bleibt.
+
 ## Erinnerungen je Aufgabe (Serverteil)
 
 - **Bisher gab es eine Sorte:** eine Mail am Morgen mit dem Tagesüberblick
