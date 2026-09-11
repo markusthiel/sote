@@ -41,6 +41,8 @@ export interface TaskRow {
   recur_after_n: number | null;
   recur_after_unit: string | null;
   duration_min: number | null;
+  /** Wo die Karte auf der Tafel liegt. `null` heißt Auffangbecken (0029). */
+  column_id: string | null;
   sort_key: string;
   /**
    * Die Schlagwörter, nach Namen sortiert — `[]` wenn keine.
@@ -126,7 +128,7 @@ const RETURNING = `
   id, workspace_id, project_id, parent_id, title, note,
   planned_at, planned_all_day, due_at, due_all_day, priority,
   completed_at, recur_rrule, recur_dtstart, recur_after_n,
-  recur_after_unit, duration_min, sort_key,
+  recur_after_unit, duration_min, column_id, sort_key,
   labels_of(id) AS labels, marks_of(id) AS marks`;
 
 const SELECT = `SELECT ${RETURNING} FROM tasks`;

@@ -117,6 +117,8 @@ export interface Task {
   recurrence: { kind: 'calendar' | 'afterCompletion'; says: string } | null;
   /** Geschätzte Dauer in Minuten, `null` heißt keine Angabe. */
   duration: number | null;
+  /** Wo die Karte auf der Tafel liegt. `null` heißt Auffangbecken. */
+  columnId: string | null;
   /** Die Schlagwörter, nach Namen sortiert. `[]` wenn keine. */
   labels: readonly string[];
   /**
@@ -470,6 +472,44 @@ export const api = {
    * Nur die Abweichungen: wer nirgends etwas gewählt hat, bekommt zwei leere
    * Karten. Was dann gilt, entscheidet `resolveListView` im Kern.
    */
+  /** Die Spalten einer Liste, in ihrer Reihenfolge. */
+  board: (project: string, workspace?: string) =>
+    call<{ columns: { id: string; name: string; sort_key: string; is_done: boolean }[] }>(
+      `/api/board?project=${project}${workspace === undefined ? '' : `&workspace=${workspace}`}`,
+    ),
+  addColumn: (
+    body: { project: string; name: string; sortKey: string; isDone?: boolean },
+    workspace?: string,
+  ) =>
+    call<{ column: { id: string; name: string; sort_key: string; is_done: boolean } }>(
+      `/api/board${workspace === undefined ? '' : `?workspace=${workspace}`}`,
+      { method: 'POST', body: JSON.stringify(body) },
+    ),
+  updateColumn: (
+    id: string,
+    body: { name?: string; sortKey?: string; isDone?: boolean },
+    workspace?: string,
+  ) =>
+    call<{ column: { id: string; name: string; sort_key: string; is_done: boolean } }>(
+      `/api/board/${id}${workspace === undefined ? '' : `?workspace=${workspace}`}`,
+      { method: 'PATCH', body: JSON.stringify(body) },
+    ),
+  removeColumn: (id: string, workspace?: string) =>
+    call<{ ok: true }>(
+      `/api/board/${id}${workspace === undefined ? '' : `?workspace=${workspace}`}`,
+      { method: 'DELETE' },
+    ),
+  /**
+   * Eine Karte in eine Spalte legen — `columnId: null` ins Auffangbecken.
+   *
+   * In die Fertig-Spalte zu legen hakt ab, heraus zu legen öffnet wieder: die
+   * Spalte heißt so, und eine offene Aufgabe darin wäre ein Widerspruch.
+   */
+  placeCard: (id: string, columnId: string | null, workspace?: string) =>
+    call<{ ok: true }>(
+      `/api/tasks/${id}/column${workspace === undefined ? '' : `?workspace=${workspace}`}`,
+      { method: 'PUT', body: JSON.stringify({ columnId }) },
+    ),
   listViews: (workspace?: string) =>
     call<{
       projects: Record<string, string>;

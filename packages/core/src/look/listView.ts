@@ -37,10 +37,19 @@
  * - `cards` — mit Luft und dem Anfang der Notiz. Für wenige, dafür dicke
  *   Einträge.
  *
- * `board` fehlt hier noch und ist der Grund für die Form dieser Liste: er wird
- * ein Wort mehr sein und keine zweite Einstellung.
+ * - `board` — die Tafel: Spalten nebeneinander, Aufgaben als Karten darin.
+ *
+ * `board` war der Grund für die Form dieser Liste, und er hat sie bestätigt: er
+ * ist ein Wort mehr geworden und keine zweite Einstellung. In der Datenbank
+ * kostete er eine Zeile (Migration 0030).
+ *
+ * NUR AN EINER LISTE. Die Tafel gliedert ein Vorhaben, und ihre Spalten gehören
+ * einer Liste — „Heute" hat keine, und eine Tafel ohne Spalten wäre eine leere
+ * Fläche mit einem Knopf darauf. Wer sie anderswo wählt, bekommt `full`;
+ * entschieden wird das beim Zeichnen und nicht hier, denn hier ist nicht
+ * bekannt, wo gezeichnet wird.
  */
-export const LIST_VIEWS = ['full', 'plain', 'cards'] as const;
+export const LIST_VIEWS = ['full', 'plain', 'cards', 'board'] as const;
 export type ListView = (typeof LIST_VIEWS)[number];
 
 /**
@@ -59,6 +68,7 @@ export const LIST_VIEW_SAYS: Record<ListView, { name: string; says: string }> = 
   full: { name: 'Voll', says: 'Titel und Beiwerk — Termin, Dauer, Schlagwörter' },
   plain: { name: 'Schmal', says: 'Nur die Titel' },
   cards: { name: 'Karten', says: 'Mit Luft und dem Anfang der Notiz' },
+  board: { name: 'Tafel', says: 'Spalten nebeneinander — nur in einer Liste' },
 };
 
 /**

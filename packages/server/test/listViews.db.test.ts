@@ -162,7 +162,11 @@ test('unbekannte Wörter werden abgelehnt, mit Grund', async () => {
         workspaceId: ws,
         userId: ich,
         projectId: liste,
-        display: 'board' as never,
+        // `board` ist seit Migration 0030 eine erlaubte Form — dieser Test
+        // stand hier mit ihr als dem unbekannten Wort und ist genau dann
+        // fehlgeschlagen, als sie eine wurde. Das ist das gewünschte
+        // Verhalten: ein Wortschatz, der wächst, muss beim Wachsen auffallen.
+        display: 'gantt' as never,
       }),
     (e: Error) => e instanceof ViewTrouble,
   );
@@ -206,4 +210,13 @@ test('auch ein Ordner lässt sich einstellen', async () => {
   const { ws, ordner } = await scratch();
   await setListView(pool, { workspaceId: ws, userId: ich, projectId: ordner, display: 'cards' });
   assert.equal((await listViewsOf(pool, ws, ich)).projects[ordner], 'cards');
+});
+
+test('die Tafel ist eine erlaubte Form', async () => {
+  // Migration 0030 hat sie in den CHECK aufgenommen — der Satz aus 0028 war:
+  // „eine Form im CHECK, die die Oberfläche nicht zeichnen kann, wäre eine
+  // Einstellung ohne Wirkung." Jetzt kann sie es.
+  const { ws, liste } = await scratch();
+  await setListView(pool, { workspaceId: ws, userId: ich, projectId: liste, display: 'board' });
+  assert.equal((await listViewsOf(pool, ws, ich)).projects[liste], 'board');
 });

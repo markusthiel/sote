@@ -27,6 +27,7 @@ import { api, ApiError, type Project, type Task, type TaskPatch } from '../api.j
 import { HandleMenu } from '../components/HandleMenu.js';
 import { QuickAdd } from '../components/QuickAdd.js';
 import { TaskRow } from '../components/TaskRow.js';
+import { Board } from './Board.js';
 import { longDate } from '../dates.js';
 import { useShowDone } from '../hooks/useShowDone.js';
 import { toggleDone } from '../tasks/toggleDone.js';
@@ -467,8 +468,17 @@ export function TaskList({
     onChanged();
   }
 
-  /** Was hier tatsächlich gilt — Person vor Arbeitsbereich, dann `full`. */
-  const form = resolveListView(listView, workspaceListView);
+  /**
+   * Was hier tatsächlich gilt — Person vor Arbeitsbereich, dann `full`.
+   *
+   * Die TAFEL nur in einer Liste: ihre Spalten gehören einer Liste, „Heute"
+   * hat keine. Wer sie anderswo gewählt hat (oder der Arbeitsbereich sie
+   * vorgibt), bekommt dort `full` — entschieden hier, weil erst hier bekannt
+   * ist, wo gezeichnet wird. Die Wahl BLEIBT gespeichert: wer von Heute in
+   * eine Liste wechselt, soll seine Tafel wiederfinden.
+   */
+  const gewaehlt = resolveListView(listView, workspaceListView);
+  const form = gewaehlt === 'board' && route.kind !== 'project' ? 'full' : gewaehlt;
 
   const title =
     route.kind === 'project' ? (project?.name ?? 'Projekt') : (TITLES[view] ?? 'Aufgaben');
@@ -718,6 +728,30 @@ export function TaskList({
         />
         {notice !== undefined ? <p className="note-error">{notice}</p> : null}
 
+        {/*
+          Die Tafel ersetzt die Liste, sie steht nicht daneben.
+
+          Der Kopf mit Schnellerfassung und Umschalter bleibt: eine Tafel ohne
+          Erfassungszeile wäre ein Ort, an dem man nichts anlegen kann, und der
+          Umschalter ist der einzige Weg zurück.
+        */}
+        {form === 'board' && route.kind === 'project' ? (
+          <Board
+            workspace={workspace}
+            projectId={route.projectId}
+            tasks={rows}
+            now={now}
+            openTask={openTask}
+            onOpenTask={onOpenTask}
+            onChanged={() => {
+              void load();
+              onChanged();
+            }}
+          />
+        ) : null}
+
+        {form === 'board' && route.kind === 'project' ? null : (
+          <>
         {overdue.length > 0 ? (
           <>
             <div className="section-label late">
@@ -756,6 +790,8 @@ export function TaskList({
             {erledigt.map((task, i) => renderRow(task, offen.length + i))}
           </>
         ) : null}
+          </>
+        )}
 
         {/*
           Die Ablegestelle „ans Ende" ist weggefallen, und zwar ersatzlos.

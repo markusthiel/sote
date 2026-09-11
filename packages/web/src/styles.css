@@ -1045,6 +1045,105 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex]:focus-vi
   border-color: var(--danger);
 }
 
+/* ── Die Tafel ─────────────────────────────────────────────────────────────
+ *
+ * Spalten nebeneinander, waagerecht rollbar. Feste Breite je Spalte und nicht
+ * geteilte: bei acht Spalten wäre jede so schmal, dass kein Titel hineinpasst
+ * — und eine Tafel, deren Karten man nicht lesen kann, beantwortet die einzige
+ * Frage nicht, für die es sie gibt (wo staut es sich).
+ */
+.board {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sone-space-4);
+  overflow-x: auto;
+  padding-block-end: var(--sone-space-4);
+}
+
+.board-column {
+  flex: 0 0 280px;
+  border: 1px solid var(--line);
+  border-radius: var(--sote-radius-md);
+  background: var(--sunken);
+  padding: var(--sone-space-3);
+  /* Der Rahmen, an dem das Spaltenmenü hängt. */
+  position: relative;
+}
+
+/* „Hier hinein" — dieselbe Sprache wie in der Liste: gefüllt heißt „in diese
+   hier", eine Linie hieße „dazwischen". Die Tafel führt keine Reihenfolge
+   innerhalb einer Spalte, also gibt es hier nur das Erste. */
+.board-column[data-drop="into"] {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  background: color-mix(in srgb, var(--accent) 12%, var(--sunken));
+}
+
+.board-head {
+  display: flex;
+  align-items: center;
+  gap: var(--sone-space-2);
+  margin-block-end: var(--sone-space-3);
+}
+
+.board-name {
+  font-weight: 600;
+  font-size: var(--sone-text-sm);
+}
+
+/* Die Zahl in Schmalschrift, wie alle Zahlen hier. */
+.board-count {
+  font-family: var(--sote-mono);
+  font-size: var(--sone-text-xs);
+  color: var(--text-faint);
+}
+
+/* „fertig" und „Eingang" — was die Spalte BEDEUTET, nicht wie sie heißt.
+   Darum ein Merkmal daneben und kein Teil des Namens: den Namen wählt der
+   Mensch, die Bedeutung die Einstellung. */
+.board-done {
+  margin-inline-start: auto;
+  padding: 1px var(--sone-space-2);
+  border: 1px solid var(--accent-line);
+  border-radius: var(--sote-radius-md);
+  color: var(--accent-text);
+  font-size: var(--sone-text-xs);
+}
+
+.board-cards {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sone-space-2);
+  /* Eine Mindesthöhe, DAMIT MAN IN EINE LEERE SPALTE ZIEHEN KANN: ohne sie
+     ist der Kopf das einzige Ziel, und man zielt auf eine Überschrift, um
+     etwas abzulegen.
+
+     Aus der Skala: zwei Tippflächen hoch. Eine harte Zahl wäre hier auch
+     lesbar, aber der Wächter zählt sie — und er zieht nur nach unten nach. */
+  min-height: calc(var(--sone-tap) * 2);
+}
+
+.board-card .task {
+  background: var(--surface);
+}
+
+.board-new {
+  flex: 0 0 280px;
+}
+
+.board-add {
+  flex: 0 0 auto;
+  align-self: flex-start;
+  padding: var(--sone-space-3) var(--sone-space-4);
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--sote-radius-md);
+  background: none;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: var(--sone-text-sm);
+  cursor: pointer;
+}
+
 /* ── Unteraufgaben in der Liste ────────────────────────────────────────────
  *
  * Eine Ebene, also eine Einrückung und keine Treppe.

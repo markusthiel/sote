@@ -39,11 +39,15 @@ test('ohne beides gilt, was vorher war', () => {
 test('Unbekanntes zählt als „nichts gesagt“', () => {
   /*
    * Dieselbe Regel wie in `settings.ts`: ein Wort aus einer künftigen Fassung
-   * — etwa `board`, nachdem jemand zurückgerollt hat — soll die gewöhnliche
+   * — hier `gantt`, morgen vielleicht wirklich eines — soll die gewöhnliche
    * Antwort bekommen und keine Liste, die sich nicht entscheiden kann.
+   *
+   * Der Test stand hier vorher mit `board` als dem unbekannten Wort, und das
+   * war gut so: er ist fehlgeschlagen, als `board` eines wurde. Genau dafür
+   * ist er da — ein Wortschatz, der wächst, muss beim Wachsen auffallen.
    */
-  assert.equal(resolveListView('board', 'cards'), 'cards');
-  assert.equal(resolveListView('board', 'board'), 'full');
+  assert.equal(resolveListView('gantt', 'cards'), 'cards');
+  assert.equal(resolveListView('gantt', 'gantt'), 'full');
   assert.equal(resolveListView(42, undefined), 'full');
 });
 
@@ -72,8 +76,17 @@ test('die festen Ansichten sind genau die vier', () => {
   assert.equal(isListPlace('heute'), false);
 });
 
-test('isListView kennt nur die drei', () => {
-  assert.equal(isListView('full'), true);
-  assert.equal(isListView('board'), false);
+test('isListView kennt genau den Wortschatz', () => {
+  // Gekreuzt statt aufgezählt: eine zweite Liste hier wäre eine, die man beim
+  // nächsten Wort vergisst.
+  for (const form of LIST_VIEWS) assert.equal(isListView(form), true, form);
+  assert.equal(isListView('gantt'), false);
   assert.equal(isListView(''), false);
+});
+
+test('die Tafel ist dabei', () => {
+  // Der ganze Ertrag der Entscheidung, einen Wortschatz zu nehmen statt eines
+  // Ja-Nein-Schalters: sie kostete ein Wort und eine Zeile in der Datenbank.
+  assert.equal(isListView('board'), true);
+  assert.equal(resolveListView('board', undefined), 'board');
 });

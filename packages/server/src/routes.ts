@@ -293,6 +293,7 @@ function taskView(row: TaskRow) {
     duration: row.duration_min,
     labels: row.labels,
     marks: row.marks,
+    columnId: row.column_id,
     sortKey: row.sort_key,
   };
 }

@@ -24,8 +24,11 @@
  * - `data-row="<id>"` — was gezogen wird.
  * - `data-row-parent="<id>|root"` — nötig, um eine Lücke zwischen
  *   Geschwistern von einer an einer Grenze zu unterscheiden.
- * - `data-row-nest="yes"` — diese Zeile kann etwas AUFNEHMEN. Bei einer
- *   Ebene heißt das: nur Zeilen, die selbst keine Unteraufgabe sind.
+ * - `data-row-nest` — was mit dieser Zeile geht:
+ *   - `yes` — sie kann etwas aufnehmen UND hat Nachbarlücken. Eine
+ *     Hauptaufgabe in der Liste.
+ *   - `no` (oder fehlend) — nur Lücken. Eine Unteraufgabe.
+ *   - `only` — NUR aufnehmen, keine Lücken. Eine Spalte auf der Tafel.
  */
 
 import type { RefObject } from 'react';
@@ -79,8 +82,19 @@ function positionAt(
    * unteres Drittel heissen „daneben", die Mitte heisst „hinein". Eine, die
    * nichts aufnehmen kann, teilt sich in zwei Hälften — jedes Ablegen daneben
    * sortiert dann nur um.
+   *
+   * UND EINE DRITTE MÖGLICHKEIT, die es beim Bauen der Tafel gebraucht hat:
+   * ein Behälter, der KEINE Nachbarlücken hat. Eine Spalte ist ein hohes
+   * Element; ihr unteres Drittel sind bei 400 Pixeln Höhe 130 Pixel, in denen
+   * gewöhnlich Karten liegen — und dort las die Geste „hinter dieser Spalte",
+   * was die Tafel gar nicht kennt. Im Browser gefunden: die Karte ließ sich
+   * überall ablegen, nur nicht dort, wo sie hinsollte.
+   *
+   * `only` heißt darum: jeder Punkt in diesem Element bedeutet „hinein".
    */
-  const edge = row.dataset['rowNest'] === 'yes' ? 0.3 : 0.5;
+  const nest = row.dataset['rowNest'];
+  if (nest === 'only') return { rowId, intent: 'into' };
+  const edge = nest === 'yes' ? 0.3 : 0.5;
   const intent: RowIntent = offset < edge ? 'before' : offset > 1 - edge ? 'after' : 'into';
 
   if (intent !== 'before') return { rowId, intent };
