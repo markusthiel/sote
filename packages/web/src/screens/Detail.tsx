@@ -26,6 +26,7 @@ import { toggleDone } from '../tasks/toggleDone.js';
 import { FieldRow, FreeDate, FreeDuration, FreeLabel } from '../components/FieldRow.js';
 import {
   CheckSquareIcon,
+  DownloadIcon,
   ImageIcon,
   MessageIcon,
   PaperclipIcon,
@@ -34,7 +35,8 @@ import {
   UsersIcon,
   type IconProps,
 } from '../components/icons.js';
-import { CloseIcon } from '../components/viewIcons.js';
+import { CloseIcon, EyeIcon } from '../components/viewIcons.js';
+import { FileModal } from '../components/FileModal.js';
 import { useDetailTab } from '../hooks/useDetailTab.js';
 import { whenOptions } from '../components/HandleMenu.js';
 import { whenLabel } from '../dates.js';
@@ -220,6 +222,14 @@ export function Detail({
   const anbindung = io ?? memberIO(taskId, workspace);
   const darfSchreiben = canWrite !== false;
   const [data, setData] = useState<DetailData | undefined>(undefined);
+  /**
+   * Welcher Anhang gerade angesehen wird.
+   *
+   * Die Id und nicht die Datei: die Liste wird neu geladen (nach dem Abhaken,
+   * nach einem Umbenennen), und ein festgehaltenes Objekt wäre danach ein Bild
+   * von gestern. Die Id findet die Datei jedes Mal neu.
+   */
+  const [ansehen, setAnsehen] = useState<string | null>(null);
   /*
    * Die Leute des Arbeitsbereichs, einmal geholt.
    *
@@ -1101,15 +1111,54 @@ export function Detail({
                     data.files.map((f) => (
                       <span className="file" key={f.id}>
                         {/*
-                          Ein echter Link und kein Abruf: der Browser lädt die Datei
-                          selbst, mit Fortschritt und Wiederaufnahme. Ein `fetch`, das
-                          Bytes in den Arbeitsspeicher holt, um sie dann als Blob
+                          DER NAME ÖFFNET DIE VORSCHAU, nicht den Download.
+
+                          Gewünscht: „Standard anklicken wäre dann eher das
+                          Modal." Das ist auch die häufigere Absicht — man
+                          klickt auf einen Anhang, um zu sehen, was er ist. Wer
+                          ihn braucht, nimmt den Knopf daneben.
+                        */}
+                        <button
+                          type="button"
+                          className="file-name"
+                          title={`${f.filename} ansehen`}
+                          onClick={() => setAnsehen(f.id)}
+                        >
+                          {f.filename}
+                        </button>
+                        <span className="file-size">{kilobytes(f.sizeBytes)}</span>
+                        {/*
+                          Und der direkte Weg zur Datei — ein echter Link und
+                          kein Abruf: der Browser lädt sie selbst, mit
+                          Fortschritt und Wiederaufnahme. Ein `fetch`, das Bytes
+                          in den Arbeitsspeicher holt, um sie dann als Blob
                           anzubieten, wäre derselbe Weg mit mehr Schritten.
                         */}
-                        <a href={anbindung.fileHref?.(f.id) ?? '#'} download={f.filename}>
-                          {f.filename}
+                        {/*
+                          Das Auge steht NEBEN dem Namen, obwohl der Name
+                          dasselbe tut: ein Name, der etwas öffnet, sagt das
+                          niemandem, der ihn nicht anfährt. Der Knopf ist die
+                          sichtbare Zusage — und auf dem Telefon die einzige,
+                          weil es dort kein Anfahren gibt.
+                        */}
+                        <button
+                          type="button"
+                          className="file-tool"
+                          title="Ansehen"
+                          aria-label={`${f.filename} ansehen`}
+                          onClick={() => setAnsehen(f.id)}
+                        >
+                          <EyeIcon />
+                        </button>
+                        <a
+                          className="file-tool"
+                          href={anbindung.fileHref?.(f.id) ?? '#'}
+                          download={f.filename}
+                          title="Herunterladen"
+                          aria-label={`${f.filename} herunterladen`}
+                        >
+                          <DownloadIcon size={14} />
                         </a>
-                        <span className="file-size">{kilobytes(f.sizeBytes)}</span>
                         {anbindung.removeFile === undefined ? null : (
                           <button
                             type="button"
@@ -1186,9 +1235,20 @@ export function Detail({
                   const istTitel = task.cover?.image === pfad;
                   return (
                     <div key={f.id} className="detail-image-wrap">
-                      <a className="detail-image" href={href || '#'} title={f.filename}>
+                      {/*
+                        Der Klick auf das Bild ÖFFNET ES, statt die Datei
+                        aufzurufen — gewünscht: „Standard anklicken wäre dann
+                        eher das Modal." Ein Knopf und kein Link, weil das Ziel
+                        keine Adresse ist.
+                      */}
+                      <button
+                        type="button"
+                        className="detail-image"
+                        title={`${f.filename} ansehen`}
+                        onClick={() => setAnsehen(f.id)}
+                      >
                         <img src={href} alt={f.filename} />
-                      </a>
+                      </button>
                       {/*
                         DER WEG ZUM TITELBILD führt über das Bild selbst.
 
@@ -1204,22 +1264,46 @@ export function Detail({
                         daneben wäre einer für den Fall, den es nur gibt, wenn
                         der erste schon gedrückt wurde.
                       */}
-                      {!darfSchreiben || href === '' ? null : (
-                        <button
-                          type="button"
-                          className="detail-image-cover"
-                          aria-pressed={istTitel}
-                          disabled={busy}
-                          title={istTitel ? 'Kein Titelbild mehr' : 'Als Titelbild'}
-                          onClick={() =>
-                            void save(() =>
-                              anbindung.patch({ cover: istTitel ? null : { image: pfad } }),
-                            )
-                          }
+                      {/*
+                        ZEICHEN STATT WÖRTER, wie oben im Listenkopf.
+
+                        Gewünscht: „Auch hier hätte ich gerne ein Icon anstatt
+                        Text für das Titelbild." Zwei Knöpfe nebeneinander, und
+                        einer davon trug einen ganzen Satz, dessen Länge sich
+                        auch noch mit dem Zustand änderte.
+
+                        Die Wörter gehen nicht verloren: `title` und
+                        `aria-label` tragen sie, wie überall in diesem Projekt.
+                      */}
+                      <span className="detail-image-tools">
+                        {!darfSchreiben || href === '' ? null : (
+                          <button
+                            type="button"
+                            className="detail-image-tool"
+                            aria-pressed={istTitel}
+                            disabled={busy}
+                            title={istTitel ? 'Kein Titelbild mehr' : 'Als Titelbild'}
+                            aria-label={istTitel ? 'Kein Titelbild mehr' : 'Als Titelbild'}
+                            onClick={() =>
+                              void save(() =>
+                                anbindung.patch({ cover: istTitel ? null : { image: pfad } }),
+                              )
+                            }
+                          >
+                            <ImageIcon size={15} />
+                          </button>
+                        )}
+                        <a
+                          className="detail-image-tool"
+                          href={href || '#'}
+                          download={f.filename}
+                          title="Herunterladen"
+                          aria-label={`${f.filename} herunterladen`}
+                          onClick={(e) => e.stopPropagation()}
                         >
-                          {istTitel ? 'Titelbild ✓' : 'Als Titelbild'}
-                        </button>
-                      )}
+                          <DownloadIcon size={15} />
+                        </a>
+                      </span>
                     </div>
                   );
                 })}
@@ -1353,6 +1437,32 @@ export function Detail({
       </div>
 
       {notice !== undefined ? <p className="note-error">{notice}</p> : null}
+
+      {/*
+        Die Vorschau — EIN Fenster für alle Anhänge, nicht eines je Reiter.
+
+        Sie steht hier unten und nicht im Reiter: ein Bild wird im Reiter
+        „Bilder" geöffnet und dieselbe Datei im Reiter „Anhänge", und zwei
+        Fenster für denselben Zweck wären zwei Orte, an denen man den falschen
+        ändert.
+
+        Die Datei wird über die Id GESUCHT und nicht festgehalten: die Liste
+        lädt neu, und ein festgehaltenes Objekt wäre danach ein Bild von
+        gestern.
+      */}
+      {(() => {
+        if (ansehen === null) return null;
+        const f = data.files.find((x) => x.id === ansehen);
+        if (f === undefined) return null;
+        return (
+          <FileModal
+            href={anbindung.fileHref?.(f.id) ?? ''}
+            filename={f.filename}
+            mimeType={f.mimeType}
+            onClose={() => setAnsehen(null)}
+          />
+        );
+      })()}
     </aside>
   );
 }

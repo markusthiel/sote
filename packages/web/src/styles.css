@@ -1385,6 +1385,131 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex]:focus-vi
   padding-inline-start: var(--sone-control);
 }
 
+/* ── Die Vorschau eines Anhangs ────────────────────────────────────────────
+ *
+ * Ein Fenster über allem, nicht in der Spalte: die Detailspalte ist 340 px
+ * breit, und ein PDF darin wäre eine Briefmarke. Die Vorschau beantwortet
+ * „was ist das", und dafür braucht sie Fläche.
+ */
+.file-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sone-space-6);
+  background: rgb(0 0 0 / 55%);
+}
+
+.file-modal-box {
+  display: flex;
+  flex-direction: column;
+  inline-size: min(960px, 100%);
+  block-size: min(80vh, 100%);
+  border-radius: var(--sote-radius-md);
+  background: var(--surface);
+  box-shadow: var(--sote-shadow-lg);
+  overflow: hidden;
+}
+
+.file-modal-head {
+  display: flex;
+  align-items: center;
+  gap: var(--sone-space-3);
+  padding: var(--sone-space-3) var(--sone-space-4);
+  border-bottom: 1px solid var(--line);
+}
+
+.file-modal-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--sone-text-sm);
+}
+
+.file-modal-body {
+  flex: 1;
+  min-block-size: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sone-space-4);
+  overflow: auto;
+  /* Ein Schachbrett hinter dem Bild waere die andere Moeglichkeit; ein
+     ruhiger Grund reicht und streitet mit keinem Foto. */
+  background: var(--sunken);
+}
+
+.file-modal-body img {
+  max-inline-size: 100%;
+  max-block-size: 100%;
+  object-fit: contain;
+}
+
+.file-modal-body object {
+  inline-size: 100%;
+  block-size: 100%;
+}
+
+/* Text in Schmalschrift und mit Umbruch: eine Protokollzeile ist lang, und
+   waagerecht rollen ist die unangenehmste Art zu lesen. */
+.file-modal-text {
+  margin: 0;
+  align-self: stretch;
+  /*
+   * Volle Breite, damit der Text LINKS anfängt.
+   *
+   * Der Kasten mittet seine Kinder — richtig für ein Bild, falsch für Text:
+   * im Bild stand das Protokoll ordentlich zentriert in der Mitte, und
+   * zentrierter Fliesstext mit festen Zeilenlängen liest sich wie ein Gedicht.
+   * Ein Kind, das die Breite füllt, wird von der Mittung nicht mehr bewegt.
+   */
+  inline-size: 100%;
+  font-family: var(--sote-mono);
+  font-size: var(--sone-text-xs);
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* Der Name eines Anhangs öffnet die Vorschau — also ein Knopf, der wie Text
+   aussieht. */
+.file-name {
+  border: 0;
+  padding: 0;
+  background: none;
+  color: var(--accent-text);
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.file-name:hover {
+  text-decoration: underline;
+}
+
+/* Die beiden Zeichen an einer Anhangszeile. */
+.file-tool {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: var(--sone-control);
+  block-size: var(--sone-control);
+  border: 0;
+  border-radius: var(--sote-radius-sm);
+  background: none;
+  color: var(--text-faint);
+  cursor: pointer;
+}
+
+.file-tool:hover {
+  background: var(--sunken);
+  color: var(--text);
+}
+
 /*
  * Ein Bild im Reiter, mit dem Knopf darauf.
  *
@@ -1396,34 +1521,48 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex]:focus-vi
   position: relative;
 }
 
-.detail-image-cover {
+.detail-image-tools {
   position: absolute;
   inset-inline-start: var(--sone-space-2);
   inset-block-end: var(--sone-space-2);
-  padding: var(--sone-space-1) var(--sone-space-3);
+  display: flex;
+  gap: var(--sone-space-1);
+}
+
+.detail-image-tool {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: var(--sone-control);
+  block-size: var(--sone-control);
   border: 0;
-  border-radius: var(--sote-radius-md);
+  border-radius: var(--sote-radius-sm);
   /* Dunkel hinterlegt statt in Themenfarben: der Knopf liegt auf einem BILD,
      und ein Bild kann jede Farbe haben. Ein heller Grund mit dunkler Schrift
      wäre auf einem hellen Foto unlesbar — und umgekehrt. */
   background: rgb(0 0 0 / 55%);
   color: #fff;
-  font: inherit;
-  font-size: var(--sone-text-xs);
   cursor: pointer;
   opacity: 0;
 }
 
 /* Sichtbar beim Zeigen — und dauerhaft, wenn es DAS Titelbild ist: sonst
    müsste man jedes Bild anfahren, um herauszufinden, welches gerade gilt. */
-.detail-image-wrap:hover .detail-image-cover,
-.detail-image-cover:focus-visible,
-.detail-image-cover[aria-pressed="true"] {
+.detail-image-wrap:hover .detail-image-tool,
+.detail-image-tool:focus-visible,
+.detail-image-tool[aria-pressed="true"] {
   opacity: 1;
 }
 
+/* Das gewählte Titelbild traegt den Akzent — sonst sind zwei gleich
+   aussehende Zeichen nebeneinander keine Auskunft. */
+.detail-image-tool[aria-pressed="true"] {
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+
 @media (hover: none) {
-  .detail-image-cover { opacity: 1; }
+  .detail-image-tool { opacity: 1; }
 }
 
 /*

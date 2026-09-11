@@ -89,6 +89,21 @@ export function CheckIcon(props: SVGProps<SVGSVGElement>): ReactElement {
 }
 
 /**
+ * Ein Auge — ansehen statt herunterladen.
+ *
+ * Im übernommenen Satz gibt es keines: SONE zeigt seine Bilder im Dokument und
+ * braucht keinen Vorschau-Knopf.
+ */
+export function EyeIcon(props: SVGProps<SVGSVGElement>): ReactElement {
+  return (
+    <svg {...base(props)}>
+      <path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  );
+}
+
+/**
  * Ein Kreuz zum Schliessen.
  *
  * Im übernommenen Satz gibt es keines — SONE schliesst seine Spalte über den
