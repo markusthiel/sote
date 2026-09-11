@@ -534,9 +534,22 @@ export function App() {
                 // Heute aus nichts.
                 markRoute(landing, projects, route)
               : id === 'workspaces'
-                ? // Der Bereich hat jetzt einen Inhalt und ist darum eine
-                  // eigene Route statt der Platzhalterseite.
-                  { kind: 'workspaces', section: 'alle' }
+                ? /*
+                   * Der Bereich landet auf ÜBERALL und nicht auf der Liste der
+                   * Bereiche.
+                   *
+                   * GEMELDET: „Ich finde den Bereich nicht." Er stand in der
+                   * Abschnittsliste — auf dem Rechner links, auf dem Telefon
+                   * hinter der Leiste, die man erst aufmachen muss. Ein Ort,
+                   * den man nur findet, wenn man ihn schon kennt, ist keiner.
+                   *
+                   * Und es ist auch die richtige Landung: wer auf „Workspaces"
+                   * tippt, will meistens wissen, was offen ist — die Liste der
+                   * Bereiche beantwortet „wohin wechseln", und das ist die
+                   * seltenere Frage, sobald es drei sind. Sie steht einen Tipp
+                   * weiter.
+                   */
+                  { kind: 'workspaces', section: 'ueberall' }
                 : id === 'search'
                   ? /*
                      * Zur SUCHE, nicht auf eine Platzhalterseite.
@@ -1135,9 +1148,22 @@ export function App() {
                 // Heute aus nichts.
                 markRoute(landing, projects, route)
               : id === 'workspaces'
-                ? // Der Bereich hat jetzt einen Inhalt und ist darum eine
-                  // eigene Route statt der Platzhalterseite.
-                  { kind: 'workspaces', section: 'alle' }
+                ? /*
+                   * Der Bereich landet auf ÜBERALL und nicht auf der Liste der
+                   * Bereiche.
+                   *
+                   * GEMELDET: „Ich finde den Bereich nicht." Er stand in der
+                   * Abschnittsliste — auf dem Rechner links, auf dem Telefon
+                   * hinter der Leiste, die man erst aufmachen muss. Ein Ort,
+                   * den man nur findet, wenn man ihn schon kennt, ist keiner.
+                   *
+                   * Und es ist auch die richtige Landung: wer auf „Workspaces"
+                   * tippt, will meistens wissen, was offen ist — die Liste der
+                   * Bereiche beantwortet „wohin wechseln", und das ist die
+                   * seltenere Frage, sobald es drei sind. Sie steht einen Tipp
+                   * weiter.
+                   */
+                  { kind: 'workspaces', section: 'ueberall' }
                 : id === 'search'
                   ? /*
                      * Zur SUCHE, nicht auf eine Platzhalterseite.
