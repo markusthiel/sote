@@ -2703,10 +2703,28 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex]:focus-vi
     z-index: 25;
   }
 
-  .foot-slot {
+  /*
+   * Das Konto sitzt wie jeder andere Eintrag der Leiste.
+   *
+   * GEMELDET mit Bild: „Der Button DU ist verschoben auf dem mobilen Menü."
+   *
+   * Er war es: die anderen sechs stehen als Zeichen ÜBER ihrer Beschriftung,
+   * das Konto hatte Gesicht und Wort NEBENEINANDER — die Form der
+   * Seitenleiste, aus der das Bauteil stammt. In einer Reihe von sieben fällt
+   * der eine auf, der anders gebaut ist, und zwar als Fehler und nicht als
+   * Absicht.
+   *
+   * Dieselbe REGEL und keine zweite mit denselben Zahlen: der Wächter hat
+   * meinen ersten Versuch abgelehnt, weil er 3 und 8.5 ein zweites Mal
+   * hinschrieb. Zwei Stellen mit derselben Zahl sind zwei Stellen, die
+   * auseinanderlaufen.
+   */
+  .foot-slot,
+  .foot-account .sidebar-account {
     display: flex;
     flex-direction: column;
     align-items: center;
+    justify-content: center;
     gap: 3px;
     color: var(--text-muted);
     position: relative;
@@ -2717,7 +2735,8 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex]:focus-vi
     color: var(--text);
   }
 
-  .foot-slot .t {
+  .foot-slot .t,
+  .foot-account .sidebar-account-name {
     font-family: var(--sote-mono);
     font-size: 8.5px;
   }
@@ -3480,8 +3499,28 @@ select.target { }
  */
 
 @media (max-width: 799px) {
+  /*
+   * AUF DEM TELEFON: FESTE HÖHE.
+   *
+   * GEMELDET: „Jeder Tab hat eine andere Höhe, weil unterschiedlich viel
+   * Inhalt … Wenn das Menü weiter unten bleibt, dann sollte es eine Höhe
+   * haben, damit sich nicht immer alles verschiebt."
+   *
+   * Genau so. Vorher wuchs die Spalte mit ihrem Inhalt, und die Liste darüber
+   * sprang bei jedem Reiterwechsel — man wechselt von „Eigenschaften" zu
+   * „Teilaufgaben" und die Aufgabe, die man gerade angesehen hat, ist
+   * woanders.
+   *
+   * 58 % der Höhe: etwas mehr als die Hälfte, weil die Spalte der Ort ist, an
+   * dem man gerade arbeitet — und genug Rest, dass über ihr drei bis vier
+   * Zeilen stehen und man weiterklicken kann, ohne sie zu schliessen. Das ist
+   * der Vorteil dieser Bauform gegenüber SONEs Vollbild, und den soll sie
+   * behalten.
+   */
   .detail {
     width: 100vw;
+    block-size: 58vh;
+    flex: none;
     padding-bottom: calc(var(--sote-bar) + 24px);
   }
 }
@@ -6140,8 +6179,25 @@ label.btn {
 
 /* In der Fußleiste auf dem Telefon: das Menü öffnet nach OBEN und rechts —
    nach rechts hinaus wäre außerhalb des Bildschirms. Der Name „Du" bleibt. */
+/*
+ * Das Konto sitzt wie jeder andere Eintrag der Leiste.
+ *
+ * GEMELDET mit Bild: „Der Button DU ist verschoben auf dem mobilen Menü."
+ *
+ * Er war es: die anderen sechs stehen als Zeichen ÜBER ihrer Beschriftung,
+ * das Konto hatte Gesicht und Wort NEBENEINANDER — die Form der Seitenleiste,
+ * aus der das Bauteil stammt. In einer Reihe von sieben fällt der eine auf,
+ * der anders gebaut ist, und zwar als Fehler und nicht als Absicht.
+ *
+ * Also dieselbe Form: Gesicht oben, Wort darunter, in derselben Schmalschrift
+ * und Grösse wie die übrigen.
+ */
 .foot-account .sidebar-account-name { display: inline; }
-.foot-account .sidebar-account { inline-size: auto; padding-inline: var(--sone-space-2); }
+
+.foot-account .sidebar-account {
+  inline-size: auto;
+  padding-inline: var(--sone-space-2);
+}
 .foot-account .sidebar-account-menu {
   inset-block-end: calc(100% + var(--sone-space-2));
   inset-inline-start: auto;
