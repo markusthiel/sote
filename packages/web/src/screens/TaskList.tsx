@@ -23,6 +23,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 
 import { useRowDrag } from '../hooks/useRowDrag.js';
 import { useNudge } from '../hooks/useNudge.js';
+import { useOpenTasks } from '../hooks/useOpenTasks.js';
 import { api, ApiError, type Project, type Task, type TaskPatch } from '../api.js';
 import { HandleMenu } from '../components/HandleMenu.js';
 import { QuickAdd } from '../components/QuickAdd.js';
@@ -105,18 +106,17 @@ export function TaskList({
   /** Die Unteraufgaben, nach Elternteil — kommt mit der Liste. */
   const [children, setChildren] = useState<Record<string, Task[]>>({});
   /**
-   * Welche Aufgaben AUFGEKLAPPT sind.
+   * Welche Aufgaben aufgeklappt sind — gemerkt über das Neuladen hinweg.
    *
-   * Aufgeklappt und nicht zugeklappt gemerkt — anders als beim Projektbaum.
-   * Dort ist der Normalzustand „offen", weil ein Baum die Struktur zeigt;
-   * hier ist er „zu", weil eine Liste die Arbeit zeigt und fünf aufgeklappte
-   * Aufgaben eine Liste von dreißig Zeilen machen, von denen zwanzig
-   * Kleinkram sind.
+   * GEMELDET: „Der Offen- und Geschlossen-Status einer Aufgabe mit
+   * Unteraufgaben sollte gespeichert bleiben bei Reload."
    *
-   * Nicht gespeichert: es ist eine Handbewegung und keine Einstellung. Was
-   * dauerhaft gilt, ist die Anzeigeform (Migration 0028).
+   * Ich hatte das Gegenteil begründet („eine Handbewegung, keine
+   * Einstellung") und dabei zwei Sachen verwechselt: eine Handbewegung ist das
+   * ÖFFNEN, der Zustand danach ist eine Auskunft darüber, woran man arbeitet.
+   * Die Begründung steht jetzt in `useOpenTasks`.
    */
-  const [open_, setOpen] = useState<ReadonlySet<string>>(new Set());
+  const { open: open_, toggle: toggleOpen } = useOpenTasks();
   const [pending, setPending] = useState<readonly Pending[]>([]);
   const [notice, setNotice] = useState<string | undefined>(undefined);
   const [unknownProject, setUnknownProject] = useState<string | null>(null);
@@ -609,14 +609,7 @@ export function TaskList({
               className="task-twisty"
               aria-expanded={offen}
               aria-label={`${task.title} ${offen ? 'zuklappen' : 'aufklappen'}`}
-              onClick={() =>
-                setOpen((war) => {
-                  const next = new Set(war);
-                  if (next.has(task.id)) next.delete(task.id);
-                  else next.add(task.id);
-                  return next;
-                })
-              }
+              onClick={() => toggleOpen(task.id)}
             >
               <span aria-hidden="true">▸</span>
             </button>
