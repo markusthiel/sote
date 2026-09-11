@@ -751,13 +751,32 @@ export function ProjectTree({
       ...(closed.has(p.id) ? [] : rows(p.id, depth + 1)),
       ...(adding !== null && adding.parentId === p.id
         ? [
+            /*
+             * GEMELDET mit Bild: „Neue Liste hinzufügen in Unterordner ist
+             * verschoben."
+             *
+             * Zwei Fehler auf einmal, und beide kamen daher, dass das Feld
+             * KEINE Zeile war, sondern nur ein Eingabefeld zwischen Zeilen:
+             *
+             * 1. `.tree-rename` trägt `flex: 1` — gedacht für das Umbenennen,
+             *    das IN einer Zeile sitzt. Ohne Zeile drumherum gibt es nichts
+             *    zu strecken, also nahm es die volle Breite der Leiste und
+             *    ragte links über die Namen hinaus. Genau das im Bild.
+             * 2. Die Einrückung rechnete mit 14 pro Ebene, die Zeilen daneben
+             *    mit 18. Zwei Zahlen für eine Treppe.
+             *
+             * Jetzt eine echte `tree-row` mit derselben Rechnung wie ihre
+             * Geschwister. Die Zahl steht damit an zwei Stellen statt an drei
+             * — eine gemeinsame Konstante wäre besser, aber die gehört in den
+             * Durchgang, der auch die Zeilen selbst anfasst.
+             */
+            <div className="tree-row" key={`add-${p.id}`}>
             <input
-              key={`add-${p.id}`}
               className="tree-rename"
               autoFocus
               placeholder={adding.kind === 'folder' ? 'Name des Unterordners' : 'Name des Projekts'}
               aria-label={adding.kind === 'folder' ? 'Name des Unterordners' : 'Name des Projekts'}
-              style={{ marginInlineStart: (depth + 1) * 14 }}
+              style={{ marginInlineStart: (depth + 1) * 18 }}
               onBlur={(e) => {
                 const name = e.target.value.trim();
                 const kind = adding.kind;
@@ -771,7 +790,8 @@ export function ProjectTree({
                   e.currentTarget.blur();
                 }
               }}
-            />,
+            />
+            </div>,
           ]
         : []),
     ]);
@@ -822,6 +842,7 @@ export function ProjectTree({
       )}
 
       {adding !== null && adding.parentId === null ? (
+        <div className="tree-row">
         <input
           className="tree-rename"
           autoFocus
@@ -841,6 +862,7 @@ export function ProjectTree({
             }
           }}
         />
+        </div>
       ) : null}
     </>
   );

@@ -441,6 +441,29 @@ body,
   height: 100%;
 }
 
+/*
+ * Verweise.
+ *
+ * GEMELDET mit Bild: „Momentan ist alles unterstrichen, das muss weg."
+ *
+ * MEIN FEHLER VON GESTERN, und ein lehrreicher: die Zeilenmitte im Baum wurde
+ * vom Knopf zum Link, damit sie sich ziehen lässt — und SOTE hatte, anders als
+ * SONE, nie eine Grundregel für `a`. Also erbte jede Baumzeile die Vorgabe des
+ * Browsers: unterstrichen und in Browserblau. Im Typecheck unsichtbar, in den
+ * Tests unsichtbar, im ersten Blick auf die Seite sofort da.
+ *
+ * SONEs Regel, übernommen: ohne Strich, und erst beim Zeigen einer. Ein
+ * Stylesheet, das ein Element benutzt, für das es keine Regel hat, benutzt die
+ * Regeln von jemand anderem.
+ */
+a {
+  color: var(--accent-text);
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: underline;
+}
+
 body {
   background: var(--page);
   color: var(--text);
@@ -4079,6 +4102,10 @@ label.btn {
   white-space: nowrap;
 }
 
+/* Der Baum faerbt und unterstreicht selbst nicht: eine Seitenleiste voller
+   unterstrichener Namen liest sich als Fussnotenapparat. Die Grundregel oben
+   nimmt den Strich schon weg; hier steht sie noch einmal fuer den Zeigen-Fall,
+   den die Grundregel gerade setzt. */
 .tree-link:hover { background: var(--surface-hover); text-decoration: none; }
 .tree-link[aria-current='page'] { background: var(--surface-hover); font-weight: 600; }
 
