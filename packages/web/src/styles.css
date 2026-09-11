@@ -3535,8 +3535,21 @@ select.target { }
     justify-content: center;
     position: relative;
     flex: none;
+    /* Die volle Tippfläche hoch, obwohl der Streifen dünn ist: getroffen
+       werden muss der GRIFF und nicht der Strich. */
+    min-block-size: var(--sone-tap);
     padding: var(--sone-space-2);
     border-bottom: 1px solid var(--line);
+    /* Ohne das nimmt der Browser die senkrechte Bewegung für sich und rollt
+       die Seite, während man zieht. */
+    touch-action: none;
+    cursor: grab;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  .detail-grab:active {
+    cursor: grabbing;
   }
 
   /* Der Streifen wie an jeder Schublade dieser Art: er sagt „das hier ist eine
@@ -3550,9 +3563,24 @@ select.target { }
 
   /* Das Kreuz rechts daneben — auf derselben Höhe, damit die Fläche mit einer
      Zeile beginnt und nicht mit zweien. */
+  /*
+   * Der Schliessen-Knopf in voller Tippgrösse.
+   *
+   * GEMELDET: „Der Button zum Schliessen ist ein bisschen sehr klein geraten."
+   * Er hatte die Form der Kopfleisten-Knöpfe, und die sind für einen Zeiger
+   * gemacht. Hier zielt ein Finger, und der braucht die volle Fläche — dieselbe
+   * Regel wie an jedem anderen Knopf auf dem Telefon.
+   */
   .detail-grab-close {
     position: absolute;
     inset-inline-end: var(--sone-space-2);
+    inline-size: var(--sone-tap);
+    block-size: var(--sone-tap);
+  }
+
+  .detail-grab-close svg {
+    inline-size: 20px;
+    block-size: 20px;
   }
 
   /* Und der Knopf in der Kopfleiste verschwindet: zwei Wege, dieselbe Fläche
@@ -3565,6 +3593,10 @@ select.target { }
     width: 100vw;
     block-size: 58vh;
     flex: none;
+    /* Der Rücksprung, wenn man loslässt, ohne weit genug gezogen zu haben.
+       Während des Ziehens steht am Element `transition: none` — der Finger
+       soll nichts hinter sich herziehen. */
+    transition: transform 160ms ease-out;
     padding-bottom: calc(var(--sote-bar) + 24px);
   }
 }

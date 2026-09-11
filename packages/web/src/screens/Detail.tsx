@@ -42,6 +42,7 @@ import {
 import { AudioIcon, CloseIcon, EyeIcon } from '../components/viewIcons.js';
 import { webVariant } from '../lib/webVariant.js';
 import { FileModal, kindName, kindOf, type FileKind } from '../components/FileModal.js';
+import { useSheetDrag } from '../hooks/useSheetDrag.js';
 import { useDetailTab } from '../hooks/useDetailTab.js';
 import { whenOptions } from '../components/HandleMenu.js';
 import { whenLabel } from '../dates.js';
@@ -281,6 +282,8 @@ export function Detail({
   } | null>(null);
   /** Ob gerade etwas über dem Feld schwebt. */
   const [ueber, setUeber] = useState(false);
+  /** Die Fläche am Griff nach unten ziehen — nur auf dem Telefon sichtbar. */
+  const zug = useSheetDrag(onClose);
   /*
    * Die Leute des Arbeitsbereichs, einmal geholt.
    *
@@ -478,7 +481,12 @@ export function Detail({
   const bilder = data.files.filter((f) => f.mimeType.startsWith('image/'));
 
   return (
-    <aside className="detail" aria-label="Aufgabe im Detail">
+    <aside
+      ref={zug.sheet}
+      style={zug.style}
+      className="detail"
+      aria-label="Aufgabe im Detail"
+    >
       {/*
         Der Titel steht ÜBER den Reitern und nicht in einem davon.
 
@@ -515,7 +523,15 @@ export function Detail({
         Breitenabfrage in JavaScript wäre eine zweite Antwort auf „wie breit
         ist es" — und die beiden laufen beim ersten Drehen auseinander.
       */}
-      <div className="detail-grab">
+      <div className="detail-grab" {...zug.handlers}>
+        {/*
+          Der Streifen ist jetzt ein GRIFF: nach unten ziehen schliesst.
+
+          Gewünscht: „Wenn wir jetzt schon den Anfasser in der Mitte oben
+          haben, dann sollte er auch dragbar sein." Ein Streifen, der aussieht
+          wie ein Griff und keiner ist, ist ein Versprechen, das die Fläche
+          nicht hält.
+        */}
         <span className="detail-grab-bar" aria-hidden="true" />
         <button
           type="button"
