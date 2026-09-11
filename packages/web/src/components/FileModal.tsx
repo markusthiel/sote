@@ -35,7 +35,7 @@ import { useEffect, useState } from 'react';
 /** Wie viel Text höchstens gezeigt wird, bevor abgeschnitten wird. */
 const MAX_TEXT = 200_000;
 
-export type FileKind = 'image' | 'pdf' | 'text' | 'other';
+export type FileKind = 'image' | 'pdf' | 'text' | 'video' | 'audio' | 'other';
 
 /**
  * Woran erkannt wird, was etwas ist.
@@ -53,6 +53,16 @@ export function kindOf(mimeType: string): FileKind {
   const t = mimeType.toLowerCase();
   if (t.startsWith('image/')) return 'image';
   if (t === 'application/pdf') return 'pdf';
+  /*
+   * GEMELDET: „Videos können nicht angezeigt werden … Audio ebenfalls. Dafür
+   * bitte Player."
+   *
+   * Der Browser bringt beide mit — `<video controls>` und `<audio controls>`
+   * sind vollständige Abspieler, mit Lautstärke, Fortschritt und Vollbild. Es
+   * gab sie hier nur nicht, weil die Liste sie nicht kannte.
+   */
+  if (t.startsWith('video/')) return 'video';
+  if (t.startsWith('audio/')) return 'audio';
   if (
     t.startsWith('text/') ||
     t === 'application/json' ||
@@ -80,10 +90,10 @@ export function kindName(mimeType: string): string {
   if (art === 'image') return 'Bild';
   if (art === 'pdf') return 'PDF';
   if (art === 'text') return 'Text';
+  if (art === 'video') return 'Video';
+  if (art === 'audio') return 'Audio';
   const t = mimeType.toLowerCase();
   if (t.includes('zip') || t.includes('tar') || t.includes('compress')) return 'Archiv';
-  if (t.startsWith('audio/')) return 'Audio';
-  if (t.startsWith('video/')) return 'Video';
   return 'Datei';
 }
 
@@ -99,6 +109,18 @@ export function FileModal({
   onClose: () => void;
 }) {
   const art = kindOf(mimeType);
+  /*
+   * ZEIGEN statt speichern.
+   *
+   * Der Server liefert jeden Anhang mit `content-disposition: attachment` —
+   * die richtige Vorgabe, denn eine hochgeladene HTML-Datei darf nicht im
+   * Fenster dieser Anwendung laufen. `?inline=1` bittet um das Gegenteil und
+   * bekommt es nur für Arten, die nichts ausführen können.
+   *
+   * Ein `<img>` braucht das nicht (es hält sich nicht an diese Kopfzeile) —
+   * darum gingen Bilder von Anfang an und ein PDF nicht.
+   */
+  const zeigen = `${href}${href.includes('?') ? '&' : '?'}inline=1`;
   const [text, setText] = useState<string | undefined>(undefined);
   const [fehler, setFehler] = useState(false);
 
@@ -159,13 +181,26 @@ export function FileModal({
         <div className="file-modal-body">
           {art === 'image' ? (
             <img src={href} alt={filename} />
+          ) : art === 'video' ? (
+            /*
+             * Die Abspieler des Browsers, mit allem, was sie mitbringen. Ein
+             * eigener wäre mehr Arbeit und weniger Bedienung: Tastatur,
+             * Vollbild, Geschwindigkeit und Untertitel sind dort schon drin.
+             *
+             * `preload="metadata"`: die Länge und das erste Bild reichen zum
+             * Öffnen. Ein ganzes Video zu laden, das vielleicht niemand
+             * abspielt, ist die teuerste Art, einen Kasten zu füllen.
+             */
+            <video src={zeigen} controls preload="metadata" />
+          ) : art === 'audio' ? (
+            <audio src={zeigen} controls preload="metadata" />
           ) : art === 'pdf' ? (
             /*
              * `<object>` und nicht `<iframe>`: es kennt einen Rückfall für den
              * Fall, dass der Browser kein PDF zeichnen kann, und der Rückfall
              * ist hier der einzige ehrliche — ein Link auf die Datei.
              */
-            <object data={href} type="application/pdf">
+            <object data={zeigen} type="application/pdf">
               <p className="muted small">
                 Dieser Browser zeigt keine PDF an.{' '}
                 <a href={href} download={filename}>

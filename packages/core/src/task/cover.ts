@@ -103,3 +103,40 @@ export function isTaskCover(value: unknown): boolean {
   if (raw['color'] !== undefined && typeof raw['color'] !== 'string') return false;
   return raw['image'] !== undefined || raw['color'] !== undefined;
 }
+
+/**
+ * Welche Arten der Browser im eigenen Fenster zeigen DARF.
+ *
+ * GEMELDET: „Wenn ich ein PDF hochlade und dann auf Ansehen klicke, geht das
+ * Modal auf und dann startet doch wieder der Download."
+ *
+ * Die Ursache ist eine Kopfzeile: der Server liefert jeden Anhang mit
+ * `content-disposition: attachment`, und das heisst „speichern, nicht zeigen".
+ * Ein `<img>` kümmert sich nicht darum — darum gingen Bilder —, ein `<object>`
+ * mit einem PDF schon.
+ *
+ * ## Warum nicht einfach `inline` für alles
+ *
+ * Weil `attachment` dort kein Versehen war, sondern der Grund, aus dem es
+ * dasteht: eine hochgeladene HTML-Datei, die der Browser IM Fenster dieser
+ * Anwendung öffnet, läuft unter unserer Adresse und kann an die Sitzung. Das
+ * gilt für `text/html` und für `image/svg+xml`, das ein Dokument mit Skript
+ * sein kann, sobald es nicht in einem `<img>` steckt.
+ *
+ * Also eine LISTE dessen, was gezeigt werden darf, und nicht eine Liste des
+ * Verbotenen: was morgen dazukommt, ist zuerst verboten und wird geprüft,
+ * bevor es erlaubt wird. Andersherum wäre jede neue Art erlaubt, bis jemand
+ * merkt, dass sie es nicht sein sollte.
+ */
+export function isInlineSafe(mimeType: string): boolean {
+  const t = mimeType.toLowerCase();
+  // SVG ausdrücklich nicht: als `<img>` harmlos, als Dokument ein Skriptträger.
+  if (t === 'image/svg+xml') return false;
+  if (t.startsWith('image/')) return true;
+  if (t === 'application/pdf') return true;
+  if (t.startsWith('video/')) return true;
+  if (t.startsWith('audio/')) return true;
+  // Reiner Text ja, HTML nein — und `text/*` allein schliesst HTML ein.
+  if (t === 'text/plain' || t === 'text/csv' || t === 'text/markdown') return true;
+  return false;
+}

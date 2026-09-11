@@ -9,7 +9,7 @@
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 
-import { isOwnFile, isTaskCover, readTaskCover } from '../src/task/cover.js';
+import { isInlineSafe, isOwnFile, isTaskCover, readTaskCover } from '../src/task/cover.js';
 
 const ANHANG = '/api/tasks/11111111-1111-4111-8111-111111111111/files/22222222-2222-4222-8222-222222222222';
 
@@ -92,4 +92,34 @@ test('ein Abruf mit Arbeitsbereich ist kein Weg', () => {
    */
   assert.equal(isOwnFile(`${ANHANG}?workspace=33333333-3333-4333-8333-333333333333`), false);
   assert.equal(isTaskCover({ image: `${ANHANG}?workspace=x` }), false);
+});
+
+test('nur harmlose Arten duerfen im Fenster gezeigt werden', () => {
+  /*
+   * GEMELDET: „Wenn ich ein PDF hochlade und dann auf Ansehen klicke, geht das
+   * Modal auf und dann startet doch wieder der Download."
+   *
+   * Die Ursache war `content-disposition: attachment` fuer JEDEN Anhang — die
+   * richtige Vorgabe, denn eine hochgeladene HTML-Datei, die der Browser im
+   * Fenster dieser Anwendung oeffnet, laeuft unter unserer Adresse und kann an
+   * die Sitzung.
+   *
+   * Also eine Liste des ERLAUBTEN und nicht des Verbotenen: was morgen
+   * dazukommt, ist zuerst verboten und wird geprueft, bevor es erlaubt wird.
+   */
+  for (const t of ['image/png', 'application/pdf', 'video/mp4', 'audio/mpeg', 'text/plain']) {
+    assert.equal(isInlineSafe(t), true, t);
+  }
+});
+
+test('HTML und SVG duerfen es nicht', () => {
+  /*
+   * HTML ist der Fall, fuer den die Kopfzeile ueberhaupt dasteht. SVG ist der
+   * unauffaellige: in einem `<img>` harmlos, als Dokument ein Skripttraeger —
+   * und „Ansehen" macht daraus ein Dokument.
+   */
+  assert.equal(isInlineSafe('text/html'), false);
+  assert.equal(isInlineSafe('image/svg+xml'), false);
+  assert.equal(isInlineSafe('application/xhtml+xml'), false);
+  assert.equal(isInlineSafe('application/octet-stream'), false);
 });

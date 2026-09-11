@@ -8,7 +8,7 @@
 
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 
-import { AVATAR_MAX_BYTES, isAvatarType, describe as describeRecurrence, isListLevel, isZone, readIcon, readTaskCover } from '@sote/core';
+import { AVATAR_MAX_BYTES, isAvatarType, describe as describeRecurrence, isListLevel, isZone, readIcon, readTaskCover, isInlineSafe } from '@sote/core';
 import type { Pool } from 'pg';
 
 import { openSession, signIn, signOut, userOfToken } from './auth.js';
@@ -2267,15 +2267,27 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
       return;
     }
     /*
-     * `attachment` und ein gesetzter Name: ohne das öffnet der Browser eine
-     * hochgeladene HTML-Datei IM Kontext dieser Anwendung, und damit kann sie
-     * an die Sitzung. `nosniff` dazu, damit er den Typ nicht selbst errät.
+     * `attachment` ist die VORGABE, und sie hat einen Grund: ohne sie öffnet
+     * der Browser eine hochgeladene HTML-Datei IM Kontext dieser Anwendung,
+     * und damit kann sie an die Sitzung. `nosniff` dazu, damit er den Typ
+     * nicht selbst errät.
+     *
+     * `?inline=1` bittet um das Gegenteil — und bekommt es nur für Arten, die
+     * nichts ausführen können (`isInlineSafe`). Gemeldet war der Fall, der das
+     * nötig machte: ein PDF in der Vorschau startete den Download, weil ein
+     * `<object>` sich an diese Kopfzeile hält (ein `<img>` tut es nicht, darum
+     * gingen Bilder).
+     *
+     * Die BITTE entscheidet nicht, die Art entscheidet: wer `?inline=1` an
+     * eine HTML-Datei hängt, bekommt trotzdem `attachment`.
      */
+    const inline =
+      url.searchParams.get('inline') === '1' && isInlineSafe(got.file.mimeType);
     res.writeHead(200, {
       'content-type': got.file.mimeType,
       'content-length': String(got.bytes.length),
       'x-content-type-options': 'nosniff',
-      'content-disposition': `attachment; filename*=UTF-8''${encodeURIComponent(got.file.filename)}`,
+      'content-disposition': `${inline ? 'inline' : 'attachment'}; filename*=UTF-8''${encodeURIComponent(got.file.filename)}`,
     });
     res.end(got.bytes);
     return;

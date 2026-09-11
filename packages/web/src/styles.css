@@ -1251,6 +1251,34 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex]:focus-vi
   inset-inline-end: calc(var(--sone-space-3) * -1);
 }
 
+/*
+ * Der Menüknopf einer Spalte ist IMMER da.
+ *
+ * GEMELDET mit Bild: „Im Kanban fehlen jetzt die Menü-Buttons bei den Spalten
+ * … Ich kann die Buttons aber nur nicht sehen, sie sind da."
+ *
+ * Genau so: `.dots` steht auf `opacity: 0` und wird erst sichtbar, wenn die
+ * ZEILE angefahren wird (`.task:hover .dots`). In einer Aufgabenliste ist das
+ * richtig — dreissig Zeilen mit je drei Punkten sind Unruhe. Ein Spaltenkopf
+ * ist aber keine Zeile, es gibt drei davon statt dreissig, und der Regel fehlt
+ * hier schlicht der Vorfahr, der sie einschaltet.
+ */
+.board-head .dots {
+  opacity: 1;
+  /*
+   * Und ganz nach rechts, auch ohne Merkmal daneben.
+   *
+   * Gemeldet: „Bei der mittleren Spalte, die keine gesonderten Tags wie
+   * Eingang oder Erledigt hat, ist der Button auch verschoben und nicht am
+   * Ende der Spalten-Zeile." Das `margin-inline-start: auto` sass nämlich am
+   * MERKMAL — gab es keines, schob nichts.
+   *
+   * Beide tragen es jetzt: der erste freie Raum geht an das Merkmal, der Rest
+   * an den Knopf. Ohne Merkmal bekommt der Knopf den ganzen.
+   */
+  margin-inline-start: auto;
+}
+
 .board-head {
   display: flex;
   /* Der Kopf ist der Anfasser der Spalte: in der Spalte liegen die Karten, und
@@ -1452,6 +1480,19 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex]:focus-vi
 .file-modal-body object {
   inline-size: 100%;
   block-size: 100%;
+}
+
+/* Der Abspieler nimmt die Flaeche, die da ist — ein Video in Briefmarkengroesse
+   in einem Fenster von 960 Pixeln waere eine seltsame Antwort auf „ansehen". */
+.file-modal-body video {
+  max-inline-size: 100%;
+  max-block-size: 100%;
+}
+
+/* Ton hat keine Flaeche: die Leiste steht in der Mitte und nimmt die Breite,
+   aber nicht die Hoehe. */
+.file-modal-body audio {
+  inline-size: min(480px, 100%);
 }
 
 /* Text in Schmalschrift und mit Umbruch: eine Protokollzeile ist lang, und
