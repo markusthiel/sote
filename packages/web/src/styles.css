@@ -343,28 +343,24 @@
 }
 
 
-/* Dichte — wie in SONE, und mit derselben Begründung dort: wo ein Finger der
-   Zeiger ist, ist kompakt nicht kompakt. Nur die Größen gehen zurück, die
-   Abstände dürfen eng bleiben. */
-:root[data-density="compact"] {
-  --sone-space-5: 8px;
-  --sone-space-6: 12px;
-  --sone-space-7: 16px;
-  --sone-control-lg: 30px;
-}
-
-@media (pointer: coarse) {
-  :root[data-density="compact"] {
-    --sone-control-lg: 34px;
-  }
-}
-
-:root[data-density="comfortable"] {
-  --sone-space-5: 16px;
-  --sone-space-6: 24px;
-  --sone-space-7: 32px;
-  --sone-control-lg: 38px;
-}
+/*
+ * DIE DICHTE IST WEGGEFALLEN — sie war nie eingeschaltet.
+ *
+ * Hier standen drei Blöcke für `data-density="compact"` und `"comfortable"`,
+ * mitgekommen aus SONE. In SOTE setzt das Merkmal NIEMAND: es gibt keine
+ * Einstellung dafür, kein Bauteil schreibt es, und damit waren die drei Blöcke
+ * gültiges CSS ohne jede Wirkung.
+ *
+ * Gefunden von `check-data-hooks` beim ersten Lauf. Genau die Sorte, die kein
+ * Typecheck und kein Test sieht: ein Vertipper oder eine halbe Übernahme ist
+ * gültiges CSS, die Regel greift nur nie, und im Bild fehlt nichts, was man
+ * vermisst.
+ *
+ * Weggeräumt und nicht angeschlossen: die Dichte ist eine EINSTELLUNG, und die
+ * gehört entworfen (wohin, wer darf, was ist die Vorgabe) und nicht nebenbei
+ * verdrahtet, weil die Regeln schon dastehen. Wenn sie kommt, kommt sie mit
+ * ihrem Schalter — und dann sind das vier Zeilen.
+ */
 
 :root[data-theme="light"] {
   color-scheme: light;
