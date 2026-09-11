@@ -36,6 +36,7 @@
  */
 
 import { readLanding, type Landing } from './landing.js';
+import { readBoard, type Board } from './board.js';
 import { isListView, type ListView } from './listView.js';
 import { readReminders, type Reminders } from './reminders.js';
 import { readLook, type Look } from './theme.js';
@@ -104,6 +105,16 @@ export interface Settings {
    * führen, die bei jeder gelöschten Liste eine Waise behält.
    */
   readonly listView?: ListView;
+  /**
+   * Wie die Tafel aussieht — Tönung der Fertig-Spalte, ihre Farbe, die
+   * Spaltenbreite.
+   *
+   * Auf Arbeitsbereichs- und Instanzebene sinnvoll: die Tafel eines Vorhabens
+   * sieht für alle gleich aus. Sie ist der Gegenstand und nicht die Brille —
+   * dieselbe Grenze, die ADR-0028 zieht. Was jeder für sich wählt, ist die
+   * ANZEIGEFORM, und die steht woanders (Migration 0028).
+   */
+  readonly board?: Board;
 }
 
 /** Liest, was in der Datenbank steht — und lässt weg, was keinen Sinn ergibt. */
@@ -116,6 +127,7 @@ export function readSettings(value: unknown): Settings {
   const landing = readLanding(raw['landing']);
   const reminders = readReminders(raw['reminders']);
   const listView = isListView(raw['listView']) ? raw['listView'] : undefined;
+  const board = readBoard(raw['board']);
   return {
     ...(scheme === undefined ? {} : { scheme }),
     ...(zone === undefined ? {} : { zone }),
@@ -123,6 +135,7 @@ export function readSettings(value: unknown): Settings {
     ...(landing === undefined ? {} : { landing }),
     ...(reminders === undefined ? {} : { reminders }),
     ...(listView === undefined ? {} : { listView }),
+    ...(board === undefined ? {} : { board }),
   };
 }
 

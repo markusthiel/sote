@@ -1128,7 +1128,8 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex]:focus-vi
 }
 
 .board-column {
-  flex: 0 0 280px;
+  /* Die Breite kommt aus den Einstellungen; 280 ist der Rückfall. */
+  flex: 0 0 var(--board-column, 280px);
   border: 1px solid var(--line);
   border-radius: var(--sote-radius-md);
   background: var(--sunken);
@@ -1229,10 +1230,37 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex]:focus-vi
  * Akzentfarbe speziell für diese Spalte". Bis dahin ist es eine Vorgabe an
  * EINER Stelle statt einer Farbe an dreien.
  */
+/*
+ * Die drei Werte kommen aus den Einstellungen des Arbeitsbereichs
+ * (`core/look/board.ts`), und die Rückfälle stehen HIER — an der Stelle, an
+ * der gemischt wird.
+ *
+ * `--board-done-accent` fällt auf `--accent` zurück: „wie der Arbeitsbereich"
+ * ist eine eigene Antwort und nicht dieselbe Farbe, nochmal hingeschrieben.
+ * Bei der zweiten bliebe sie stehen, wenn der Akzent wechselt.
+ */
 .board-column[data-done="yes"] {
-  --board-done-tint: 7%;
-  background: color-mix(in srgb, var(--accent) var(--board-done-tint), var(--sunken));
-  border-color: color-mix(in srgb, var(--accent) 25%, var(--line));
+  background: color-mix(
+    in srgb,
+    var(--board-done-accent, var(--accent)) var(--board-done-tint, 7%),
+    var(--sunken)
+  );
+  border-color: color-mix(
+    in srgb,
+    var(--board-done-accent, var(--accent)) 25%,
+    var(--line)
+  );
+}
+
+/* Das Merkmal am Kopf trägt dieselbe Farbe — sonst sagt die Spalte in zwei
+   Tönen dasselbe. */
+.board-column[data-done="yes"] .board-done {
+  border-color: color-mix(
+    in srgb,
+    var(--board-done-accent, var(--accent)) 45%,
+    var(--line)
+  );
+  color: var(--board-done-accent, var(--accent-text));
 }
 
 /* Die Karten darin bleiben hell — sonst verschwindet der Unterschied
@@ -1334,7 +1362,7 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex]:focus-vi
 }
 
 .board-new {
-  flex: 0 0 280px;
+  flex: 0 0 var(--board-column, 280px);
 }
 
 .board-add {

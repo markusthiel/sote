@@ -130,7 +130,7 @@ export interface Task {
 }
 
 /** Was gilt, und wer was gesagt hat — beides in einer Antwort. */
-import type { Landing, ListView, Look, Right } from '@sote/core';
+import type { Board, Landing, ListView, Look, Right } from '@sote/core';
 
 interface Level {
   scheme?: 'system' | 'light' | 'dark';
@@ -146,6 +146,8 @@ interface Level {
    * Ort und hätte auf einer Ebene keinen Platz (Migration 0028).
    */
   listView?: ListView;
+  /** Wie die Tafel aussieht. Nur auf Arbeitsbereichs- und Instanzebene. */
+  board?: Board;
 }
 
 export interface SettingsAnswer {
@@ -170,6 +172,8 @@ export interface SettingsAnswer {
      * schlägt diese hier — aufgelöst wird in der Liste, wo beides vorliegt.
      */
     listView?: ListView | undefined;
+    /** Wie die Tafel aussieht — Arbeitsbereich über Instanz, Feld für Feld. */
+    board?: Board | undefined;
   };
   levels: {
     instance: Level;

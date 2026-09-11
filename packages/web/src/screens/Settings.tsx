@@ -37,11 +37,16 @@ import {
   resolveLook,
   themeFile,
   resolveSettings,
+  BOARD_TINTS,
+  BOARD_TINT_SAYS,
+  BOARD_WIDTHS,
+  BOARD_WIDTH_SAYS,
   LIST_VIEWS,
   LIST_VIEW_SAYS,
   SCHEMES,
   SURFACES,
   TREATMENTS,
+  type Board,
   type Landing,
   type Look,
   type Scheme,
@@ -91,6 +96,7 @@ export const WORKSPACE_SECTIONS = [
   { id: 'rollen', label: 'Rollen', hint: 'Was jemand darf' },
   { id: 'gruppen', label: 'Gruppen', hint: 'Leute zusammenfassen' },
   { id: 'schlagworte', label: 'Schlagwörter', hint: 'Richtigstellen und wegräumen' },
+  { id: 'tafel', label: 'Tafel', hint: 'Spalten und Fertig' },
   { id: 'weg', label: 'Mitnehmen und wegwerfen', hint: 'Export und Löschen' },
   { id: 'aussehen', label: 'Farben und Flächen', hint: 'Für alle Mitglieder' },
 ] as const;
@@ -476,6 +482,117 @@ export function Settings({
           ))}
         </div>
       </div>    </section>
+  );
+
+  /**
+   * Wie die Tafel aussieht.
+   *
+   * Eine GRUPPE und keine einzelne Farbe: gewünscht war „welche Tönung und
+   * Akzentfarbe speziell für diese Spalte", mit dem Zusatz „da folgen sicher
+   * noch mehr Einstellungen". Eine Einstellung allein bekäme einen Abschnitt,
+   * der für eine Sache zu groß und für die nächste zu klein wäre.
+   *
+   * Auf Arbeitsbereichs-Ebene und nicht je Person: die Tafel eines Vorhabens
+   * sieht für alle gleich aus — sie ist der Gegenstand und nicht die Brille
+   * (ADR-0028). Was jeder für sich wählt, ist die Anzeigeform, und die steht
+   * im Kopf der Liste.
+   */
+  const boardCard = (scope: 'workspace' | 'instance', board: Board) => (
+    <section className="settings-card">
+      <h2>Tafel</h2>
+      <p className="muted">
+        Gilt für alle Tafeln in diesem Arbeitsbereich. Welche Anzeigeform eine
+        Liste hat, wählt jeder für sich im Kopf der Liste.
+      </p>
+
+      <div className="settings-row">
+        <span className="settings-row-label">
+          <b>Fertig-Spalte</b>
+          <span>
+            Wie deutlich sie sich von den anderen abhebt. „Wie jede andere" ist
+            eine Wahl — wer zehn Spalten hat, will vielleicht keine
+            hervorgehoben.
+          </span>
+        </span>
+        <div className="settings-row-value">
+          <div className="set-choice" role="radiogroup" aria-label="Tönung der Fertig-Spalte">
+            {BOARD_TINTS.map((wahl) => (
+              <button
+                key={wahl}
+                type="button"
+                role="radio"
+                aria-checked={board.doneTint === wahl}
+                disabled={busy}
+                onClick={() => save(scope, { board: { ...board, doneTint: wahl } })}
+              >
+                {BOARD_TINT_SAYS[wahl]}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="settings-row">
+        <span className="settings-row-label">
+          <b>Farbe dafür</b>
+          <span>
+            Ohne Wahl die des Arbeitsbereichs — und dann wandert sie mit, wenn
+            der Akzent wechselt.
+          </span>
+        </span>
+        <div className="settings-row-value">
+          <div className="set-choice" role="radiogroup" aria-label="Farbe der Fertig-Spalte">
+            <button
+              type="button"
+              role="radio"
+              aria-checked={board.doneAccent === undefined}
+              disabled={busy}
+              onClick={() =>
+                save(scope, { board: { ...board, doneAccent: null } as never })
+              }
+            >
+              Wie der Akzent
+            </button>
+            {PALETTE.map((name) => (
+              <button
+                key={name}
+                type="button"
+                role="radio"
+                className="swatch-btn"
+                aria-label={name}
+                aria-checked={board.doneAccent === name}
+                disabled={busy}
+                style={{ background: `var(--sote-palette-${name})` }}
+                onClick={() => save(scope, { board: { ...board, doneAccent: name } })}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="settings-row">
+        <span className="settings-row-label">
+          <b>Spaltenbreite</b>
+          <span>Wie viele Spalten nebeneinander passen, bevor gerollt wird.</span>
+        </span>
+        <div className="settings-row-value">
+          <div className="set-choice" role="radiogroup" aria-label="Spaltenbreite">
+            {BOARD_WIDTHS.map((wahl) => (
+              <button
+                key={wahl}
+                type="button"
+                role="radio"
+                aria-checked={board.columnWidth === wahl}
+                disabled={busy}
+                onClick={() => save(scope, { board: { ...board, columnWidth: wahl } })}
+              >
+                {BOARD_WIDTH_SAYS[wahl]}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
   );
 
   const lookCard = (scope: 'workspace' | 'instance', look: Look) => (
@@ -1012,6 +1129,8 @@ export function Settings({
       ) : null}
 
       {/* ── Unter „Workspaces" ── */}
+      {section === 'ws-tafel' ? boardCard('workspace', data.levels.workspace.board ?? {}) : null}
+
       {section === 'ws-aussehen' ? (
         <>
           <section className="settings-card">

@@ -195,3 +195,41 @@ test('ein wirklich ungültiger Wert wird weiter abgelehnt', async () => {
     (e: unknown) => /nimmt diesen Wert nicht/.test((e as Error).message),
   );
 });
+
+test('die Tafel-Einstellung wird Feld für Feld gefüllt, nicht ersetzt', async () => {
+  /*
+   * Sonst würde ein Arbeitsbereich, der nur die Spaltenbreite setzt, die
+   * Tönung der Instanz mitwegwerfen. Dieselbe Regel wie bei `resolveLook` —
+   * eine Angabe ist keine Absage an alle anderen.
+   */
+  // Instanz und Bereich werden am Ende der Datei wieder geleert (siehe
+  // `after`), darum hier ohne eigenen Bereich.
+  await patchSettings(pool, 'instance', null, {
+    board: { doneTint: 'strong', doneAccent: 'orange' },
+  });
+  await patchSettings(pool, 'workspace', workspaceId, {
+    board: { columnWidth: 'wide' },
+  });
+  const out = await effectiveFor(pool, userId, workspaceId);
+  assert.deepEqual(out.effective.board, {
+    doneTint: 'strong',
+    doneAccent: 'orange',
+    columnWidth: 'wide',
+  });
+});
+
+test('der Arbeitsbereich schlägt die Instanz', async () => {
+  await patchSettings(pool, 'instance', null, { board: { doneTint: 'strong' } });
+  await patchSettings(pool, 'workspace', workspaceId, { board: { doneTint: 'none' } });
+  const out = await effectiveFor(pool, userId, workspaceId);
+  assert.equal(out.effective.board?.doneTint, 'none');
+});
+
+test('ohne jede Angabe bleibt die Tafel-Einstellung leer', async () => {
+  // Und nicht ein Objekt mit Vorgaben darin: „nichts gesagt" ist eine Antwort,
+  // und die Rückfälle stehen im Stylesheet.
+  await patchSettings(pool, 'instance', null, { board: null });
+  await patchSettings(pool, 'workspace', workspaceId, { board: null });
+  const out = await effectiveFor(pool, userId, workspaceId);
+  assert.equal(out.effective.board, undefined);
+});

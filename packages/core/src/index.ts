@@ -17,6 +17,7 @@ export * from './look/theme.js';
 export * from './look/contrast.js';
 export * from './look/landing.js';
 export * from './look/avatar.js';
+export * from './look/board.js';
 export * from './look/reminders.js';
 export * from './look/themeFile.js';
 export * from './task/rights.js';

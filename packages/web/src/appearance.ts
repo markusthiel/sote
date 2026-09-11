@@ -30,7 +30,14 @@
  * Editor, und die Regel ist dieselbe.
  */
 
-import { isScheme, lookAttributes, type Look, type Scheme } from '@sote/core';
+import {
+  boardProperties,
+  isScheme,
+  lookAttributes,
+  type Board,
+  type Look,
+  type Scheme,
+} from '@sote/core';
 import { useEffect } from 'react';
 
 /** Wo die Kopie liegt. Ein Name, damit sie nicht zweimal woanders steht. */
@@ -119,6 +126,30 @@ export function useScheme(scheme: Scheme | undefined): void {
  * entfernen ist der Fehler, bei dem eine Einstellung sich nicht mehr
  * zurücknehmen lässt — und den sieht man erst beim Zurücknehmen.
  */
+/**
+ * Wie die Tafel aussieht — an dieselbe Hülle wie das Aussehen.
+ *
+ * Getrennt von `useLook`, weil es eine andere Ebene ist: das Aussehen kommt aus
+ * Arbeitsbereich ÜBER Instanz und beschreibt die ganze Anwendung; die Tafel ist
+ * ein Teil davon und hat eigene Stufen. Zusammengelegt müsste `Look` von
+ * Spalten wissen.
+ *
+ * An der HÜLLE und nicht an `<html>`: die Werte mischen gegen `--accent`, und
+ * der steht dort — dieselbe Überlegung, die im Kommentar zur Tönung steht.
+ */
+export function useBoard(board: Board | undefined, node: HTMLElement | null): void {
+  useEffect(() => {
+    if (node === null) return undefined;
+    const properties = boardProperties(board);
+    for (const [key, value] of Object.entries(properties)) {
+      node.style.setProperty(key, value);
+    }
+    return () => {
+      for (const key of Object.keys(properties)) node.style.removeProperty(key);
+    };
+  }, [board, node]);
+}
+
 export function useLook(look: Look | undefined, node: HTMLElement | null): void {
   useEffect(() => {
     if (node === null) return undefined;

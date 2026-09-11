@@ -12,10 +12,10 @@
 
 import { useCallback, useEffect, useState } from 'react';
 
-import type { Landing, ListView, Look } from '@sote/core';
+import type { Board, Landing, ListView, Look } from '@sote/core';
 
 import { api, ApiError, type Me, type Project } from './api.js';
-import { useLook, useScheme } from './appearance.js';
+import { useBoard, useLook, useScheme } from './appearance.js';
 import { useSidebar } from './hooks/useSidebar.js';
 import { useSidebarWidth } from './hooks/useSidebarWidth.js';
 import { FootBar } from './components/FootBar.js';
@@ -356,6 +356,8 @@ export function App() {
    * die falsche Form, bevor die Antwort kommt.
    */
   const [workspaceListView, setWorkspaceListView] = useState<ListView | undefined>(undefined);
+  /** Wie die Tafel aussieht — gehört dem Arbeitsbereich, nicht der Person. */
+  const [board, setBoard] = useState<Board | undefined>(undefined);
   const [listViews, setListViews] = useState<{
     projects: Record<string, string>;
     places: Record<string, string>;
@@ -395,6 +397,7 @@ export function App() {
          */
         setLanding(s.effective.landing);
         setWorkspaceListView(s.effective.listView);
+        setBoard(s.effective.board);
         if (window.location.pathname === '/') go(landingRoute(s.effective.landing, projects));
       })
       .catch(() => undefined);
@@ -413,6 +416,7 @@ export function App() {
 
   useScheme(scheme);
   useLook(look, shell);
+  useBoard(board, shell);
 
   /*
    * Eine Freigabe braucht kein Konto — und wird darum VOR jeder Anmeldeprüfung

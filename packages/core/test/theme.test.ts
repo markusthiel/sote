@@ -15,6 +15,7 @@ import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 
 import { CORNERS, lookAttributes, readLook, SURFACES, TREATMENTS } from '../src/look/theme.js';
+import { boardProperties, readBoard } from '../src/look/board.js';
 
 test('die Vorgabe wird nicht gespeichert, auch wenn sie dasteht', () => {
   assert.deepEqual(readLook({ surfaces: { rail: 'follow' } }), {});
@@ -159,4 +160,55 @@ test('ohne gewählten Akzent wird nichts gesetzt', () => {
   const { properties } = lookAttributes({});
   assert.equal(properties['--accent-quiet'], undefined);
   assert.equal(properties['--accent-text'], undefined);
+});
+
+/* ── Wie die Tafel aussieht ──────────────────────────────────────────────── */
+
+test('die Stufen werden zu Anteilen, und „keine" ist eine davon', () => {
+  // Wörter statt Zahlen in der Datenbank: was eine Stufe bedeutet, entscheidet
+  // die Anwendung — ein gespeichertes „7" verlöre seinen Sinn, sobald jemand
+  // die Flächen anfasst.
+  assert.equal(boardProperties({ doneTint: 'none' })['--board-done-tint'], '0%');
+  assert.equal(boardProperties({ doneTint: 'soft' })['--board-done-tint'], '7%');
+  assert.equal(boardProperties({ doneTint: 'strong' })['--board-done-tint'], '16%');
+});
+
+test('ohne Farbe wird KEINE gesetzt', () => {
+  /*
+   * „Wie der Arbeitsbereich" ist eine eigene Antwort und nicht dieselbe Farbe,
+   * nochmal hingeschrieben: bei der zweiten bliebe sie stehen, wenn der Akzent
+   * wechselt. Der Rückfall steht im Stylesheet, dort wo gemischt wird.
+   */
+  assert.equal(boardProperties({ doneTint: 'soft' })['--board-done-accent'], undefined);
+  assert.equal(
+    boardProperties({ doneAccent: 'orange' })['--board-done-accent'],
+    'var(--sote-palette-orange)',
+  );
+  assert.equal(boardProperties({ doneAccent: '#e8590c' })['--board-done-accent'], '#e8590c');
+});
+
+test('ohne Einstellung wird gar nichts gesetzt', () => {
+  assert.deepEqual(boardProperties(undefined), {});
+  assert.deepEqual(boardProperties({}), {});
+});
+
+test('unbekannte Wörter zählen als nichts gesagt', () => {
+  // Dieselbe Regel wie überall in `settings.ts`: ein Wert aus einer künftigen
+  // Fassung bekommt die gewöhnliche Antwort und keine Tafel, die sich nicht
+  // entscheiden kann.
+  assert.equal(readBoard({ doneTint: 'grell' }), undefined);
+  assert.deepEqual(readBoard({ doneTint: 'soft', columnWidth: 'riesig' }), {
+    doneTint: 'soft',
+  });
+});
+
+test('eine Farbe, die kein Name und kein Hexwert ist, wird verworfen', () => {
+  /*
+   * Sonst wäre die Einstellung ein Weg, beliebiges CSS in ein Stylesheet zu
+   * schreiben — und sie darf jeder ändern, der `workspace.settings` hat.
+   */
+  assert.equal(readBoard({ doneAccent: 'red; background: url(x)' }), undefined);
+  assert.equal(readBoard({ doneAccent: 'var(--evil)' }), undefined);
+  assert.deepEqual(readBoard({ doneAccent: '#abc' }), { doneAccent: '#abc' });
+  assert.deepEqual(readBoard({ doneAccent: 'orange' }), { doneAccent: 'orange' });
 });

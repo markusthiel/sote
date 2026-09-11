@@ -33,7 +33,7 @@ import {
   type Right,
   type Settings,
 } from '@sote/core';
-import type { ListView } from '@sote/core';
+import type { Board, ListView } from '@sote/core';
 import type { Pool } from 'pg';
 
 import { queryOne, queryRows, withTransaction, type PoolClient } from './db.js';
@@ -198,6 +198,7 @@ export async function effectiveFor(
     look: ReturnType<typeof resolveLook>;
     landing: ReturnType<typeof resolveLanding>;
     listView: ListView | undefined;
+    board: Board | undefined;
   };
   levels: { instance: Settings; workspace: Settings; user: Settings };
 }> {
@@ -230,6 +231,17 @@ export async function effectiveFor(
        * Liste.
        */
       listView: levels.workspace.listView ?? levels.instance.listView,
+      /*
+       * Die Tafel: Arbeitsbereich über Instanz, Feld für Feld gefüllt.
+       *
+       * Nicht das ganze Objekt ersetzt — sonst würde ein Arbeitsbereich, der
+       * nur die Spaltenbreite setzt, die Tönung der Instanz mitwegwerfen.
+       * Dieselbe Regel wie bei `resolveLook`.
+       */
+      board:
+        levels.workspace.board === undefined && levels.instance.board === undefined
+          ? undefined
+          : { ...levels.instance.board, ...levels.workspace.board },
     },
     levels,
   };
