@@ -46,6 +46,7 @@ import {
 import { Maintenance } from './screens/Maintenance.js';
 import { People } from './screens/People.js';
 import { Groups } from './screens/Groups.js';
+import { Labels } from './screens/Labels.js';
 import { Roles } from './screens/Roles.js';
 import { WorkspaceExit } from './screens/WorkspaceExit.js';
 import { ShareScreen } from './screens/ShareScreen.js';
@@ -874,6 +875,8 @@ export function App() {
           <WorkspaceOverview workspaces={me.workspaces} current={workspace} />
         ) : route.kind === 'workspaces' && route.section === 'gruppen' ? (
           <Groups workspace={workspace} />
+        ) : route.kind === 'workspaces' && route.section === 'schlagworte' ? (
+          <Labels workspace={workspace} />
         ) : route.kind === 'workspaces' && route.section === 'weg' ? (
           <WorkspaceExit
             workspace={workspace}

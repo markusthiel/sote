@@ -95,6 +95,7 @@ import {
   type TrashKind,
 } from './tasks.js';
 import { search } from './search.js';
+import { LabelTrouble, labelsOfWorkspace, removeLabel, renameLabel } from './labels.js';
 import { counts, list, splitOverdue, type ViewId } from './views.js';
 
 const COOKIE = 'sote_session';
@@ -1134,6 +1135,57 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
    * nichts bewachte. Hier sind die Prüfungen, im selben Commit wie seine
    * Rückkehr (ADR-0087).
    */
+  /*
+   * ── Schlagwörter eines Arbeitsbereichs ───────────────────────────────────
+   *
+   * Vergeben werden sie an der Aufgabe; hier steht, was danach kommt:
+   * nachsehen, einen Tippfehler richtigstellen, ein totes wegräumen. Ohne das
+   * wäre ein Vokabular, das nur wachsen kann — und `unterwegs` neben
+   * `unterweg` bekäme niemand mehr zusammen.
+   *
+   * LESEN DARF JEDES MITGLIED. Die Liste sagt nichts, was die Suche nicht
+   * ohnehin zeigt; sie zu verstecken hieße, ein Wort geheim zu halten, das an
+   * jeder Zeile steht.
+   *
+   * ÄNDERN BRAUCHT `workspace.settings`. Kein fünftes Recht dafür: ein
+   * Schlagwort gehört dem Arbeitsbereich wie sein Name und seine Farben, und
+   * ein Name mehr im Rechte-Vokabular ist einer, den jemand in jeder Rolle
+   * einzeln entscheiden muss.
+   */
+  if (path === '/api/labels' && method === 'GET') {
+    json(res, 200, {
+      labels: await labelsOfWorkspace(ctx.pool, workspaceId),
+      mayManage: await mayDo(ctx.pool, userId, workspaceId, 'workspace.settings'),
+    });
+    return;
+  }
+
+  const labelPath = /^\/api\/labels\/([0-9a-f-]{36})$/.exec(path);
+  if (labelPath !== null && (method === 'PATCH' || method === 'DELETE')) {
+    if (!(await mayDo(ctx.pool, userId, workspaceId, 'workspace.settings'))) {
+      fail(res, 403, 'not_allowed', 'Schlagwörter zu ändern darfst du hier nicht');
+      return;
+    }
+    const id = labelPath[1]!;
+    try {
+      if (method === 'DELETE') {
+        await removeLabel(ctx.pool, workspaceId, id);
+        json(res, 200, { ok: true });
+        return;
+      }
+      const body = (await readJson(req)) as Record<string, unknown>;
+      const out = await renameLabel(ctx.pool, workspaceId, id, String(body?.['name'] ?? ''));
+      json(res, 200, out);
+      return;
+    } catch (e) {
+      if (e instanceof LabelTrouble) {
+        fail(res, 409, 'label_trouble', e.message);
+        return;
+      }
+      throw e;
+    }
+  }
+
   if (path === '/api/groups' && method === 'GET') {
     json(res, 200, {
       groups: await listGroups(ctx.pool, workspaceId),

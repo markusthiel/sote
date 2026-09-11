@@ -87,6 +87,7 @@ export const WORKSPACE_SECTIONS = [
   { id: 'leute', label: 'Leute', hint: 'Wer hier mitarbeitet' },
   { id: 'rollen', label: 'Rollen', hint: 'Was jemand darf' },
   { id: 'gruppen', label: 'Gruppen', hint: 'Leute zusammenfassen' },
+  { id: 'schlagworte', label: 'Schlagwörter', hint: 'Richtigstellen und wegräumen' },
   { id: 'weg', label: 'Mitnehmen und wegwerfen', hint: 'Export und Löschen' },
   { id: 'aussehen', label: 'Farben und Flächen', hint: 'Für alle Mitglieder' },
 ] as const;

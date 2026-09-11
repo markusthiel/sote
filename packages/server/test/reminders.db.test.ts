@@ -75,10 +75,26 @@ async function tick(): Promise<void> {
   assert.equal(await runOne(pool, new Date(), MEINE), true);
 }
 
+/**
+ * Nur die Briefe AN RITA.
+ *
+ * Vorher zählte das jeden `mail.send` in der Datenbank — und die Testdateien
+ * teilen sich eine. Solange dieser Lauf allein unterwegs war, ging das gut;
+ * sobald eine weitere Datei dazukam, standen hier fünf fremde Briefe und
+ * „ohne Einstellung kommt keine Post" schlug fehl, ohne dass sich an den
+ * Erinnerungen etwas geändert hätte.
+ *
+ * Das `beforeEach` räumt zwar auf, aber Aufräumen hilft nur gegen ALTE Zeilen,
+ * nicht gegen die, die eine andere Datei währenddessen schreibt. Die Frage
+ * dieses Tests ist ohnehin eine engere: bekommt DIESE Person Post.
+ */
 const briefe = async () =>
   queryRows<{ payload: Record<string, unknown> }>(
     pool,
-    "SELECT payload FROM jobs WHERE kind = 'mail.send' ORDER BY created_at",
+    `SELECT payload FROM jobs
+      WHERE kind = 'mail.send' AND payload->>'to' = $1
+      ORDER BY created_at`,
+    [`rem-${process.pid}@example.org`],
   );
 
 test('ohne Einstellung kommt keine Post', async () => {

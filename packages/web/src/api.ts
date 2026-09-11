@@ -414,6 +414,29 @@ export const api = {
     }),
 
   /* ── Gruppen ───────────────────────────────────────────────────────────── */
+  /** Die Schlagwörter dieses Arbeitsbereichs, mit der Zahl der Aufgaben. */
+  labels: (workspace?: string) =>
+    call<{
+      labels: { id: string; name: string; tasks: number }[];
+      mayManage: boolean;
+    }>(`/api/labels${workspace === undefined ? '' : `?workspace=${workspace}`}`),
+  /**
+   * Umbenennen — und verschmelzen, wenn der Name schon vergeben ist.
+   *
+   * `merged` in der Antwort sagt, dass zwei zu einem wurden. Die Oberfläche
+   * schreibt es hin: eine Zusammenlegung, die man nicht bemerkt, ist ein
+   * Datenverlust.
+   */
+  renameLabel: (id: string, name: string, workspace?: string) =>
+    call<{ name: string; merged: boolean }>(
+      `/api/labels/${id}${workspace === undefined ? '' : `?workspace=${workspace}`}`,
+      { method: 'PATCH', body: JSON.stringify({ name }) },
+    ),
+  removeLabel: (id: string, workspace?: string) =>
+    call<{ ok: true }>(
+      `/api/labels/${id}${workspace === undefined ? '' : `?workspace=${workspace}`}`,
+      { method: 'DELETE' },
+    ),
   groups: (workspace?: string) =>
     call<{
       groups: {
