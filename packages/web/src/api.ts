@@ -318,7 +318,20 @@ export const api = {
     // Nur wenn eingeblendet: ein `done=0` in jeder Adresse wäre eine Angabe
     // über die Vorgabe, und die soll die Abwesenheit sein.
     if (opts.done === true) q.set('done', '1');
-    return call<{ view: string; overdue: Task[]; tasks: Task[] }>(`/api/tasks?${q}`);
+    return call<{
+      view: string;
+      overdue: Task[];
+      tasks: Task[];
+      /**
+       * Die Unteraufgaben, nach Elternteil geordnet.
+       *
+       * Mit der Liste und nicht beim Aufklappen: das Ziehen braucht sie schon
+       * vorher — wer eine Aufgabe auf eine zugeklappte zieht, soll sie ans
+       * Ende der Kinder setzen, und der Sortierschlüssel dafür wird hier
+       * gerechnet.
+       */
+      children: Record<string, Task[]>;
+    }>(`/api/tasks?${q}`);
   },
   search: (q: string, workspace?: string) => {
     const p = new URLSearchParams({ q });
@@ -343,7 +356,19 @@ export const api = {
     ),
   move: (
     id: string,
-    between: { afterId: string | null; beforeId: string | null },
+    /**
+     * Wohin und wohin darin.
+     *
+     * `parentId` FEHLEN zu lassen heißt „nicht umhängen"; `null` heißt „nach
+     * ganz oben". Zwei verschiedene Dinge — ohne die Unterscheidung würde
+     * jedes Umsortieren innerhalb einer Aufgabe die Unteraufgabe
+     * herauswerfen.
+     */
+    between: {
+      afterId: string | null;
+      beforeId: string | null;
+      parentId?: string | null;
+    },
     workspace?: string,
   ) =>
     call<{ task: Task }>(

@@ -1045,6 +1045,60 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex]:focus-vi
   border-color: var(--danger);
 }
 
+/* ── Unteraufgaben in der Liste ────────────────────────────────────────────
+ *
+ * Eine Ebene, also eine Einrückung und keine Treppe.
+ */
+
+/* Der Aufklapper sitzt VOR der Zeile, im selben Rand wie der Anfasser.
+   Nur dort, wo es etwas aufzuklappen gibt — kein Platzhalter: die meisten
+   Zeilen haben keine Unteraufgaben, und für alle einzurücken, damit wenige ein
+   Zeichen tragen können, verschenkt Breite an jeder Zeile. */
+.task-twisty {
+  position: absolute;
+  inset-inline-start: -38px;
+  inset-block-start: 10px;
+  width: 16px;
+  min-height: 16px;
+  border: 0;
+  padding: 0;
+  background: none;
+  color: var(--text-faint);
+  font-size: var(--sone-text-xs);
+  line-height: 1;
+  cursor: pointer;
+  transition: transform 120ms ease;
+}
+
+/* Gedreht statt getauscht — wie im Baum und in SONE: zwei verschiedene
+   Zeichen springen beim Umschalten, eine Drehung nicht. */
+.task-twisty[aria-expanded="true"] {
+  transform: rotate(90deg);
+}
+
+/* Die Kinder, eingerückt und mit einer Linie daran.
+ *
+ * Die Linie und nicht nur Abstand: zwei eingerückte Zeilen ohne Verbindung
+ * lesen sich als zwei eigene Zeilen mit merkwürdigem Rand. Die Linie sagt,
+ * dass sie zu dem darüber gehören. */
+.task-kids {
+  margin-inline-start: var(--sone-space-6);
+  padding-inline-start: var(--sone-space-4);
+  border-inline-start: 1px solid var(--line);
+}
+
+/* „Hier hinein" — eine gefüllte Zeile, keine Linie.
+ *
+ * Die zwei müssen verschieden aussehen, sonst ist jedes Ablegen ein Raten:
+ * eine Linie heißt „zwischen diesen beiden", eine gefüllte Zeile heißt „in
+ * diese hier". SONEs Satz, und er gilt hier genauso. */
+.task-wrap[data-drop="into"] {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  border-radius: var(--sote-radius-md);
+}
+
 /* ── Die drei Anzeigeformen (Migration 0028) ───────────────────────────────
  *
  * Was sie NICHT tun: die Beiwerkzeile verstecken. Die zeichnet `plain` gar

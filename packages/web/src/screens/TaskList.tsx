@@ -21,7 +21,7 @@ import {
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { useListDrag } from '../hooks/useListDrag.js';
+import { useRowDrag } from '../hooks/useRowDrag.js';
 import { useNudge } from '../hooks/useNudge.js';
 import { api, ApiError, type Project, type Task, type TaskPatch } from '../api.js';
 import { HandleMenu } from '../components/HandleMenu.js';
@@ -85,6 +85,21 @@ export function TaskList({
 
   const [overdue, setOverdue] = useState<Task[]>([]);
   const [rows, setRows] = useState<Task[]>([]);
+  /** Die Unteraufgaben, nach Elternteil — kommt mit der Liste. */
+  const [children, setChildren] = useState<Record<string, Task[]>>({});
+  /**
+   * Welche Aufgaben AUFGEKLAPPT sind.
+   *
+   * Aufgeklappt und nicht zugeklappt gemerkt — anders als beim Projektbaum.
+   * Dort ist der Normalzustand „offen", weil ein Baum die Struktur zeigt;
+   * hier ist er „zu", weil eine Liste die Arbeit zeigt und fünf aufgeklappte
+   * Aufgaben eine Liste von dreißig Zeilen machen, von denen zwanzig
+   * Kleinkram sind.
+   *
+   * Nicht gespeichert: es ist eine Handbewegung und keine Einstellung. Was
+   * dauerhaft gilt, ist die Anzeigeform (Migration 0028).
+   */
+  const [open_, setOpen] = useState<ReadonlySet<string>>(new Set());
   const [pending, setPending] = useState<readonly Pending[]>([]);
   const [notice, setNotice] = useState<string | undefined>(undefined);
   const [unknownProject, setUnknownProject] = useState<string | null>(null);
@@ -107,6 +122,7 @@ export function TaskList({
     });
     setOverdue(data.overdue);
     setRows(data.tasks);
+    setChildren(data.children ?? {});
     setLoaded(true);
   }, [view, workspace, projectId, showDone]);
 
@@ -168,6 +184,17 @@ export function TaskList({
   const errorOf = (id: string) => pending.find((p) => p.id === id)?.error;
   const isPending = (id: string) => pending.some((p) => p.id === id);
   const ids = useMemo(() => rows.map((r) => r.id), [rows]);
+  /**
+   * Alle Zeilen, die gerade sichtbar sein KÖNNTEN — oben und Kinder.
+   *
+   * Die Geste fragt nach einer Id und bekommt hier die Aufgabe dazu. Auch die
+   * Kinder zugeklappter Zeilen stehen drin: dort wird nichts abgelegt, aber
+   * `canDrop` muss wissen, ob eine Aufgabe Kinder hat.
+   */
+  const alle = useMemo(
+    () => [...overdue, ...rows, ...Object.values(children).flat()],
+    [overdue, rows, children],
+  );
   const canDrag = view === 'project';
 
   async function add(line: string) {
@@ -348,23 +375,97 @@ export function TaskList({
    * in der Lücke und die schwebende Zeile unter dem Zeiger.
    */
   const listRef = useRef<HTMLDivElement | null>(null);
-  const drag = useListDrag({
+  const drag = useRowDrag({
     container: listRef,
-    onDrop: (id, position) => {
-      const from = ids.indexOf(id);
-      if (from === -1) return;
+    canDrop: (id, position) => {
+      const mich = alle.find((t) => t.id === id);
+      const ziel = alle.find((t) => t.id === position.rowId);
+      if (mich === undefined || ziel === undefined || mich.id === ziel.id) return false;
+
       /*
-       * „Hinter welche" wird zu „an welchen Platz".
-       *
-       * `useListDrag` benennt eine Lücke nach der Zeile darüber (`afterId`,
-       * `null` für ganz oben) — eine Lücke, ein Name. `moveTo` denkt in
-       * Indizes der ungeänderten Liste, wie beim Tastaturweg: die Ziel-Stelle
-       * ist die Position NACH der Nachbarin, also deren Index plus eins.
+       * Die Ein-Ebenen-Regel, hier noch einmal — und das ist kein
+       * Misstrauen gegen den Server, sondern der Unterschied zwischen
+       * „abgelehnt" und „gar nicht erst angeboten". Eine Linie, die etwas
+       * verspricht, das der Server zurückweist, endet in einem Fehler statt
+       * in einer Bewegung.
        */
-      const to = position.afterId === null ? 0 : ids.indexOf(position.afterId) + 1;
-      void moveTo(from, to);
+      const zielVater = position.intent === 'into' ? ziel.id : ziel.parentId;
+      if (zielVater === mich.id) return false;
+      if (zielVater !== null) {
+        // Eine Unteraufgabe kann nichts aufnehmen, und wer selbst Kinder hat,
+        // wird kein Kind.
+        const vater = alle.find((t) => t.id === zielVater);
+        if (vater === undefined || vater.parentId !== null) return false;
+        if ((children[mich.id] ?? []).length > 0) return false;
+      }
+      /*
+       * Umsortieren geht nur, wo sortiert wird. UMHÄNGEN geht überall: in
+       * „Heute" ist die Reihenfolge die der Zeit, aber eine Aufgabe aus ihrer
+       * Elternaufgabe zu lösen ist keine Sortierung.
+       */
+      if (!canDrag && zielVater === (mich.parentId ?? null)) return false;
+      return true;
+    },
+    onDrop: (id, position) => {
+      const mich = alle.find((t) => t.id === id);
+      const ziel = alle.find((t) => t.id === position.rowId);
+      if (mich === undefined || ziel === undefined) return;
+
+      if (position.intent === 'into') {
+        // Ans Ende der Kinder: „hinein" sagt nichts über die Stelle, und unten
+        // ist die Stelle, an der Neues in einer Liste erscheint.
+        const drin = (children[ziel.id] ?? []).filter((k) => k.id !== id);
+        void reorder(id, {
+          parentId: ziel.id,
+          afterId: drin.at(-1)?.id ?? null,
+          beforeId: null,
+        });
+        return;
+      }
+
+      const zielVater = ziel.parentId ?? null;
+      /*
+       * Die Nachbarn OHNE die gezogene Zeile: zieht man innerhalb derselben
+       * Ebene, stünde sie sonst in der Reihe und der neue Schlüssel läge
+       * dort, wo sie schon ist.
+       */
+      const reihe = (zielVater === null
+        ? rows.filter((t) => t.parentId === null)
+        : (children[zielVater] ?? [])
+      ).filter((t) => t.id !== id);
+      const at = reihe.findIndex((t) => t.id === ziel.id);
+      if (at === -1) return;
+      void reorder(id, {
+        ...(zielVater === (mich.parentId ?? null) ? {} : { parentId: zielVater }),
+        afterId:
+          position.intent === 'after' ? reihe[at]!.id : (reihe[at - 1]?.id ?? null),
+        beforeId:
+          position.intent === 'after' ? (reihe[at + 1]?.id ?? null) : reihe[at]!.id,
+      });
     },
   });
+
+  /**
+   * Verschieben und/oder umhängen, mit Nachladen.
+   *
+   * Kein vorgezogenes Bild wie beim reinen Umsortieren: ein Umhängen ändert
+   * zwei Listen (die alte und die neue) und die Zeichen an der Elternaufgabe.
+   * Das von Hand nachzuziehen wäre eine zweite Fassung der Regeln, die der
+   * Server ohnehin anwendet — und die beiden wären genau dann verschieden,
+   * wenn er etwas ablehnt.
+   */
+  async function reorder(
+    id: string,
+    between: { afterId: string | null; beforeId: string | null; parentId?: string | null },
+  ) {
+    try {
+      await api.move(id, between, workspace);
+    } catch (e) {
+      setNotice(e instanceof ApiError ? e.message : 'Verschieben ging nicht.');
+    }
+    await load();
+    onChanged();
+  }
 
   /** Was hier tatsächlich gilt — Person vor Arbeitsbereich, dann `full`. */
   const form = resolveListView(listView, workspaceListView);
@@ -416,70 +517,120 @@ export function TaskList({
               'Noch ohne Projekt — zieh sie an ihren Ort oder tippe #projekt dazu'
             : 'Ohne Zeitpunkt — nicht unwichtig, nur ungeplant';
 
-  function renderRow(task: Task, index: number) {
+  function renderRow(task: Task, index: number, parentId: string | null = null) {
+    const kinder = children[task.id] ?? [];
+    const offen = open_.has(task.id);
+    /*
+     * Ziehen gilt, wo sortiert wird — und zusätzlich überall dort, wo es
+     * Unteraufgaben gibt oder geben könnte.
+     *
+     * In „Heute" ist die Reihenfolge die der Zeit, dort wird nicht sortiert.
+     * Eine Aufgabe aus ihrer Elternaufgabe herauszuziehen, ist aber keine
+     * Sortierung, sondern ein Umhängen — und das soll auch dort gehen.
+     */
+    const ziehbar = (canDrag || parentId !== null || kinder.length > 0) &&
+      task.completed === null;
+
     return (
-      <div
-        key={task.id}
-        className="task-wrap"
-        data-dragging={drag.dragging === task.id}
-        /*
-         * Die Marke, an der die Geste die Zeile erkennt — und nur, wenn hier
-         * überhaupt sortiert wird. Ohne Projekt ist die Reihenfolge die der
-         * Zeit, und eine Zeile, die sich ziehen lässt, ohne dass etwas
-         * passiert, ist ein Versprechen, das der Server nicht hält.
-         */
-        {...(canDrag && task.completed === null
-          ? { 'data-list-row': task.id, onPointerDown: drag.onPointerDown }
-          : {})}
-        data-drop={
-          drag.target?.afterId === task.id
-            ? 'after'
-            : drag.target?.afterId === null && index === 0
-              ? 'before'
-              : undefined
-        }
-        onKeyDown={(e) => {
-          // Ziehen allein wäre eine Reihenfolge, die man mit der Tastatur
-          // nicht ändern kann.
-          if (!canDrag || !e.altKey) return;
-          if (e.key === 'ArrowUp') {
-            e.preventDefault();
-            void step(task.id, -1);
-          } else if (e.key === 'ArrowDown') {
-            e.preventDefault();
-            void step(task.id, 1);
-          }
-        }}
-      >
-        <TaskRow
-          task={task}
-          view={form}
-          open={openTask === task.id}
-          onLabel={onLabel}
-          onOpen={() => onOpenTask(openTask === task.id ? null : task.id)}
-          now={now}
-          pending={isPending(task.id)}
-          error={errorOf(task.id)}
-          projectName={route.kind === 'project' ? undefined : nameOf(task.projectId)}
-          grip={canDrag && task.completed === null}
-          onComplete={(t) => void toggle(t)}
-          onOpenMenu={() => setOpenMenu(openMenu === task.id ? null : task.id)}
-          menu={
-            openMenu === task.id ? (
-              <HandleMenu
-                task={task}
-                now={now}
-                busy={busy}
-                onPatch={(fields) => void change(task, fields)}
-                onTrash={() => void throwAway(task)}
-                onClose={() => setOpenMenu(null)}
-              />
-            ) : null
-          }
-        />
+      <div key={task.id}>
+        <div
+          className="task-wrap"
+          data-dragging={drag.dragging === task.id}
+          data-child={parentId === null ? undefined : 'yes'}
+          /*
+           * Die drei Marken, die die Geste liest. `data-row-nest` sagt, ob
+           * diese Zeile etwas AUFNEHMEN kann: bei einer Ebene kann das nur,
+           * wer selbst keine Unteraufgabe ist.
+           */
+          {...(ziehbar
+            ? {
+                'data-row': task.id,
+                'data-row-parent': parentId ?? 'root',
+                'data-row-nest': parentId === null ? 'yes' : 'no',
+                onPointerDown: drag.onPointerDown,
+              }
+            : {})}
+          data-drop={drag.target?.rowId === task.id ? drag.target.intent : undefined}
+          onKeyDown={(e) => {
+            // Ziehen allein wäre eine Reihenfolge, die man mit der Tastatur
+            // nicht ändern kann.
+            if (!canDrag || !e.altKey) return;
+            if (e.key === 'ArrowUp') {
+              e.preventDefault();
+              void step(task.id, -1);
+            } else if (e.key === 'ArrowDown') {
+              e.preventDefault();
+              void step(task.id, 1);
+            }
+          }}
+        >
+          {/*
+            Der Aufklapper, und nur wo es etwas aufzuklappen gibt.
+
+            Ein eigener Knopf und nicht die Zeile selbst — dieselbe Regel wie
+            im Projektbaum: die Zeile öffnet das Detail, und ein Klick, der
+            manchmal öffnet und manchmal aufklappt, ist einer, dessen Wirkung
+            man erst danach weiß.
+
+            Wo es nichts gibt, steht KEIN Platzhalter. Im Baum gibt es einen,
+            damit die Namen nicht springen; hier haben die meisten Zeilen keine
+            Unteraufgaben, und eine Liste, die für alle einrückt, damit
+            wenige ein Zeichen tragen können, verschenkt Breite an jeder Zeile.
+          */}
+          {kinder.length > 0 ? (
+            <button
+              type="button"
+              className="task-twisty"
+              aria-expanded={offen}
+              aria-label={`${task.title} ${offen ? 'zuklappen' : 'aufklappen'}`}
+              onClick={() =>
+                setOpen((war) => {
+                  const next = new Set(war);
+                  if (next.has(task.id)) next.delete(task.id);
+                  else next.add(task.id);
+                  return next;
+                })
+              }
+            >
+              <span aria-hidden="true">▸</span>
+            </button>
+          ) : null}
+          <TaskRow
+            task={task}
+            view={form}
+            open={openTask === task.id}
+            onLabel={onLabel}
+            onOpen={() => onOpenTask(openTask === task.id ? null : task.id)}
+            now={now}
+            pending={isPending(task.id)}
+            error={errorOf(task.id)}
+            projectName={route.kind === 'project' ? undefined : nameOf(task.projectId)}
+            grip={ziehbar}
+            onComplete={(t) => void toggle(t)}
+            onOpenMenu={() => setOpenMenu(openMenu === task.id ? null : task.id)}
+            menu={
+              openMenu === task.id ? (
+                <HandleMenu
+                  task={task}
+                  now={now}
+                  busy={busy}
+                  onPatch={(fields) => void change(task, fields)}
+                  onTrash={() => void throwAway(task)}
+                  onClose={() => setOpenMenu(null)}
+                />
+              ) : null
+            }
+          />
+        </div>
+        {offen && kinder.length > 0 ? (
+          <div className="task-kids">
+            {kinder.map((kind, i) => renderRow(kind, index * 1000 + i, task.id))}
+          </div>
+        ) : null}
       </div>
     );
   }
+
 
   return (
     <>
