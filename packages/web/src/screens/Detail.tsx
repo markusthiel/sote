@@ -228,6 +228,22 @@ export function Detail({
    */
   const [projects, setProjects] = useState<Project[]>([]);
   const noteBox = useRef<HTMLTextAreaElement>(null);
+  /*
+   * VOR dem frühen `return`, und das ist kein Formalismus.
+   *
+   * GEMELDET: „Wenn ich das Seitenmenü öffnen will, indem ich eine Aufgabe
+   * anklicke, wird die ganze Seite weiß und alles ist weg."
+   *
+   * Dieser Aufruf stand weiter unten — hinter `if (data === undefined)
+   * return …`. Beim ersten Zeichnen (noch nichts geladen) lief er also nicht,
+   * beim zweiten (Daten da) schon: elf Hooks, dann zwölf. React bricht dann
+   * die ganze Wurzel ab, und übrig bleibt eine weiße Seite.
+   *
+   * Die Regel dahinter: Hooks müssen in JEDEM Durchlauf in derselben
+   * Reihenfolge laufen. Ein `return` dazwischen ist eine Verzweigung wie jede
+   * andere.
+   */
+  const [tab, setTab] = useDetailTab(TABS, 'felder');
 
   const load = useCallback(async () => {
     try {
@@ -337,8 +353,6 @@ export function Detail({
    * meistens der Inhalt und nicht eine Beilage.
    */
   const bilder = data.files.filter((f) => f.mimeType.startsWith('image/'));
-
-  const [tab, setTab] = useDetailTab(TABS, 'felder');
 
   return (
     <aside className="detail" aria-label="Aufgabe im Detail">
