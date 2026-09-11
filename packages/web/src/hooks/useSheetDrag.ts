@@ -48,6 +48,25 @@ export function useSheetDrag(onClose: () => void) {
   const onPointerDown = useCallback((e: React.PointerEvent<HTMLElement>) => {
     // Nur die linke Maustaste; Finger und Stift haben keine.
     if (e.pointerType === 'mouse' && e.button !== 0) return;
+    /*
+     * NICHT, wenn es auf einem Knopf beginnt.
+     *
+     * GEMELDET: „Der Schliessen-Button geht jetzt nicht mehr, das Zuziehen
+     * geht. Aber das X nicht, keine Reaktion."
+     *
+     * Genau das war die Ursache, und sie steckt in dem Wort, das die Geste
+     * überhaupt erst zuverlässig macht: `setPointerCapture` leitet ALLE
+     * weiteren Ereignisse dieses Zeigers an den Streifen um — auch das
+     * `pointerup`, aus dem der Browser den Klick auf das Kreuz baut. Das Kreuz
+     * bekam nie eines.
+     *
+     * Am Ziel entschieden und nicht am Ort: der Streifen enthält den Knopf,
+     * also kann die Fläche nicht wissen, was gemeint war — das Ereignis weiss
+     * es. Ein `stopPropagation` am Knopf täte dasselbe, aber verteilt: die
+     * Regel stünde dann dort, wo man sie nicht sucht, wenn der zweite Knopf
+     * dazukommt.
+     */
+    if ((e.target as HTMLElement).closest('button') !== null) return;
     von.current = e.clientY;
     e.currentTarget.setPointerCapture(e.pointerId);
   }, []);
