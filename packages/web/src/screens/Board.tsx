@@ -237,7 +237,7 @@ export function Board({
       {notice === undefined ? null : <p className="note-error">{notice}</p>}
 
       {columns.length === 0 && !adding ? (
-        <div className="empty">
+        <div className="empty board-empty">
           <strong>Diese Liste hat noch keine Tafel.</strong>
           {/*
             Der Satz sagt, was eine Spalte IST, und nicht nur, dass eine fehlt.

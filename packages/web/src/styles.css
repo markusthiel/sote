@@ -915,9 +915,29 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex]:focus-vi
   margin-top: 5px;
 }
 
+/*
+ * Wie breit der Inhalt läuft.
+ *
+ * GEMELDET: „Ich habe jetzt 3 typische Spalten angelegt und gerate schon ans
+ * Scrollen. Den Platz sollten wir nutzen."
+ *
+ * Er hatte eine Lesebreite (`--sote-read`), und die ist für TEXT richtig: eine
+ * Zeile über 2000 px ist keine Zeile, die man liest. Für eine TAFEL ist sie
+ * falsch — dort steht kein Fließtext, sondern Spalten nebeneinander, und jede
+ * ungenutzte Hälfte des Bildschirms ist eine Spalte weniger, die man sieht.
+ *
+ * Also hängt sie an der Anzeigeform und ist keine zusätzliche Einstellung: die
+ * Listen behalten das Lesemaß, die Tafel bekommt alles. Eine Einstellung
+ * „breit oder schmal" wäre eine Frage, die sich nur stellt, weil die Anwendung
+ * sie nicht selbst beantworten will.
+ */
 .body {
   padding: 6px 32px 40px;
   max-width: var(--sote-read);
+}
+
+.body[data-wide="yes"] {
+  max-width: none;
 }
 
 .section-label {
@@ -1043,6 +1063,24 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex]:focus-vi
 .due.late {
   color: var(--danger);
   border-color: var(--danger);
+}
+
+/*
+ * Die leere Tafel.
+ *
+ * GEMELDET mit Bild: „Die Tafel sieht noch etwas komisch aus, wenn sie leer
+ * ist." Sie war es — `.empty` ist ein Block, in dem Satz und Knopf im
+ * Textfluss standen: der Knopf landete MITTEN im zweiten Satz, weil er dort
+ * gerade Platz hatte. Ein Bedienelement als Wort in einem Satz.
+ *
+ * Jetzt untereinander und linksbündig, mit dem Knopf als eigener Zeile.
+ */
+.board-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sone-space-3);
+  max-inline-size: 44ch;
 }
 
 /* ── Die Tafel ─────────────────────────────────────────────────────────────
@@ -1828,16 +1866,48 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex]:focus-vi
  * ist etwa 10 px breit — bei −19 hätte er ihn berührt. Beide liegen innerhalb
  * der 32 px Innenabstand des Hauptbereichs, also ragt nichts hinaus.
  */
+/*
+ * Der Anfasser.
+ *
+ * GEMELDET: „Der Anfasser lässt sich auch nur direkt anfassen. Ein wenig mehr
+ * Platz drumherum würde es einfacher machen ihn zu erwischen."
+ *
+ * Er war ein Zeichen von 12 px — also eine Trefferfläche von ungefähr acht mal
+ * zwölf Pixeln, und die trifft man mit der Maus knapp und mit dem Finger gar
+ * nicht. Jetzt eine volle Tippfläche breit und so hoch wie die Zeile, mit dem
+ * Zeichen mittig darin: das Zeichen bleibt klein, die Fläche wird groß.
+ *
+ * `left` rückt entsprechend nach: die Fläche wächst nach LINKS in den Rand
+ * hinein, nicht nach rechts über den Text.
+ */
 .grip {
   position: absolute;
-  left: -24px;
-  top: 12px;
+  left: calc(var(--sone-tap) * -1);
+  top: 0;
+  bottom: 0;
+  width: var(--sone-tap);
+  display: flex;
+  align-items: center;
+  justify-content: center;
   color: var(--line-strong);
   font-size: 12px;
   line-height: 1;
   letter-spacing: -1px;
   opacity: 0;
   cursor: grab;
+  /* Sonst markiert ein Zug am Anfasser den Text der Zeile daneben. */
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/* Auf dem Telefon gibt es kein Zeigen — dort steht er immer da. Ein
+   Bedienelement, das erscheint, wenn ein Zeiger in der Nähe ist, existiert
+   auf einem Telefon nicht (ADR-0016). */
+@media (hover: none) {
+  .grip {
+    opacity: 0.6;
+  }
 }
 
 .task:hover .grip,
@@ -2087,16 +2157,36 @@ select.target { }
  * eingeengt, sobald eine Aufgabe offen war — nur ist es niemandem aufgefallen,
  * weil die Detailspalte dort ohnehin über allem liegt.
  */
+/*
+ * DIE DETAILSPALTE LIEGT ÜBER DEM INHALT, sie nimmt ihm keine Breite mehr.
+ *
+ * GEMELDET: „Momentan hast du den Platz wohl reserviert für die rechte Spalte
+ * zum Ausklappen. Bei SONE liegt sie einfach drüber."
+ *
+ * Stimmt, und es war die schlechtere Wahl. Eine vierte Rasterspalte heißt:
+ * jedes Öffnen einer Aufgabe schiebt den ganzen Inhalt zusammen — auf der
+ * Tafel rutschen die Spalten, in der Liste bricht der Text um. Man öffnet
+ * etwas und verliert dabei die Stelle, an der man war.
+ *
+ * Darüber gelegt ändert sich nichts am Inhalt; die Spalte verdeckt ein Stück
+ * rechts, und das ist der Preis, den man bewusst zahlt, wenn man etwas
+ * aufmacht. Auf dem Telefon war es ohnehin schon so — dort lag sie immer über
+ * allem, und genau darum ist der Unterschied nie aufgefallen.
+ */
 @media (min-width: 800px) {
-  .app[data-detail="true"] {
-    grid-template-columns: var(--sote-rail) var(--sote-panel) 1fr 340px;
+  .detail {
+    position: absolute;
+    inset-block: 0;
+    inset-inline-end: 0;
+    width: 340px;
+    z-index: 25;
+    box-shadow: var(--sote-shadow-lg);
   }
 
-  /* Beide zusammen: ohne Leiste, mit Detailspalte. Die Kombination fehlte, und
-     dann galt die dreispaltige Vorlage von oben — der Hauptbereich wäre wieder
-     in die falsche Spalte gerutscht. */
-  .app[data-detail="true"][data-sidebar="false"] {
-    grid-template-columns: var(--sote-rail) 1fr 340px;
+  /* Die Hülle wird der Bezugsrahmen dafür. Ohne sie läge die Spalte am
+     Fenster und nicht am Raster — unter der Schiene sähe man sie nicht. */
+  .app {
+    position: relative;
   }
 }
 
@@ -2276,19 +2366,19 @@ select.target { }
   white-space: pre-wrap;
 }
 
-@media (min-width: 800px) and (max-width: 1099px) {
-  .app[data-detail="true"] {
-    grid-template-columns: var(--sote-rail) var(--sote-panel) 1fr;
-  }
-
-  .detail {
-    position: fixed;
-    inset: 0 0 0 auto;
-    width: min(360px, 90vw);
-    z-index: 20;
-    box-shadow: var(--sote-shadow-lg);
-  }
-}
+/*
+ * Der Block für 800–1099 px ist WEGGEFALLEN, und das ist die eigentliche
+ * Geschichte dieser Änderung.
+ *
+ * Dort lag die Detailspalte schon über dem Inhalt — genau so, wie es jetzt
+ * überall ist. Ab 1100 px nahm sie sich eine eigene Rasterspalte, und damit
+ * gab es ZWEI Antworten auf „was passiert beim Öffnen einer Aufgabe", je nach
+ * Fensterbreite. Auf dem schmalen Bildschirm blieb der Inhalt stehen, auf dem
+ * breiten rutschte er zusammen.
+ *
+ * Der schmale hatte recht. Übrig bleibt eine Regel für alles ab 800 px — sie
+ * steht oben bei `.detail`, zusammen mit der Begründung.
+ */
 
 @media (max-width: 799px) {
   .detail {
@@ -3550,17 +3640,31 @@ select.target { }
 }
 
 /* Der Umschalter im Kopf, bei der Frage, die er beantwortet. */
+/*
+ * Die Knöpfe im Kopf — EINE Reihe Zeichen, nicht zwei Reihen Wörter.
+ *
+ * Gemeldet: „Die Buttons oben rechts sind hässlich." Sie standen in zwei
+ * Reihen übereinander, einer trug einen ganzen Satz und die anderen je ein
+ * Wort — fünf verschieden breite Kästen über der Überschrift.
+ *
+ * Die Wörter stehen weiter da, nur als `title` und `aria-label`: dasselbe
+ * Geschäft wie im Projektmenü, wo dieselbe Rechnung schon aufging.
+ */
 .head-toggle {
-  position: absolute;
-  top: 14px;
-  right: 18px;
-  padding: 5px 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  /* Quadratisch und eine Tippfläche groß: ein Zeichen von 16 px in einem
+     Kasten von 16 px trifft man nicht. */
+  inline-size: var(--sone-control-lg);
+  block-size: var(--sone-control-lg);
+  padding: 0;
   border: 1px solid var(--line-strong);
   border-radius: var(--sote-radius-md);
   background: none;
   color: var(--text-muted);
   font: inherit;
-  font-size: 12px;
+  font-size: var(--sone-text-md);
   cursor: pointer;
 }
 
@@ -3577,16 +3681,18 @@ select.target { }
  */
 .head-views {
   position: absolute;
-  top: 46px;
+  top: 14px;
   right: 18px;
   display: flex;
   gap: var(--sone-space-1);
 }
 
-.head-views .head-toggle {
-  position: static;
-  top: auto;
-  right: auto;
+/* Der Erledigte-Schalter steht ETWAS ABGESETZT von den vier Formen: er
+   beantwortet eine andere Frage (was steht drin), die vier eine gemeinsame
+   (wie sieht es aus). Vier gleiche Knöpfe und einer daneben sind zwei
+   Gruppen; fünf in einer Reihe wären eine, die es nicht gibt. */
+.head-views > .head-toggle:first-child {
+  margin-inline-end: var(--sone-space-3);
 }
 
 /* Die gewählte Form trägt den Akzent — sonst sind es drei gleich aussehende

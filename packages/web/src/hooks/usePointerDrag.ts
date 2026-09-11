@@ -11,6 +11,26 @@
  * gelesen, Zustand in einem setState-Updater gelesen. Ein Nachbau hätte sie
  * alle noch vor sich. Ändert SONE etwas daran, wird die Datei erneut kopiert.
  *
+ * ## Eine Abweichung, und sie ist notiert
+ *
+ * GEMELDET: „Beim Anfasser zum Sortieren haben wir die Wartezeit mit drin,
+ * oder? Da der ja nur zum Schieben ist, kann man es weglassen — so probiert man
+ * es zu verschieben und es klappt fast nie, weil man zu kurz wartet."
+ *
+ * Er hat recht, und der Grund steht im Kommentar unten selbst: die Wartezeit
+ * entscheidet zwischen ZIEHEN und ROLLEN. An einem eigenen Anfasser gibt es
+ * nichts zu entscheiden — wer ihn drückt, will ziehen; dort zu rollen ist
+ * niemandes Absicht. Eine halbe Sekunde Warten auf eine Frage, die nicht
+ * gestellt ist, fühlt sich an wie ein Bedienelement, das nicht reagiert.
+ *
+ * Also: ein Element mit `data-drag-now` beginnt sofort. Alles andere bleibt,
+ * wie es war — eine Zeile, die AUCH als Ganzes ziehbar ist, muss weiter
+ * warten, sonst rollt niemand mehr eine Liste mit dem Finger.
+ *
+ * Das ist die einzige Abweichung von SONEs Datei, und sie ist ein Kandidat
+ * dafür, dort hineinzuwandern: SONEs Baum hat keinen eigenen Anfasser, darum
+ * ist die Frage dort nie aufgekommen.
+ *
  * Der englische Kommentar bleibt darum unverändert stehen:
  *
  * ---
@@ -121,6 +141,8 @@ export function usePointerDrag<T>(options: PointerDragOptions<T>): PointerDrag<T
      * which case a mouse would wait for a hold that never comes.
      */
     pointerType: string;
+    /** Am Anfasser gedrückt: sofort ziehen, nicht auf ein Halten warten. */
+    now: boolean;
     holdTimer: ReturnType<typeof setTimeout> | null;
     started: boolean;
     captured: boolean;
@@ -205,6 +227,13 @@ export function usePointerDrag<T>(options: PointerDragOptions<T>): PointerDrag<T
       );
       if (control !== null && control !== element) return;
 
+      /*
+       * Ein eigener Anfasser wartet nicht. Siehe den Kopf dieser Datei: die
+       * Wartezeit trennt Ziehen von Rollen, und an einem Anfasser gibt es
+       * nichts zu trennen.
+       */
+      const sofort = (event.target as HTMLElement).closest('[data-drag-now]') !== null;
+
       // Capture is taken when the drag *begins*, not here.
       //
       // Taking it on the press broke every click in the sidebar: with capture
@@ -231,11 +260,14 @@ export function usePointerDrag<T>(options: PointerDragOptions<T>): PointerDrag<T
         startX: event.clientX,
         startY: event.clientY,
         pointerType: event.pointerType || 'mouse',
+        now: sofort,
         started: false,
         captured: false,
         element,
         holdTimer:
-          (event.pointerType || 'mouse') === 'mouse' ? null : setTimeout(begin, HOLD_MS),
+          sofort || (event.pointerType || 'mouse') === 'mouse'
+            ? null
+            : setTimeout(begin, HOLD_MS),
       };
 
       const onMove = (moveEvent: PointerEvent): void => {
@@ -247,7 +279,7 @@ export function usePointerDrag<T>(options: PointerDragOptions<T>): PointerDrag<T
 
         if (!current.started) {
           if (dx < SLOP && dy < SLOP) return;
-          if (current.pointerType === 'mouse') {
+          if (current.pointerType === 'mouse' || current.now) {
             begin();
           } else {
             // Moved before the hold elapsed: a scroll. Abandoned quietly, since

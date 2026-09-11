@@ -19,14 +19,16 @@ import {
   type ListView,
 } from '@sote/core';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
 import { useRowDrag } from '../hooks/useRowDrag.js';
 import { useNudge } from '../hooks/useNudge.js';
 import { api, ApiError, type Project, type Task, type TaskPatch } from '../api.js';
 import { HandleMenu } from '../components/HandleMenu.js';
 import { QuickAdd } from '../components/QuickAdd.js';
+import { CheckSquareIcon, ColumnsIcon, ListIcon } from '../components/icons.js';
 import { TaskRow } from '../components/TaskRow.js';
+import { DoneHiddenIcon, ViewCardsIcon, ViewFullIcon } from '../components/viewIcons.js';
 import { Board } from './Board.js';
 import { longDate } from '../dates.js';
 import { useShowDone } from '../hooks/useShowDone.js';
@@ -44,6 +46,20 @@ const TITLES: Record<string, string> = {
   upcoming: 'Demnächst',
   someday: 'Irgendwann',
   inbox: 'Posteingang',
+};
+
+/**
+ * Welches Zeichen für welche Form.
+ *
+ * Als Karte und nicht als Verzweigung im Knopf: der Wortschatz steht im Kern,
+ * und wer ihm ein Wort hinzufügt, soll hier eine fehlende Zeile finden und
+ * nicht ein Zeichen, das stillschweigend fehlt.
+ */
+const VIEW_ICONS: Record<ListView, ReactNode> = {
+  full: <ViewFullIcon />,
+  plain: <ListIcon size={16} />,
+  cards: <ViewCardsIcon />,
+  board: <ColumnsIcon size={16} />,
 };
 
 export function TaskList({
@@ -652,14 +668,31 @@ export function TaskList({
           Nicht unten bei der Liste, die er erzeugt: dort wäre er beim ersten
           Mal unsichtbar, weil es die Liste noch nicht gibt.
         */}
-        <button
-          type="button"
-          className="head-toggle"
-          aria-pressed={showDone}
-          onClick={toggleShowDone}
-        >
-          {showDone ? 'Erledigte ausblenden' : 'Erledigte einblenden'}
-        </button>
+        {/*
+          ZEICHEN STATT WÖRTER, und beide Knöpfe in EINER Reihe.
+
+          Gemeldet: „Die Buttons oben rechts sind hässlich." Sie waren es, und
+          zwar aus zwei Gründen: fünf Wörter in zwei Reihen über der
+          Überschrift, und der eine Knopf trug einen ganzen Satz („Erledigte
+          ausblenden"), die anderen ein Wort.
+
+          Die Wörter gehen dabei nicht verloren: jeder Knopf trägt seinen Namen
+          als `title` und als `aria-label` — dasselbe Geschäft wie im
+          Projektmenü, und SONEs Begründung dort gilt hier genauso.
+        */}
+        <div className="head-views" role="group" aria-label="Anzeige">
+          <button
+            type="button"
+            className="head-toggle"
+            aria-pressed={showDone}
+            title={showDone ? 'Erledigte ausblenden' : 'Erledigte einblenden'}
+            aria-label={showDone ? 'Erledigte ausblenden' : 'Erledigte einblenden'}
+            onClick={toggleShowDone}
+          >
+            {/* Durchgestrichen, wenn sie fehlen — der Vorschlag kam so und ist
+                gut: was durchgestrichen ist, ist nicht da. */}
+            {showDone ? <CheckSquareIcon size={16} /> : <DoneHiddenIcon />}
+          </button>
         {/*
           Die Anzeigeform, als Reihe und nicht als Klappmenü.
 
@@ -672,14 +705,14 @@ export function TaskList({
           der Liste und nicht in den Einstellungen des Arbeitsbereichs — dort
           liegt nur die Vorgabe.
         */}
-        <div className="head-views" role="group" aria-label="Anzeige">
           {LIST_VIEWS.map((wahl) => (
             <button
               key={wahl}
               type="button"
               className="head-toggle"
               aria-pressed={form === wahl}
-              title={LIST_VIEW_SAYS[wahl].says}
+              title={`${LIST_VIEW_SAYS[wahl].name} — ${LIST_VIEW_SAYS[wahl].says}`}
+              aria-label={LIST_VIEW_SAYS[wahl].name}
               onClick={() =>
                 /*
                  * Nochmal auf dasselbe drücken nimmt die Wahl ZURÜCK, statt
@@ -691,7 +724,7 @@ export function TaskList({
                 onListView(listView === wahl ? null : wahl)
               }
             >
-              {LIST_VIEW_SAYS[wahl].name}
+              {VIEW_ICONS[wahl]}
             </button>
           ))}
         </div>
@@ -719,7 +752,9 @@ export function TaskList({
         </div>
       ) : null}
 
-      <div className="body" ref={listRef}>
+      {/* Die Tafel bekommt die ganze Breite, die Listen behalten das Lesemaß
+          — die Begründung steht am `.body`-Block im Stylesheet. */}
+      <div className="body" ref={listRef} data-wide={form === 'board' ? 'yes' : undefined}>
         <QuickAdd
           now={now}
           onSubmit={(line) => void add(line)}

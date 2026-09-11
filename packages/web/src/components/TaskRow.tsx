@@ -81,7 +81,14 @@ export function TaskRow({
       data-open={open === true}
     >
       {grip === true ? (
-        <span className="grip" aria-hidden="true" title="ziehen, oder Alt und Pfeiltaste">
+        <span
+          className="grip"
+          aria-hidden="true"
+          title="ziehen, oder Alt und Pfeiltaste"
+          /* Kein Warten: wer den Anfasser drückt, will ziehen — dort zu rollen
+             ist niemandes Absicht (siehe `usePointerDrag`). */
+          data-drag-now="yes"
+        >
           ⠿
         </span>
       ) : null}
