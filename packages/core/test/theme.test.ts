@@ -84,12 +84,24 @@ test('der Akzent ist die Ausnahme und geht als Wert hinaus', () => {
   // Akzentfläche muss die Farbe lesen und `--accent` gleichzeitig umdefinieren,
   // und beides im selben CSS-Block ist ein Kreis. Die Begründung steht in
   // `theme.ts`.
-  assert.deepEqual(lookAttributes({ accent: 'blue' }).properties, {
+  /*
+   * Die drei tragen die Farbe ROH; die beiden abgeleiteten (`--accent-quiet`,
+   * `--accent-text`) stehen daneben und werden weiter unten geprüft. Hier
+   * werden darum nur diese drei herausgegriffen statt das ganze Objekt
+   * verglichen — sonst fällt dieser Test bei jeder weiteren Ableitung, ohne
+   * dass an dem, was er prüft, etwas falsch wäre.
+   */
+  const roh = (out: Record<string, string>) => ({
+    '--accent': out['--accent'],
+    '--accent-line': out['--accent-line'],
+    '--accent-base': out['--accent-base'],
+  });
+  assert.deepEqual(roh(lookAttributes({ accent: 'blue' }).properties), {
     '--accent': 'var(--sote-palette-blue)',
     '--accent-line': 'var(--sote-palette-blue)',
     '--accent-base': 'var(--sote-palette-blue)',
   });
-  assert.deepEqual(lookAttributes({ accent: '#2b6398' }).properties, {
+  assert.deepEqual(roh(lookAttributes({ accent: '#2b6398' }).properties), {
     '--accent': '#2b6398',
     '--accent-line': '#2b6398',
     '--accent-base': '#2b6398',
@@ -100,4 +112,51 @@ test('ohne jede Einstellung bleibt beides leer', () => {
   const out = lookAttributes({});
   assert.deepEqual(out.attributes, {});
   assert.deepEqual(out.properties, {});
+});
+
+test('die leise Fläche folgt dem gewählten Akzent', () => {
+  /*
+   * GEMELDET mit Bild: „Wo kommt diese komische Farbe im Hintergrund her? Die
+   * kann ich nirgends sehen und konfigurieren." Auf einer orangen Instanz war
+   * der Grund der gewählten Knöpfe blassgrün — `--accent-quiet` stand als
+   * feste Stufe der eingebauten Rampe im Stylesheet und wusste vom gewählten
+   * Akzent nichts.
+   */
+  const { properties } = lookAttributes({ accent: '#e8590c' });
+  assert.ok(properties['--accent-quiet']?.includes('#e8590c'));
+  assert.ok(properties['--accent-text']?.includes('#e8590c'));
+});
+
+test('auch als Palettenname, nicht nur als Hexwert', () => {
+  const { properties } = lookAttributes({ accent: 'orange' });
+  assert.ok(properties['--accent-quiet']?.includes('var(--sote-palette-orange)'));
+});
+
+test('die Mischung folgt dem Thema und nicht festen Farben', () => {
+  /*
+   * `--page` und `--text` stehen an der Wurzel und wechseln mit Hell und
+   * Dunkel. Eine Mischung gegen feste Werte wäre in einem der beiden Themen
+   * falsch — in Hell ein zu dunkler Grund, in Dunkel eine Schrift, die man
+   * nicht liest.
+   */
+  const { properties } = lookAttributes({ accent: '#e8590c' });
+  assert.ok(properties['--accent-quiet']?.includes('var(--page)'));
+  assert.ok(properties['--accent-text']?.includes('var(--text)'));
+});
+
+test('die Aufsätze bekommen dieselben Werte mit', () => {
+  // Sonst wäre ein Menü über einer Akzent-Schiene grün gesäumt: die
+  // Basiskopien stünden weiter auf der eingebauten Rampe (ADR-0122).
+  const { properties } = lookAttributes({ accent: '#e8590c' });
+  assert.equal(properties['--base-accent-quiet'], properties['--accent-quiet']);
+  assert.equal(properties['--base-accent-text'], properties['--accent-text']);
+});
+
+test('ohne gewählten Akzent wird nichts gesetzt', () => {
+  // Dann gilt die Vorgabe aus dem Stylesheet, und die passt zur eingebauten
+  // Rampe. Etwas zu schreiben, wo niemand etwas gewählt hat, wäre eine
+  // Entscheidung ohne Entscheider.
+  const { properties } = lookAttributes({});
+  assert.equal(properties['--accent-quiet'], undefined);
+  assert.equal(properties['--accent-text'], undefined);
 });

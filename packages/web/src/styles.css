@@ -315,7 +315,14 @@
   --border-default: var(--line-strong);
   --border-strong: var(--ink-300);
 
-  /* Akzent. */
+  /* Akzent.
+   *
+   * Diese beiden sind die VORGABE für eine Instanz, die keinen eigenen Akzent
+   * gewählt hat — sie passen zur eingebauten Rampe. Sobald einer gewählt ist,
+   * schreibt `theme.ts` sie an der Hülle neu, aus derselben Farbe gemischt.
+   *
+   * Sie hier als feste Stufen stehen zu lassen war der Fehler: eine orange
+   * Instanz bekam blassgrüne Flächen, die in keiner Einstellung vorkamen. */
   --accent-quiet: var(--accent-100);
   --accent-text: var(--accent-700);
   --accent-contrast: var(--accent-on);
@@ -3876,23 +3883,22 @@ select.target { }
   margin-inline-end: var(--sone-space-3);
 }
 
-/* Die gewählte Form trägt den Akzent — sonst sind es drei gleich aussehende
-   Knöpfe und keine Auswahl. */
-.head-toggle[aria-pressed="true"] {
-  border-color: var(--accent-line);
-  color: var(--accent-text);
-  background: var(--accent-quiet);
-}
-
-.head-toggle:hover {
-  background: var(--sunken);
-  color: var(--text);
-}
-
-.head-toggle[aria-pressed='true'] {
-  border-color: var(--accent-line);
-  color: var(--accent);
-}
+/*
+ * HIER STANDEN ZWEI WEITERE FASSUNGEN DERSELBEN REGEL, und sie sind der Grund,
+ * warum die Knöpfe trotz dreier Anläufe nicht so aussahen wie beabsichtigt.
+ *
+ * Jeder meiner Durchgänge hat eine `.head-toggle[aria-pressed]`-Regel
+ * hinzugefügt, statt die vorhandene zu ändern — die letzte gewann, und die
+ * setzte `border-color` (den Rahmen, den ich gerade abgeschafft hatte) und
+ * `color: var(--accent)` statt `--accent-text`. Im Browser gemessen: die
+ * Schrift kam als reines Orange heraus, obwohl die richtige Regel eine
+ * gemischte, dunklere Farbe vorsah.
+ *
+ * Die eine gültige Fassung steht weiter oben, zusammen mit ihrer Begründung.
+ * Dieselbe Lehre wie bei `.menu`, das ebenfalls dreimal dasteht: **eine
+ * gemeinsame Klasse ist eine gemeinsame Entscheidung**, und drei Regeln dafür
+ * sind drei Orte, an denen man die falsche ändert.
+ */
 
 /* Ausgegraut, aber lesbar: eine erledigte Zeile ist erledigt und nicht
    verschwunden — man will sie noch lesen können, um sie wieder zu öffnen.

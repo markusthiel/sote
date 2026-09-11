@@ -200,6 +200,41 @@ export function lookAttributes(look: Look): {
      * und darum immer noch die gewählte Farbe trägt.
      */
     properties['--accent-base'] = value;
+
+    /*
+     * DIE LEISE FLÄCHE UND DIE SCHRIFT DAZU — abgeleitet, nicht fest.
+     *
+     * GEMELDET mit Bild: „Wo kommt diese komische Farbe im Hintergrund her?
+     * Die kann ich nirgends sehen und konfigurieren." Auf einer orangen
+     * Instanz war der Grund der gewählten Knöpfe blassgrün.
+     *
+     * Die Ursache: `--accent-quiet` und `--accent-text` standen im Stylesheet
+     * als feste Stufen der EINGEBAUTEN Rampe (`--accent-100`, `--accent-700`).
+     * Wer den Akzent ändert, ändert `--accent` — die beiden blieben grün. Eine
+     * Farbe also, die es in keiner Einstellung gibt und die trotzdem auf dem
+     * Bildschirm steht. Das betraf nicht nur die Knöpfe im Kopf: auch das
+     * Schlagwort beim Zeigen, die Fertig-Spalte und die Feld-Ablehnung.
+     *
+     * Warum HIER und nicht im Stylesheet: die Ersetzung einer Eigenschaft
+     * passiert dort, wo sie DEKLARIERT ist. `--accent` wird an der Hülle
+     * gesetzt; eine Mischung, die in `:root` deklariert ist, sähe davon nichts
+     * und nähme die Vorgabe — derselbe Fehler, den der Kommentar zur Tönung in
+     * `useLook` schon einmal beschreibt.
+     *
+     * Gemischt mit `--page` und `--text` statt mit festen Werten: beide folgen
+     * dem Thema. In Hell wird der Grund heller und die Schrift dunkler, in
+     * Dunkel umgekehrt — eine Formel, zwei Themen.
+     */
+    properties['--accent-quiet'] = `color-mix(in srgb, ${value} 14%, var(--page))`;
+    properties['--accent-text'] = `color-mix(in srgb, ${value} 72%, var(--text))`;
+    /*
+     * Und die Kopien für die Aufsätze (ADR-0122): ein Menü, das über einer
+     * behandelten Fläche liegt, holt sich die Werte der SEITE zurück. Stünden
+     * die nur in `:root`, hätten sie wieder die eingebaute Rampe — und ein
+     * Menü über einer Akzent-Schiene wäre grün gesäumt.
+     */
+    properties['--base-accent-quiet'] = properties['--accent-quiet'];
+    properties['--base-accent-text'] = properties['--accent-text'];
   }
   if (look.tint !== undefined) {
     /*
