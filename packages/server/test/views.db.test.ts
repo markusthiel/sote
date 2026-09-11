@@ -29,7 +29,7 @@ import {
   OutOfOrder,
   patch,
 } from '../src/tasks.js';
-import { boundsOf, counts, list, splitOverdue } from '../src/views.js';
+import { listAcross, boundsOf, counts, list, splitOverdue } from '../src/views.js';
 
 const URL_ =
   process.env['SOTE_TEST_DATABASE_URL'] ??
@@ -634,4 +634,50 @@ test('die Dringlichkeit bleibt vor der Hand', async () => {
     (await list(pool, 'today', workspaceId, NOW)).map((r) => r.title),
     ['Wichtig', 'Egal'],
   );
+});
+
+test('Ueberall: eine Liste aus mehreren Arbeitsbereichen', async () => {
+  /*
+   * GEFRAGT: „Macht es Sinn, noch eine uebergeordnete Home-Seite zu bauen …
+   * von der aus man sozusagen in allen Workspaces arbeiten kann?" Bei
+   * mindestens drei Bereichen ja.
+   *
+   * EINE Abfrage und nicht drei: zwei Abfragen haetten eine eigene Sortierung,
+   * eine eigene Grenze und einen eigenen Zeitpunkt -- und zwei Listen, die
+   * zusammen eine sein sollen, laufen genau daran auseinander.
+   */
+  const { workspaceId: a } = await scratch(`ueberall-a-${process.pid}`);
+  const { workspaceId: b } = await scratch(`ueberall-b-${process.pid}`);
+  const heute = new Date('2026-09-11T09:00:00Z');
+
+  await createFromLine(pool, { workspaceId: a, userId, line: 'A heute 8 uhr', now: heute });
+  await createFromLine(pool, { workspaceId: b, userId, line: 'B heute 7 uhr', now: heute });
+  await createFromLine(pool, { workspaceId: b, userId, line: 'B naechste Woche', now: heute });
+
+  const beide = await listAcross(pool, 'today', [a, b], heute);
+  /*
+   * Die Titel sind „A" und „B": „heute 7 uhr" ist eine ANGABE und kein Titel,
+   * und der Schnellerfasser nimmt sie heraus. Das ist hier nebenbei der
+   * Beleg, dass die Zeile richtig gelesen wurde.
+   *
+   * Die Reihenfolge ist der eigentliche Punkt: 7 Uhr vor 8 Uhr, ueber
+   * Bereichsgrenzen hinweg.
+   */
+  assert.deepEqual(
+    beide.map((t) => t.title),
+    ['B', 'A'],
+  );
+
+  // Und die Sortierung ist die EIGENE dieser Ansicht: nach Zeit, nicht nach
+  // der Hand-Reihenfolge. Die gilt je Bereich -- zwei Schluessel aus
+  // verschiedenen Bereichen ergaeben eine Ordnung, die niemand gezogen hat.
+  const nurA = await listAcross(pool, 'today', [a], heute);
+  assert.deepEqual(nurA.map((t) => t.title), ['A']);
+});
+
+test('ohne Arbeitsbereiche kommt eine leere Liste und keine Abfrage', async () => {
+  // Der fruehe Ausstieg ist kein Feinschliff: `ANY('{}')` traefe nichts, aber
+  // die Abfrage liefe. Wer in keinem Bereich Mitglied ist, soll den Server
+  // nicht befragen muessen, um das zu erfahren.
+  assert.deepEqual(await listAcross(pool, 'today', [], new Date()), []);
 });

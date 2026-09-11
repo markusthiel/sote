@@ -60,6 +60,7 @@ import {
   SETTING_SECTIONS,
   WORKSPACE_SECTIONS,
 } from './screens/Settings.js';
+import { Everywhere } from './screens/Everywhere.js';
 import { Trash } from './screens/Trash.js';
 
 /**
@@ -958,6 +959,22 @@ export function App() {
           />
         ) : route.kind === 'settings' && route.section === 'kalender' ? (
           <CalendarFeed workspace={workspace} workspaceName={wsName} />
+        ) : route.kind === 'workspaces' && route.section === 'ueberall' ? (
+          <Everywhere
+            /*
+             * Öffnen heißt hier: den Bereich WECHSELN und dort die Aufgabe
+             * aufmachen. Eine Detailspalte über einen fremden Bereich hinweg
+             * wäre die Alternative — und damit müsste jede Route in ihr den
+             * Bereich mitführen, den der Rest der Anwendung aus dem Zustand
+             * nimmt. Zwei Antworten auf „wo bin ich".
+             */
+            onOpen={(ws, taskId) => {
+              setWorkspace(ws);
+              setOpenTask(taskId);
+              go({ kind: 'today' });
+            }}
+            onChanged={() => void loadPanel()}
+          />
         ) : route.kind === 'workspaces' && route.section === 'alle' ? (
           <WorkspaceOverview workspaces={me.workspaces} current={workspace} />
         ) : route.kind === 'workspaces' && route.section === 'gruppen' ? (

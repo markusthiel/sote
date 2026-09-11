@@ -90,6 +90,14 @@ export const SETTING_SECTIONS = [
  * angeht — das war eine Notlösung dafür, dass der Ort es nicht sagte.
  */
 export const WORKSPACE_SECTIONS = [
+  /*
+   * „Überall" steht GANZ OBEN, vor der Aufzählung der Bereiche.
+   *
+   * Wer hierher kommt, will meistens wissen, was offen ist — nicht, welche
+   * Bereiche es gibt. Die Liste der Bereiche ist die Antwort auf „wohin
+   * wechseln", und das ist die seltenere Frage, sobald es drei sind.
+   */
+  { id: 'ueberall', label: 'Überall', hint: 'Heute und Demnächst aus allen' },
   { id: 'alle', label: 'Alle Workspaces', hint: 'Übersicht' },
   { id: 'name', label: 'Name und Zeichen', hint: 'Woran man ihn erkennt' },
   { id: 'landen', label: 'Standard-Seite', hint: 'Vorgabe für alle' },

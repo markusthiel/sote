@@ -592,6 +592,20 @@ export const api = {
       `/api/labels/${id}${workspace === undefined ? '' : `?workspace=${workspace}`}`,
       { method: 'PATCH', body: JSON.stringify({ color }) },
     ),
+  /**
+   * Heute oder Demnächst über ALLE Arbeitsbereiche.
+   *
+   * Ohne `?workspace=` — als einzige Route neben der Kontoantwort. Sie fragt
+   * nicht „darf ich hier", sondern „wo bin ich Mitglied", und nimmt genau die
+   * Bereiche.
+   */
+  across: (view: 'today' | 'upcoming') =>
+    call<{
+      view: string;
+      /** Jede Aufgabe trägt hier ihren Bereich — das ist der Unterschied. */
+      tasks: (Task & { workspaceId: string })[];
+      workspaces: { id: string; name: string; icon?: unknown }[];
+    }>(withZone(`/api/across?view=${view}`)),
   labels: (workspace?: string) =>
     call<{
       labels: { id: string; name: string; tasks: number; color: string | null }[];

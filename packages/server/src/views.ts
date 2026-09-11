@@ -288,6 +288,56 @@ export async function childrenOf(
   return out;
 }
 
+/**
+ * Dieselben Orte, aber über ALLE Arbeitsbereiche.
+ *
+ * GEFRAGT: „Macht es Sinn, noch eine übergeordnete Home-Seite zu bauen oder ein
+ * Dashboard, das die Übersichten aus allen Workspaces zusammenführt?" — bei
+ * mindestens drei Bereichen ja, und zwar als EINE Liste und nicht als Kacheln
+ * mit Zahlen: eine Zahl sagt, WO etwas liegt, eine Liste sagt, WAS zu tun ist.
+ *
+ * ## Eine Abfrage, nicht drei
+ *
+ * `workspace_id = ANY(...)` statt dreimal `list()` und dann zusammenlegen. Der
+ * Grund steht schon bei `withDone` in dieser Datei: zwei Abfragen haben eine
+ * eigene Sortierung, eine eigene Grenze und einen eigenen Zeitpunkt — und zwei
+ * Listen, die zusammen eine sein sollen, laufen genau daran auseinander.
+ *
+ * ## EIGENE Sortierung, und das mit Absicht
+ *
+ * „Heute" sortiert innerhalb eines Bereichs nach Dringlichkeit und dann nach
+ * der Hand-Reihenfolge (`sort_key`). Die gilt je Bereich: zwei Schlüssel aus
+ * verschiedenen Bereichen nebeneinander ergeben eine Reihenfolge, die niemand
+ * gezogen hat.
+ *
+ * Hier also: Dringlichkeit, dann ZEIT, dann Titel. Damit stehen die Termine des
+ * Tages wieder in Uhrzeit-Reihenfolge — was in der einzelnen Liste aufgegeben
+ * werden musste, damit man dort ziehen kann. Ziehen geht hier ohnehin nicht,
+ * also kostet es nichts und bringt die bessere Ordnung zurück.
+ */
+export async function listAcross(
+  q: Pool | PoolClient,
+  view: 'today' | 'upcoming',
+  workspaceIds: readonly string[],
+  now: Date,
+  zone?: string,
+): Promise<TaskRow[]> {
+  if (workspaceIds.length === 0) return [];
+  const bounds = boundsOf(now, zone);
+  const grenze =
+    view === 'today'
+      ? 'AND (planned_at <= $2 OR due_at <= $2)'
+      : `AND (planned_at IS NOT NULL OR due_at IS NOT NULL)
+         AND COALESCE(planned_at, due_at) > $2`;
+  return queryRows<TaskRow>(
+    q,
+    `SELECT ${COLUMNS} FROM tasks
+      WHERE workspace_id = ANY($1::uuid[]) AND ${ALIVE} ${grenze}
+      ORDER BY priority ASC, COALESCE(planned_at, due_at) ASC, lower(title) ASC`,
+    [workspaceIds, bounds.endOfDay],
+  );
+}
+
 export async function list(
   q: Pool | PoolClient,
   view: ViewId,

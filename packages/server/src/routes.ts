@@ -113,7 +113,7 @@ import {
 } from './board.js';
 import { colorLabel, LabelTrouble, labelsOfWorkspace, removeLabel, renameLabel } from './labels.js';
 import { listViewsOf, setListView, ViewTrouble } from './listViews.js';
-import { childrenOf, counts, list, splitOverdue, type ViewId } from './views.js';
+import { childrenOf, counts, list, listAcross, splitOverdue, type ViewId } from './views.js';
 
 const COOKIE = 'sote_session';
 const VIEWS: readonly ViewId[] = ['today', 'upcoming', 'someday', 'inbox', 'project'];
@@ -855,6 +855,65 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
         // Frage an den Arbeitsbereich und nicht an das Konto.
         owner: w.is_owner,
       })),
+    });
+    return;
+  }
+
+  /*
+   * ÜBERALL: dieselben Orte, über alle Arbeitsbereiche.
+   *
+   * GEFRAGT: „Macht es Sinn, noch eine übergeordnete Home-Seite zu bauen …
+   * von der aus man sozusagen in allen Workspaces arbeiten kann?" Bei
+   * mindestens drei Bereichen ja.
+   *
+   * HIER OBEN, vor der Bereichsprüfung, und das ist der ganze Punkt dieser
+   * Route: sie hat keinen EINEN Arbeitsbereich. Die Prüfung darunter verlangt
+   * `?workspace=` und prüft die Mitgliedschaft; diese Route fragt stattdessen,
+   * in welchen Bereichen jemand Mitglied IST, und nimmt genau die. Damit ist
+   * die Rechteprüfung nicht schwächer, sondern dieselbe — nur für mehrere.
+   *
+   * Gelöschte Bereiche fallen heraus (`deleted_at IS NULL`), wie in der
+   * Kontoantwort auch: ein Bereich im Papierkorb soll nicht aus einer
+   * Übersicht heraus weiterleben.
+   */
+  if (path === '/api/across' && method === 'GET') {
+    const gefragt = url.searchParams.get('view');
+    const view = gefragt === 'upcoming' ? 'upcoming' : 'today';
+    const meine = await queryRows<{ id: string; name: string; icon: unknown }>(
+      ctx.pool,
+      `SELECT w.id, w.name, w.icon FROM workspaces w
+         JOIN workspace_members m ON m.workspace_id = w.id
+        WHERE m.user_id = $1 AND w.deleted_at IS NULL
+        ORDER BY w.created_at`,
+      [userId],
+    );
+    const rows = await listAcross(
+      ctx.pool,
+      view,
+      meine.map((w) => w.id),
+      new Date(),
+      url.searchParams.get('tz') ?? undefined,
+    );
+    json(res, 200, {
+      view,
+      /*
+       * Mit dem Bereich an JEDER Aufgabe.
+       *
+       * Nur hier und nicht in `taskView` für alle: in einer Liste innerhalb
+       * eines Bereichs wäre es derselbe Wert dreissigmal, und eine Antwort,
+       * die sich selbst wiederholt, wird beim Lesen überflogen. Hier ist er
+       * der Unterschied zwischen zwei Zeilen.
+       */
+      tasks: rows.map((r) => ({ ...taskView(r), workspaceId: r.workspace_id })),
+      /*
+       * Die Bereiche kommen MIT, als Karte für die Marke an jeder Zeile.
+       *
+       * Nicht an jeder Aufgabe der Name: das wäre derselbe Name dreissigmal.
+       * Und nicht aus der Kontoantwort geholt — die Oberfläche soll diese
+       * Ansicht aus EINER Antwort zeichnen können, sonst hängt sie an der
+       * Reihenfolge zweier Abrufe.
+       */
+      workspaces: meine.map((w) => ({ id: w.id, name: w.name, icon: readIcon(w.icon) })),
     });
     return;
   }

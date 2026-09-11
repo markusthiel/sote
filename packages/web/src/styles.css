@@ -2068,6 +2068,55 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex]:focus-vi
   background: color-mix(in srgb, var(--eigen) 12%, var(--surface));
 }
 
+/* ── „Überall": eine Liste aus allen Arbeitsbereichen ──────────────────────
+ *
+ * Dieselbe Zeile wie in einer Liste, nur mit der Marke des Bereichs am Ende —
+ * das eine, was sie von einer gewöhnlichen unterscheidet, und der Grund, aus
+ * dem es die Seite gibt.
+ */
+.across {
+  display: flex;
+  flex-direction: column;
+}
+
+.across-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sone-space-3);
+  padding: var(--sone-space-3) 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.across-title {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  padding: 0;
+  background: none;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.across-meta {
+  flex: none;
+  font-family: var(--sote-mono);
+  font-size: var(--sone-text-xs);
+  color: var(--text-muted);
+}
+
+/* Die Marke rechts und leise: sie sagt, WO die Zeile herkommt, und das ist
+   eine Auskunft über die Zeile und nicht ihr Inhalt. */
+.across-space {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sone-space-2);
+  flex: none;
+  min-inline-size: 8ch;
+  font-size: var(--sone-text-xs);
+  color: var(--text-faint);
+}
+
 /* ── Das Aussehen einer Aufgabe ────────────────────────────────────────────
  *
  * Gewünscht: „Ein Icon, das dann vor dem Titel angezeigt wird, Textfarbe und
