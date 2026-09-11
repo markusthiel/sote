@@ -31,6 +31,7 @@ import { CheckSquareIcon, ColumnsIcon, ListIcon } from '../components/icons.js';
 import { TaskRow } from '../components/TaskRow.js';
 import { DoneHiddenIcon, ViewCardsIcon, ViewFullIcon } from '../components/viewIcons.js';
 import { Board } from './Board.js';
+import { FolderView } from './FolderView.js';
 import { longDate } from '../dates.js';
 import { useShowDone } from '../hooks/useShowDone.js';
 import { toggleDone } from '../tasks/toggleDone.js';
@@ -72,6 +73,7 @@ export function TaskList({
   openTask,
   onOpenTask,
   onLabel,
+  onOpenProject,
   listView,
   workspaceListView,
   onListView,
@@ -85,6 +87,8 @@ export function TaskList({
   onOpenTask: (id: string | null) => void;
   /** Ein Klick auf ein Schlagwort — führt in die Suche. */
   onLabel: (name: string) => void;
+  /** Eine Karte im Ordner öffnet das Projekt darunter. */
+  onOpenProject: (id: string) => void;
   /**
    * Was diese Person hier gewählt hat, und was der Arbeitsbereich vorgibt.
    *
@@ -100,6 +104,13 @@ export function TaskList({
   const view = viewOf(route);
   const projectId = route.kind === 'project' ? route.projectId : undefined;
   const project = projects.find((p) => p.id === projectId);
+  /*
+   * Ein Ordner ordnet, ein Projekt hält (Konzept 10d).
+   *
+   * Der Unterschied entscheidet hier zwei Dinge: kein Erfassungsfeld, und
+   * stattdessen eine Ansicht dessen, was darunter liegt.
+   */
+  const istOrdner = project?.kind === 'folder';
 
   const [overdue, setOverdue] = useState<Task[]>([]);
   const [rows, setRows] = useState<Task[]>([]);
@@ -761,13 +772,41 @@ export function TaskList({
       {/* Die Tafel bekommt die ganze Breite, die Listen behalten das Lesemaß
           — die Begründung steht am `.body`-Block im Stylesheet. */}
       <div className="body" ref={listRef} data-wide={form === 'board' ? 'yes' : undefined}>
-        <QuickAdd
-          now={now}
-          onSubmit={(line) => void add(line)}
-          busy={busy}
-          unknownProject={unknownProject}
-        />
+        {/*
+          KEIN ERFASSUNGSFELD AN EINEM ORDNER.
+
+          GEMELDET: „Aufgaben-hinzufügen-Feld ist auch bei Ordnern sichtbar,
+          das geht ja nicht." Stimmt — ein Ordner ordnet, ein Projekt hält
+          (Konzept 10d, Migration 0009). Das Feld dort war ein Bedienelement
+          für eine Sache, die es nicht gibt.
+        */}
+        {istOrdner ? null : (
+          <QuickAdd
+            now={now}
+            onSubmit={(line) => void add(line)}
+            busy={busy}
+            unknownProject={unknownProject}
+          />
+        )}
         {notice !== undefined ? <p className="note-error">{notice}</p> : null}
+
+        {/*
+          Stattdessen: was unter diesem Ordner liegt.
+
+          Wer einen Ordner öffnet, hat ihn gerade in der Leiste angeklickt —
+          eine leere Fläche wäre die Antwort „hier ist nichts" auf eine Frage,
+          auf die es eine gibt.
+        */}
+        {istOrdner && project !== undefined ? (
+          <FolderView
+            folder={project}
+            projects={projects}
+            /* Der Weg dorthin ist eine Adresse, keine Zustandsänderung — die
+               Karte ist ein `a`, und dies ist nur der Abkürzer für den
+               gewöhnlichen Klick. */
+            onOpen={(id) => onOpenProject(id)}
+          />
+        ) : null}
 
         {/*
           Die Tafel ersetzt die Liste, sie steht nicht daneben.

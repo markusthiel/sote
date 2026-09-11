@@ -1000,6 +1000,7 @@ export function App() {
             openTask={openTask}
             onOpenTask={setOpenTask}
             onLabel={(name) => go({ kind: 'search', q: `@${name}` })}
+            onOpenProject={(id) => go({ kind: 'project', projectId: id })}
             listView={
               /*
                * Welcher Ort gerade gemeint ist: eine Liste hat eine Id, Heute

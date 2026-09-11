@@ -1111,6 +1111,60 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex]:focus-vi
   max-inline-size: 44ch;
 }
 
+/* ── Was in einem Ordner liegt ─────────────────────────────────────────────
+ *
+ * Karten und keine Liste: eine Liste sähe aus wie eine Aufgabenliste und wäre
+ * keine. Karten sagen „das sind Orte, keine Vorgänge".
+ *
+ * Ein Raster, das sich selbst füllt — bei zwei Kindern zwei Karten
+ * nebeneinander, bei zwölf drei Reihen. `auto-fill` und nicht eine feste
+ * Spaltenzahl: die Breite hängt an der Detailspalte, die sich öffnen kann.
+ */
+.folder-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--sone-space-4);
+  padding-block-start: var(--sone-space-4);
+}
+
+.folder-card {
+  display: flex;
+  align-items: center;
+  gap: var(--sone-space-4);
+  min-height: var(--sone-tap);
+  padding: var(--sone-space-5);
+  border: 1px solid var(--line);
+  border-radius: var(--sote-radius-md);
+  background: var(--surface);
+  color: var(--text);
+  /* Kein Strich unter dem Namen: die ganze Karte ist der Link, und ein
+     unterstrichenes Wort darin sähe aus, als wäre nur das Wort anklickbar. */
+  text-decoration: none;
+}
+
+.folder-card:hover {
+  border-color: var(--line-strong);
+  background: var(--surface-hover);
+  text-decoration: none;
+}
+
+.folder-card-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Die Zahl in Schmalschrift, wie alle Zahlen hier — und nur, wenn es eine
+   gibt: eine Zahl über nichts ist Rauschen. */
+.folder-card-count {
+  flex: none;
+  font-family: var(--sote-mono);
+  font-size: var(--sone-text-xs);
+  color: var(--text-faint);
+}
+
 /* ── Die Tafel ─────────────────────────────────────────────────────────────
  *
  * Spalten nebeneinander, waagerecht rollbar. Feste Breite je Spalte und nicht
