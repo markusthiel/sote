@@ -1475,83 +1475,85 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex]:focus-vi
   word-break: break-word;
 }
 
-/* ── Ein Anhang als Karte ──────────────────────────────────────────────────
+/* ── SONEs Dateizeile ──────────────────────────────────────────────────────
  *
- * Gewünscht: „Die Spalte Anhänge kannst du dann eher als Karte gestalten mit
- * den Buttons darunter."
+ * GEMELDET mit Bild: „Hier die Optik, die SONE verwendet." Also wörtlich von
+ * dort (`.file-line`, `.file-name`, `.file-meta`), mit SOTEs Namen für
+ * dieselben Werte.
  *
- * Vorher eine Zeile mit Name, Größe und drei Zeichen nebeneinander — in einer
- * Spalte von 340 Pixeln lief ein Dateiname damit gegen die Knöpfe. Eine Karte
- * gibt dem Namen die ganze Breite und den Knöpfen eine eigene Zeile; sie
- * wächst nach unten, und unten ist Platz.
+ * Davor gab es hier zwei eigene Versuche am selben Problem: eine Pille, in der
+ * lange Namen über drei Zeilen umbrachen, und danach eine Karte, die dem Namen
+ * die Breite gab und dafür drei Zeilen je Anhang kostete. SONEs Antwort ist
+ * eine ZEILE — und sie war die ganze Zeit da.
+ *
+ * Dieselbe Lehre wie bei den Knöpfen im Listenkopf: eine Form nachzubauen, die
+ * es gibt, heisst eine zweite Sprache für dieselbe Sache zu erfinden.
  */
-.file-card {
+.file-line {
   /*
-   * Volle Breite, eine je Zeile.
+   * Volle Breite, eine je Zeile — und `min-width: 0`, damit der Name darin
+   * schrumpfen DARF.
    *
-   * `.rem-list` ist eine umbrechende Reihe — richtig fuer Erinnerungen, die
-   * kurz sind und nebeneinander passen. Karten sind es nicht: im Bild war die
-   * zweite schmaler als die erste, weil jede so breit wurde, wie ihr Name ist.
-   * Zwei verschieden breite Karten untereinander lesen sich als Fehler.
+   * `.rem-list` ist eine umbrechende Reihe; ohne die beiden Angaben wird die
+   * Zeile so breit wie ihr Inhalt, und ein langer Name laeuft aus der Spalte
+   * heraus, statt mit Punkten zu enden. Genau so im Bild.
    */
   flex: 1 1 100%;
-  display: flex;
-  flex-direction: column;
-  gap: var(--sone-space-3);
-  padding: var(--sone-space-4);
-  border: 1px solid var(--line);
-  border-radius: var(--sote-radius-md);
-  background: var(--surface-raised);
-}
-
-.file-card-head {
-  display: flex;
-  align-items: baseline;
-  gap: var(--sone-space-3);
   min-width: 0;
-}
-
-/* Die Knöpfe umbrechen, statt sich zu drängen: bei drei Knöpfen und einer
-   schmalen Spalte ist eine zweite Zeile die ehrlichere Antwort als drei
-   Knöpfe, auf die kein Wort mehr passt. */
-.file-card-tools {
   display: flex;
-  flex-wrap: wrap;
-  gap: var(--sone-space-2);
+  align-items: center;
+  gap: var(--sone-space-3);
+  padding: var(--sone-space-2) var(--sone-space-3);
+  border-radius: var(--sote-radius-sm);
+  /* Die Klammer links in der leisesten Farbe: sie sagt „Anhang" und ist nicht
+     der Inhalt der Zeile. */
+  color: var(--text-faint);
 }
 
-/* Das Zeichen im Knopf steht VOR dem Wort und rückt nicht daran: ein Knopf
-   mit Zeichen und Wort ist eine Sache und keine zwei. */
-.file-card-tools .btn {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--sone-space-2);
+.file-line:hover {
+  background: var(--surface-hover);
+}
+
+/* Die Art und die Größe in Schmalschrift, wie alle Zahlen hier — und rechts,
+   weil sie bei jeder Zeile gleich breit sind und damit eine Spalte bilden. */
+.file-meta {
+  margin-inline-start: auto;
+  flex: none;
+  font-family: var(--sote-mono);
+  font-size: var(--sone-text-xs);
+  color: var(--text-muted);
+}
+
+/* Das Menü ganz rechts, hinter der Größe. */
+.file-menu {
+  position: relative;
+  flex: none;
 }
 
 /* Der Name eines Anhangs öffnet die Vorschau — also ein Knopf, der wie Text
    aussieht. */
 .file-name {
   /*
-   * Nimmt die Breite und BRICHT UM, statt zu enden.
+   * ENDET MIT PUNKTEN, statt umzubrechen — wie bei SONE im Bild.
    *
-   * Gemeldet mit Bild: „Die Dateiliste sieht jetzt nicht so gut aus, wenn es
-   * lange Dateinamen gibt."
-   *
-   * Punkte am Ende wären bei Dateien die falsche Kürzung: das Wichtigste
-   * steht hinten (`.pdf`, `.JPG`), und „829fc65b-91ae-4682…" sagt gar nichts.
-   * In einer Karte ist Platz nach unten, also darf der Name ihn nehmen.
-   *
-   * `anywhere` und nicht `break-word`: ein Name aus einer einzigen langen
-   * Zeichenkette ohne Bindestrich (genau der Fall im Bild) bricht sonst gar
-   * nicht und schiebt die Grösse aus der Karte.
+   * Ich hatte zwischendurch das Gegenteil gebaut, mit dem Argument, dass bei
+   * Dateien das Wichtigste hinten steht. In einer KARTE stimmte das; in einer
+   * ZEILE nicht: ein Name über drei Zeilen macht aus einer Zeile drei, und
+   * genau davon kam die Meldung. Der ganze Name steht im `title` und in der
+   * Vorschau darüber.
    */
   flex: 1;
   min-width: 0;
-  overflow-wrap: anywhere;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  /* SONE: `color: var(--sone-text); font-weight: 500` — der Name ist der
+     Inhalt der Zeile und nicht ein Verweis, also kein Akzent. */
+  color: var(--text);
+  font-weight: 500;
   border: 0;
   padding: 0;
   background: none;
-  color: var(--accent-text);
   font: inherit;
   text-align: start;
   cursor: pointer;
@@ -1561,24 +1563,6 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex]:focus-vi
   text-decoration: underline;
 }
 
-/* Die beiden Zeichen an einer Anhangszeile. */
-.file-tool {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  inline-size: var(--sone-control);
-  block-size: var(--sone-control);
-  border: 0;
-  border-radius: var(--sote-radius-sm);
-  background: none;
-  color: var(--text-faint);
-  cursor: pointer;
-}
-
-.file-tool:hover {
-  background: var(--sunken);
-  color: var(--text);
-}
 
 /*
  * Ein Bild im Reiter, mit dem Knopf darauf.

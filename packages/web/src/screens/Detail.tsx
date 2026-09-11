@@ -36,7 +36,7 @@ import {
   type IconProps,
 } from '../components/icons.js';
 import { CloseIcon, EyeIcon } from '../components/viewIcons.js';
-import { FileModal } from '../components/FileModal.js';
+import { FileModal, kindName } from '../components/FileModal.js';
 import { useDetailTab } from '../hooks/useDetailTab.js';
 import { whenOptions } from '../components/HandleMenu.js';
 import { whenLabel } from '../dates.js';
@@ -230,6 +230,8 @@ export function Detail({
    * von gestern. Die Id findet die Datei jedes Mal neu.
    */
   const [ansehen, setAnsehen] = useState<string | null>(null);
+  /** Welches Dateimenü offen ist — eines nach dem anderen. */
+  const [fileMenu, setFileMenu] = useState<string | null>(null);
   /*
    * Die Leute des Arbeitsbereichs, einmal geholt.
    *
@@ -1110,80 +1112,99 @@ export function Detail({
                   ) : (
                     data.files.map((f) => (
                       /*
-                        EINE KARTE JE ANHANG, mit den Knöpfen darunter.
+                        SONES DATEIZEILE, wörtlich übernommen.
 
-                        GEWÜNSCHT: „Die Spalte Anhänge kannst du dann eher als
-                        Karte gestalten mit den Buttons darunter."
+                        GEMELDET mit Bild: „Hier die Optik, die SONE verwendet."
+                        Und davor schon: „Wenn es nicht besser geht, dann lieber
+                        doch keine Pille."
 
-                        Vorher war es eine Zeile: Name, Größe und drei Zeichen
-                        nebeneinander — in einer Spalte von 340 Pixeln lief ein
-                        Dateiname damit gegen die Knöpfe, und je länger der
-                        Name, desto enger wurde es. Eine Karte gibt dem Namen
-                        die ganze Breite und den Knöpfen eine eigene Zeile; die
-                        Karte wächst nach unten, und unten ist Platz.
+                        Meine Karte war der zweite Versuch am selben Problem und
+                        auch nicht der richtige: sie gab dem Namen die ganze
+                        Breite, kostete dafür aber drei Zeilen je Anhang. SONEs
+                        Antwort ist eine ZEILE — Klammer, Name, und rechts die
+                        Art mit der Grösse in Schmalschrift.
+
+                        Das ist dieselbe Lehre wie bei den Knöpfen im Listenkopf:
+                        die Form gibt es schon, und sie nachzubauen hiesse, eine
+                        zweite Sprache für dieselbe Sache zu erfinden. Die Klassen
+                        heissen darum wie dort — `.file-line`, `.file-name`,
+                        `.file-meta`.
                       */
-                      <div className="file-card" key={f.id}>
-                        <div className="file-card-head">
-                          {/*
-                            DER NAME ÖFFNET DIE VORSCHAU, nicht den Download.
-
-                            „Standard anklicken wäre dann eher das Modal" — und
-                            das ist auch die häufigere Absicht: man klickt auf
-                            einen Anhang, um zu sehen, was er ist.
-                          */}
+                      <div className="file-line" key={f.id}>
+                        <PaperclipIcon size={14} />
+                        {/*
+                          Der Name ÖFFNET die Vorschau: „Standard anklicken wäre
+                          dann eher das Modal." SONE tut dasselbe und begründet
+                          es genauso — wer auf einen Namen klickt, will sehen,
+                          was es ist, nicht eine Kopie im Download-Ordner.
+                        */}
+                        <button
+                          type="button"
+                          className="file-name"
+                          title={`${f.filename} ansehen`}
+                          onClick={() => setAnsehen(f.id)}
+                        >
+                          {f.filename}
+                        </button>
+                        <span className="file-meta">
+                          {kindName(f.mimeType)} · {kilobytes(f.sizeBytes)}
+                        </span>
+                        {/*
+                          EIN Menü statt dreier Knöpfe, und der Grund steht bei
+                          SONE: „A row of display buttons with a download link
+                          beside it was two kinds of thing in one place — what
+                          should this look like and what should happen now —
+                          reading as one row, and growing every time something
+                          was added."
+                        */}
+                        <div className="file-menu">
                           <button
                             type="button"
-                            className="file-name"
-                            title={`${f.filename} ansehen`}
-                            onClick={() => setAnsehen(f.id)}
+                            className="dots"
+                            aria-label={`Menü für ${f.filename}`}
+                            aria-haspopup="menu"
+                            onClick={() => setFileMenu(fileMenu === f.id ? null : f.id)}
                           >
-                            {f.filename}
+                            ⋮
                           </button>
-                          <span className="file-size">{kilobytes(f.sizeBytes)}</span>
-                        </div>
-
-                        <div className="file-card-tools">
-                          {/*
-                            Mit WORT und nicht nur mit Zeichen: hier ist Platz,
-                            und drei Zeichen nebeneinander sind drei Rätsel.
-                            In der Zeile vorher war das anders — dort gab es
-                            keinen Platz, und dort halfen `title` und
-                            `aria-label`.
-                          */}
-                          <button
-                            type="button"
-                            className="btn quiet small"
-                            onClick={() => setAnsehen(f.id)}
-                          >
-                            <EyeIcon /> Ansehen
-                          </button>
-                          {/*
-                            Ein echter Link und kein Abruf: der Browser lädt die
-                            Datei selbst, mit Fortschritt und Wiederaufnahme.
-                            Ein `fetch`, das Bytes in den Arbeitsspeicher holt,
-                            um sie dann als Blob anzubieten, wäre derselbe Weg
-                            mit mehr Schritten.
-                          */}
-                          <a
-                            className="btn quiet small"
-                            href={anbindung.fileHref?.(f.id) ?? '#'}
-                            download={f.filename}
-                          >
-                            <DownloadIcon size={14} /> Laden
-                          </a>
-                          {anbindung.removeFile === undefined ? null : (
-                            <button
-                              type="button"
-                              className="btn quiet small danger"
-                              aria-label={`Anhang „${f.filename}“ wegnehmen`}
-                              disabled={busy}
-                              onClick={() => {
-                                void save(() => anbindung.removeFile!(f.id));
-                              }}
-                            >
-                              Wegnehmen
-                            </button>
-                          )}
+                          {fileMenu === f.id ? (
+                            <div className="menu" role="menu">
+                              <button
+                                type="button"
+                                role="menuitem"
+                                className="menu-item"
+                                onClick={() => {
+                                  setFileMenu(null);
+                                  setAnsehen(f.id);
+                                }}
+                              >
+                                Ansehen
+                              </button>
+                              <a
+                                role="menuitem"
+                                className="menu-item"
+                                href={anbindung.fileHref?.(f.id) ?? '#'}
+                                download={f.filename}
+                                onClick={() => setFileMenu(null)}
+                              >
+                                Herunterladen
+                              </a>
+                              {anbindung.removeFile === undefined ? null : (
+                                <button
+                                  type="button"
+                                  role="menuitem"
+                                  className="menu-item danger"
+                                  disabled={busy}
+                                  onClick={() => {
+                                    setFileMenu(null);
+                                    void save(() => anbindung.removeFile!(f.id));
+                                  }}
+                                >
+                                  Wegnehmen
+                                </button>
+                              )}
+                            </div>
+                          ) : null}
                         </div>
                       </div>
                     ))

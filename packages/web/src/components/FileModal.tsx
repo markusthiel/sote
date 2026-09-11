@@ -64,6 +64,29 @@ export function kindOf(mimeType: string): FileKind {
   return 'other';
 }
 
+/**
+ * Wie eine Datei GENANNT wird, in einem Wort.
+ *
+ * SONE schreibt in seiner Dateizeile „archive · 2.9 MB" — die Art zuerst, dann
+ * die Größe. Das Wort sagt, was einen erwartet, bevor man klickt, und ist
+ * kürzer als jede Endung es erklären könnte.
+ *
+ * Auf Deutsch, anders als bei SONE: SOTEs Oberfläche spricht Deutsch, und ein
+ * einzelnes englisches Wort in einer deutschen Zeile ist keine Angleichung,
+ * sondern ein Rest.
+ */
+export function kindName(mimeType: string): string {
+  const art = kindOf(mimeType);
+  if (art === 'image') return 'Bild';
+  if (art === 'pdf') return 'PDF';
+  if (art === 'text') return 'Text';
+  const t = mimeType.toLowerCase();
+  if (t.includes('zip') || t.includes('tar') || t.includes('compress')) return 'Archiv';
+  if (t.startsWith('audio/')) return 'Audio';
+  if (t.startsWith('video/')) return 'Video';
+  return 'Datei';
+}
+
 export function FileModal({
   href,
   filename,
