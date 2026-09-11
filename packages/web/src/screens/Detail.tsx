@@ -121,6 +121,24 @@ export const guestIO = (token: string, taskId: string): DetailIO => ({
   patch: (fields) => api.sharePatch(token, taskId, fields),
   addChild: (title) => api.shareAddChild(token, taskId, title),
   addComment: (body) => api.shareAddComment(token, taskId, body),
+  /*
+   * ANHÄNGE — auch beim Gast.
+   *
+   * GEMELDET: „Datei-Uploads gehen nicht, sollte aber, das gehört dazu.
+   * Anhänge und Bilder werden gar nicht angezeigt."
+   *
+   * Hier stand: „beim Gast fehlt es ebenso — eine Datei hängt an einem Konto."
+   * Das war falsch. Sie hängt an einer AUFGABE, und die ist freigegeben; die
+   * Spalte `uploaded_by` darf seit jeher leer sein.
+   *
+   * Und es war teurer als es aussieht: die Detailspalte zeigt den ganzen
+   * Abschnitt nur, wenn `addFile` da ist — ohne ihn sah ein Gast nicht einmal
+   * die Anhänge, die schon da waren.
+   */
+  addFile: async (file, onProgress) =>
+    api.shareAddFile(token, taskId, file, onProgress, await webVariant(file)),
+  removeFile: (fid) => api.shareRemoveFile(token, taskId, fid),
+  fileHref: (fid, size) => api.shareFileHref(token, taskId, fid, size),
   // Kein `people`: siehe `memberIO`.
 });
 

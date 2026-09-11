@@ -128,7 +128,15 @@ export async function addFile(
   input: {
     taskId: string;
     workspaceId: string;
-    userId: string;
+    /**
+     * Wer sie hochgeladen hat — `null` beim GAST.
+     *
+     * Die Spalte ist von Anfang an dafür gebaut („ein gelöschtes Konto nimmt
+     * nicht die Anhänge mit, die es an gemeinsame Aufgaben gehängt hat"). Ein
+     * Gast hat kein Konto, und das ist kein Grund, ihm das Anhängen zu
+     * verwehren: die Datei hängt an einer AUFGABE, und die ist freigegeben.
+     */
+    userId: string | null;
     filename: string;
     mimeType: string;
     bytes: Buffer;

@@ -31,8 +31,17 @@ import { addChild, addComment, detail } from './detail.js';
 import { stream } from './nudge.js';
 import { fail, json, readJson } from './http/respond.js';
 import { detailView, taskView } from './routes.js';
+import { isInlineSafe } from '@sote/core';
 import { accessByToken, type RightLevel } from './shares.js';
 import { complete, move, NotFound, OutOfOrder, patch, reopen, createFromLine } from './tasks.js';
+import {
+  addFile,
+  attachWeb,
+  filesDir,
+  maxBytes,
+  readFileOf,
+  removeFile,
+} from './taskFiles.js';
 import { childrenOf, list } from './views.js';
 
 interface Ctx {
@@ -184,6 +193,130 @@ export async function shareRoutes(
   }
 
   /* ── Was ein Link mit `edit` ändern darf ───────────────────────────────── */
+
+  /*
+   * ANHÄNGE — auch in einer Freigabe.
+   *
+   * GEMELDET: „Datei-Uploads gehen nicht, sollte aber, das gehört dazu.
+   * Anhänge und Bilder werden gar nicht angezeigt. Da bitte auch wie als
+   * User."
+   *
+   * Beides stimmte, und der Satz im Quelltext, der es begründete, war falsch:
+   * „beim Gast fehlt es ebenso — eine Datei hängt an einem Konto." Tut sie
+   * nicht. Sie hängt an einer AUFGABE, und die Aufgabe ist freigegeben. Wer
+   * `uploaded_by` braucht, bekommt `NULL` — genau die Spalte ist von Anfang an
+   * dafür gebaut („ein geloeschtes Konto nimmt nicht die Anhaenge mit").
+   *
+   * Lesen darf jeder mit dem Link, Anhängen und Wegnehmen nur mit
+   * Bearbeitungsrecht. Und alles nur innerhalb DIESER Liste: `imProjekt`
+   * unten prüft es, wie beim Umsortieren.
+   */
+  const fileWeg = /^\/tasks\/([0-9a-f-]{36})\/files(?:\/([0-9a-f-]{36}))?(\/web)?$/.exec(rest);
+  if (fileWeg !== null) {
+    const taskId = fileWeg[1]!;
+    const fileId = fileWeg[2];
+    if (filesDir() === undefined) {
+      fail(res, 501, 'files_off', 'dieser Server nimmt keine Anhänge');
+      return;
+    }
+    const gehoert = await queryOne<{ id: string }>(
+      ctx.pool,
+      `SELECT id FROM tasks
+        WHERE id = $1 AND workspace_id = $2 AND project_id = $3 AND trashed_at IS NULL`,
+      [taskId, access.workspaceId, access.projectId],
+    );
+    if (gehoert === undefined) {
+      fail(res, 404, 'no_task', 'diese Aufgabe gehört nicht zu dieser Freigabe');
+      return;
+    }
+
+    if (fileId !== undefined && method === 'GET') {
+      const got = await readFileOf(ctx.pool, {
+        id: fileId,
+        taskId,
+        workspaceId: access.workspaceId,
+        ...(new URL(req.url ?? '/', 'http://x').searchParams.get('size') === 'web'
+          ? { size: 'web' as const }
+          : {}),
+      });
+      if (got === undefined) {
+        fail(res, 404, 'no_file', 'diesen Anhang gibt es nicht');
+        return;
+      }
+      const inline =
+        new URL(req.url ?? '/', 'http://x').searchParams.get('inline') === '1' &&
+        isInlineSafe(got.file.mimeType);
+      res.writeHead(200, {
+        'content-type': got.file.mimeType,
+        'content-length': String(got.bytes.length),
+        'x-content-type-options': 'nosniff',
+        'content-disposition': `${inline ? 'inline' : 'attachment'}; filename*=UTF-8''${encodeURIComponent(got.file.filename)}`,
+      });
+      res.end(got.bytes);
+      return;
+    }
+
+    if (!darfSchreiben()) return nurLesen();
+
+    if (fileId === undefined && method === 'POST') {
+      const grenze = maxBytes();
+      const stücke: Buffer[] = [];
+      let größe = 0;
+      for await (const stück of req) {
+        größe += (stück as Buffer).length;
+        if (größe > grenze) {
+          req.destroy();
+          fail(res, 413, 'too_big', `größer als ${Math.floor(grenze / 1024 / 1024)} MB`);
+          return;
+        }
+        stücke.push(stück as Buffer);
+      }
+      if (größe === 0) {
+        fail(res, 400, 'empty', 'keine Datei dabei');
+        return;
+      }
+      const f = await addFile(ctx.pool, {
+        taskId,
+        workspaceId: access.workspaceId,
+        /*
+         * OHNE Konto: ein Gast hat keins. `uploaded_by` ist dafür gebaut, leer
+         * sein zu dürfen — die Datei bleibt, wer sie hochgeladen hat, ist dann
+         * unbekannt.
+         */
+        userId: null,
+        filename: new URL(req.url ?? '/', 'http://x').searchParams.get('name') ?? 'Datei',
+        mimeType: (req.headers['content-type'] ?? 'application/octet-stream')
+          .split(';')[0]!
+          .trim(),
+        bytes: Buffer.concat(stücke),
+      });
+      json(res, 200, { file: { ...f, createdAt: f.createdAt.toISOString() } });
+      return;
+    }
+
+    if (fileId !== undefined && fileWeg[3] === '/web' && method === 'PUT') {
+      const stücke: Buffer[] = [];
+      for await (const stück of req) stücke.push(stück as Buffer);
+      const ok = await attachWeb(ctx.pool, {
+        id: fileId,
+        taskId,
+        workspaceId: access.workspaceId,
+        bytes: Buffer.concat(stücke),
+      });
+      json(res, ok ? 200 : 404, { ok });
+      return;
+    }
+
+    if (fileId !== undefined && method === 'DELETE') {
+      const weg = await removeFile(ctx.pool, {
+        id: fileId,
+        taskId,
+        workspaceId: access.workspaceId,
+      });
+      json(res, weg ? 200 : 404, { ok: weg });
+      return;
+    }
+  }
 
   /*
    * DIE REIHENFOLGE ÄNDERN — auch als Gast.

@@ -354,3 +354,27 @@ test('ein Titelbild einer ANDEREN Datei bleibt stehen', async () => {
   );
   assert.equal(row!.cover.image, weg);
 });
+
+test('ein Anhang ohne Konto — der Gast', async () => {
+  /*
+   * GEMELDET: „Datei-Uploads gehen nicht, sollte aber, das gehoert dazu."
+   *
+   * Im Quelltext stand als Begruendung: „beim Gast fehlt es ebenso -- eine
+   * Datei haengt an einem Konto." Das war falsch. Sie haengt an einer AUFGABE,
+   * und die ist freigegeben.
+   *
+   * Die Spalte ist von Anfang an dafuer gebaut, leer sein zu duerfen: „ein
+   * geloeschtes Konto nimmt nicht die Anhaenge mit, die es an gemeinsame
+   * Aufgaben gehaengt hat. Wer sie hochgeladen hat, ist dann unbekannt -- die
+   * Datei bleibt." Genau dieser Fall, nur von vornherein.
+   */
+  const taskId = await neu('Vom Gast');
+  const f = await addFile(pool, {
+    taskId, workspaceId: ws, userId: null,
+    filename: 'gast.txt', mimeType: 'text/plain', bytes: Buffer.from('hallo'),
+  });
+  assert.equal(f.uploadedBy, null);
+
+  const zurueck = await readFileOf(pool, { id: f.id, taskId, workspaceId: ws });
+  assert.equal(zurueck?.bytes.toString(), 'hallo');
+});

@@ -897,6 +897,74 @@ export const api = {
       method: 'PUT',
       body: JSON.stringify(wohin),
     }),
+  /**
+   * Eine Datei an eine Aufgabe in einer Freigabe.
+   *
+   * GEMELDET: „Datei-Uploads gehen nicht, sollte aber, das gehört dazu."
+   * Derselbe Weg wie beim Mitglied, nur unter dem Freigabe-Schlüssel — mit
+   * Fortschritt und kleiner Fassung, weil beides zur Sache gehört und nicht
+   * zum Konto.
+   */
+  shareAddFile: async (
+    token: string,
+    taskId: string,
+    file: File,
+    onProgress?: (anteil: number) => void,
+    web?: Blob | undefined,
+  ): Promise<{ file: { id: string; filename: string } }> => {
+    const out = await new Promise<{ file: { id: string; filename: string } }>(
+      (fertig, schiefgegangen) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open(
+          'POST',
+          `/api/share/${token}/tasks/${taskId}/files?name=${encodeURIComponent(file.name)}`,
+        );
+        xhr.setRequestHeader(
+          'content-type',
+          file.type === '' ? 'application/octet-stream' : file.type,
+        );
+        xhr.upload.onprogress = (e) => {
+          if (e.lengthComputable && onProgress !== undefined) onProgress(e.loaded / e.total);
+        };
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            try {
+              fertig(JSON.parse(xhr.responseText) as { file: { id: string; filename: string } });
+            } catch {
+              schiefgegangen(new ApiError(xhr.status, 'bad_json', 'Die Antwort war unverständlich.'));
+            }
+            return;
+          }
+          let sagt = 'Hochladen ging nicht.';
+          try {
+            sagt = (JSON.parse(xhr.responseText) as { message?: string }).message ?? sagt;
+          } catch {
+            // Dann bleibt der Satz oben.
+          }
+          schiefgegangen(new ApiError(xhr.status, 'upload_failed', sagt));
+        };
+        xhr.onerror = () => schiefgegangen(new ApiError(0, 'network', 'Die Verbindung brach ab.'));
+        xhr.send(file);
+      },
+    );
+    if (web !== undefined) {
+      try {
+        await fetch(`/api/share/${token}/tasks/${taskId}/files/${out.file.id}/web`, {
+          method: 'PUT',
+          body: web,
+        });
+      } catch {
+        // Ohne kleine Fassung wird das Original gezeigt — langsamer, richtig.
+      }
+    }
+    return out;
+  },
+  shareRemoveFile: (token: string, taskId: string, fileId: string) =>
+    call<{ ok: boolean }>(`/api/share/${token}/tasks/${taskId}/files/${fileId}`, {
+      method: 'DELETE',
+    }),
+  shareFileHref: (token: string, taskId: string, fileId: string, size?: 'web') =>
+    `/api/share/${token}/tasks/${taskId}/files/${fileId}${size === undefined ? '' : '?size=web'}`,
   shareAdd: (token: string, line: string) =>
     call<{ id: string; title: string }>(`/api/share/${token}/tasks`, {
       method: 'POST',

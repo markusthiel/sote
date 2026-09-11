@@ -5535,6 +5535,39 @@ a.btn {
   }
 }
 
+/*
+ * UND AUF DEM TELEFON: dieselbe Fläche wie beim Mitglied.
+ *
+ * GEMELDET mit Bild: „Die Detailansicht einer Aufgabe sitzt nicht am
+ * Bildschirmrand unten, sondern ausserhalb des Sichtbereichs. Man sieht gar
+ * nicht, wenn die Leiste offen ist."
+ *
+ * Genau so: unter 800 px gab es für den Gast gar keine Regel. Die Spalte stand
+ * darum einfach UNTER der Liste im Fluss — und die Liste ist so lang, wie sie
+ * ist. Wer eine Aufgabe öffnete, bekam nichts zu sehen, bis er ans Ende
+ * gerollt war.
+ *
+ * Beim Mitglied ist die Fläche eine eigene Rasterzeile mit fester Höhe. Hier
+ * hängt sie am Fenster: der Gast-Bildschirm ist eine einzige rollende Spalte
+ * und hat keine Rasterzeile, in die man sie legen könnte.
+ */
+@media (max-width: 799px) {
+  .guest[data-detail='true'] .detail {
+    position: fixed;
+    inset: auto 0 0 0;
+    block-size: 58vh;
+    z-index: 30;
+    border-top: 1px solid var(--line);
+    box-shadow: var(--sote-shadow-lg);
+  }
+
+  /* Und Platz darunter, damit die letzte Zeile der Liste erreichbar bleibt:
+     eine Fläche, die über dem Ende liegt, macht das Ende unerreichbar. */
+  .guest[data-detail='true'] .guest-body {
+    padding-bottom: 60vh;
+  }
+}
+
 /* Ein Titel, der ein Knopf ist: wie Text aussehen, wie ein Knopf funktionieren.
    Ohne das trägt er die Vorgaben des Browsers (Rahmen, Mittelsatz, kleinere
    Schrift) und fällt aus der Zeile. */
