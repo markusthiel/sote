@@ -604,6 +604,19 @@ export function Board({
                         alt=""
                         loading="lazy"
                         draggable={false}
+                        /*
+                         * Und wenn es doch einmal ins Leere zeigt: weg damit.
+                         *
+                         * Der Verweis wird beim Löschen der Datei aufgeräumt
+                         * (siehe `removeFile`), aber zwischen zwei Fenstern
+                         * liegt immer ein Moment: wer die Datei drüben löscht,
+                         * hat hier für eine Sekunde einen Verweis auf nichts.
+                         * Das kaputte Bildzeichen des Browsers ist die
+                         * schlechteste Art, diese Sekunde zu füllen.
+                         */
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                        }}
                       />
                     ) : task.cover?.color !== undefined ? (
                       <span

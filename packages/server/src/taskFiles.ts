@@ -407,13 +407,38 @@ export async function removeFile(
 ): Promise<boolean> {
   const dir = filesDir();
   if (dir === undefined) throw new FilesOff();
-  const row = await queryOne<{ storage_key: string }>(
+  const row = await queryOne<{ storage_key: string; web_key: string | null }>(
     pool,
     `DELETE FROM task_files WHERE id = $1 AND task_id = $2 AND workspace_id = $3
-     RETURNING storage_key`,
+     RETURNING storage_key, web_key`,
     [input.id, input.taskId, input.workspaceId],
   );
   if (row === undefined) return false;
+
+  /*
+   * UND DAS TITELBILD, FALLS ES DIESE DATEI WAR.
+   *
+   * GEMELDET mit Bild: „Ich habe vorhin alle Bilder gelöscht, und eins davon
+   * war auf der Karte als Titel gesetzt. Das wird noch versucht zu laden."
+   *
+   * Ein Verweis, der ins Leere zeigt — und die Karte zeigt dann das kaputte
+   * Bildzeichen des Browsers, also einen Fehler dort, wo jemand ein Foto
+   * erwartet hat.
+   *
+   * Hier und nicht in der Oberfläche: die Oberfläche kann das Bild verstecken,
+   * aber der Verweis bliebe stehen und käme bei jedem Laden wieder. Was nicht
+   * mehr existiert, gehört nicht mehr genannt.
+   *
+   * Der Vergleich geht auf das ENDE des Wegs: gespeichert ist
+   * `/api/tasks/<task>/files/<datei>`, und die Datei-Id steht hinten. Ein
+   * `LIKE '%'` davor und der Anker am Ende — nicht irgendwo drin, sonst träfe
+   * eine Id, die zufällig in einer anderen vorkommt.
+   */
+  await pool.query(
+    `UPDATE tasks SET cover = NULL, updated_at = now()
+      WHERE id = $1 AND cover->>'image' LIKE '%/files/' || $2`,
+    [input.taskId, input.id],
+  );
   /*
    * Die Datei danach: der Anhang ist weg, sobald die Zeile weg ist. Bleibt
    * die Datei liegen, ist das belegter Platz und kein Fehler — besser als eine
@@ -424,5 +449,8 @@ export async function removeFile(
    * eine Funktion zeigt, die niemand geschrieben hat, ist eine Lüge im Code.)
    */
   await rm(pathFor(dir, row.storage_key), { force: true });
+  // Und die kleine Fassung, falls es eine gab: sie gehört zu dieser Datei und
+  // sonst niemandem.
+  if (row.web_key !== null) await rm(pathFor(dir, row.web_key), { force: true });
   return true;
 }

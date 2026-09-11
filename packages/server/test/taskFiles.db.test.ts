@@ -298,3 +298,59 @@ test('eine zweite kleine Fassung ersetzt die erste nicht', async () => {
   const web = await readFileOf(pool, { id: f.id, taskId, workspaceId, size: 'web' });
   assert.equal(web?.bytes.toString(), 'erste');
 });
+
+test('eine geloeschte Datei nimmt ihr Titelbild mit', async () => {
+  /*
+   * GEMELDET mit Bild: „Ich habe vorhin alle Bilder geloescht, und eins davon
+   * war auf der Karte als Titel gesetzt. Das wird noch versucht zu laden."
+   *
+   * Ein Verweis ins Leere, und die Karte zeigt das kaputte Bildzeichen des
+   * Browsers — einen Fehler dort, wo jemand ein Foto erwartet hat.
+   *
+   * Behoben im SERVER und nicht in der Oberflaeche: die koennte das Bild
+   * verstecken, aber der Verweis bliebe stehen und kaeme bei jedem Laden
+   * wieder. Was nicht mehr existiert, gehoert nicht mehr genannt.
+   */
+  const taskId = await neu('Mit Titelbild');
+  const f = await addFile(pool, {
+    taskId, workspaceId: ws, userId: ich,
+    filename: 'titel.jpg', mimeType: 'image/jpeg', bytes: Buffer.from('bild'),
+  });
+  await pool.query('UPDATE tasks SET cover = $2::jsonb WHERE id = $1', [
+    taskId,
+    JSON.stringify({ image: `/api/tasks/${taskId}/files/${f.id}` }),
+  ]);
+
+  await removeFile(pool, { id: f.id, taskId, workspaceId: ws });
+
+  const row = await queryOne<{ cover: unknown }>(
+    pool, 'SELECT cover FROM tasks WHERE id = $1', [taskId],
+  );
+  assert.equal(row!.cover, null);
+});
+
+test('ein Titelbild einer ANDEREN Datei bleibt stehen', async () => {
+  // Der Vergleich haengt am Ende des Wegs. Ohne Anker traefe eine Id, die
+  // zufaellig in einer anderen vorkommt — und dann nimmt das Loeschen einer
+  // Datei das Titelbild einer zweiten mit.
+  const taskId = await neu('Zwei Bilder');
+  const a = await addFile(pool, {
+    taskId, workspaceId: ws, userId: ich,
+    filename: 'a.jpg', mimeType: 'image/jpeg', bytes: Buffer.from('a'),
+  });
+  const b = await addFile(pool, {
+    taskId, workspaceId: ws, userId: ich,
+    filename: 'b.jpg', mimeType: 'image/jpeg', bytes: Buffer.from('b'),
+  });
+  const weg = `/api/tasks/${taskId}/files/${b.id}`;
+  await pool.query('UPDATE tasks SET cover = $2::jsonb WHERE id = $1', [
+    taskId, JSON.stringify({ image: weg }),
+  ]);
+
+  await removeFile(pool, { id: a.id, taskId, workspaceId: ws });
+
+  const row = await queryOne<{ cover: { image: string } }>(
+    pool, 'SELECT cover FROM tasks WHERE id = $1', [taskId],
+  );
+  assert.equal(row!.cover.image, weg);
+});
