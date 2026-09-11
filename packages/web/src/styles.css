@@ -5916,45 +5916,58 @@ label.btn {
 /* Das Feld für eine eigene Farbe, in der Größe eines Farbfelds daneben —
    SONEs Pipette steht auch in der Reihe der Palette und nicht darunter. */
 /*
- * Die Pipette — und sie muss AUSSEHEN wie eine.
+ * Die Pipette — SONEs `.block-menu-swatch.custom`, wörtlich.
  *
- * GEMELDET: „Bei Workspace hatten wir gesagt, unter Name und Zeichen soll auch
- * eine eigene Farbe möglich sein."
+ * GEMELDET: „Ein farbiger Pinsel hatten wir bei SONE. Prüf das mal an allen
+ * Bereichen noch und passe es an."
  *
- * Sie war da. Sie stand als neunter Kreis hinter acht Palettenkreisen, grau,
- * gleich gross, gleich rund — und damit war sie für jeden, der das Bild
- * ansieht, eine neunte feste Farbe. Eine Möglichkeit, die man nicht als solche
- * erkennt, gibt es für niemanden; das ist derselbe Satz, mit dem ich sie
- * damals eingebaut habe, und er gilt hier gegen mich.
+ * SONEs Begründung steht in seinem Quelltext: neun Kreise sagen „eines davon",
+ * ein zehnter sagte dasselbe und meinte etwas anderes. Die Pipette sagt, dass
+ * hier gewählt wird — und sie trägt die gewählte Farbe, damit sie zugleich
+ * Anzeige bleibt.
  *
- * Also ein Farbkreis als Grund: die ganze Palette in einem Kegel-Verlauf, wie
- * an jedem Farbwähler, den man je gesehen hat. Wer eine eigene Farbe gewählt
- * hat, sieht STATTDESSEN diese — dann ist der Kreis eine Anzeige und kein
- * Angebot mehr.
+ * Ich hatte davor einen Farbkreis als Grund gebaut. Das war die halbe
+ * Korrektur: er sagte „hier wird gewählt", aber in der Sprache der Palette
+ * statt in der des Werkzeugs.
+ *
+ * GESTRICHELT: dieselbe Sprache wie am Feld für Dateien — „hier kommt etwas
+ * hinein, das noch nicht da ist".
+ *
+ * Das FELD liegt darüber und ist unsichtbar: ein `input[type=color]` sieht in
+ * jedem Browser anders aus, und sichtbar sein soll unser Zeichen. Der
+ * Farbwähler des Betriebssystems öffnet trotzdem — der Teil, den man behalten
+ * will.
  */
-.own-color {
-  inline-size: 22px;
-  block-size: 22px;
-  min-height: 0;
-  padding: 0;
-  border: 1px solid var(--border-default);
-  border-radius: 50%;
+.block-menu-swatch.custom {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed var(--border-default);
+  background: transparent;
+  color: var(--text-muted);
   cursor: pointer;
-  /* Der Farbkreis liegt DAHINTER: der eigene Wert deckt ihn zu, sobald es
-     einen gibt. Ein leeres Feld zeigt ihn ganz. */
-  background:
-    conic-gradient(
-      #e0453c, #e08a1e, #d8c02a, #4caf50, #2f8fd8, #6b4fd8, #d84f9e, #e0453c
-    );
 }
 
-/* Solange nichts Eigenes gewählt ist, bleibt der Kreis sichtbar: das Feld
-   selbst wird durchsichtig gemacht, nicht der Rahmen. */
-.own-color[data-set="no"]::-webkit-color-swatch { opacity: 0; }
-.own-color[data-set="no"]::-moz-color-swatch { opacity: 0; }
-.own-color::-webkit-color-swatch-wrapper { padding: 0; }
-.own-color::-webkit-color-swatch { border: 0; border-radius: 50%; }
-.own-color::-moz-color-swatch { border: 0; border-radius: 50%; }
+/* Gewählt: durchgezogener Rand, damit sie neben den Palettenkreisen als
+   „diese gilt" zu lesen ist. Das Zeichen trägt die Farbe schon. */
+.block-menu-swatch.custom.current {
+  border-style: solid;
+  border-color: currentColor;
+}
+
+.block-menu-swatch.custom input[type="color"] {
+  position: absolute;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
 
 /* ══════════════════════════════════════════════════════════════════════════
  * Das Kontomenü — SONEs `sidebar-footer` / `sidebar-account` /

@@ -23,6 +23,7 @@ import { PALETTE } from '@sote/core';
 import { useEffect, useMemo, useState } from 'react';
 
 import { api, ApiError } from '../api.js';
+import { OwnColor } from '../components/OwnColor.js';
 import { iconsFor, IconPreview, loadIcons, ProjectMark } from '../components/ProjectMark.js';
 import { useProgressive } from '../hooks/useProgressive.js';
 
@@ -146,49 +147,21 @@ export function WorkspaceMark({
           erst mit dem Loslassen (`onBlur`) an den Server, sonst wäre jedes
           Zwischenbild ein Schreibvorgang.
         */}
-        <input
-          type="color"
-          className="own-color"
-          title="eigene Farbe"
-          data-set={
-            (eigen[which] ?? (current?.startsWith('#') === true ? current : undefined)) ===
-            undefined
-              ? 'no'
-              : 'yes'
-          }
-          aria-label={`${label}: eigene Farbe`}
-          /*
-            Nur ein Hex-Wert taugt hier. `colorValue` gäbe für einen
-            Palettennamen `var(--sote-palette-…)` zurück, und ein Farbfeld mit
-            einem `var()` darin zeigt schwarz — der Übersetzer merkt das nicht,
-            der Browser sagt nichts, und man sieht es erst im Bild.
-          */
-          value={eigen[which] ?? (current?.startsWith('#') === true ? current : '#888888')}
+        {/*
+          Die Pipette, wie bei SONE und wie an den vier anderen Stellen.
+
+          Gemeldet: „Ein farbiger Pinsel hatten wir bei SONE. Prüf das mal an
+          allen Bereichen noch und passe es an." SONEs Begründung im Quelltext:
+          neun Kreise sagen „eines davon", ein zehnter sagte dasselbe und
+          meinte etwas anderes. Die Pipette sagt, dass hier GEWÄHLT wird — und
+          sie trägt die gewählte Farbe, damit sie zugleich Anzeige bleibt.
+        */}
+        <OwnColor
+          value={eigen[which] ?? current}
           disabled={busy}
-          /*
-            `onInput` zeigt, `onChange` speichert.
-            
-            Ein Farbfeld schickt beim Ziehen laufend `input` und `change` erst
-            beim Bestätigen — so sieht man die Farbe, während man wählt, und
-            geschrieben wird einmal. Vorher stand hier `onBlur` mit
-            `e.currentTarget`, und das ist nach dem Ereignis `null`: der Test
-            meldete „Cannot read properties of null (reading 'value')".
-          */
-          onInput={(e) => {
-            /*
-             * Den Wert ZUERST lesen, dann den Zustand ändern.
-             *
-             * `setEigen((v) => … e.currentTarget.value …)` sah richtig aus und
-             * war es nicht: die Aktualisierungsfunktion läuft SPÄTER, und dann
-             * ist `currentTarget` schon `null`. Der Browser meldete „Cannot
-             * read properties of null (reading 'value')" — sichtbar nur, weil
-             * das Prüfskript auf `pageerror` hört; die Farbe wurde trotzdem
-             * gesetzt, also hätte man es im Bild nicht gemerkt.
-             */
-            const wert = e.currentTarget.value;
-            setEigen((v) => ({ ...v, [which]: wert }));
-          }}
-          onChange={(e) => setMark({ [which]: e.currentTarget.value })}
+          label={`${label}: eigene Farbe`}
+          onShow={(farbe) => setEigen((v) => ({ ...v, [which]: farbe }))}
+          onPick={(farbe) => setMark({ [which]: farbe })}
         />
       </div>
     </div>

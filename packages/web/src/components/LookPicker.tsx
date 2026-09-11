@@ -29,6 +29,7 @@ import { colorValue, PALETTE } from '@sote/core';
 import { useEffect, useMemo, useState } from 'react';
 
 import { useProgressive } from '../hooks/useProgressive.js';
+import { OwnColor } from './OwnColor.js';
 import { iconsFor, IconPreview, loadIcons } from './ProjectMark.js';
 
 export function LookPicker({
@@ -93,16 +94,11 @@ export function LookPicker({
           Ziehen laufend `input` und `change` erst beim Bestätigen. Ohne die
           Trennung wäre jede Mausbewegung ein Schreibvorgang.
         */}
-        <input
-          type="color"
-          className="own-color"
-          title="eigene Farbe"
-          data-set={color?.startsWith('#') === true || eigen !== undefined ? 'yes' : 'no'}
-          aria-label="eigene Farbe"
-          value={eigen ?? (color?.startsWith('#') === true ? color : '#888888')}
-          disabled={busy}
-          onInput={(e) => setEigen(e.currentTarget.value)}
-          onChange={(e) => onColor(e.currentTarget.value)}
+        <OwnColor
+          value={eigen ?? color}
+          {...(busy === undefined ? {} : { disabled: busy })}
+          onShow={(farbe) => setEigen(farbe)}
+          onPick={(farbe) => onColor(farbe)}
         />
       </div>
 

@@ -55,6 +55,7 @@ import { useEffect, useState } from 'react';
 
 import { api, ApiError, type SettingsAnswer } from '../api.js';
 import { applyScheme } from '../appearance.js';
+import { OwnColor } from '../components/OwnColor.js';
 import { avatarVariant } from '../imageVariant.js';
 
 /**
@@ -578,19 +579,11 @@ export function Settings({
               diese Stelle bot sie nicht an. Ein Name folgt der Palette und ist
               in beiden Themen richtig; ein Wert bleibt er selbst.
             */}
-            <input
-              type="color"
-              className="own-color"
-              title="eigene Farbe"
-              data-set={board.doneAccent?.startsWith('#') === true ? 'yes' : 'no'}
-              aria-label="Eigene Farbe für die Fertig-Spalte"
+            <OwnColor
+              value={board.doneAccent}
               disabled={busy}
-              value={
-                board.doneAccent?.startsWith('#') === true ? board.doneAccent : '#2f7d6f'
-              }
-              onChange={(e) =>
-                save(scope, { board: { ...board, doneAccent: e.target.value } })
-              }
+              label="Fertig-Spalte: eigene Farbe"
+              onPick={(farbe) => save(scope, { board: { ...board, doneAccent: farbe } })}
             />
           </div>
         </div>
@@ -808,15 +801,11 @@ export function Settings({
               stand das Feld hier eine Zeile tiefer und war größer: dieselbe
               Sache, vier Zeilen weiter unten anders gebaut.
             */}
-            <input
-              type="color"
-              className="own-color"
-              title="eigene Farbe"
-              data-set={look.accent?.startsWith('#') === true ? 'yes' : 'no'}
-              aria-label="Eigene Akzentfarbe"
+            <OwnColor
+              value={look.accent}
               disabled={busy}
-              value={look.accent?.startsWith('#') === true ? look.accent : '#2f7d6f'}
-              onChange={(e) => saveLook(scope, look, { accent: e.target.value as `#${string}` })}
+              label="Akzentfarbe: eigene Farbe"
+              onPick={(farbe) => saveLook(scope, look, { accent: farbe as `#${string}` })}
             />
           </div>
           <div className="pick">

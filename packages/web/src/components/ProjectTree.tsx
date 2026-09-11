@@ -24,6 +24,7 @@ import { colorValue, generateKeyBetween, PALETTE } from '@sote/core';
 
 import type { Project } from '../api.js';
 import { useProgressive } from '../hooks/useProgressive.js';
+import { OwnColor } from './OwnColor.js';
 import {
   ArrowDownIcon,
   ArrowUpIcon,
@@ -756,31 +757,14 @@ export function ProjectTree({
                 in beiden derselbe. Darum steht er neben der Palette und nicht
                 an ihrer Stelle.
               */}
-              <input
-                type="color"
-                className="own-color"
-                title="eigene Farbe"
-                data-set={
-                  eigen !== undefined || p.color?.startsWith('#') === true ? 'yes' : 'no'
-                }
-                aria-label="eigene Farbe"
-                /*
-                  Nur ein Hex-Wert taugt hier: `colorValue` gäbe für einen
-                  Palettennamen `var(--sote-palette-…)` zurück, und ein
-                  Farbfeld mit einem `var()` darin zeigt schwarz — der
-                  Übersetzer merkt das nicht, der Browser sagt nichts, und man
-                  sieht es erst im Bild.
-                */
-                value={eigen ?? (p.color?.startsWith('#') === true ? p.color : '#888888')}
+              {/* Die Pipette wie überall sonst: ein Bauteil, fünf Stellen. */}
+              <OwnColor
+                value={eigen ?? (p.color ?? undefined)}
                 disabled={busy}
-                /* `onInput` zeigt, `onChange` speichert — ein Farbfeld schickt
-                   beim Ziehen laufend `input` und `change` erst beim
-                   Bestätigen. Jedes Zwischenbild zu schreiben wäre ein
-                   Schreibvorgang je Mausbewegung. */
-                onInput={(e) => setEigen(e.currentTarget.value)}
-                onChange={(e) => {
+                onShow={(farbe) => setEigen(farbe)}
+                onPick={(farbe) => {
                   setMenu(null);
-                  onColor(p.id, e.currentTarget.value);
+                  onColor(p.id, farbe);
                 }}
               />
             </div>
