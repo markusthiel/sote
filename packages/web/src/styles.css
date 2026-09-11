@@ -1206,8 +1206,83 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex]:focus-vi
   min-height: calc(var(--sone-tap) * 2);
 }
 
-.board-card .task {
+.board-card {
+  /* Der Rahmen für den Anfasser-Streifen. */
+  position: relative;
+}
+
+/*
+ * `[data-view="cards"]` mit im Selektor — sonst gewinnt die Kartenregel.
+ *
+ * Sie setzt `padding` als Kurzform und steht später in dieser Datei; bei
+ * gleicher Spezifität überschreibt sie damit auch die Seite, die hier gemeint
+ * ist. Im Bild lag der Anfasser über dem Kästchen, weil der Platz dafür nie
+ * entstand.
+ */
+.board-card .task[data-view="cards"] {
   background: var(--surface);
+  /* Platz für den Streifen: er liegt INNEN, weil eine Karte keinen Rand
+     ausserhalb hat, in den er hineinragen könnte. DASSELBE Maß wie seine
+     Breite — sonst liegt er über dem Kästchen, und ein Anfasser, der das
+     Abhaken verdeckt, macht aus einem Fehler zwei. */
+  padding-inline-start: var(--sone-control);
+}
+
+/*
+ * Der Anfasser an der Karte — sichtbar und nicht erst beim Zeigen.
+ *
+ * In der Liste erscheint er beim Zeigen, weil dort jede Zeile einen hat und
+ * dreissig ständig sichtbare Punkte eine Liste unruhig machen. Auf einer Tafel
+ * sind es wenige Karten, und die Frage „wo fasse ich das an" stellt sich bei
+ * jeder einzelnen neu — ein Anfasser, den man erst durch Zeigen findet,
+ * beantwortet sie nicht.
+ */
+/*
+ * `.board-card .board-grip` und nicht `.board-grip` allein.
+ *
+ * Im Bild war der Streifen unsichtbar: `.grip { opacity: 0 }` steht weiter
+ * unten in dieser Datei, und bei gleicher Spezifität gewinnt die spätere
+ * Regel. Zwei Klassen im Selektor heben die Spezifität an — und das ist hier
+ * ehrlicher als die Regel zu verschieben, denn sie soll auch dann gelten, wenn
+ * jemand die Reihenfolge der Abschnitte ändert.
+ */
+.board-card .board-grip {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  width: var(--sone-control);
+  /*
+   * SICHTBAR, und zwar gemessen.
+   *
+   * Der erste Wurf nahm `--sunken` als Grund — im Bild war davon nichts zu
+   * sehen, und die Messung sagte warum: 0.941 gegen 0.968, also drei Prozent
+   * Unterschied zur Karte. Gezeichnet war er, abgehoben hat er sich nicht,
+   * und gemeldet war ausdrücklich „ein Anfasser-Bereich, der sich optisch
+   * abhebt".
+   *
+   * Jetzt ein Anteil der Textfarbe plus eine Trennlinie: beides folgt dem
+   * Thema (hell wie dunkel) und ist in beiden zu sehen.
+   */
+  opacity: 1;
+  /*
+   * ÜBER der Zeile, nicht darunter.
+   *
+   * Im Bild war vom Streifen nur ein Stummel unten zu sehen: `.task` steht im
+   * DOM NACH dem Anfasser und ist ebenfalls positioniert — unter Geschwistern
+   * mit Position gewinnt der spätere. Der Streifen lag also hinter der Karte,
+   * und sichtbar blieb nur, was unten überstand.
+   */
+  z-index: 1;
+  color: var(--text-faint);
+  background: color-mix(in srgb, var(--text) 7%, transparent);
+  border-inline-end: 1px solid var(--line);
+  border-start-start-radius: var(--sote-radius-md);
+  border-end-start-radius: var(--sote-radius-md);
+}
+
+.board-card .board-grip:hover {
+  background: color-mix(in srgb, var(--text) 12%, transparent);
+  color: var(--text-muted);
 }
 
 .board-new {

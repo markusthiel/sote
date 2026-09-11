@@ -383,3 +383,68 @@ test('zwei Spalten können nicht denselben Platz haben', async () => {
     (e: Error) => e instanceof BoardTrouble,
   );
 });
+
+test('eine frisch bestimmte Fertig-Spalte holt das BEREITS Erledigte', async () => {
+  /*
+   * GEMELDET: „Wenn ich fertige Aufgaben habe und dann eine Fertig-Spalte
+   * anlege, dann sollten die vorhandenen fertigen auch direkt dort landen."
+   *
+   * Der Fehler war eine zu enge Lesart der Regel: sie hieß bei mir „beim
+   * Abhaken wandert es dorthin“, gemeint war aber „in dieser Spalte liegt, was
+   * fertig ist“. Eine Spalte namens „Fertig“, in der die fertigen Aufgaben
+   * nicht liegen, ist eine Beschriftung ohne Deckung.
+   */
+  const { ws, liste } = await scratch();
+  const arbeit = await addColumn(pool, ws, liste, { name: 'In Arbeit', sortKey: 'a0' });
+
+  const alt = await createFromLine(pool, {
+    workspaceId: ws, userId, line: 'Schon fertig', now: NOW, projectId: liste,
+  });
+  const ohne = await createFromLine(pool, {
+    workspaceId: ws, userId, line: 'Fertig ohne Spalte', now: NOW, projectId: liste,
+  });
+  const offen = await createFromLine(pool, {
+    workspaceId: ws, userId, line: 'Noch offen', now: NOW, projectId: liste,
+  });
+  await placeCard(pool, ws, alt.task.id, arbeit.id, userId, NOW);
+  await complete(pool, alt.task.id, userId, NOW);
+  await complete(pool, ohne.task.id, userId, NOW);
+
+  // Jetzt erst die Fertig-Spalte.
+  const fertig = await addColumn(pool, ws, liste, {
+    name: 'Fertig', sortKey: 'a1', isDone: true,
+  });
+
+  // Beide wandern — auch die, die in einer anderen Spalte abgehakt wurde.
+  assert.equal(await spalteVon(alt.task.id), fertig.id);
+  assert.equal(await spalteVon(ohne.task.id), fertig.id);
+  // Und das Offene bleibt, wo es ist.
+  assert.equal(await spalteVon(offen.task.id), null);
+});
+
+test('eine vorhandene Spalte zur Fertig-Spalte zu machen holt sie ebenso', async () => {
+  const { ws, liste } = await scratch();
+  const arbeit = await addColumn(pool, ws, liste, { name: 'In Arbeit', sortKey: 'a0' });
+  const spaeter = await addColumn(pool, ws, liste, { name: 'Erledigt', sortKey: 'a1' });
+  const t = await createFromLine(pool, {
+    workspaceId: ws, userId, line: 'Fertig', now: NOW, projectId: liste,
+  });
+  await placeCard(pool, ws, t.task.id, arbeit.id, userId, NOW);
+  await complete(pool, t.task.id, userId, NOW);
+  assert.equal(await spalteVon(t.task.id), arbeit.id);
+
+  await updateColumn(pool, ws, spaeter.id, { isDone: true });
+  assert.equal(await spalteVon(t.task.id), spaeter.id);
+});
+
+test('Weggeworfenes wandert nicht mit', async () => {
+  // Was im Papierkorb liegt, gehört auf keine Tafel.
+  const { ws, liste } = await scratch();
+  const t = await createFromLine(pool, {
+    workspaceId: ws, userId, line: 'Weg', now: NOW, projectId: liste,
+  });
+  await complete(pool, t.task.id, userId, NOW);
+  await pool.query('UPDATE tasks SET trashed_at = now() WHERE id = $1', [t.task.id]);
+  await addColumn(pool, ws, liste, { name: 'Fertig', sortKey: 'a0', isDone: true });
+  assert.equal(await spalteVon(t.task.id), null);
+});

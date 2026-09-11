@@ -90,6 +90,8 @@ export async function addColumn(
         [projectId, name, input.sortKey, input.isDone === true],
       );
       if (row === undefined) throw new Error('INSERT ohne Zeile');
+      // Im selben Zug: was schon fertig ist, liegt ab jetzt hier.
+      if (input.isDone === true) await gatherDone(client, projectId, row.id);
       return row;
     } catch (e) {
       const err = e as { code?: string };
@@ -157,6 +159,7 @@ export async function updateColumn(
         params,
       );
       if (row === undefined) throw new BoardTrouble('diese Spalte gibt es nicht');
+      if (fields.isDone === true) await gatherDone(client, mine.project_id, columnId);
       return row;
     } catch (e) {
       const err = e as { code?: string };
@@ -179,6 +182,41 @@ async function clearDone(
     `UPDATE board_columns SET is_done = false
       WHERE project_id = $1 AND is_done AND ($2::uuid IS NULL OR id <> $2)`,
     [projectId, except ?? null],
+  );
+}
+
+/**
+ * Das Bereits-Erledigte in die frisch bestimmte Fertig-Spalte holen.
+ *
+ * GEMELDET: „Wenn ich fertige Aufgaben habe und dann eine Fertig-Spalte
+ * anlege, dann sollten die vorhandenen fertigen auch direkt dort landen. Jetzt
+ * geht das nur mit neuen, die ich abhake."
+ *
+ * Stimmt, und der Fehler war eine zu enge Lesart der Regel. Sie hieß bei mir
+ * „beim Abhaken wandert es dorthin" — gemeint war aber: *in dieser Spalte
+ * liegt, was fertig ist.* Eine Spalte, die „fertig" heißt und in der die
+ * fertigen Aufgaben NICHT liegen, ist eine Beschriftung ohne Deckung; man
+ * müsste die alten von Hand hinüberziehen, und zwar genau die, die man nicht
+ * mehr ansieht.
+ *
+ * Nur die noch NICHT zugeordneten? Nein, alle: wer diese Spalte bestimmt, sagt
+ * damit, wo Fertiges liegt — auch das, was jemand vorher in „In Arbeit"
+ * abgehakt hat. Das ist der Sinn des Knopfes.
+ *
+ * Nicht im Papierkorb: was weggeworfen ist, gehört auf keine Tafel.
+ */
+async function gatherDone(
+  client: Parameters<typeof queryOne>[0],
+  projectId: string,
+  columnId: string,
+): Promise<void> {
+  await client.query(
+    `UPDATE tasks SET column_id = $2, updated_at = now()
+      WHERE project_id = $1
+        AND completed_at IS NOT NULL
+        AND trashed_at IS NULL
+        AND column_id IS DISTINCT FROM $2`,
+    [projectId, columnId],
   );
 }
 

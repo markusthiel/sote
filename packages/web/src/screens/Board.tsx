@@ -435,6 +435,39 @@ export function Board({
                       drag.target?.rowId === task.id ? drag.target.intent : undefined
                     }
                   >
+                    {/*
+                      DER ANFASSER AN DER KARTE.
+
+                      GEMELDET: „Ich kann Karten momentan nicht überall
+                      anfassen. Entweder brauchen wir einen Anfasser-Bereich,
+                      der sich optisch abhebt, oder wieder die Verschieben-Zeit."
+
+                      Die Ursache ist dieselbe wie damals im Baum: die Geste
+                      lehnt einen Druck auf ein BEDIENELEMENT ab (sonst würde
+                      das Kästchen beim Antippen die Karte aufheben). Auf einer
+                      Karte sind aber Kästchen UND Titel Knöpfe — übrig blieb
+                      der Rand.
+
+                      Im Baum war die Antwort, aus dem Titel einen Link zu
+                      machen. Hier geht das nicht: der Titel öffnet die
+                      Detailspalte, und eine Karte, die beim Antippen des
+                      Titels wandert statt sich zu öffnen, wäre schlimmer als
+                      eine, die sich schwer greifen lässt.
+
+                      Also der erste der beiden Vorschläge: ein sichtbarer
+                      Streifen am linken Rand, volle Kartenhöhe, mit
+                      `data-drag-now` — kein Warten, wie beim Anfasser in der
+                      Liste. Die übrige Karte bleibt ziehbar, wo kein Knopf
+                      liegt (Beiwerkzeile, Notiz, Ränder).
+                    */}
+                    <span
+                      className="grip board-grip"
+                      aria-hidden="true"
+                      title="ziehen"
+                      data-drag-now="yes"
+                    >
+                      ⠿
+                    </span>
                     <TaskRow
                       task={task}
                       view="cards"
