@@ -158,10 +158,65 @@ function atTime(day: Date, hour: number, minute: number): Date {
   );
 }
 
+/**
+ * Ausgeschriebene Zahlen, so weit sie jemand tippt.
+ *
+ * „in einer Woche" ist deutsch, „in 1 Woche" ist Formular. Weiter als drei
+ * geht die Liste nicht: „in sieben Wochen" schreibt niemand aus, und eine
+ * Liste bis zwölf wäre Arbeit für einen Fall, den es nicht gibt.
+ */
+const ZAHLWORT: Record<string, number> = {
+  einer: 1,
+  einem: 1,
+  eine: 1,
+  ein: 1,
+  zwei: 2,
+  drei: 3,
+};
+
+/**
+ * Wann eine Tageszeit gemeint ist.
+ *
+ * Gerundete Stunden und keine Viertel: „abends" ist keine Uhrzeit, sondern ein
+ * Zeitraum, und 18:00 ist die Stelle, an der man ihn festmacht, wenn man etwas
+ * eintragen muss. Wer es genauer meint, schreibt die Uhrzeit dazu — und die
+ * schlägt diese hier.
+ */
+const TAGESZEIT: Record<string, number> = {
+  früh: 8,
+  frueh: 8,
+  morgens: 8,
+  vormittag: 10,
+  mittag: 12,
+  nachmittag: 15,
+  abend: 18,
+  abends: 18,
+  nacht: 21,
+};
+
+/** Monatsnamen, auf drei Buchstaben gekürzt — so viele wie nötig. */
+const MONATE: Record<string, number> = {
+  jan: 0, feb: 1, mär: 2, mae: 2, mrz: 2, apr: 3, mai: 4, jun: 5,
+  jul: 6, aug: 7, sep: 8, okt: 9, nov: 10, dez: 11,
+};
+
 const startOfDay = (d: Date) =>
   new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
 
 const addDays = (d: Date, n: number) => new Date(d.getTime() + n * 86_400_000);
+
+/**
+ * Der Montag der Woche, in der dieser Tag liegt.
+ *
+ * Die Woche beginnt am MONTAG — das ist hier keine Geschmacksfrage, sondern
+ * die Woche, die „nächste Woche" im Deutschen meint. Der Sonntag zählt zur
+ * Woche davor, und `getUTCDay()` gibt ihm die 0; darum die Umrechnung.
+ */
+function mondayOfWeek(d: Date): Date {
+  const tag = startOfDay(d);
+  const seitMontag = (tag.getUTCDay() + 6) % 7;
+  return addDays(tag, -seitMontag);
+}
 
 /** Der nächste Wochentag dieses Namens, heute nicht mitgezählt. */
 function nextWeekday(now: Date, weekday: number): Date {
@@ -439,7 +494,121 @@ function readDate(
   const hay = scan ? input : input.slice(from);
   const offset = scan ? 0 : from;
 
+  /*
+   * DIE REIHENFOLGE IST DIE REGEL: der erste Treffer gewinnt.
+   *
+   * Darum stehen die zusammengesetzten Formen VORN. „Montag in 2 Wochen" wurde
+   * gemeldet, weil „in 2 Wochen" zuerst passte und „Montag" als Titel
+   * übrigblieb — die Zeile war nicht unverstanden, sie war halb verstanden,
+   * und das ist schlimmer: man sieht ein Datum und glaubt, es sei das gemeinte.
+   */
   const patterns: [RegExp, (m: RegExpExecArray) => Date | null][] = [
+    /*
+     * „Montag in 2 Wochen", „Montag in einer Woche".
+     *
+     * Gelesen als: der nächste Montag, und dann N Wochen weiter.
+     *
+     * MEINE ERSTE FASSUNG LAS ES ANDERS — den Montag derselben Woche, in die
+     * „in 2 Wochen" fällt — und die Probe hat sie widerlegt: „Montag in einer
+     * Woche" ergab damit denselben Tag wie „Montag" allein. Eine Angabe, die
+     * nichts ändert, ist eine, die man falsch verstanden hat; ich hatte genau
+     * das als Gegenargument aufgeschrieben und meiner eigenen Fassung nicht
+     * angesehen.
+     *
+     * Jetzt: „Montag" ist der kommende, „Montag in einer Woche" der eine Woche
+     * darauf, „in 2 Wochen" zwei. Jede Zahl verschiebt um genau ihre Wochen —
+     * das ist die Lesart, in der alle drei Sätze verschiedene Tage nennen.
+     */
+    [
+      /(^|\s)(?:am\s+)?(sonntag|montag|dienstag|mittwoch|donnerstag|freitag|samstag|sonnabend)\s+in\s+(\d+|einer|einem|zwei|drei)\s+(?:woche|wochen)(?=\s|$)/i,
+      (m) => {
+        const wochen = ZAHLWORT[m[3]!.toLowerCase()] ?? Number(m[3]);
+        if (!Number.isFinite(wochen)) return null;
+        return addDays(nextWeekday(now, WEEKDAY_WORDS[m[2]!.toLowerCase()]!), wochen * 7);
+      },
+    ],
+    /* „nächste Woche Montag" und „Montag nächste Woche" — dieselbe Auskunft in
+       beiden Reihenfolgen, weil beide gesagt werden. */
+    [
+      /(^|\s)(?:am\s+)?(?:(?:nächste|naechste|kommende)n?\s+woche\s+(sonntag|montag|dienstag|mittwoch|donnerstag|freitag|samstag|sonnabend)|(sonntag|montag|dienstag|mittwoch|donnerstag|freitag|samstag|sonnabend)\s+(?:nächste|naechste|kommende)n?\s+woche)(?=\s|$)/i,
+      (m) => {
+        const wort = (m[2] ?? m[3])!.toLowerCase();
+        const woche = mondayOfWeek(addDays(startOfDay(now), 7));
+        const wd = WEEKDAY_WORDS[wort]!;
+        return addDays(woche, wd === 0 ? 6 : wd - 1);
+      },
+    ],
+    /* „nächste Woche" allein: der Montag darauf. Der Wochenanfang ist die
+       Antwort, die man meint, wenn man keinen Tag nennt. */
+    [
+      /(^|\s)(?:(?:nächste|naechste|kommende)n?\s+woche)(?=\s|$)/i,
+      () => mondayOfWeek(addDays(startOfDay(now), 7)),
+    ],
+    /* „am Wochenende" — der Samstag. Nicht der Sonntag: wer etwas aufs
+       Wochenende legt, hat zwei Tage, und der erste ist der Anfang davon. */
+    [
+      /(^|\s)(?:am\s+)?(?:diesem\s+|nächstes\s+|naechstes\s+)?wochenende(?=\s|$)/i,
+      () => nextWeekday(now, 6),
+    ],
+    /* Tageszeiten mit Tag: „heute Abend", „morgen früh", „morgen Mittag".
+       Sie tragen die Uhrzeit gleich mit — eine ausdrückliche schlägt sie
+       später, denn die steht dann auch da. */
+    [
+      /(^|\s)(heute|morgen|übermorgen)\s+(früh|frueh|morgens|vormittag|mittag|nachmittag|abend|abends|nacht)(?=\s|$)/i,
+      (m) => {
+        const tag = addDays(
+          startOfDay(now),
+          m[2]!.toLowerCase() === 'heute' ? 0 : m[2]!.toLowerCase() === 'morgen' ? 1 : 2,
+        );
+        return new Date(tag.getTime() + TAGESZEIT[m[3]!.toLowerCase()]! * 3_600_000);
+      },
+    ],
+    /* „in 2 Stunden", „in 30 Minuten" — ab JETZT und nicht ab Tagesbeginn, und
+       darum die einzige Form hier, die eine Uhrzeit aus der aktuellen Minute
+       bildet. Die Sekunden fallen weg: „in 2 Stunden" ist keine Aussage über
+       Sekunden. */
+    [
+      /(^|\s)in\s+(\d+|einer|einem|zwei|drei)\s+(stunde|stunden|minute|minuten)(?=\s|$)/i,
+      (m) => {
+        const n = ZAHLWORT[m[2]!.toLowerCase()] ?? Number(m[2]);
+        if (!Number.isFinite(n)) return null;
+        const ms = /^min/i.test(m[3]!) ? 60_000 : 3_600_000;
+        const ziel = new Date(now.getTime() + n * ms);
+        ziel.setUTCSeconds(0, 0);
+        return ziel;
+      },
+    ],
+    /* „in einer Woche", „in einem Tag" — dieselben Formen wie mit Ziffer, nur
+       ausgeschrieben. Wer „in einer Woche" tippt, hat nichts Falsches getan. */
+    [
+      /(^|\s)in\s+(einer|einem|zwei|drei)\s+(tag|tagen|woche|wochen)(?=\s|$)/i,
+      (m) => {
+        const n = ZAHLWORT[m[2]!.toLowerCase()]!;
+        const faktor = /^woche/i.test(m[3]!) ? 7 : 1;
+        return addDays(startOfDay(now), n * faktor);
+      },
+    ],
+    /* „am 15. Oktober", „15. Okt" — der Monat als Wort. Ohne Jahr gilt dasselbe
+       wie bei „15.10.": das nächste Vorkommen, nicht das vergangene. */
+    [
+      /(^|\s)(?:am\s+)?(\d{1,2})\.?\s+(jan(?:uar)?|feb(?:ruar)?|mär(?:z)?|maerz|mrz|apr(?:il)?|mai|jun(?:i)?|jul(?:i)?|aug(?:ust)?|sep(?:t(?:ember)?)?|okt(?:ober)?|nov(?:ember)?|dez(?:ember)?)(?=\s|$)/i,
+      (m) => {
+        const mo = MONATE[m[3]!.toLowerCase().slice(0, 3)];
+        if (mo === undefined) return null;
+        const d = Number(m[2]);
+        const heuer = new Date(Date.UTC(now.getUTCFullYear(), mo, d));
+        return heuer.getTime() >= startOfDay(now).getTime()
+          ? heuer
+          : new Date(Date.UTC(now.getUTCFullYear() + 1, mo, d));
+      },
+    ],
+    /* „nächsten Montag", „kommenden Freitag" — dasselbe wie der Wochentag
+       allein. Das Wort davor ist Höflichkeit und keine andere Angabe: der
+       nächste Montag IST der nächste Montag. */
+    [
+      /(^|\s)(?:am\s+)?(?:nächste|naechste|kommende)n?\s+(sonntag|montag|dienstag|mittwoch|donnerstag|freitag|samstag|sonnabend)(?=\s|$)/i,
+      (m) => nextWeekday(now, WEEKDAY_WORDS[m[2]!.toLowerCase()]!),
+    ],
     [/(^|\s)(heute|today)(?=\s|$)/i, () => startOfDay(now)],
     [/(^|\s)(morgen|tomorrow)(?=\s|$)/i, () => addDays(startOfDay(now), 1)],
     [/(^|\s)(übermorgen)(?=\s|$)/i, () => addDays(startOfDay(now), 2)],

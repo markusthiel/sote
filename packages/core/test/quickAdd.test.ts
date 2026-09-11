@@ -303,3 +303,83 @@ test('dieselbe Zeile ergibt mit Zone dieselbe Wanduhrzeit wie ohne Zone in UTC',
   assert.equal(ohne.planned.toISOString(), '2026-09-12T09:00:00.000Z');
   assert.equal(mit.planned.toISOString(), '2026-09-12T07:00:00.000Z');
 });
+
+/*
+ * GEMELDET mit Bild: „Montag in 2 Wochen erkennt er nicht, kann man da noch
+ * mehr Varianten reinbringen, die sinnvoll sind?"
+ *
+ * Die Zeile war nicht unverstanden, sie war HALB verstanden: „in 2 Wochen"
+ * passte, „Montag" blieb als Titel uebrig. Das ist schlimmer als gar nichts zu
+ * erkennen — man sieht ein Datum und glaubt, es sei das gemeinte.
+ *
+ * Der 11.9.2026 ist ein Freitag; alle Faelle unten rechnen von dort.
+ */
+const FR = new Date('2026-09-11T08:00:00Z');
+const tag = (s: string): string => {
+  const p = parseQuickAdd(s, { now: FR });
+  assert.ok(p.planned !== undefined, `kein Datum in „${s}“`);
+  return p.planned.toISOString().slice(0, 16);
+};
+
+test('Wochentag mit Wochen: jede Zahl verschiebt um ihre Wochen', () => {
+  /*
+   * Meine erste Fassung las „Montag in N Wochen" als den Montag DERSELBEN
+   * Woche, in die „in N Wochen" faellt — und ergab damit fuer „Montag in einer
+   * Woche" denselben Tag wie fuer „Montag" allein. Eine Angabe, die nichts
+   * aendert, ist eine, die man falsch verstanden hat.
+   */
+  assert.equal(tag('Montag'), '2026-09-14T00:00');
+  assert.equal(tag('Montag in einer Woche'), '2026-09-21T00:00');
+  assert.equal(tag('Montag in 2 Wochen'), '2026-09-28T00:00');
+});
+
+test('und die Uhrzeit daneben bleibt erhalten', () => {
+  // Der gemeldete Satz, vollstaendig: der Titel ist leer, weil alles davon
+  // eine Angabe war.
+  const p = parseQuickAdd('Montag in 2 Wochen 9 uhr', { now: FR });
+  assert.equal(p.planned?.toISOString().slice(0, 16), '2026-09-28T09:00');
+  assert.equal(p.title, '');
+});
+
+test('nächste Woche, mit und ohne Tag, in beiden Wortstellungen', () => {
+  // Beide Reihenfolgen werden gesagt, also koennen beide.
+  assert.equal(tag('nächste Woche'), '2026-09-14T00:00');
+  assert.equal(tag('nächste Woche Montag'), '2026-09-14T00:00');
+  assert.equal(tag('Freitag nächste Woche'), '2026-09-18T00:00');
+});
+
+test('Tageszeiten tragen ihre Stunde mit', () => {
+  // „abends" ist keine Uhrzeit, sondern ein Zeitraum — 18:00 ist die Stelle,
+  // an der man ihn festmacht, wenn man etwas eintragen muss.
+  assert.equal(tag('heute abend Müll rausstellen'), '2026-09-11T18:00');
+  assert.equal(tag('morgen früh anrufen'), '2026-09-12T08:00');
+  assert.equal(tag('übermorgen mittag'), '2026-09-13T12:00');
+});
+
+test('in Stunden und Minuten rechnet ab JETZT', () => {
+  // Die einzige Form, die eine Uhrzeit aus der aktuellen Minute bildet — und
+  // die Sekunden fallen weg: „in 2 Stunden" ist keine Aussage ueber Sekunden.
+  assert.equal(tag('in 2 Stunden Rückruf'), '2026-09-11T10:00');
+  assert.equal(tag('in 30 Minuten Ofen'), '2026-09-11T08:30');
+});
+
+test('ausgeschriebene Zahlen und Monatsnamen', () => {
+  // „in einer Woche" ist deutsch, „in 1 Woche" ist Formular.
+  assert.equal(tag('in einer Woche Rechnung'), '2026-09-18T00:00');
+  assert.equal(tag('am 15. Oktober Termin'), '2026-10-15T00:00');
+  assert.equal(tag('3. Dez Weihnachtsfeier'), '2026-12-03T00:00');
+  // Ein Monat, der schon vorbei ist, meint das naechste Jahr.
+  assert.equal(tag('2. Februar'), '2027-02-02T00:00');
+});
+
+test('am Wochenende ist der Samstag', () => {
+  // Nicht der Sonntag: wer etwas aufs Wochenende legt, hat zwei Tage, und der
+  // erste ist der Anfang davon.
+  assert.equal(tag('am Wochenende Rasen mähen'), '2026-09-12T00:00');
+});
+
+test('„nächsten Montag“ ist der nächste Montag', () => {
+  // Das Wort davor ist Hoeflichkeit und keine andere Angabe.
+  assert.equal(tag('nächsten Montag Team'), '2026-09-14T00:00');
+  assert.equal(tag('kommenden Freitag'), '2026-09-18T00:00');
+});
