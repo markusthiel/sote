@@ -19,11 +19,20 @@ import {
   type ListView,
 } from '@sote/core';
 
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from 'react';
 
 import { useRowDrag } from '../hooks/useRowDrag.js';
 import { useNudge } from '../hooks/useNudge.js';
 import { useOpenTasks } from '../hooks/useOpenTasks.js';
+import { webVariant } from '../lib/webVariant.js';
 import { api, ApiError, type Project, type Task, type TaskPatch } from '../api.js';
 import { HandleMenu } from '../components/HandleMenu.js';
 import { QuickAdd } from '../components/QuickAdd.js';
@@ -128,6 +137,58 @@ export function TaskList({
    * Die Begründung steht jetzt in `useOpenTasks`.
    */
   const { open: open_, toggle: toggleOpen } = useOpenTasks();
+  /**
+   * Welche Zeile gerade eine Datei erwartet, und welche gerade eine bekommt.
+   *
+   * GEWÜNSCHT: „Das Fallenlassen auf Karten und Zeilen wäre schon nicht
+   * schlecht. Wenn du das bauen kannst, ohne dass es das Umsortieren stört."
+   *
+   * Es stört nicht, und der Grund ist, dass die beiden Gesten NICHTS
+   * gemeinsam haben: unser Umsortieren läuft über Zeiger-Ereignisse
+   * (`usePointerDrag`), das Fallenlassen einer Datei über die
+   * Zieh-Ereignisse des Browsers. Sie hören einander nicht zu. Was fehlt,
+   * ist nur die Unterscheidung von ANDEREN Zieh-Ereignissen — darum die
+   * Prüfung auf `Files` weiter unten: eine markierte Textstelle, die jemand
+   * über die Liste zieht, soll keine Zeile aufleuchten lassen.
+   */
+  const [dateiUeber, setDateiUeber] = useState<string | null>(null);
+  const [dateiLaedt, setDateiLaedt] = useState<{
+    id: string;
+    nr: number;
+    gesamt: number;
+    anteil: number;
+  } | null>(null);
+
+  /**
+   * Dateien an eine Aufgabe hängen, die man nicht offen hat.
+   *
+   * Dieselbe Reihenfolge wie in der Detailspalte: nacheinander, mit kleiner
+   * Fassung, und ein Fehlschlag hält den Stapel nicht an. Der Unterschied ist
+   * nur, wo der Fortschritt steht — hier als dünner Streifen an der Zeile
+   * selbst, weil es keinen Platz für Namen und Prozent gibt.
+   */
+  async function dateienAn(taskId: string, files: readonly File[]) {
+    if (files.length === 0) return;
+    const schief: string[] = [];
+    for (const [i, file] of files.entries()) {
+      setDateiLaedt({ id: taskId, nr: i + 1, gesamt: files.length, anteil: 0 });
+      try {
+        await api.addFile(
+          taskId,
+          file,
+          workspace,
+          (anteil) => setDateiLaedt({ id: taskId, nr: i + 1, gesamt: files.length, anteil }),
+          await webVariant(file),
+        );
+      } catch (e) {
+        schief.push(`${file.name} (${e instanceof ApiError ? e.message : 'ging nicht'})`);
+      }
+    }
+    setDateiLaedt(null);
+    if (schief.length > 0) setNotice(`Nicht angehängt: ${schief.join('; ')}`);
+    await load();
+    onChanged();
+  }
   const [pending, setPending] = useState<readonly Pending[]>([]);
   const [notice, setNotice] = useState<string | undefined>(undefined);
   const [unknownProject, setUnknownProject] = useState<string | null>(null);
@@ -665,6 +726,38 @@ export function TaskList({
               }
             : {})}
           data-drop={drag.target?.rowId === task.id ? drag.target.intent : undefined}
+          /*
+           * DATEIEN FALLEN LASSEN — ohne dem Umsortieren in die Quere zu
+           * kommen.
+           *
+           * Die beiden Gesten hören einander nicht zu: unser Umsortieren läuft
+           * über Zeiger-Ereignisse, das hier über die Zieh-Ereignisse des
+           * Browsers. Was zu unterscheiden bleibt, sind ANDERE Zieh-Ereignisse
+           * — darum die Prüfung auf `Files`: eine markierte Textstelle, die
+           * jemand über die Liste zieht, soll keine Zeile aufleuchten lassen.
+           *
+           * `preventDefault` im `dragover` ist Pflicht; ohne es nimmt der
+           * Browser das Ablegen selbst an und öffnet die Datei als Seite.
+           */
+          data-files={dateiUeber === task.id ? 'over' : undefined}
+          style={
+            dateiLaedt?.id === task.id
+              ? ({ '--laedt': `${Math.round(dateiLaedt.anteil * 100)}%` } as CSSProperties)
+              : undefined
+          }
+          data-loading={dateiLaedt?.id === task.id ? 'yes' : undefined}
+          onDragOver={(e) => {
+            if (!e.dataTransfer.types.includes('Files')) return;
+            e.preventDefault();
+            setDateiUeber(task.id);
+          }}
+          onDragLeave={() => setDateiUeber((war) => (war === task.id ? null : war))}
+          onDrop={(e) => {
+            if (!e.dataTransfer.types.includes('Files')) return;
+            e.preventDefault();
+            setDateiUeber(null);
+            void dateienAn(task.id, [...e.dataTransfer.files]);
+          }}
           onKeyDown={(e) => {
             // Ziehen allein wäre eine Reihenfolge, die man mit der Tastatur
             // nicht ändern kann.
@@ -918,6 +1011,7 @@ export function TaskList({
             openTask={openTask}
             onOpenTask={onOpenTask}
             onAdd={(line, columnId) => void addTo(line, columnId)}
+            onFiles={(taskId, files) => void dateienAn(taskId, files)}
             onChanged={() => {
               void load();
               onChanged();

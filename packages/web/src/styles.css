@@ -2045,6 +2045,46 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex]:focus-vi
   background: var(--surface);
 }
 
+/* ── Dateien auf eine Zeile oder Karte fallen lassen ───────────────────────
+ *
+ * Gewünscht: „Das Fallenlassen auf Karten und Zeilen wäre schon nicht
+ * schlecht. Wenn du das bauen kannst, ohne dass es das Umsortieren stört."
+ *
+ * Es stört nicht: das Umsortieren läuft über Zeiger-Ereignisse, dies über die
+ * Zieh-Ereignisse des Browsers.
+ *
+ * GESTRICHELT und nicht gefüllt wie beim Ablegen einer Karte — zwei
+ * verschiedene Vorgänge sollen nicht gleich aussehen. Gefüllt heisst „diese
+ * Aufgabe nimmt die gezogene auf", gestrichelt heisst „hier darf etwas
+ * hinein", dieselbe Sprache wie am Feld unter den Anhängen.
+ */
+.task-wrap[data-files="over"] {
+  outline: 2px dashed var(--accent);
+  outline-offset: -2px;
+  border-radius: var(--sote-radius-md);
+  background: var(--accent-quiet);
+}
+
+/*
+ * Der Fortschritt als dünner Streifen am unteren Rand der Zeile.
+ *
+ * In der Detailspalte steht Name und Prozent daneben; in einer Zeile ist dafür
+ * kein Platz, und ein Balken mit Beschriftung würde die Zeile auseinander-
+ * schieben, während man zusieht. Ein Streifen sagt genug: es läuft, und wie
+ * weit.
+ */
+.task-wrap[data-loading="yes"]::after {
+  content: "";
+  position: absolute;
+  inset-inline-start: 0;
+  inset-block-end: 0;
+  block-size: 2px;
+  /* Die Breite kommt aus dem Bauteil: nur dort ist bekannt, wie weit es ist. */
+  inline-size: var(--laedt, 0%);
+  background: var(--accent);
+  transition: inline-size 120ms linear;
+}
+
 /* ── Unteraufgaben in der Liste ────────────────────────────────────────────
  *
  * Eine Ebene, also eine Einrückung und keine Treppe.

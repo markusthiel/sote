@@ -51,6 +51,7 @@ export function Board({
   onOpenTask,
   onChanged,
   onAdd,
+  onFiles,
   showDone,
 }: {
   workspace: string | undefined;
@@ -68,6 +69,14 @@ export function Board({
    * sagt nur, wohin.
    */
   onAdd: (line: string, columnId: string) => void;
+  /**
+   * Dateien, die auf eine Karte gefallen sind.
+   *
+   * Die Liste macht das Hochladen; die Tafel sagt nur, auf welche Karte. Zwei
+   * Stellen, die dasselbe hochladen, wären zwei Fortschrittsanzeigen und zwei
+   * Gelegenheiten, die kleine Fassung zu vergessen.
+   */
+  onFiles: (taskId: string, files: readonly File[]) => void;
   /**
    * Ob Erledigtes gezeigt wird — derselbe Schalter wie in der Liste.
    *
@@ -87,6 +96,8 @@ export function Board({
   const [renaming, setRenaming] = useState<string | null>(null);
   const [menu, setMenu] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
+  /** Welche Karte gerade eine Datei erwartet. */
+  const [dateiUeber, setDateiUeber] = useState<string | null>(null);
   const boardRef = useRef<HTMLDivElement | null>(null);
 
   const load = useCallback(async () => {
@@ -507,6 +518,27 @@ export function Board({
                     data-drop={
                       drag.target?.rowId === task.id ? drag.target.intent : undefined
                     }
+                    /*
+                      Und auch hier: Dateien fallen lassen. Die Prüfung auf
+                      `Files` hält alles andere heraus, und das Umsortieren
+                      läuft über Zeiger-Ereignisse — die beiden hören einander
+                      nicht zu.
+                    */
+                    data-files={dateiUeber === task.id ? 'over' : undefined}
+                    onDragOver={(e) => {
+                      if (!e.dataTransfer.types.includes('Files')) return;
+                      e.preventDefault();
+                      setDateiUeber(task.id);
+                    }}
+                    onDragLeave={() =>
+                      setDateiUeber((war) => (war === task.id ? null : war))
+                    }
+                    onDrop={(e) => {
+                      if (!e.dataTransfer.types.includes('Files')) return;
+                      e.preventDefault();
+                      setDateiUeber(null);
+                      onFiles(task.id, [...e.dataTransfer.files]);
+                    }}
                   >
                     {/*
                       DER ANFASSER AN DER KARTE.
