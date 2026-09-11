@@ -3107,11 +3107,11 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex]:focus-vi
   /*
    * Sie darf umbrechen und schrumpfen.
    *
-   * „Mo, 14. Sept., 09:00" ist die längste Beschriftung, die hier vorkommt,
-   * und sie stand als eine unteilbare Zeile neben einem Wort, das selbst schon
-   * umbrach. Ohne `min-width: 0` schrumpft ein Flex-Kind nicht unter seinen
-   * Inhalt — das ist die Regel, die hier gefehlt hat, und dieselbe wie an der
-   * Dateizeile.
+   * Das war meine erste Antwort auf den queren Rollbalken und NICHT dessen
+   * Ursache — die steht bei `.menu` und ist die Trennlinie. Die Regel bleibt
+   * trotzdem: ohne `min-width: 0` schrumpft ein Flex-Kind nicht unter seinen
+   * Inhalt, und „Mo, 14. Sept., 09:00" neben einem Wort, das selbst umbricht,
+   * ist der Fall, für den man das vorsieht.
    */
   min-width: 0;
   text-align: end;
@@ -3982,21 +3982,6 @@ select.target { }
   flex: 1;
   min-block-size: 0;
   overflow-y: auto;
-  /*
-   * WAAGERECHT NICHT.
-   *
-   * GEMELDET mit Bild: „Im Aufgaben-Submenü habe ich einen kleinen
-   * Scrollbalken." Am Fuss des Menüs, quer — und er kam von der rechten
-   * Beschriftung einer Zeile: „Mo, 14. Sept., 09:00" in Schmalschrift passt
-   * neben „nächster Montag" nicht in 232 Pixel, und weil sie nicht umbrechen
-   * durfte, wuchs das Menü nach rechts über sich hinaus.
-   *
-   * `hidden` allein wäre ein Deckel auf dem Problem: es versteckte den Balken
-   * und schnitte den Text ab. Darum zusätzlich unten die Regel, die die
-   * Beschriftung umbrechen lässt — dann gibt es nichts mehr zu verstecken, und
-   * dies hier ist nur noch die Zusage, dass ein Menü nicht quer rollt.
-   */
-  overflow-x: hidden;
 }
 
 /* Bilder als Bilder: ein Raster aus Vorschauen, nicht eine Liste aus Namen. */
@@ -5739,6 +5724,30 @@ label.btn {
      (Zeichenwaehler und Farben), und am Fuss einer langen Liste haette es
      sonst unten kein Ende. */
   overflow-y: auto;
+  /*
+   * WAAGERECHT NICHT — und die Ursache ist EIN PIXEL.
+   *
+   * GEMELDET, zweimal: „Im Aufgaben-Submenü habe ich einen kleinen
+   * Scrollbalken."
+   *
+   * Beim ersten Mal habe ich die rechte Beschriftung verdächtigt („Mo, 14.
+   * Sept., 09:00") und sie umbrechen lassen. Das war die falsche Erklärung:
+   * sie brach schon vorher um, `white-space` steht dort auf `normal`.
+   *
+   * NACHGEMESSEN, im Browser, mit dem alten Stylesheet: `scrollWidth` 231 bei
+   * `clientWidth` 230. Ein Pixel — und `overflow-x: auto` macht daraus einen
+   * Balken über die volle Breite.
+   *
+   * Der Verursacher ist die TRENNLINIE (`.menu-label.sep`): sie zieht sich mit
+   * `margin: 5px -5px 0` von Rand zu Rand, und das ist genau der Innenabstand
+   * des Menüs. Absichtlich und richtig — eine Trennlinie, die vor dem Rand
+   * aufhört, sieht aus wie ein Versehen. Sie liegt damit aber ausserhalb des
+   * Inhaltskastens, und ein Kasten mit `overflow` zählt das als Überlauf.
+   *
+   * `hidden` ist hier also nicht der Deckel auf einem Problem, sondern die
+   * Antwort: der Überlauf ist gewollt, das Rollen nicht.
+   */
+  overflow-x: hidden;
   /* Wider, and shorter for it. At 190px the five most-used actions were five
      rows of text and the menu ran most of the way down the sidebar. (SONE) */
   inline-size: 232px;
