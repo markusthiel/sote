@@ -261,7 +261,21 @@ export function ShareScreen({ token, now }: { token: string; now: Date }) {
             }
           />
         </div>
-        {auf ? kinder.map((k) => zeile(k, t.id)) : null}
+        {/*
+          DIESELBE Hülle wie beim Mitglied (`task-kids`).
+
+          GEMELDET: „Jetzt stehen die aufgeklappten Unteraufgaben auf gleicher
+          Höhe wie die anderen. Sie müssten etwas verschachtelt stehen."
+
+          Die Einrückung steckt in dieser Hülle und nicht in der Zeile — und
+          zwar mit Grund: sie hält Platz für die EINE Spur, die eine
+          Unteraufgabe braucht (Anfasser, kein Aufklapper), und trägt die Linie
+          davor. Ohne sie stand die Einrückung im Nichts und der Anfasser auf
+          der Linie.
+        */}
+        {auf && kinder.length > 0 ? (
+          <div className="task-kids">{kinder.map((k) => zeile(k, t.id))}</div>
+        ) : null}
       </div>
     );
   };

@@ -3035,6 +3035,24 @@ body {
   letter-spacing: -1px;
   opacity: 0;
   cursor: grab;
+  /*
+   * DER FINGER ZIEHT, DER BROWSER ROLLT NICHT MIT.
+   *
+   * GEMELDET: „Drag und Drop sortieren klappt nicht auf der Gästeansicht."
+   *
+   * Nachgestellt habe ich: die echte Gast-Ansicht im Browser, mit der Maus am
+   * Anfasser gezogen — die Route wird gerufen; und dieselbe Route gegen den
+   * echten Server, Antwort 200. Beide Hälften stimmen also.
+   *
+   * Bleibt die eine Ursache, die nur auf einem Tastgerät greift: `touch-action`
+   * wird gelesen, wenn die Geste BEGINNT. Steht dort der Vorgabewert, darf der
+   * Browser die senkrechte Bewegung als Rollen nehmen — und sobald er das tut,
+   * bricht er die Zeigergeste ab. Der Zug endet, bevor er anfängt.
+   *
+   * Am Anfasser und nicht an der Zeile: die Zeile soll sich weiterhin rollen
+   * lassen, wenn man sie irgendwo anfasst. Nur der Griff gehört der Geste.
+   */
+  touch-action: none;
   /* Sonst markiert ein Zug am Anfasser den Text der Zeile daneben. */
   user-select: none;
   -webkit-user-select: none;

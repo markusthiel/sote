@@ -78,6 +78,22 @@ export interface DetailIO {
   removeFile?: (fileId: string) => Promise<unknown>;
   fileHref?: (fileId: string, size?: 'web') => string;
   addComment: (body: string) => Promise<unknown>;
+  /**
+   * Eine Teilaufgabe abhaken — über DIESE Anbindung.
+   *
+   * GEMELDET: „Unteraufgaben in der Detailansicht abhaken klappt auch nicht.
+   * Da kam die Meldung, dass man nicht angemeldet ist."
+   *
+   * Genau so: das Kästchen rief `toggleDone` auf, und das nimmt den Weg des
+   * MITGLIEDS (`/api/tasks/…`). Ein Gast hat dort keine Sitzung — der Server
+   * antwortete richtig, die Frage war falsch gestellt.
+   *
+   * Die Lehre ist dieselbe wie bei den Anhängen eine Runde vorher: alles, was
+   * die Detailspalte TUT, muss über die Anbindung gehen. Ein direkter Aufruf
+   * daneben sieht aus wie eine Abkürzung und ist ein zweiter Weg, der beim
+   * Gast ins Leere führt.
+   */
+  toggleChild: (task: Task) => Promise<unknown>;
 }
 
 /** Die Anbindung eines Mitglieds. */
@@ -106,6 +122,7 @@ export const memberIO = (taskId: string, workspace: string | undefined): DetailI
   patch: (fields) => api.patch(taskId, fields as never, workspace),
   addChild: (title) => api.addChild(taskId, title, workspace),
   addComment: (body) => api.addComment(taskId, body, workspace),
+  toggleChild: (kind) => toggleDone(kind, workspace),
 });
 
 /**
@@ -121,6 +138,11 @@ export const guestIO = (token: string, taskId: string): DetailIO => ({
   patch: (fields) => api.sharePatch(token, taskId, fields),
   addChild: (title) => api.shareAddChild(token, taskId, title),
   addComment: (body) => api.shareAddComment(token, taskId, body),
+  /* Über den Freigabe-Schlüssel, nicht über die Sitzung: ein Gast hat keine. */
+  toggleChild: (kind) =>
+    kind.completed === null
+      ? api.shareComplete(token, kind.id)
+      : api.shareReopen(token, kind.id),
   /*
    * ANHÄNGE — auch beim Gast.
    *
@@ -1248,7 +1270,7 @@ export function Detail({
                     disabled={busy}
                     /* In beide Richtungen — die Beschriftung darüber nennt schon
                        zwei Zustände, und `toggleDone` kennt beide. */
-                    onClick={() => void save(() => toggleDone(child, workspace))}
+                    onClick={() => void save(() => anbindung.toggleChild(child))}
                   >
                     <svg width="11" height="11" viewBox="0 0 12 12" aria-hidden="true">
                       <path
