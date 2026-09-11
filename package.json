@@ -13,7 +13,7 @@
     "typecheck": "pnpm build:core && pnpm -r typecheck",
     "test": "pnpm build:core && pnpm -r test",
     "dev": "pnpm --filter @sote/web dev",
-    "check": "node scripts/check-migrations.mjs && node scripts/check-task-columns.mjs && node scripts/check-env-passed.mjs && node scripts/check-routes-reachable.mjs && node scripts/check-styles.mjs && pnpm typecheck && pnpm test"
+    "check": "node scripts/check-migrations.mjs && node scripts/check-task-columns.mjs && node scripts/check-env-passed.mjs && node scripts/check-routes-reachable.mjs && node scripts/check-styles.mjs && node scripts/check-css-dupes.mjs && pnpm typecheck && pnpm test"
   },
   "devDependencies": {
     "typescript": "^5.7.0"

@@ -215,6 +215,13 @@
   --sote-panel: 272px;
   --sote-bar: 60px;
   --sote-tap: 44px;
+  /* Die beiden Spuren im linken Rand: aussen der Aufklapper, innen der
+     Anfasser. `--sote-gutter` ist deren zwei, `--sote-gap-x` der Rand des
+     Inhalts daneben. Als Werte, weil Zeile, Anfasser, Aufklapper und
+     Innenabstand sich einigen muessen. */
+  --sote-lane: 24px;
+  --sote-gutter: calc(var(--sote-lane) * 2);
+  --sote-gap-x: 32px;
   --sote-read: 46rem;
   --sote-shadow-sm: 0 1px 2px rgb(22 22 21 / 6%);
   --sote-shadow-md: 0 1px 2px rgb(22 22 21 / 6%), 0 4px 12px rgb(22 22 21 / 8%);
@@ -588,6 +595,7 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex]:focus-vi
   grid-template-columns: var(--sote-rail) var(--sote-panel) 1fr;
   height: 100%;
   overflow: hidden;
+  font-family: var(--sote-sans);
 }
 
 /*
@@ -1459,13 +1467,6 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex]:focus-vi
  * Aufklapper und der Innenabstand des Inhalts müssen sich einigen, und vier
  * Zahlen einigen sich beim ersten Ändern nicht mehr.
  */
-:root {
-  --sote-lane: 24px;
-  --sote-gutter: calc(var(--sote-lane) * 2);
-  /* Der Rand des Inhalts neben den Spuren — als Wert, damit er nicht an zwei
-     Stellen als Zahl steht (und der Stil-Wächter zählt sie ohnehin). */
-  --sote-gap-x: 32px;
-}
 
 /* Die Kinder, eingerückt und mit einer Linie daran.
  *
@@ -1931,9 +1932,6 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex]:focus-vi
   .body {
     padding-left: calc(var(--sone-space-3) + var(--sote-gutter));
     padding-right: 18px;
-  }
-
-  .body {
     padding-bottom: calc(var(--sote-bar) + 24px);
   }
 }
@@ -2129,14 +2127,9 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex]:focus-vi
   -webkit-touch-callout: none;
 }
 
-/* Auf dem Telefon gibt es kein Zeigen — dort steht er immer da. Ein
-   Bedienelement, das erscheint, wenn ein Zeiger in der Nähe ist, existiert
-   auf einem Telefon nicht (ADR-0016). */
-@media (hover: none) {
-  .grip {
-    opacity: 0.6;
-  }
-}
+/* (Auf dem Telefon steht der Anfasser dauerhaft da — die Regel dafuer gab es
+   schon weiter unten in demselben `@media`-Block. Meine zweite daneben war
+   eine Dublette und hat die vorhandene nur uebersteuert.) */
 
 .task:hover .grip,
 .task:focus-within .grip {
@@ -2190,12 +2183,11 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex]:focus-vi
  * Entscheidung.** Wer sie für einen Ort ändert, ändert sie für alle — also
  * bekommt der Ort, der etwas anderes braucht, einen eigenen Namen.
  */
-.menu {
-  position: absolute;
-  right: 0;
-  top: 28px;
-  z-index: 30;
-}
+/* (Die Regel fuer `.menu` steht jetzt an EINER Stelle — weiter unten, bei der
+   Flaeche, die sie beschreibt. Hier standen frueher die Koordinaten, weiter
+   unten das Aussehen und noch weiter unten das Rollen: drei Bloecke fuer ein
+   Element, und wer den ersten aenderte, aenderte nichts, was man sieht.
+   Gefunden von `check-css-dupes`.) */
 
 /*
  * `fixed` und nicht `absolute` — sonst schneidet die Leiste ab.
@@ -2451,6 +2443,8 @@ select.target { }
   padding: 8px 18px;
   border-bottom: 1px solid var(--line);
   font-size: 13.5px;
+  /* Der Rahmen, an dem das Feldmenue haengt. */
+  position: relative;
 }
 
 .frow .fl {
@@ -2615,13 +2609,6 @@ select.target { }
   }
 }
 
-.task-title.as-link {
-  text-align: left;
-  width: 100%;
-  font: inherit;
-  font-size: 14.5px;
-}
-
 /*
  * Die offene Zeile verschiebt sich **nicht** mehr.
  *
@@ -2712,14 +2699,6 @@ select.target { }
   display: flex;
   gap: 6px;
   padding: 4px 9px 8px;
-}
-
-.swatch-btn {
-  width: 20px;
-  height: 20px;
-  border: 1px solid var(--line-strong);
-  border-radius: var(--sote-radius-md);
-  background: var(--page);
 }
 
 .swatch-btn[aria-current="true"] {
@@ -2848,10 +2827,6 @@ select.target { }
    niemand, und das war ja genau der Fehler. Also derselbe Wechsel auf Hover
    wie bei den Aufgabenzeilen und rechts ein Zeichen, das die Klappe
    ankündigt. */
-
-.frow {
-  position: relative;
-}
 
 .fv-button {
   display: flex;
@@ -3173,7 +3148,9 @@ select.target { }
 .settings {
   max-width: var(--sote-read);
   margin: 0 auto;
-  padding: 28px 24px 64px;
+  /* Oben weniger, weil der Kopf der Seitenleiste schon Abstand traegt —
+     stand frueher als zweite `.settings`-Regel weiter unten. */
+  padding: 8px 24px 64px;
   overflow-y: auto;
 }
 
@@ -3300,8 +3277,6 @@ select.target { }
   min-inline-size: 0;
   text-align: end;
 }
-.settings-row > .settings-row-value > .muted { text-align: start; align-self: stretch; }
-
 /*
  * Ein Raster, ein Feld oder eine Reihe darin nimmt die ganze Spalte.
  *
@@ -3356,6 +3331,9 @@ select.target { }
   .settings-row select { inline-size: 100%; }
 }
 .settings-row > .settings-row-value > .muted {
+  /* Die beiden ersten Zeilen standen frueher als eigene Regel weiter oben. */
+  text-align: start;
+  align-self: stretch;
   margin: 0;
   max-inline-size: 42ch;
   color: var(--text-muted);
@@ -3412,14 +3390,11 @@ select.target { }
   font-weight: 600;
 }
 
-.set-choice {
-  min-width: 0;
-  flex: 1;
-}
-
 /* Eine Reihe aus Möglichkeiten, nicht ein Auswahlfeld: vier Antworten, die
    alle sichtbar sind, sagen mehr als eine Antwort mit einem Pfeil daneben. */
 .set-choice {
+  min-width: 0;
+  flex: 1;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -3445,12 +3420,6 @@ select.target { }
   cursor: pointer;
 }
 .set-choice button:not(.block-menu-swatch):hover:not(:disabled) { background: var(--surface-hover); }
-.set-choice button:not(.block-menu-swatch)[aria-checked='true'] {
-  border-color: var(--accent);
-  background: var(--surface-hover);
-  font-weight: 600;
-}
-
 .set-choice button:hover:not(:disabled) {
   background: var(--sunken);
 }
@@ -3537,9 +3506,6 @@ select.target { }
    über der Anwendung, sondern dieselbe Leiste mit anderem Inhalt. */
 
 
-.settings {
-  padding-top: 8px;
-}
 
 
 
@@ -3738,6 +3704,9 @@ select.target { }
    die man liest — acht Felder sind eine Farbe, die man sieht. Die Beschriftung
    trägt den Namen für alles, was nicht sieht. */
 .swatch-btn {
+  /* `background` und `height` standen frueher in einer zweiten Regel weiter
+     oben; `width` und `min-height` hier gewannen ohnehin. */
+  background: var(--page);
   width: 26px;
   min-height: 32px;
   padding: 0;
@@ -3849,10 +3818,6 @@ select.target { }
  * DEKLARATION zu hoch, hier die BENUTZUNG. Mit dieser Zeile fragt die Hülle
  * selbst, und alles darin erbt von ihr.
  */
-.app {
-  font-family: var(--sote-sans);
-}
-
 .app[data-fonts='reading'] {
   --sote-sans: Charter, "Iowan Old Style", Palatino, Georgia, serif;
 }
@@ -4142,17 +4107,6 @@ select.target { }
   font-weight: 500;
 }
 
-.admin-flag {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-}
-
-/* Ein fixiertes Menü braucht sein eigenes Scrollen: es ist hoch (Zeichenwähler
-   und Farben), und am Fuß einer langen Liste hätte es sonst unten kein Ende. */
-.menu {
-  overflow-y: auto;
-}
 
 /* ── Eine Karte je Rolle ───────────────────────────────────────────────────
    Nicht eine Zeile: eine Rolle sagt ZWEI Dinge (Stufe und Rechte), dazu eine
@@ -4263,64 +4217,25 @@ a.btn {
  * und als `aria-label`.
  */
 
-.entry-menu-band {
-  margin-bottom: 4px;
-  padding: 3px;
-  border-radius: var(--sote-radius-md);
-  background: var(--sunken);
-}
-
-.entry-menu-actions {
-  display: flex;
-  gap: 3px;
-  padding: 3px;
-}
-
-.entry-menu-action {
-  flex: 1 1 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 30px;
-  padding: 0;
-  border: 0;
-  border-radius: var(--sote-radius-sm);
-  background: transparent;
-  color: var(--text-muted);
-  cursor: pointer;
-}
-
-.entry-menu-action:hover:not(:disabled) {
-  background: var(--raised);
-  color: var(--text);
-}
-
-/* Gesperrt heißt: es gibt keinen Nachbarn in dieser Richtung. Sichtbar
-   gesperrt und nicht abwesend — anders als bei „Teilen" an einem Ordner, wo es
-   die Sache gar nicht gibt: hier gibt es sie, nur hier nicht. */
-.entry-menu-action:disabled {
-  opacity: 0.35;
-  cursor: default;
-}
-
-.entry-menu-new {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding-left: 10px;
-}
-
-.entry-menu-new .entry-menu-actions {
-  flex: 1 1 auto;
-}
-
-.entry-menu-label {
-  font-family: var(--sote-mono);
-  font-size: 10.5px;
-  color: var(--text-faint);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
+/*
+ * ACHT REGELN STANDEN HIER, UND ALLE ACHT WAREN SCHON WEITER UNTEN.
+ *
+ * Das Band des Projektmenüs wurde zweimal beschrieben: hier in SOTEs erster
+ * Fassung (harte Pixel, `margin-bottom`, `padding-left`) und weiter unten in
+ * der aus SONE übernommenen (`--sone-*`-Werte, logische Eigenschaften). Die
+ * spätere galt — diese acht Blöcke waren also vollständig wirkungslos, bis auf
+ * EINE Zeile: `font-family` am `.entry-menu-label`, die es unten nicht gab.
+ * Die ist mit umgezogen.
+ *
+ * Wer hier etwas geändert hätte, hätte nichts bewirkt und den Grund im Bauteil
+ * gesucht. Gefunden von `check-css-dupes`, zusammen mit dreizehn weiteren
+ * Fällen.
+ *
+ * Gesperrt heißt übrigens weiterhin: es gibt keinen Nachbarn in dieser
+ * Richtung. Sichtbar gesperrt und nicht abwesend — anders als bei „Teilen" an
+ * einem Ordner, wo es die Sache gar nicht gibt: hier gibt es sie, nur hier
+ * nicht. (Der Satz gehört zu `.entry-menu-action:disabled` weiter unten.)
+ */
 
 
 
@@ -4413,6 +4328,9 @@ a.btn {
 .task-title.as-link {
   display: block;
   width: 100%;
+  /* Stand frueher in einer zweiten Regel weiter oben — die einzige Angabe
+     dort, die hier fehlte. */
+  font-size: 14.5px;
   padding: 0;
   border: 0;
   background: none;
@@ -4581,11 +4499,6 @@ label.btn {
 
 .tree-row {
   display: flex;
-  /* Dieselbe Zeile wie an der Aufgabenzeile, aus demselben Grund — und in
-     SONE steht sie an genau dieser Klasse. */
-  user-select: none;
-  -webkit-user-select: none;
-  -webkit-touch-callout: none;
   align-items: center;
   gap: var(--sone-space-1);
   min-height: 34px;
@@ -4800,6 +4713,26 @@ label.btn {
  * ═══════════════════════════════════════════════════════════════════════ */
 
 .menu {
+  /*
+   * EINE Regel fuer `.menu`, zusammengefuehrt.
+   *
+   * Sie stand dreimal in dieser Datei: hier das Aussehen, weiter oben die
+   * Koordinaten, dazwischen das Rollen. Alle drei galten, die spaeteren
+   * gewannen — und wer die erste aenderte, sah nichts. Gemeldet als „das mit
+   * dem Menue bitte auch noch", gefunden von `check-css-dupes`.
+   *
+   * Die Koordinaten (`absolute`, rechts, 28 px unter dem Anfasser) gehoeren
+   * zur Aufgabenzeile; das Baummenue haengt sich mit `.at-point` anders auf.
+   * Der Kommentar dazu steht bei `.at-point` weiter unten.
+   */
+  position: absolute;
+  right: 0;
+  top: 28px;
+  z-index: 30;
+  /* Ein fixiertes Menue braucht sein eigenes Rollen: es ist hoch
+     (Zeichenwaehler und Farben), und am Fuss einer langen Liste haette es
+     sonst unten kein Ende. */
+  overflow-y: auto;
   /* Wider, and shorter for it. At 190px the five most-used actions were five
      rows of text and the menu ran most of the way down the sidebar. (SONE) */
   inline-size: 232px;
@@ -4866,6 +4799,9 @@ label.btn {
 
 .entry-menu-label {
   padding: var(--sone-space-3) var(--sone-space-4) var(--sone-space-1);
+  /* Aus der frueheren Fassung mit umgezogen: nur diese eine Zeile hatte dort
+     noch Wirkung, weil es sie hier nicht gab. */
+  font-family: var(--sote-mono);
   color: var(--text-muted);
   font-size: var(--sone-text-xs);
   text-transform: uppercase;
