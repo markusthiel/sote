@@ -1377,8 +1377,19 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex]:focus-vi
  */
 .task-twisty {
   position: absolute;
-  /* ERSTE Spur von aussen, also näher an der Zeile. */
-  inset-inline-start: calc(var(--sote-lane) * -1);
+  /*
+   * DIE ÄUSSERE Spur — vor dem Anfasser.
+   *
+   * GEMELDET: „Du hast jetzt mehr Abstand vor den Anfasser gebracht und den
+   * Pfeil trotzdem dahinter gesetzt. Der Pfeil sollte vorne vor dem Anfasser
+   * bleiben, auf gleicher Höhe."
+   *
+   * Ich hatte es andersherum begründet („der Aufklapper gehört zur Zeile, also
+   * nach innen") — und dabei übersehen, dass man die Zeile von links liest.
+   * Das Erste, was am Rand steht, ist der Aufklapper; er sagt, ob es hier mehr
+   * gibt. Der Anfasser kommt danach, direkt an der Zeile, die er bewegt.
+   */
+  inset-inline-start: calc(var(--sote-gutter) * -1);
   inset-block-start: 0;
   inset-block-end: 0;
   width: var(--sote-lane);
@@ -1405,9 +1416,38 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex]:focus-vi
   color: var(--text);
 }
 
-/* Gedreht statt getauscht — wie im Baum und in SONE: zwei verschiedene
-   Zeichen springen beim Umschalten, eine Drehung nicht. */
-.task-twisty[aria-expanded="true"] {
+/*
+ * Gedreht wird das ZEICHEN, nicht der Knopf.
+ *
+ * GEMELDET mit Bild: „Wenn ich ihn aufklappe, sitzt er auf einmal an der Ecke
+ * der Checkbox."
+ *
+ * Genau das passiert, wenn man einen 24 × 60 px hohen Knopf um neunzig Grad
+ * dreht: er dreht sich um seine Mitte, und das Zeichen, das oben darin sitzt,
+ * wandert dabei quer über die Zeile. Solange der Knopf 16 × 16 war, fiel es
+ * nicht auf — er war quadratisch und das Zeichen in der Mitte.
+ *
+ * Die Drehung gehört also an das Zeichen selbst. Dass die Fläche gewachsen
+ * ist, war richtig; die Drehung mitzuziehen habe ich vergessen.
+ */
+.task-twisty > * {
+  /*
+   * QUADRATISCH, damit die Drehung nichts verschiebt.
+   *
+   * Ein Block füllt die Spurbreite; dreht man 24 × 14 px um neunzig Grad,
+   * werden daraus 14 × 24 und das Zeichen rückt um fünf Pixel zur Seite.
+   * Gemessen: 15 zugeklappt, 11 aufgeklappt. Bei einem Quadrat ist die
+   * Drehung eine Drehung und keine Bewegung.
+   */
+  display: inline-block;
+  inline-size: 1em;
+  block-size: 1em;
+  line-height: 1;
+  text-align: center;
+  transition: transform 120ms ease;
+}
+
+.task-twisty[aria-expanded="true"] > * {
   transform: rotate(90deg);
 }
 
@@ -2058,13 +2098,24 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex]:focus-vi
  */
 .grip {
   position: absolute;
-  /* ZWEITE Spur von aussen. Die Rechnung steht bei `--sote-gutter`. */
-  left: calc(var(--sote-gutter) * -1);
+  /* DIE INNERE Spur — direkt an der Zeile, die er bewegt. */
+  left: calc(var(--sote-lane) * -1);
+  /* AUF GLEICHER HÖHE wie der Aufklapper: beide beginnen oben und tragen
+     denselben Abstand, damit die beiden Zeichen eine Linie bilden statt
+     zweier. */
   top: 0;
   bottom: 0;
   width: var(--sote-lane);
   display: flex;
-  align-items: center;
+  /*
+   * Oben ausgerichtet, dieselbe Zahl wie am Aufklapper — sonst liegen die
+   * beiden Zeichen nicht auf einer Linie: `center` mittet über die ganze
+   * Zeilenhöhe, und die wächst mit Beiwerk und Notiz. Beim ersten Wurf stand
+   * hier ZWEIMAL `align-items` (erst `flex-start`, dann `center`), und die
+   * zweite gewann — im Bild sass der Anfasser tiefer als der Pfeil daneben.
+   */
+  align-items: flex-start;
+  padding-block-start: var(--sone-space-5);
   justify-content: center;
   color: var(--line-strong);
   font-size: 12px;
