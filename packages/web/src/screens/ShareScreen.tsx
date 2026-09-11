@@ -279,10 +279,24 @@ export function ShareScreen({ token, now }: { token: string; now: Date }) {
           ein Gast sie nicht mehr zubekommen. Der Gast-Bildschirm hat keine
           Kopfleiste wie die Anwendung, also bekommt er den Knopf hier.
         */}
+        {/*
+          NUR AUF DEM RECHNER — die Klasse `nur-breit` blendet ihn darunter aus.
+
+          GEMELDET: „Es gibt den Sidebar-Button, den wir in der mobilen Ansicht
+          schon entfernt hatten." Richtig, und aus demselben Grund wie dort:
+          auf dem Telefon ist es keine Spalte an der Seite, sondern eine
+          Fläche, die von unten aufgeht — sie hat ihren eigenen Griff mit
+          Kreuz. Ein Zeichen, das eine Seitenspalte zeigt, ist dort ein Bild
+          von etwas anderem.
+
+          Im Stylesheet entschieden und nicht in JavaScript: ob ein Gerät
+          schmal ist, weiss das Stylesheet — eine Breitenabfrage hier wäre eine
+          zweite Antwort auf dieselbe Frage.
+        */}
         {offenAufgabe === null ? null : (
           <button
             type="button"
-            className="topbar-knob"
+            className="topbar-knob nur-breit"
             aria-label="Detailspalte schliessen"
             title="Detailspalte schliessen"
             aria-pressed={true}

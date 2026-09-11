@@ -5211,11 +5211,27 @@ select.target { }
   color: var(--text-muted);
 }
 
+/*
+ * Platz für die Spuren — dieselbe Rechnung wie in `.body`.
+ *
+ * GEFRAGT: „Wie war das mit den Anfassern zum Sortieren und Unteraufgaben
+ * aufklappen?" Sie waren da und lagen ausserhalb des Bildschirms.
+ *
+ * Anfasser und Aufklapper stehen in zwei Spuren LINKS NEBEN der Zeile, und
+ * dafür muss der Inhalt Platz lassen. In der Anwendung tut das `.body` mit
+ * genau dieser Rechnung; der Gast-Bildschirm hat sein eigenes und liess ihn
+ * nicht.
+ *
+ * Am BEHÄLTER und nicht an der Zeile: die beiden hängen absolut an der Zeile,
+ * und eine Zeile, die sich selbst einrückt, nimmt sie mit — sie blieben genau
+ * so weit draussen wie vorher. Nachgemessen: Aufklapper bei −32, danach bei 4.
+ */
 .guest-body {
   width: 100%;
   max-width: 720px;
   margin: 0 auto;
   padding: var(--sone-space-7) var(--sone-space-6) 60px;
+  padding-inline-start: calc(var(--sote-gutter) + var(--sone-space-2));
 }
 
 /* Dieselbe Überschrift wie im Hauptkopf: ein Gast sieht denselben Titel wie
@@ -5510,6 +5526,7 @@ a.btn {
   color: var(--text-faint);
 }
 
+
 /* Die Detailspalte beim Gast.
    Derselbe Aufbau wie beim Mitglied: die Liste schrumpft, die Spalte kommt
    rechts daneben — und erst ab 800px, weil darunter zwei Spalten aus einer
@@ -5552,6 +5569,22 @@ a.btn {
  * und hat keine Rasterzeile, in die man sie legen könnte.
  */
 @media (max-width: 799px) {
+  /* Was es nur auf dem Rechner gibt. */
+  .nur-breit {
+    display: none;
+  }
+
+  /*
+   * Die Spuren auch beim Gast.
+   *
+   * GEFRAGT: „Wie war das mit den Anfassern zum Sortieren und Unteraufgaben
+   * aufklappen?" Sie waren da — und lagen ausserhalb des Bildschirms.
+   *
+   * Anfasser und Aufklapper stehen LINKS NEBEN der Zeile, in zwei Spuren, und
+   * dafür muss der Inhalt Platz lassen. In der Anwendung tut das `.body`; der
+   * Gast-Bildschirm hat sein eigenes und liess ihn nicht. Also war der Griff
+   * da, wo ihn niemand sieht.
+   */
   .guest[data-detail='true'] .detail {
     position: fixed;
     inset: auto 0 0 0;

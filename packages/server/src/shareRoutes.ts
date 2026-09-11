@@ -38,6 +38,7 @@ import {
   addFile,
   attachWeb,
   filesDir,
+  filesOf,
   maxBytes,
   readFileOf,
   removeFile,
@@ -454,7 +455,31 @@ export async function shareRoutes(
       // DIESELBE Abbildung wie beim Mitglied: `detailView`. Die innere Form
       // hier durchzureichen war mein Fehler — sie trägt Daten statt
       // Zeichenketten und `undefined` statt `null`.
-      json(res, 200, detailView(await detail(ctx.pool, taskIdVor, access.workspaceId)));
+      /*
+       * MIT den Anhängen.
+       *
+       * GEMELDET, zweimal: „Anhänge und Bilder werden gar nicht angezeigt … Anhänge
+       * sehe ich immer noch keine."
+       *
+       * Beim ersten Mal habe ich den Schreibweg gebaut und die Ursache
+       * übersehen: `detailView` nimmt die Dateien als DRITTES Argument, und
+       * hier stand nur das erste. Der Vorgabewert ist eine leere Liste — also
+       * antwortete der Server „keine Anhänge" und log dabei nicht einmal, er
+       * wurde nie gefragt.
+       *
+       * Ein Vorgabewert, der wie eine gültige Antwort aussieht, ist die
+       * unangenehmste Sorte: nichts bricht, und die Auskunft ist trotzdem
+       * falsch.
+       */
+      json(
+        res,
+        200,
+        detailView(
+          await detail(ctx.pool, taskIdVor, access.workspaceId),
+          [],
+          filesDir() === undefined ? [] : await filesOf(ctx.pool, taskIdVor),
+        ),
+      );
       return;
     }
 
