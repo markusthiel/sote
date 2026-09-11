@@ -46,7 +46,19 @@ export function PdfViewer({ src, filename }: { src: string; filename: string }) 
   const [scale, setScale] = useState(1);
   const [seiten, setSeiten] = useState(0);
   const [seite, setSeite] = useState(1);
-  const [fehler, setFehler] = useState(false);
+  /**
+   * Was schiefging — als SATZ und nicht als Ja/Nein.
+   *
+   * GEMELDET, dreimal hintereinander: „PDF lässt sich nicht öffnen." Zweimal
+   * habe ich eine Ursache gefunden und behoben, und beide Male war es nicht
+   * die richtige — weil meine Meldung keine Auskunft gab, sondern nur eine
+   * Feststellung.
+   *
+   * Ein Fehler, den man nur bei sich selbst sieht, ist für jeden anderen eine
+   * Behauptung. Also steht der Grund jetzt da, wo er entsteht: im Fenster, in
+   * dem er gemeldet wird.
+   */
+  const [fehler, setFehler] = useState<string | null>(null);
 
   useEffect(() => {
     const ziel = box.current;
@@ -164,8 +176,17 @@ export function PdfViewer({ src, filename }: { src: string; filename: string }) 
           ziel.append(leinwand);
           beobachter.observe(leinwand);
         }
-      } catch {
-        if (!weg) setFehler(true);
+      } catch (e) {
+        if (weg) return;
+        /*
+         * Auch in die Konsole: die Meldung im Fenster ist für den Menschen
+         * davor, der Eintrag in der Konsole für den, der sie weitergibt. Ein
+         * abgefangener Fehler, der nirgends landet, ist ein Fehler, den es für
+         * die Fehlersuche nicht gibt — und genau daran habe ich zweimal
+         * vorbeigesucht.
+         */
+        console.error('PDF-Betrachter:', e);
+        setFehler(e instanceof Error ? `${e.name}: ${e.message}` : String(e));
       }
     })();
 
@@ -178,14 +199,35 @@ export function PdfViewer({ src, filename }: { src: string; filename: string }) 
     // das ist derselbe Weg wie beim ersten Mal.
   }, [src, scale]);
 
-  if (fehler) {
+  if (fehler !== null) {
     return (
-      <p className="muted small">
-        Dieses PDF ließ sich nicht öffnen.{' '}
-        <a href={src} download={filename}>
-          Herunterladen
-        </a>
-      </p>
+      <div className="pdf-fallback">
+        {/*
+          DER EIGENE BETRACHTER IST NICHT DIE EINZIGE MÖGLICHKEIT.
+
+          Scheitert er, kann der Browser es immer noch selbst — schlechter (auf
+          dem iPad rollt er nicht durch mehrere Seiten, das war der Anlass für
+          den eigenen), aber besser als nichts. Ein Fehlschlag soll die Datei
+          nicht unerreichbar machen.
+
+          Der GRUND steht darüber, klein und in Schmalschrift. Ohne ihn ist
+          jede Meldung von aussen „geht nicht", und daran habe ich mich zweimal
+          abgearbeitet.
+        */}
+        <p className="muted small">
+          Der eigene Betrachter kam nicht durch — hier die Anzeige des Browsers.
+          <br />
+          <code className="pdf-why">{fehler}</code>
+        </p>
+        <object data={src} type="application/pdf">
+          <p className="muted small">
+            Auch der Browser zeigt es nicht an.{' '}
+            <a href={src} download={filename}>
+              Herunterladen
+            </a>
+          </p>
+        </object>
+      </div>
     );
   }
 

@@ -1560,6 +1560,31 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex]:focus-vi
   gap: var(--sone-space-4);
 }
 
+/* Der Rückfall auf den Browser, mit dem Grund darüber. */
+.pdf-fallback {
+  display: flex;
+  flex-direction: column;
+  align-self: stretch;
+  inline-size: 100%;
+  block-size: 100%;
+  gap: var(--sone-space-3);
+}
+
+.pdf-fallback object {
+  flex: 1;
+  min-block-size: 0;
+  inline-size: 100%;
+}
+
+/* Der Grund in Schmalschrift: er ist für die Weitergabe gedacht, nicht fürs
+   Lesen im Vorbeigehen. */
+.pdf-why {
+  font-family: var(--sote-mono);
+  font-size: var(--sone-text-xs);
+  color: var(--text-faint);
+  overflow-wrap: anywhere;
+}
+
 /* Jede Seite ein Blatt: weisser Grund und ein Schatten, damit die Grenze
    zwischen zwei Seiten zu sehen ist. Ohne ihn laufen zwei helle Seiten
    ineinander. */
