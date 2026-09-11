@@ -5227,6 +5227,20 @@ select.target { }
   letter-spacing: -0.02em;
 }
 
+/*
+ * Der Schalter für Erledigtes beim Gast.
+ *
+ * GEMELDET mit Bild: der Satz stand halb ausserhalb des Bildschirms.
+ *
+ * Die Ursache war eine Klasse: `.head-toggle` ist seit dem Umbau der Listen-
+ * kopfleiste ein ZEICHEN-Knopf von 30 x 30 Pixeln — und darin stand hier ein
+ * ganzer Satz. Der Kasten hielt seine Grösse, der Text lief nach links heraus.
+ *
+ * Jetzt ein gewöhnlicher leiser Knopf. Ein Zeichen wäre die andere Antwort und
+ * hier die schlechtere: in einer Liste steht der Schalter zwischen anderen
+ * Zeichen im Kopf, beim Gast steht er allein unter der Liste, und ein
+ * alleinstehendes Zeichen ohne Nachbarn ist ein Rätsel.
+ */
 .guest-toggle {
   position: static;
   margin-block-start: var(--sone-space-6);

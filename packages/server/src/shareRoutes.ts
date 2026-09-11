@@ -30,7 +30,7 @@ import { queryOne } from './db.js';
 import { addChild, addComment, detail } from './detail.js';
 import { stream } from './nudge.js';
 import { fail, json, readJson } from './http/respond.js';
-import { detailView } from './routes.js';
+import { detailView, taskView } from './routes.js';
 import { accessByToken, type RightLevel } from './shares.js';
 import { complete, NotFound, OutOfOrder, patch, reopen, createFromLine } from './tasks.js';
 import { list } from './views.js';
@@ -142,16 +142,22 @@ export async function shareRoutes(
       undefined,
       withDone,
     );
-    json(res, 200, {
-      tasks: rows.map((t) => ({
-        id: t.id,
-        title: t.title,
-        completed: t.completed_at?.toISOString() ?? null,
-        plannedAt: t.planned_at?.toISOString() ?? null,
-        dueAt: t.due_at?.toISOString() ?? null,
-        priority: t.priority,
-      })),
-    });
+    /*
+     * DIESELBE Form wie für Mitglieder.
+     *
+     * GEMELDET: „Die geteilte Ansicht klappt nicht korrekt. Da müssen wir
+     * vermutlich an Features noch nachziehen."
+     *
+     * Die Ursache ist hier: die Freigabe lieferte eine EIGENE, kürzere Form —
+     * sechs Felder. Alles, was seitdem an einer Aufgabe dazugekommen ist
+     * (Schlagwörter, Dauer, Merkmale, Aussehen, Titelbild), fehlte dem Gast,
+     * und die Oberfläche musste eine eigene Zeile dafür bauen. Zwei Formen für
+     * dieselbe Sache laufen auseinander — diese hier über Monate.
+     *
+     * Es ist dieselbe Abfrage (`list`), also war die Kürzung nie eine
+     * Ersparnis, sondern nur eine zweite Antwort.
+     */
+    json(res, 200, { tasks: rows.map(taskView) });
     return;
   }
 

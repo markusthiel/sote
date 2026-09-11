@@ -22,24 +22,16 @@
 import { useCallback, useEffect, useState } from 'react';
 
 import { useNudge } from '../hooks/useNudge.js';
-import { api, ApiError } from '../api.js';
+import { api, ApiError, type Task } from '../api.js';
+import { TaskRow } from '../components/TaskRow.js';
 import { Detail, guestIO } from './Detail.js';
 import { PanelRightIcon } from '../components/icons.js';
 import { SoteMark } from '../components/Logo.js';
 import { QuickAdd } from '../components/QuickAdd.js';
 
-interface GuestTask {
-  id: string;
-  title: string;
-  completed: string | null;
-  plannedAt: string | null;
-  dueAt: string | null;
-  priority: number;
-}
-
 export function ShareScreen({ token, now }: { token: string; now: Date }) {
   const [head, setHead] = useState<{ name: string; right: 'read' | 'edit' } | null>(null);
-  const [tasks, setTasks] = useState<GuestTask[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [notice, setNotice] = useState<string | undefined>(undefined);
   const [gone, setGone] = useState(false);
   const [showDone, setShowDone] = useState(false);
@@ -121,58 +113,42 @@ export function ShareScreen({ token, now }: { token: string; now: Date }) {
   const offen = tasks.filter((t) => t.completed === null);
   const erledigt = tasks.filter((t) => t.completed !== null);
 
-  const zeile = (t: GuestTask) => (
-    <div className="task" data-done={t.completed !== null} key={t.id}>
-      <button
-        className="task-box"
-        data-priority={t.priority}
-        data-done={t.completed !== null}
-        aria-label={t.completed !== null ? `${t.title} wieder öffnen` : `${t.title} abhaken`}
-        aria-pressed={t.completed !== null}
-        /*
-         * Ohne Schreibrecht ist das Kästchen ABWESEND und nicht deaktiviert.
-         *
-         * Ein Knopf, der aussieht wie einer und nichts tut, war in diesem
-         * Projekt sechs Mal der Fehler. Hier gibt es einen Grund, ihn gar
-         * nicht zu zeichnen: wer nur lesen darf, hat nichts zu drücken.
-         */
-        disabled={busy}
-        onClick={() =>
-          void tun(
-            () =>
-              t.completed === null
-                ? api.shareComplete(token, t.id)
-                : api.shareReopen(token, t.id),
-            t.completed === null ? 'Abhaken ging nicht.' : 'Wieder öffnen ging nicht.',
-          )
-        }
-      >
-        <svg width="11" height="11" viewBox="0 0 12 12" aria-hidden="true">
-          <path
-            d="M2 6.5 4.7 9 10 3.2"
-            fill="none"
-            stroke={t.completed !== null ? 'var(--accent-on)' : 'var(--text-muted)'}
-            strokeWidth="1.8"
-          />
-        </svg>
-      </button>
-      <div className="task-mid">
-        {/*
-          Der Titel öffnet die Detailspalte — wie beim Mitglied.
-          Gemeldet: „Die Seitenleiste mit Aufgabendetails braucht ein geteilter
-          User auch." Ein Knopf und kein `div`: was man drücken kann, muss auch
-          mit der Tastatur erreichbar sein.
-        */}
-        <button
-          type="button"
-          className="task-title as-link"
-          aria-expanded={offenAufgabe === t.id}
-          onClick={() => setOffenAufgabe(offenAufgabe === t.id ? null : t.id)}
-        >
-          {t.title}
-        </button>
-      </div>
-    </div>
+  /*
+    DIESELBE ZEILE WIE BEIM MITGLIED.
+
+    GEMELDET: „Die geteilte Ansicht klappt nicht korrekt. Da müssen wir
+    vermutlich an Features noch nachziehen. Sortieren, Unteraufgaben, Drag and
+    Drop, das ganze Untermenü."
+
+    Die Ursache war eine EIGENE Zeile: dieser Bildschirm baute sich seine aus
+    Kästchen und Titel, und alles, was seitdem an einer Zeile dazugekommen ist
+    — Schlagwörter, Dauer, Merkmale für Notiz und Anhang, das eigene Aussehen,
+    die Anzeigeformen — kam hier nie an. Zwei Zeichnungen derselben Sache
+    laufen auseinander, und dies ist der Beleg dafür in Monaten.
+
+    Jetzt `TaskRow`, dasselbe Bauteil. Was der Gast dadurch NICHT bekommt, ist
+    bewusst ausgelassen und nicht vergessen: kein Anfasser (Ziehen wäre eine
+    Reihenfolge, die der Server für eine Freigabe nicht schreibt) und kein
+    Zeilenmenü (es führt in den Papierkorb und zu Prioritäten — beides
+    Wirkungen ausserhalb dessen, was eine Freigabe hergibt).
+  */
+  const zeile = (t: Task) => (
+    <TaskRow
+      key={t.id}
+      task={t}
+      now={now}
+      open={offenAufgabe === t.id}
+      onOpen={() => setOffenAufgabe(offenAufgabe === t.id ? null : t.id)}
+      onComplete={() =>
+        void tun(
+          () =>
+            t.completed === null
+              ? api.shareComplete(token, t.id)
+              : api.shareReopen(token, t.id),
+          t.completed === null ? 'Abhaken ging nicht.' : 'Wieder öffnen ging nicht.',
+        )
+      }
+    />
   );
 
   return (
@@ -247,7 +223,7 @@ export function ShareScreen({ token, now }: { token: string; now: Date }) {
             fremden Link wäre eine Spur, die niemand bestellt hat. */}
         <button
           type="button"
-          className="head-toggle guest-toggle"
+          className="btn quiet small guest-toggle"
           aria-pressed={showDone}
           onClick={() => setShowDone((v) => !v)}
         >

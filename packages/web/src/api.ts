@@ -866,17 +866,16 @@ export const api = {
     call<{ project: { name: string; icon: unknown }; right: 'read' | 'edit' }>(
       `/api/share/${token}`,
     ),
+  /**
+   * Die Aufgaben einer Freigabe — in DERSELBEN Form wie überall sonst.
+   *
+   * Hier stand eine eigene, kürzere Form mit sechs Feldern, und damit fehlten
+   * dem Gast alle Angaben, die seitdem an einer Aufgabe dazugekommen sind. Es
+   * ist dieselbe Abfrage im Server, also war die Kürzung nie eine Ersparnis —
+   * nur eine zweite Antwort, die niemand nachzog.
+   */
   shareTasks: (token: string, done: boolean) =>
-    call<{
-      tasks: {
-        id: string;
-        title: string;
-        completed: string | null;
-        plannedAt: string | null;
-        dueAt: string | null;
-        priority: number;
-      }[];
-    }>(`/api/share/${token}/tasks${done ? '?done=1' : ''}`),
+    call<{ tasks: Task[] }>(`/api/share/${token}/tasks${done ? '?done=1' : ''}`),
   shareAdd: (token: string, line: string) =>
     call<{ id: string; title: string }>(`/api/share/${token}/tasks`, {
       method: 'POST',

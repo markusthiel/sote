@@ -287,7 +287,16 @@ export function detailView(
   };
 }
 
-function taskView(row: TaskRow) {
+/**
+ * Eine Aufgabe, wie die Oberfläche sie kennt.
+ *
+ * EXPORTIERT, seit die Freigabe dieselbe Form braucht: sie lieferte lange eine
+ * eigene, kürzere (sechs Felder) — und damit fehlten dem Gast alle Angaben, die
+ * seitdem dazugekommen sind: Schlagwörter, Dauer, Zeichen, Notiz-Merkmal,
+ * Aussehen. Zwei Formen für dieselbe Sache laufen auseinander, und diese hier
+ * sind es über Monate.
+ */
+export function taskView(row: TaskRow) {
   const rec = recurrenceOf(row);
   return {
     id: row.id,
