@@ -25,11 +25,12 @@ import {
   complete,
   createFromLine,
   NotFound,
+  move,
   patch,
   recurrenceOf,
   reopen,
 } from '../src/tasks.js';
-import { list, splitOverdue } from '../src/views.js';
+import { childrenOf, list, splitOverdue } from '../src/views.js';
 
 const URL_ =
   process.env['SOTE_TEST_DATABASE_URL'] ??
@@ -943,4 +944,173 @@ test('jede Ansicht liefert die Zeichen mit', async () => {
 
   const gefunden = await search(pool, workspaceId, 'Sichtbar', NOW);
   assert.deepEqual(gefunden.tasks.find((r) => r.id === out.task.id)?.marks, ['note']);
+});
+
+/* ── Unteraufgaben: eine Ebene ─────────────────────────────────────────── */
+
+test('eine Aufgabe wird zur Unteraufgabe, und ihr Projekt wandert mit', async () => {
+  /*
+   * Sonst stünde eine Unteraufgabe in einem anderen Projekt als ihre
+   * Elternaufgabe — also in zwei Listen zugleich, einmal als Kind und einmal
+   * als eigene Zeile.
+   */
+  const { workspaceId, projectId } = await scratch('ws-kind-projekt');
+  const eltern = await createFromLine(pool, {
+    workspaceId,
+    userId,
+    line: 'Eltern',
+    now: NOW,
+    projectId,
+  });
+  const kind = await createFromLine(pool, { workspaceId, userId, line: 'Kind', now: NOW });
+  assert.equal(kind.task.project_id, null);
+
+  const nachher = await move(pool, kind.task.id, workspaceId, { parentId: eltern.task.id });
+  assert.equal(nachher.parent_id, eltern.task.id);
+  assert.equal(nachher.project_id, projectId);
+});
+
+test('eine Unteraufgabe lässt sich wieder herausziehen', async () => {
+  const { workspaceId } = await scratch('ws-kind-raus');
+  const eltern = await createFromLine(pool, { workspaceId, userId, line: 'Eltern', now: NOW });
+  const kind = await createFromLine(pool, { workspaceId, userId, line: 'Kind', now: NOW });
+  await move(pool, kind.task.id, workspaceId, { parentId: eltern.task.id });
+  const frei = await move(pool, kind.task.id, workspaceId, { parentId: null });
+  assert.equal(frei.parent_id, null);
+});
+
+test('ein fehlender Schlüssel hängt NICHT um', async () => {
+  /*
+   * „Nicht umhängen“ und „ganz nach oben hängen“ sind zwei Dinge, und `null`
+   * ist das zweite. Ohne die Unterscheidung würde jedes Umsortieren innerhalb
+   * einer Aufgabe die Unteraufgabe herauswerfen.
+   */
+  const { workspaceId } = await scratch('ws-kind-unberuehrt');
+  const eltern = await createFromLine(pool, { workspaceId, userId, line: 'Eltern', now: NOW });
+  const a = await createFromLine(pool, { workspaceId, userId, line: 'A', now: NOW });
+  const b = await createFromLine(pool, { workspaceId, userId, line: 'B', now: NOW });
+  await move(pool, a.task.id, workspaceId, { parentId: eltern.task.id });
+  await move(pool, b.task.id, workspaceId, { parentId: eltern.task.id });
+
+  const nachher = await move(pool, b.task.id, workspaceId, { afterId: null });
+  assert.equal(nachher.parent_id, eltern.task.id);
+});
+
+test('es gibt nur EINE Ebene — von oben gesehen', async () => {
+  // Eine Unteraufgabe kann nicht Elternteil werden.
+  const { workspaceId } = await scratch('ws-kind-tief-a');
+  const eltern = await createFromLine(pool, { workspaceId, userId, line: 'Eltern', now: NOW });
+  const kind = await createFromLine(pool, { workspaceId, userId, line: 'Kind', now: NOW });
+  const enkel = await createFromLine(pool, { workspaceId, userId, line: 'Enkel', now: NOW });
+  await move(pool, kind.task.id, workspaceId, { parentId: eltern.task.id });
+
+  await assert.rejects(
+    () => move(pool, enkel.task.id, workspaceId, { parentId: kind.task.id }),
+    (e: Error) => e.name === 'OutOfOrder',
+  );
+});
+
+test('es gibt nur EINE Ebene — von unten gesehen', async () => {
+  // Und eine Aufgabe MIT Kindern wird selbst kein Kind: sonst wären ihre
+  // Kinder Enkel, ohne dass jemand das entschieden hätte.
+  const { workspaceId } = await scratch('ws-kind-tief-b');
+  const eltern = await createFromLine(pool, { workspaceId, userId, line: 'Eltern', now: NOW });
+  const kind = await createFromLine(pool, { workspaceId, userId, line: 'Kind', now: NOW });
+  const anderer = await createFromLine(pool, { workspaceId, userId, line: 'Anderer', now: NOW });
+  await move(pool, kind.task.id, workspaceId, { parentId: eltern.task.id });
+
+  await assert.rejects(
+    () => move(pool, eltern.task.id, workspaceId, { parentId: anderer.task.id }),
+    (e: Error) => e.name === 'OutOfOrder',
+  );
+});
+
+test('niemand wird seine eigene Unteraufgabe', async () => {
+  const { workspaceId } = await scratch('ws-kind-selbst');
+  const t = await createFromLine(pool, { workspaceId, userId, line: 'Ich', now: NOW });
+  await assert.rejects(
+    () => move(pool, t.task.id, workspaceId, { parentId: t.task.id }),
+    (e: Error) => e.name === 'OutOfOrder',
+  );
+});
+
+test('Unteraufgaben werden innerhalb ihrer Aufgabe sortiert', async () => {
+  // Die Nachbarn gelten im NEUEN Geschwisterkreis — darum wird erst umgehängt
+  // und dann gerechnet.
+  const { workspaceId } = await scratch('ws-kind-sortieren');
+  const eltern = await createFromLine(pool, { workspaceId, userId, line: 'Eltern', now: NOW });
+  const a = await createFromLine(pool, { workspaceId, userId, line: 'A', now: NOW });
+  const b = await createFromLine(pool, { workspaceId, userId, line: 'B', now: NOW });
+  await move(pool, a.task.id, workspaceId, { parentId: eltern.task.id });
+  await move(pool, b.task.id, workspaceId, { parentId: eltern.task.id, afterId: a.task.id });
+
+  const kinder = await childrenOf(pool, workspaceId, [eltern.task.id]);
+  assert.deepEqual(
+    kinder[eltern.task.id]?.map((k) => k.title),
+    ['A', 'B'],
+  );
+
+  await move(pool, b.task.id, workspaceId, { afterId: null });
+  const wieder = await childrenOf(pool, workspaceId, [eltern.task.id]);
+  assert.deepEqual(
+    wieder[eltern.task.id]?.map((k) => k.title),
+    ['B', 'A'],
+  );
+});
+
+test('die Kinder kommen zu allen Aufgaben auf einmal', async () => {
+  /*
+   * Mit der Liste und nicht beim Aufklappen: das Ziehen braucht sie schon
+   * vorher — wer eine Aufgabe auf eine ZUGEKLAPPTE zieht, soll sie ans Ende
+   * der Kinder setzen, und dafür muss bekannt sein, was dort steht.
+   */
+  const { workspaceId } = await scratch('ws-kind-viele');
+  const eins = await createFromLine(pool, { workspaceId, userId, line: 'Eins', now: NOW });
+  const zwei = await createFromLine(pool, { workspaceId, userId, line: 'Zwei', now: NOW });
+  const ohne = await createFromLine(pool, { workspaceId, userId, line: 'Ohne', now: NOW });
+  for (const titel of ['a', 'b']) {
+    const k = await createFromLine(pool, { workspaceId, userId, line: titel, now: NOW });
+    await move(pool, k.task.id, workspaceId, { parentId: eins.task.id });
+  }
+  const k2 = await createFromLine(pool, { workspaceId, userId, line: 'c', now: NOW });
+  await move(pool, k2.task.id, workspaceId, { parentId: zwei.task.id });
+
+  const kinder = await childrenOf(pool, workspaceId, [eins.task.id, zwei.task.id, ohne.task.id]);
+  assert.equal(kinder[eins.task.id]?.length, 2);
+  assert.equal(kinder[zwei.task.id]?.length, 1);
+  // Wer keine hat, hat keinen Eintrag — und nicht eine leere Liste, die
+  // aussieht wie „geladen, aber leer“.
+  assert.equal(kinder[ohne.task.id], undefined);
+});
+
+test('erledigte Unteraufgaben kommen nur mit, wenn die Liste sie zeigt', async () => {
+  // Sonst stünde unter einer aufgeklappten Aufgabe „zwei von fünf“, und drei
+  // wären unsichtbar.
+  const { workspaceId } = await scratch('ws-kind-fertig');
+  const eltern = await createFromLine(pool, { workspaceId, userId, line: 'Eltern', now: NOW });
+  const k = await createFromLine(pool, { workspaceId, userId, line: 'Fertig', now: NOW });
+  await move(pool, k.task.id, workspaceId, { parentId: eltern.task.id });
+  await pool.query('UPDATE tasks SET completed_at = now() WHERE id = $1', [k.task.id]);
+
+  assert.equal((await childrenOf(pool, workspaceId, [eltern.task.id]))[eltern.task.id], undefined);
+  const mit = await childrenOf(pool, workspaceId, [eltern.task.id], true);
+  assert.equal(mit[eltern.task.id]?.length, 1);
+});
+
+test('eine Unteraufgabe steht nicht als eigene Zeile im Projekt', async () => {
+  // Sie steht unter ihrer Aufgabe. Beides zu zeigen hieße, dieselbe Sache
+  // zweimal in einer Liste zu haben — mit zwei Kästchen, die dasselbe meinen.
+  const { workspaceId, projectId } = await scratch('ws-kind-liste');
+  const eltern = await createFromLine(pool, {
+    workspaceId,
+    userId,
+    line: 'Eltern',
+    now: NOW,
+    projectId,
+  });
+  const k = await createFromLine(pool, { workspaceId, userId, line: 'Kind', now: NOW });
+  await move(pool, k.task.id, workspaceId, { parentId: eltern.task.id });
+
+  const rows = await list(pool, 'project', workspaceId, NOW, projectId);
+  assert.deepEqual(rows.map((r) => r.title), ['Eltern']);
 });

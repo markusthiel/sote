@@ -553,7 +553,20 @@ export async function move(
   pool: Pool,
   taskId: string,
   workspaceId: string,
-  between: { afterId?: string | null; beforeId?: string | null },
+  between: {
+    afterId?: string | null;
+    beforeId?: string | null;
+    /**
+     * Wohin sie GEHÖRT — eine Elternaufgabe, oder `null` für „ganz oben".
+     *
+     * Fehlt der Schlüssel, bleibt sie, wo sie ist, und nur die Reihenfolge
+     * ändert sich. Beides in EINEM Aufruf und nicht in zweien: dieselbe
+     * Überlegung wie beim Baum. Zwei Aufrufe wären zwei Wege, von denen der
+     * zweite scheitern kann — und dann hinge eine Aufgabe unter einer neuen
+     * Elternaufgabe an einer Stelle, die dort niemand gewählt hat.
+     */
+    parentId?: string | null;
+  },
 ): Promise<TaskRow> {
   return retryOnOrderClash(() =>
     withTransaction(pool, async (client) => {
@@ -566,6 +579,89 @@ export async function move(
         [taskId, workspaceId],
       );
       if (me === undefined) throw new NotFound(`Aufgabe ${taskId} gibt es nicht`);
+
+      let umgehaengt = false;
+
+      /*
+       * Umhängen, falls gewünscht — und zwar VOR dem Rechnen der Nachbarn.
+       *
+       * Die Nachbarn gelten im NEUEN Geschwisterkreis: „hinter diese Zeile"
+       * meint eine Zeile unter der neuen Elternaufgabe. Würde erst sortiert
+       * und dann umgehängt, käme ein Schlüssel heraus, der im Zielkreis nichts
+       * bedeutet.
+       *
+       * ## Eine Ebene, und die Regeln dafür
+       *
+       * Abgesprochen: „mach eine Ebene. Du hast recht, mit den Ordnern haben
+       * wir Tiefe." Also braucht es keine Zyklusprüfung mit rekursiver
+       * Abfrage, sondern zwei Sätze:
+       *
+       * - Eine Elternaufgabe hat selbst KEINE Elternaufgabe. Sonst entstünde
+       *   die zweite Ebene durch die Hintertür.
+       * - Eine Aufgabe MIT Kindern wird selbst kein Kind. Sonst wären ihre
+       *   Kinder Enkel, ohne dass jemand das entschieden hätte.
+       *
+       * Beides zusammen schließt auch den Kreis aus: niemand kann sein eigenes
+       * Kind werden, weil er dafür Elternteil und Kind zugleich wäre.
+       *
+       * Das Projekt wandert MIT. Eine Unteraufgabe, die in einem anderen
+       * Projekt steht als ihre Elternaufgabe, wäre in zwei Listen zugleich —
+       * einmal als Kind und einmal als eigene Zeile.
+       */
+      if (between.parentId !== undefined && between.parentId !== me.parent_id) {
+        const neuerVater = between.parentId;
+        if (neuerVater === taskId) {
+          throw new OutOfOrder('eine Aufgabe kann nicht ihre eigene Unteraufgabe sein');
+        }
+
+        const hatKinder = await queryOne<{ id: string }>(
+          client,
+          'SELECT id FROM tasks WHERE parent_id = $1 AND trashed_at IS NULL LIMIT 1',
+          [taskId],
+        );
+        if (neuerVater !== null && hatKinder !== undefined) {
+          throw new OutOfOrder(
+            'diese Aufgabe hat selbst Unteraufgaben — es gibt nur eine Ebene',
+          );
+        }
+
+        let projekt = me.project_id;
+        if (neuerVater !== null) {
+          const vater = await queryOne<{ parent_id: string | null; project_id: string | null }>(
+            client,
+            `SELECT parent_id, project_id FROM tasks
+              WHERE id = $1 AND workspace_id = $2 AND trashed_at IS NULL`,
+            [neuerVater, workspaceId],
+          );
+          if (vater === undefined) throw new NotFound('diese Aufgabe gibt es hier nicht');
+          if (vater.parent_id !== null) {
+            throw new OutOfOrder(
+              'das ist schon eine Unteraufgabe — es gibt nur eine Ebene',
+            );
+          }
+          projekt = vater.project_id;
+        }
+
+        /*
+         * HIER WIRD NOCH NICHT GESCHRIEBEN, und das war ein Fehler, den der
+         * Test gefunden hat.
+         *
+         * Die erste Fassung hängte sofort um und rechnete danach den
+         * Sortierschlüssel. Dazwischen trug die Zeile ihren ALTEN Schlüssel
+         * im NEUEN Geschwisterkreis — und `tasks_sibling_order` ist eindeutig
+         * über (Bereich, Projekt, Elternteil, Schlüssel). Traf der alte
+         * Schlüssel einen vorhandenen, brach das Umhängen mit einem
+         * Datenbankfehler ab, obwohl der Schlüssel zwei Zeilen später ohnehin
+         * ersetzt worden wäre.
+         *
+         * Also: nur merken, und am Ende alles drei in EINEM UPDATE. Ein
+         * Zwischenzustand, den niemand sehen will, darf gar nicht erst
+         * entstehen.
+         */
+        me.parent_id = neuerVater;
+        me.project_id = projekt;
+        umgehaengt = true;
+      }
 
       /** Ein Nachbar muss im selben Geschwisterkreis liegen wie der Index. */
       const keyOf = async (id: string | null | undefined): Promise<string | null> => {
@@ -610,10 +706,17 @@ export async function move(
       const key = generateKeyBetween(after, next?.sort_key ?? null);
       const row = await queryOne<TaskRow>(
         client,
-        `UPDATE tasks SET sort_key = $3, updated_at = now()
-          WHERE id = $1 AND workspace_id = $2
-         RETURNING ${RETURNING}`,
-        [taskId, workspaceId, key],
+        umgehaengt
+          ? `UPDATE tasks
+                SET sort_key = $3, parent_id = $4, project_id = $5, updated_at = now()
+              WHERE id = $1 AND workspace_id = $2
+             RETURNING ${RETURNING}`
+          : `UPDATE tasks SET sort_key = $3, updated_at = now()
+              WHERE id = $1 AND workspace_id = $2
+             RETURNING ${RETURNING}`,
+        umgehaengt
+          ? [taskId, workspaceId, key, me.parent_id, me.project_id]
+          : [taskId, workspaceId, key],
       );
       if (row === undefined) throw new NotFound(`Aufgabe ${taskId} gibt es nicht`);
       return row;

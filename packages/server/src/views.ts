@@ -224,6 +224,45 @@ function whereFor(
   }
 }
 
+/**
+ * Die Unteraufgaben zu einer Handvoll Aufgaben, in einem Zug.
+ *
+ * Mit der Liste zusammen geholt und nicht beim Aufklappen: das Aufklappen wäre
+ * sonst eine Abfrage, und das ZIEHEN bräuchte die Kinder schon vorher — wer
+ * eine Aufgabe auf eine zugeklappte zieht, soll sie ans Ende der Kinder
+ * setzen, und dafür muss bekannt sein, was dort am Ende steht.
+ *
+ * Es sind wenige Zeilen: Unteraufgaben gibt es an einzelnen Aufgaben, nicht an
+ * allen. Wer keine hat, bekommt eine leere Karte.
+ *
+ * Erledigte kommen MIT, wenn die Liste sie auch zeigt — sonst stünde unter
+ * einer aufgeklappten Aufgabe „zwei von fünf", und drei wären unsichtbar.
+ */
+export async function childrenOf(
+  q: Pool | PoolClient,
+  workspaceId: string,
+  parentIds: readonly string[],
+  withDone = false,
+): Promise<Record<string, TaskRow[]>> {
+  if (parentIds.length === 0) return {};
+  const rows = await queryRows<TaskRow>(
+    q,
+    `SELECT ${COLUMNS} FROM tasks
+      WHERE workspace_id = $1 AND parent_id = ANY($2::uuid[])
+       AND trashed_at IS NULL
+       ${withDone ? '' : 'AND completed_at IS NULL'}
+     ORDER BY completed_at IS NOT NULL, sort_key ASC`,
+    [workspaceId, parentIds],
+  );
+  const out: Record<string, TaskRow[]> = {};
+  for (const row of rows) {
+    const key = row.parent_id;
+    if (key === null) continue;
+    (out[key] ??= []).push(row);
+  }
+  return out;
+}
+
 export async function list(
   q: Pool | PoolClient,
   view: ViewId,

@@ -105,7 +105,7 @@ import {
 } from './calendar.js';
 import { LabelTrouble, labelsOfWorkspace, removeLabel, renameLabel } from './labels.js';
 import { listViewsOf, setListView, ViewTrouble } from './listViews.js';
-import { counts, list, splitOverdue, type ViewId } from './views.js';
+import { childrenOf, counts, list, splitOverdue, type ViewId } from './views.js';
 
 const COOKIE = 'sote_session';
 const VIEWS: readonly ViewId[] = ['today', 'upcoming', 'someday', 'inbox', 'project'];
@@ -879,6 +879,24 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
       // wird.
       overdue: sections === undefined ? [] : sections.overdue.map(taskView),
       tasks: (sections === undefined ? rows : sections.rest).map(taskView),
+      /*
+       * Die Unteraufgaben, nach Elternteil geordnet.
+       *
+       * Mit der Liste und nicht beim Aufklappen: das Ziehen braucht sie schon
+       * vorher — wer eine Aufgabe auf eine ZUGEKLAPPTE zieht, soll sie ans
+       * Ende der Kinder setzen, und der Schlüssel dafür wird in der
+       * Oberfläche gerechnet.
+       */
+      children: Object.fromEntries(
+        Object.entries(
+          await childrenOf(
+            ctx.pool,
+            workspaceId,
+            rows.map((r) => r.id),
+            withDone,
+          ),
+        ).map(([id, kinder]) => [id, kinder.map(taskView)]),
+      ),
     });
     return;
   }
@@ -2003,13 +2021,34 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
 
   const move_ = /^\/api\/tasks\/([0-9a-f-]{36})\/move$/.exec(path);
   if (move_ && method === 'POST') {
-    const body = (await readJson(req)) as { afterId?: unknown; beforeId?: unknown };
-    const row = await move(ctx.pool, move_[1]!, workspaceId, {
-      afterId: typeof body?.afterId === 'string' ? body.afterId : null,
-      beforeId: typeof body?.beforeId === 'string' ? body.beforeId : null,
-    });
-    json(res, 200, { task: taskView(row) });
-    return;
+    const body = (await readJson(req)) as {
+      afterId?: unknown;
+      beforeId?: unknown;
+      parentId?: unknown;
+    };
+    try {
+      const row = await move(ctx.pool, move_[1]!, workspaceId, {
+        afterId: typeof body?.afterId === 'string' ? body.afterId : null,
+        beforeId: typeof body?.beforeId === 'string' ? body.beforeId : null,
+        /*
+         * Der Schlüssel muss FEHLEN dürfen: „nicht umhängen" und „ganz nach
+         * oben hängen" sind zwei Dinge, und `null` ist das zweite. Ohne diese
+         * Unterscheidung würde jedes Umsortieren innerhalb einer Aufgabe die
+         * Unteraufgabe nach oben werfen.
+         */
+        ...('parentId' in (body ?? {})
+          ? { parentId: body.parentId === null ? null : String(body.parentId) }
+          : {}),
+      });
+      json(res, 200, { task: taskView(row) });
+      return;
+    } catch (e) {
+      if (e instanceof OutOfOrder) {
+        fail(res, 409, 'out_of_order', e.message);
+        return;
+      }
+      throw e;
+    }
   }
 
   const kid = /^\/api\/tasks\/([0-9a-f-]{36})\/children$/.exec(path);
