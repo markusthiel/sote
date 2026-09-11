@@ -1475,9 +1475,69 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex]:focus-vi
   word-break: break-word;
 }
 
+/* ── Ein Anhang als Karte ──────────────────────────────────────────────────
+ *
+ * Gewünscht: „Die Spalte Anhänge kannst du dann eher als Karte gestalten mit
+ * den Buttons darunter."
+ *
+ * Vorher eine Zeile mit Name, Größe und drei Zeichen nebeneinander — in einer
+ * Spalte von 340 Pixeln lief ein Dateiname damit gegen die Knöpfe. Eine Karte
+ * gibt dem Namen die ganze Breite und den Knöpfen eine eigene Zeile; sie
+ * wächst nach unten, und unten ist Platz.
+ */
+.file-card {
+  /*
+   * Volle Breite, eine je Zeile.
+   *
+   * `.rem-list` ist eine umbrechende Reihe — richtig fuer Erinnerungen, die
+   * kurz sind und nebeneinander passen. Karten sind es nicht: im Bild war die
+   * zweite schmaler als die erste, weil jede so breit wurde, wie ihr Name ist.
+   * Zwei verschieden breite Karten untereinander lesen sich als Fehler.
+   */
+  flex: 1 1 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sone-space-3);
+  padding: var(--sone-space-4);
+  border: 1px solid var(--line);
+  border-radius: var(--sote-radius-md);
+  background: var(--surface-raised);
+}
+
+.file-card-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sone-space-3);
+  min-width: 0;
+}
+
+/* Die Knöpfe umbrechen, statt sich zu drängen: bei drei Knöpfen und einer
+   schmalen Spalte ist eine zweite Zeile die ehrlichere Antwort als drei
+   Knöpfe, auf die kein Wort mehr passt. */
+.file-card-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sone-space-2);
+}
+
+/* Das Zeichen im Knopf steht VOR dem Wort und rückt nicht daran: ein Knopf
+   mit Zeichen und Wort ist eine Sache und keine zwei. */
+.file-card-tools .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sone-space-2);
+}
+
 /* Der Name eines Anhangs öffnet die Vorschau — also ein Knopf, der wie Text
    aussieht. */
 .file-name {
+  /* Nimmt die Breite und endet mit Punkten: ein Dateiname kann lang sein, und
+     die Groesse daneben soll nicht wandern. */
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   border: 0;
   padding: 0;
   background: none;

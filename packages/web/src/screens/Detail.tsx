@@ -1109,70 +1109,83 @@ export function Detail({
                     <span className="empty-value">keine</span>
                   ) : (
                     data.files.map((f) => (
-                      <span className="file" key={f.id}>
-                        {/*
-                          DER NAME ÖFFNET DIE VORSCHAU, nicht den Download.
+                      /*
+                        EINE KARTE JE ANHANG, mit den Knöpfen darunter.
 
-                          Gewünscht: „Standard anklicken wäre dann eher das
-                          Modal." Das ist auch die häufigere Absicht — man
-                          klickt auf einen Anhang, um zu sehen, was er ist. Wer
-                          ihn braucht, nimmt den Knopf daneben.
-                        */}
-                        <button
-                          type="button"
-                          className="file-name"
-                          title={`${f.filename} ansehen`}
-                          onClick={() => setAnsehen(f.id)}
-                        >
-                          {f.filename}
-                        </button>
-                        <span className="file-size">{kilobytes(f.sizeBytes)}</span>
-                        {/*
-                          Und der direkte Weg zur Datei — ein echter Link und
-                          kein Abruf: der Browser lädt sie selbst, mit
-                          Fortschritt und Wiederaufnahme. Ein `fetch`, das Bytes
-                          in den Arbeitsspeicher holt, um sie dann als Blob
-                          anzubieten, wäre derselbe Weg mit mehr Schritten.
-                        */}
-                        {/*
-                          Das Auge steht NEBEN dem Namen, obwohl der Name
-                          dasselbe tut: ein Name, der etwas öffnet, sagt das
-                          niemandem, der ihn nicht anfährt. Der Knopf ist die
-                          sichtbare Zusage — und auf dem Telefon die einzige,
-                          weil es dort kein Anfahren gibt.
-                        */}
-                        <button
-                          type="button"
-                          className="file-tool"
-                          title="Ansehen"
-                          aria-label={`${f.filename} ansehen`}
-                          onClick={() => setAnsehen(f.id)}
-                        >
-                          <EyeIcon />
-                        </button>
-                        <a
-                          className="file-tool"
-                          href={anbindung.fileHref?.(f.id) ?? '#'}
-                          download={f.filename}
-                          title="Herunterladen"
-                          aria-label={`${f.filename} herunterladen`}
-                        >
-                          <DownloadIcon size={14} />
-                        </a>
-                        {anbindung.removeFile === undefined ? null : (
+                        GEWÜNSCHT: „Die Spalte Anhänge kannst du dann eher als
+                        Karte gestalten mit den Buttons darunter."
+
+                        Vorher war es eine Zeile: Name, Größe und drei Zeichen
+                        nebeneinander — in einer Spalte von 340 Pixeln lief ein
+                        Dateiname damit gegen die Knöpfe, und je länger der
+                        Name, desto enger wurde es. Eine Karte gibt dem Namen
+                        die ganze Breite und den Knöpfen eine eigene Zeile; die
+                        Karte wächst nach unten, und unten ist Platz.
+                      */
+                      <div className="file-card" key={f.id}>
+                        <div className="file-card-head">
+                          {/*
+                            DER NAME ÖFFNET DIE VORSCHAU, nicht den Download.
+
+                            „Standard anklicken wäre dann eher das Modal" — und
+                            das ist auch die häufigere Absicht: man klickt auf
+                            einen Anhang, um zu sehen, was er ist.
+                          */}
                           <button
                             type="button"
-                            className="rem-off"
-                            aria-label={`Anhang „${f.filename}" wegnehmen`}
-                            disabled={busy}
-                            onClick={() => {
-                              void save(() => anbindung.removeFile!(f.id));
-                            }}
+                            className="file-name"
+                            title={`${f.filename} ansehen`}
+                            onClick={() => setAnsehen(f.id)}
                           >
-                            ×
+                            {f.filename}
                           </button>
-                        )}
-                      </span>
+                          <span className="file-size">{kilobytes(f.sizeBytes)}</span>
+                        </div>
+
+                        <div className="file-card-tools">
+                          {/*
+                            Mit WORT und nicht nur mit Zeichen: hier ist Platz,
+                            und drei Zeichen nebeneinander sind drei Rätsel.
+                            In der Zeile vorher war das anders — dort gab es
+                            keinen Platz, und dort halfen `title` und
+                            `aria-label`.
+                          */}
+                          <button
+                            type="button"
+                            className="btn quiet small"
+                            onClick={() => setAnsehen(f.id)}
+                          >
+                            <EyeIcon /> Ansehen
+                          </button>
+                          {/*
+                            Ein echter Link und kein Abruf: der Browser lädt die
+                            Datei selbst, mit Fortschritt und Wiederaufnahme.
+                            Ein `fetch`, das Bytes in den Arbeitsspeicher holt,
+                            um sie dann als Blob anzubieten, wäre derselbe Weg
+                            mit mehr Schritten.
+                          */}
+                          <a
+                            className="btn quiet small"
+                            href={anbindung.fileHref?.(f.id) ?? '#'}
+                            download={f.filename}
+                          >
+                            <DownloadIcon size={14} /> Laden
+                          </a>
+                          {anbindung.removeFile === undefined ? null : (
+                            <button
+                              type="button"
+                              className="btn quiet small danger"
+                              aria-label={`Anhang „${f.filename}“ wegnehmen`}
+                              disabled={busy}
+                              onClick={() => {
+                                void save(() => anbindung.removeFile!(f.id));
+                              }}
+                            >
+                              Wegnehmen
+                            </button>
+                          )}
+                        </div>
+                      </div>
                     ))
                   )}
                 </div>
