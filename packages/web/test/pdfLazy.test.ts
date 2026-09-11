@@ -32,11 +32,25 @@ test('pdfjs wird dynamisch geholt, nicht oben importiert', () => {
   assert.ok(SRC.includes("import('pdfjs-dist/legacy/build/pdf.mjs')"));
 });
 
-test('der Arbeiter auch — sonst rechnet der Motor im Hauptfaden', () => {
-  // Ohne eigenen Faden steht die Oberflaeche still, waehrend eine Seite
-  // entsteht. Bei einer Seite merkt man es kaum, bei vierzig sehr.
-  assert.ok(SRC.includes('pdf.worker.min.mjs?url'));
-  assert.ok(SRC.includes('GlobalWorkerOptions.workerSrc'));
+test('der Arbeiter kommt vom Buendler, nicht ueber eine Adresse', () => {
+  /*
+   * GEMELDET, mit der Meldung, auf die ich zwei Runden gewartet habe:
+   * „Setting up fake worker failed: Failed to fetch dynamically imported
+   * module: …/assets/pdf.worker.min-….mjs".
+   *
+   * Ueber `?url` bekommt die Datei die Endung `.mjs`, und ein Server, der die
+   * nicht in seiner Typentabelle hat, liefert `application/octet-stream` --
+   * womit der Browser den Import ABLEHNT. `?worker` macht daraus ein Stueck
+   * mit der Endung `.js`, die jeder Server kennt.
+   *
+   * Der Test haelt das fest, weil der Unterschied ein Wort ist und die Folge
+   * nur auf einem fremden Server sichtbar wird.
+   */
+  assert.ok(SRC.includes('pdf.worker.min.mjs?worker'));
+  assert.ok(SRC.includes('GlobalWorkerOptions.workerPort'));
+  // `?url` darf fuer den Arbeiter nicht mehr vorkommen — die Erklaerung im
+  // Kommentar oben nennt es, also wird nur der IMPORT geprueft.
+  assert.equal(SRC.includes("worker.min.mjs?url"), false);
 });
 
 test('die Bildschirmdichte steht in der Rechnung', () => {
@@ -69,5 +83,5 @@ test('die legacy-Fassung, und zwar aus einem gemessenen Grund', () => {
    * im fremden Browser auftritt -- also bei niemandem, der ihn baut.
    */
   assert.ok(SRC.includes("import('pdfjs-dist/legacy/build/pdf.mjs')"));
-  assert.ok(SRC.includes('legacy/build/pdf.worker.min.mjs?url'));
+  assert.ok(SRC.includes('legacy/build/pdf.worker.min.mjs?worker'));
 });

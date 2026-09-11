@@ -85,12 +85,36 @@ export function PdfViewer({ src, filename }: { src: string; filename: string }) 
          * Sie kostet etwas mehr Umfang und ist die einzige, die überall
          * zeichnet.
          */
-        const [pdfjs, workerUrl] = await Promise.all([
+        const [pdfjs, { default: PdfWorker }] = await Promise.all([
           import('pdfjs-dist/legacy/build/pdf.mjs'),
-          import('pdfjs-dist/legacy/build/pdf.worker.min.mjs?url').then((m) => m.default),
+          import('pdfjs-dist/legacy/build/pdf.worker.min.mjs?worker'),
         ]);
         if (weg) return;
-        pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
+        /*
+         * Der Arbeiter wird VOM BÜNDLER gebaut und selbst gestartet, statt
+         * pdf.js eine Adresse zu geben.
+         *
+         * GEMELDET, mit der Meldung, auf die ich gewartet habe: „Setting up
+         * fake worker failed: Failed to fetch dynamically imported module:
+         * …/assets/pdf.worker.min-….mjs".
+         *
+         * Also kam die Datei nicht durch. Der Grund ist die Endung: der
+         * Bündler reicht sie über `?url` als `.mjs` durch, und ein Server, der
+         * `.mjs` nicht kennt, liefert `application/octet-stream` — womit der
+         * Browser den Import ABLEHNT. Ich habe die Endung im Dateiserver
+         * ergänzt (Commit davor), und das ist richtig; es hilft aber nur, wenn
+         * auch der Server neu gebaut wird, und es bleibt eine Abhängigkeit von
+         * einer Tabelle irgendwo anders.
+         *
+         * `?worker` nimmt sie weg: der Bündler macht daraus ein eigenes Stück
+         * mit der Endung `.js` — die jeder Server kennt, auch der alte — und
+         * gibt eine Klasse zurück, die den Arbeiter startet. Damit hängt der
+         * Betrachter an niemandes Typentabelle mehr.
+         *
+         * `workerPort` statt `workerSrc`: wir haben den Arbeiter schon, pdf.js
+         * soll ihn benutzen und keinen zweiten suchen.
+         */
+        pdfjs.GlobalWorkerOptions.workerPort = new PdfWorker();
 
         /*
          * `withCredentials`: der Anhang liegt hinter der Sitzung, und der

@@ -14,3 +14,17 @@ declare module '*?url' {
   const url: string;
   export default url;
 }
+
+/**
+ * Und `?worker`: der Bündler baut daraus ein eigenes Stück und gibt eine
+ * Klasse zurück, die es startet.
+ *
+ * Der Unterschied zu `?url` ist mehr als eine Schreibweise: die Datei bekommt
+ * dabei die Endung `.js` statt `.mjs`, und genau daran ist der PDF-Arbeiter
+ * gescheitert — ein Server, der `.mjs` nicht in seiner Typentabelle hat,
+ * liefert `application/octet-stream`, und der Browser lehnt den Import ab.
+ */
+declare module '*?worker' {
+  const Worker: new () => globalThis.Worker;
+  export default Worker;
+}
