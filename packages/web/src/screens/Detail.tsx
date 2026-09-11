@@ -271,9 +271,15 @@ export function Detail({
    * sie fertig sind." Ohne ihn ist ein 25-MB-Video ein Knopfdruck, nach dem
    * eine Minute lang nichts passiert — und nichts sieht aus wie kaputt.
    */
-  const [hochladen, setHochladen] = useState<{ name: string; anteil: number } | null>(
-    null,
-  );
+  const [hochladen, setHochladen] = useState<{
+    name: string;
+    anteil: number;
+    /** Die wievielte von wie vielen — bei einem Stapel die halbe Auskunft. */
+    nr: number;
+    gesamt: number;
+  } | null>(null);
+  /** Ob gerade etwas über dem Feld schwebt. */
+  const [ueber, setUeber] = useState(false);
   /*
    * Die Leute des Arbeitsbereichs, einmal geholt.
    *
@@ -359,6 +365,54 @@ export function Detail({
       live = false;
     };
   }, [workspace]);
+
+  /**
+   * Einen Stapel Dateien anhängen.
+   *
+   * GEWÜNSCHT: „Ich will mehrere gleichzeitig auswählen können und hochladen."
+   *
+   * NACHEINANDER und nicht gleichzeitig. Fünf Videos parallel sättigen die
+   * Leitung, und jedes einzelne wird dadurch langsamer — gewonnen ist nichts,
+   * verloren die Auskunft: fünf Balken, die alle gleichzeitig kriechen, sagen
+   * weniger als einer, der durchläuft. „Datei 2 von 5" ist die Angabe, die man
+   * beim Warten wirklich braucht.
+   *
+   * Ein Fehlschlag hält den Stapel NICHT an: wer fünf Dateien fallen lässt und
+   * bei der zweiten eine zu große dabei hat, will die anderen vier trotzdem.
+   * Gemeldet wird am Ende, mit Namen.
+   */
+  async function anhaengen(files: readonly File[]) {
+    if (files.length === 0 || anbindung.addFile === undefined) return;
+    const schiefgegangen: string[] = [];
+    setBusy(true);
+    setNotice(undefined);
+    try {
+      for (const [i, file] of files.entries()) {
+        setHochladen({ name: file.name, anteil: 0, nr: i + 1, gesamt: files.length });
+        try {
+          await anbindung.addFile(file, (anteil) =>
+            setHochladen({ name: file.name, anteil, nr: i + 1, gesamt: files.length }),
+          );
+        } catch (e) {
+          schiefgegangen.push(
+            `${file.name} (${e instanceof ApiError ? e.message : 'ging nicht'})`,
+          );
+        }
+      }
+      await load();
+      onChanged();
+      if (schiefgegangen.length > 0) {
+        setNotice(
+          schiefgegangen.length === 1
+            ? `Nicht angehängt: ${schiefgegangen[0]}`
+            : `Nicht angehängt: ${schiefgegangen.join('; ')}`,
+        );
+      }
+    } finally {
+      setHochladen(null);
+      setBusy(false);
+    }
+  }
 
   async function save<T>(body: () => Promise<T>) {
     setBusy(true);
@@ -1290,10 +1344,11 @@ export function Detail({
                 {/*
                   Der Balken, solange etwas läuft.
 
-                  An der Stelle des Knopfes und nicht darüber: was gerade
-                  passiert, gehört dahin, wo man es angestossen hat. Und mit
-                  dem NAMEN, weil man beim zweiten Anhang sonst nicht weiss,
-                  welcher gerade geht.
+                  An der Stelle des Feldes und nicht darüber: was gerade
+                  passiert, gehört dahin, wo man es angestossen hat. Mit dem
+                  NAMEN, weil man beim zweiten Anhang sonst nicht weiss, welcher
+                  gerade geht — und mit „2 von 5", weil das beim Warten die
+                  eigentliche Auskunft ist.
 
                   `progress` und kein eigener Balken aus zwei Kästen: das
                   Element sagt einem Vorleseprogramm von selbst, dass es ein
@@ -1301,33 +1356,65 @@ export function Detail({
                 */}
                 {hochladen !== null ? (
                   <div className="upload">
-                    <span className="upload-name">{hochladen.name}</span>
+                    <span className="upload-name">
+                      {hochladen.gesamt > 1
+                        ? `${hochladen.nr}/${hochladen.gesamt} · ${hochladen.name}`
+                        : hochladen.name}
+                    </span>
                     <progress className="upload-bar" value={hochladen.anteil} max={1} />
                     <span className="upload-pct">
                       {Math.round(hochladen.anteil * 100)} %
                     </span>
                   </div>
                 ) : null}
-                <label className={busy ? 'btn quiet small as-label' : 'btn quiet small as-label'}>
-                  Datei anhängen
+
+                {/*
+                  EIN FELD, ZWEI WEGE HINEIN.
+
+                  GEWÜNSCHT: „Wir brauchen bei den Dateien einen Drag-and-Drop-
+                  Upload. Also ein Feld, in das ich Dateien einfach fallen
+                  lassen kann. Das kann ja kombiniert mit dem Klick-Button
+                  sein."
+
+                  Genau so, und es ist auch die richtige Bauart: ein `label`
+                  mit verstecktem Feld IST der Knopf, und dasselbe Element nimmt
+                  die fallengelassenen Dateien. Zwei getrennte Flächen wären
+                  zwei Ziele für eine Absicht — und die eine davon würde man
+                  dauernd verfehlen.
+
+                  `onDragOver` muss `preventDefault` rufen, sonst nimmt der
+                  Browser das Ablegen selbst an und öffnet die Datei als Seite.
+                  Das ist die Falle, in die jede erste Fassung tappt: es sieht
+                  aus wie ein Fehler der Anwendung und ist die Vorgabe des
+                  Browsers.
+                */}
+                <label
+                  className="btn as-label upload-drop"
+                  data-over={ueber ? 'yes' : undefined}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    setUeber(true);
+                  }}
+                  onDragLeave={() => setUeber(false)}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setUeber(false);
+                    const files = [...e.dataTransfer.files];
+                    if (files.length > 0) void anhaengen(files);
+                  }}
+                >
+                  {ueber ? 'Loslassen zum Anhängen' : 'Dateien anhängen oder hierher ziehen'}
                   <input
                     type="file"
+                    multiple
                     disabled={busy}
                     onChange={(e) => {
-                      const file = e.currentTarget.files?.[0];
-                      if (file === undefined) return;
-                      // Das Feld leeren: sonst löst dieselbe Datei beim zweiten Mal
-                      // kein `change` aus, und es sieht aus, als täte der Knopf
-                      // nichts.
+                      const files = [...(e.currentTarget.files ?? [])];
+                      // Das Feld leeren: sonst löst dieselbe Datei beim zweiten
+                      // Mal kein `change` aus, und es sieht aus, als täte der
+                      // Knopf nichts.
                       e.currentTarget.value = '';
-                      setHochladen({ name: file.name, anteil: 0 });
-                      void save(() =>
-                        anbindung
-                          .addFile!(file, (anteil) =>
-                            setHochladen({ name: file.name, anteil }),
-                          )
-                          .finally(() => setHochladen(null)),
-                      );
+                      void anhaengen(files);
                     }}
                   />
                 </label>

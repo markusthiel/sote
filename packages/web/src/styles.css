@@ -1669,6 +1669,50 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex]:focus-vi
   text-align: end;
 }
 
+/*
+ * Das Feld, in das man Dateien fallen lassen kann.
+ *
+ * Gewünscht: „ein Feld, in das ich Dateien einfach fallen lassen kann. Das
+ * kann ja kombiniert mit dem Klick-Button sein."
+ *
+ * Also derselbe Knopf, nur mit gestricheltem Rand und voller Breite: gestrichelt
+ * heisst in jeder Oberfläche „hier darf etwas hinein", und ein Ziel, das man
+ * treffen soll, darf nicht so schmal sein wie ein Wort.
+ */
+.btn.upload-drop {
+  /*
+   * `.btn.upload-drop` und nicht `.upload-drop` allein.
+   *
+   * Im Bild fehlte der gestrichelte Rand: `.btn.quiet` setzt „1px solid
+   * transparent" und hat zwei Klassen im Selektor — meine eine verlor, obwohl
+   * sie später in der Datei steht. Dasselbe Muster wie beim Anfasser auf der
+   * Karte; die Spezifität schlägt die Reihenfolge, und man sieht es erst im
+   * Bild.
+   *
+   * Das Feld bleibt ein `.btn`, weil es einer IST: man kann darauf klicken und
+   * bekommt den Dateiwähler. Es ist nur zusätzlich ein Ziel zum Fallenlassen.
+   */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 100%;
+  min-block-size: calc(var(--sone-tap) * 1.5);
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--sote-radius-md);
+  color: var(--text-muted);
+  text-align: center;
+}
+
+/* Beim Schweben: der Akzent und ein gefüllter Grund — dieselbe Sprache wie
+   „hier hinein" auf der Tafel. Wer eine Datei über einer Fläche hält, will
+   wissen, ob sie die richtige ist, bevor er loslässt. */
+.btn.upload-drop[data-over="yes"] {
+  border-color: var(--accent);
+  border-style: solid;
+  background: var(--accent-quiet);
+  color: var(--accent-text);
+}
+
 /* ── SONEs Dateizeile ──────────────────────────────────────────────────────
  *
  * GEMELDET mit Bild: „Hier die Optik, die SONE verwendet." Also wörtlich von
