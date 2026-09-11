@@ -1530,6 +1530,42 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex]:focus-vi
   flex: none;
 }
 
+/*
+ * Der Knopf, der es öffnet — SONEs `.file-menu-trigger`, mit SOTEs Werten.
+ *
+ * Gemeldet mit Bild: „Hinten ein schöner alleinstehender Button."
+ *
+ * Ein Quadrat in Bedienelementgrösse, mit durchsichtigem Rand: der Rand ist
+ * da, damit beim Zeigen nichts springt — ein Knopf, der beim Anfahren einen
+ * Rahmen BEKOMMT, wächst um zwei Pixel und schiebt die Zeile.
+ */
+.file-menu-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-block-size: var(--sone-control);
+  min-inline-size: var(--sone-control);
+  border: 1px solid transparent;
+  border-radius: var(--sote-radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.file-menu-trigger:hover,
+.file-menu-trigger[aria-expanded="true"] {
+  background: var(--surface-hover);
+  border-color: var(--line);
+  color: var(--text);
+}
+
+/* Das Menü haengt am Knopf und nicht an der Zeile: es soll rechts stehen,
+   auch wenn der Name lang ist. */
+.file-menu .menu {
+  inset-inline-end: 0;
+  inset-block-start: calc(var(--sone-control) + var(--sone-space-1));
+}
+
 /* Der Name eines Anhangs öffnet die Vorschau — also ein Knopf, der wie Text
    aussieht. */
 .file-name {

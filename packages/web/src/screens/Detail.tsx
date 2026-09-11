@@ -28,6 +28,7 @@ import {
   CheckSquareIcon,
   DownloadIcon,
   ImageIcon,
+  PageIcon,
   MessageIcon,
   PaperclipIcon,
   SlidersIcon,
@@ -36,7 +37,7 @@ import {
   type IconProps,
 } from '../components/icons.js';
 import { CloseIcon, EyeIcon } from '../components/viewIcons.js';
-import { FileModal, kindName } from '../components/FileModal.js';
+import { FileModal, kindName, kindOf } from '../components/FileModal.js';
 import { useDetailTab } from '../hooks/useDetailTab.js';
 import { whenOptions } from '../components/HandleMenu.js';
 import { whenLabel } from '../dates.js';
@@ -1158,14 +1159,33 @@ export function Detail({
                           was added."
                         */}
                         <div className="file-menu">
+                          {/*
+                            EIN EIGENER KNOPF und keine drei Punkte.
+
+                            GEMELDET mit Bild: „Hinten ein schöner
+                            alleinstehender Button. Das ist die Idee: Da machen
+                            wir einen Button hin, der ein Menü öffnet."
+
+                            Die drei Punkte sind SOTEs Zeichen für „hier gibt es
+                            ein Menü" und stehen an jeder Aufgabenzeile. Hier
+                            ist es aber auch der Knopf, der die DATEI meint —
+                            also trägt er ihr Zeichen, und das sagt nebenbei,
+                            was für eine es ist. Ein Punktemenü daneben wäre ein
+                            Zeichen weniger und ein Rätsel mehr.
+                          */}
                           <button
                             type="button"
-                            className="dots"
+                            className="file-menu-trigger"
                             aria-label={`Menü für ${f.filename}`}
                             aria-haspopup="menu"
+                            aria-expanded={fileMenu === f.id}
                             onClick={() => setFileMenu(fileMenu === f.id ? null : f.id)}
                           >
-                            ⋮
+                            {kindOf(f.mimeType) === 'image' ? (
+                              <ImageIcon size={15} />
+                            ) : (
+                              <PageIcon size={15} />
+                            )}
                           </button>
                           {fileMenu === f.id ? (
                             <div className="menu" role="menu">
