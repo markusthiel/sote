@@ -1615,6 +1615,60 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex]:focus-vi
   word-break: break-word;
 }
 
+/* ── Der Fortschritt beim Hochladen ────────────────────────────────────────
+ *
+ * Gemeldet: „Uploads könnten einen Ladebalken vertragen und andeuten, wenn sie
+ * fertig sind." Ohne ihn ist ein 25-MB-Video ein Knopfdruck, nach dem eine
+ * Minute lang nichts passiert — und nichts sieht aus wie kaputt.
+ */
+.upload {
+  display: flex;
+  align-items: center;
+  gap: var(--sone-space-3);
+  padding: var(--sone-space-2) var(--sone-space-3);
+}
+
+.upload-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--sone-text-sm);
+}
+
+/* Ein `progress` sieht in jedem Browser anders aus — also die eigene Fläche,
+   in der Breite einer Spalte und nicht des Textes daneben. */
+.upload-bar {
+  flex: none;
+  inline-size: 96px;
+  block-size: var(--sone-space-3);
+  appearance: none;
+  border: 0;
+  border-radius: var(--sote-radius-sm);
+  background: var(--sunken);
+  overflow: hidden;
+}
+
+.upload-bar::-webkit-progress-bar {
+  background: var(--sunken);
+}
+.upload-bar::-webkit-progress-value {
+  background: var(--accent);
+}
+.upload-bar::-moz-progress-bar {
+  background: var(--accent);
+}
+
+.upload-pct {
+  flex: none;
+  min-inline-size: 4ch;
+  font-family: var(--sote-mono);
+  font-size: var(--sone-text-xs);
+  color: var(--text-muted);
+  text-align: end;
+}
+
 /* ── SONEs Dateizeile ──────────────────────────────────────────────────────
  *
  * GEMELDET mit Bild: „Hier die Optik, die SONE verwendet." Also wörtlich von

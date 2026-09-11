@@ -78,6 +78,8 @@ export interface StoredFile {
   readonly sizeBytes: number;
   readonly uploadedBy: string | null;
   readonly createdAt: Date;
+  /** Ob es eine kleine Fassung gibt — die Oberfläche fragt sie mit `?size=web` ab. */
+  readonly hasWeb: boolean;
 }
 
 interface Row {
@@ -87,9 +89,11 @@ interface Row {
   size_bytes: string;
   uploaded_by: string | null;
   created_at: Date;
+  web_key?: string | null;
 }
 
 const view = (r: Row): StoredFile => ({
+  hasWeb: (r.web_key ?? null) !== null,
   id: r.id,
   filename: r.filename,
   mimeType: r.mime_type,
@@ -128,6 +132,19 @@ export async function addFile(
     filename: string;
     mimeType: string;
     bytes: Buffer;
+    /**
+     * Die kleine Fassung, im Browser gerechnet — oder nichts.
+     *
+     * Der Server rechnet sie NICHT selbst: eine Leitung, die eine
+     * 8-MB-Aufnahme hochträgt, trägt sie langsam, und wer im Browser rechnet,
+     * überträgt zweimal wenig statt einmal viel. Ausserdem wäre es Rechenzeit
+     * auf einer Maschine, die davon am wenigsten hat.
+     *
+     * Fehlt sie, ist das kein Fehler: ein PDF hat keine, ein kleines Bild
+     * braucht keine, und ein Browser ohne `createImageBitmap` liefert keine.
+     * Dann wird überall das Original gezeigt — langsamer, aber richtig.
+     */
+    webBytes?: Buffer | undefined;
   },
 ): Promise<StoredFile> {
   const dir = filesDir();
@@ -143,13 +160,34 @@ export async function addFile(
   // Erst die Datei, dann die Zeile — siehe den Kopf dieser Datei.
   await writeFile(p, input.bytes);
 
+  /*
+   * Und die kleine Fassung, falls eine mitkam.
+   *
+   * Eigener Schlüssel, eigene Datei: sie liegt neben dem Original und nicht
+   * darin. Schlägt sie fehl, wird sie ÜBERGANGEN und nicht der ganze Upload
+   * abgebrochen — ein Anhang ohne Vorschau ist ein Anhang, ein abgelehnter
+   * Anhang ist keiner.
+   */
+  let webKey: string | null = null;
+  if (input.webBytes !== undefined && input.webBytes.length > 0) {
+    webKey = randomUUID().replace(/-/g, '');
+    try {
+      const wp = pathFor(dir, webKey);
+      await mkdir(dirname(wp), { recursive: true });
+      await writeFile(wp, input.webBytes);
+    } catch {
+      webKey = null;
+    }
+  }
+
   const name = input.filename.split(/[/\\]/).pop()?.trim();
   const row = await queryOne<Row>(
     pool,
     `INSERT INTO task_files
-       (task_id, workspace_id, filename, mime_type, size_bytes, storage, storage_key, uploaded_by)
-     VALUES ($1,$2,$3,$4,$5,'local',$6,$7)
-     RETURNING id, filename, mime_type, size_bytes, uploaded_by, created_at`,
+       (task_id, workspace_id, filename, mime_type, size_bytes, storage, storage_key,
+        uploaded_by, web_key, web_bytes)
+     VALUES ($1,$2,$3,$4,$5,'local',$6,$7,$8,$9)
+     RETURNING id, filename, mime_type, size_bytes, uploaded_by, created_at, web_key`,
     [
       input.taskId,
       input.workspaceId,
@@ -158,6 +196,8 @@ export async function addFile(
       input.bytes.length,
       key,
       input.userId,
+      webKey,
+      webKey === null ? null : (input.webBytes?.length ?? null),
     ],
   );
   if (row === undefined) {
@@ -262,21 +302,93 @@ export async function scheduleFileSweep(pool: Pool): Promise<boolean> {
   return true;
 }
 
+/**
+ * Die kleine Fassung NACHREICHEN.
+ *
+ * Als zweiter Aufruf und nicht im selben: der Upload trägt rohe Bytes, und
+ * zwei Dateien in einem Körper brauchten ein Format, das sagt, wo die eine
+ * aufhört — also einen Parser, den jemand schreiben und pflegen müsste. Zwei
+ * Aufrufe kosten eine Verbindung und sind selbsterklärend.
+ *
+ * Scheitert der zweite, liegt der Anhang trotzdem da — ohne Vorschau, aber
+ * vollständig. Das ist der richtige Ausgang: ein Anhang ohne kleine Fassung
+ * ist ein Anhang, ein abgelehnter Anhang ist keiner.
+ */
+export async function attachWeb(
+  pool: Pool,
+  input: { id: string; taskId: string; workspaceId: string; bytes: Buffer },
+): Promise<boolean> {
+  const dir = filesDir();
+  if (dir === undefined) throw new FilesOff();
+  if (input.bytes.length === 0) return false;
+
+  const row = await queryOne<{ web_key: string | null }>(
+    pool,
+    `SELECT web_key FROM task_files
+      WHERE id = $1 AND task_id = $2 AND workspace_id = $3`,
+    [input.id, input.taskId, input.workspaceId],
+  );
+  if (row === undefined) return false;
+  // Schon eine da: nicht ersetzen. Ein zweiter Aufruf ist entweder ein
+  // Wiederholungsversuch oder ein Versehen, und in beiden Fällen ist die
+  // vorhandene richtig.
+  if (row.web_key !== null) return true;
+
+  const key = randomUUID().replace(/-/g, '');
+  const p = pathFor(dir, key);
+  await mkdir(dirname(p), { recursive: true });
+  await writeFile(p, input.bytes);
+
+  const out = await pool.query(
+    `UPDATE task_files SET web_key = $4, web_bytes = $5
+      WHERE id = $1 AND task_id = $2 AND workspace_id = $3 AND web_key IS NULL`,
+    [input.id, input.taskId, input.workspaceId, key, input.bytes.length],
+  );
+  if (out.rowCount === 0) {
+    await rm(p, { force: true });
+    return false;
+  }
+  return true;
+}
+
 export async function readFileOf(
   pool: Pool,
-  input: { id: string; taskId: string; workspaceId: string },
+  input: {
+    id: string;
+    taskId: string;
+    workspaceId: string;
+    /**
+     * Welche Fassung — das Original oder die kleine.
+     *
+     * `web` ist eine BITTE und keine Bedingung: gibt es keine kleine Fassung,
+     * kommt das Original. Eine Vorschau, die 404 sagt, weil ein Bild zu klein
+     * für eine zweite Fassung war, wäre ein Fehler, den die Regel selbst
+     * gemacht hat.
+     */
+    size?: 'web' | undefined;
+  },
 ): Promise<{ file: StoredFile; bytes: Buffer } | undefined> {
   const dir = filesDir();
   if (dir === undefined) throw new FilesOff();
   const row = await queryOne<Row & { storage_key: string }>(
     pool,
-    `SELECT id, filename, mime_type, size_bytes, uploaded_by, created_at, storage_key
+    `SELECT id, filename, mime_type, size_bytes, uploaded_by, created_at, storage_key, web_key
        FROM task_files WHERE id = $1 AND task_id = $2 AND workspace_id = $3`,
     [input.id, input.taskId, input.workspaceId],
   );
   if (row === undefined) return undefined;
+  const key = input.size === 'web' && (row.web_key ?? null) !== null ? row.web_key! : row.storage_key;
+  /*
+   * Die kleine Fassung ist immer ein JPEG — sie wird als eines gezeichnet. Der
+   * gespeicherte Typ gehört dem Original, und ihn hier mitzuschicken hiesse,
+   * ein JPEG als PNG auszugeben.
+   */
+  const typ = key === row.storage_key ? row.mime_type : 'image/jpeg';
   try {
-    return { file: view(row), bytes: await readFile(pathFor(dir, row.storage_key)) };
+    return {
+      file: { ...view(row), mimeType: typ },
+      bytes: await readFile(pathFor(dir, key)),
+    };
   } catch {
     /*
      * Zeile ohne Datei. Das ist kein „gibt es nicht": die Zeile ist da, und wer

@@ -38,6 +38,7 @@ import {
   type IconProps,
 } from '../components/icons.js';
 import { AudioIcon, EyeIcon } from '../components/viewIcons.js';
+import { webVariant } from '../lib/webVariant.js';
 import { FileModal, kindName, kindOf, type FileKind } from '../components/FileModal.js';
 import { useDetailTab } from '../hooks/useDetailTab.js';
 import { whenOptions } from '../components/HandleMenu.js';
@@ -70,9 +71,9 @@ export interface DetailIO {
   addReminder?: (body: { minutes: number } | { at: string }) => Promise<unknown>;
   removeReminder?: (reminderId: string) => Promise<unknown>;
   /** Anhänge. Fehlen beim Gast: eine Datei hängt an einem Konto. */
-  addFile?: (file: File) => Promise<unknown>;
+  addFile?: (file: File, onProgress?: (anteil: number) => void) => Promise<unknown>;
   removeFile?: (fileId: string) => Promise<unknown>;
-  fileHref?: (fileId: string) => string;
+  fileHref?: (fileId: string, size?: 'web') => string;
   addComment: (body: string) => Promise<unknown>;
 }
 
@@ -87,9 +88,18 @@ export const memberIO = (taskId: string, workspace: string | undefined): DetailI
   people: () => api.people(workspace).then((r) => r.people),
   addReminder: (body) => api.addReminder(taskId, body, workspace),
   removeReminder: (rid) => api.removeReminder(taskId, rid, workspace),
-  addFile: (file) => api.addFile(taskId, file, workspace),
+  /*
+   * Erst die kleine Fassung rechnen, dann hochladen.
+   *
+   * Sie geht als zweiter Aufruf mit; scheitert sie, liegt der Anhang trotzdem
+   * da. Gerechnet wird sie HIER und nicht im Server: eine Leitung, die eine
+   * 8-MB-Aufnahme hochträgt, trägt sie langsam, und beim ABRUF spart die
+   * kleine Fassung dann bei jedem einzelnen Mal.
+   */
+  addFile: async (file, onProgress) =>
+    api.addFile(taskId, file, workspace, onProgress, await webVariant(file)),
   removeFile: (fid) => api.removeFile(taskId, fid, workspace),
-  fileHref: (fid) => api.fileHref(taskId, fid, workspace),
+  fileHref: (fid, size) => api.fileHref(taskId, fid, workspace, size),
   patch: (fields) => api.patch(taskId, fields as never, workspace),
   addChild: (title) => api.addChild(taskId, title, workspace),
   addComment: (body) => api.addComment(taskId, body, workspace),
@@ -253,6 +263,16 @@ export function Detail({
   const [ansehen, setAnsehen] = useState<string | null>(null);
   /** Welches Dateimenü offen ist — eines nach dem anderen. */
   const [fileMenu, setFileMenu] = useState<string | null>(null);
+  /**
+   * Wie weit ein Upload ist — `null`, wenn gerade keiner läuft.
+   *
+   * GEMELDET: „Uploads könnten einen Ladebalken vertragen und andeuten, wenn
+   * sie fertig sind." Ohne ihn ist ein 25-MB-Video ein Knopfdruck, nach dem
+   * eine Minute lang nichts passiert — und nichts sieht aus wie kaputt.
+   */
+  const [hochladen, setHochladen] = useState<{ name: string; anteil: number } | null>(
+    null,
+  );
   /*
    * Die Leute des Arbeitsbereichs, einmal geholt.
    *
@@ -1252,6 +1272,27 @@ export function Detail({
                     ))
                   )}
                 </div>
+                {/*
+                  Der Balken, solange etwas läuft.
+
+                  An der Stelle des Knopfes und nicht darüber: was gerade
+                  passiert, gehört dahin, wo man es angestossen hat. Und mit
+                  dem NAMEN, weil man beim zweiten Anhang sonst nicht weiss,
+                  welcher gerade geht.
+
+                  `progress` und kein eigener Balken aus zwei Kästen: das
+                  Element sagt einem Vorleseprogramm von selbst, dass es ein
+                  Fortschritt ist und wie weit er steht.
+                */}
+                {hochladen !== null ? (
+                  <div className="upload">
+                    <span className="upload-name">{hochladen.name}</span>
+                    <progress className="upload-bar" value={hochladen.anteil} max={1} />
+                    <span className="upload-pct">
+                      {Math.round(hochladen.anteil * 100)} %
+                    </span>
+                  </div>
+                ) : null}
                 <label className={busy ? 'btn quiet small as-label' : 'btn quiet small as-label'}>
                   Datei anhängen
                   <input
@@ -1264,7 +1305,14 @@ export function Detail({
                       // kein `change` aus, und es sieht aus, als täte der Knopf
                       // nichts.
                       e.currentTarget.value = '';
-                      void save(() => anbindung.addFile!(file));
+                      setHochladen({ name: file.name, anteil: 0 });
+                      void save(() =>
+                        anbindung
+                          .addFile!(file, (anteil) =>
+                            setHochladen({ name: file.name, anteil }),
+                          )
+                          .finally(() => setHochladen(null)),
+                      );
                     }}
                   />
                 </label>
@@ -1289,6 +1337,17 @@ export function Detail({
               <div className="detail-images">
                 {bilder.map((f) => {
                   const href = anbindung.fileHref?.(f.id) ?? '';
+                  /*
+                   * Das Vorschaubild nimmt die KLEINE Fassung.
+                   *
+                   * Gemeldet: „Thumbnails sollten ebenfalls verkleinert
+                   * dargestellt werden und nicht das volle Bild laden." Ein
+                   * Kästchen von 88 Pixeln lud vorher 7,7 MB.
+                   *
+                   * Die Vorschau im Fenster nimmt weiterhin das Original: dort
+                   * sieht man es gross an, und dafür ist es da.
+                   */
+                  const klein = anbindung.fileHref?.(f.id, 'web') ?? href;
                   /*
                    * DER WEG OHNE FRAGEZEICHEN.
                    *
@@ -1323,7 +1382,7 @@ export function Detail({
                         title={`${f.filename} ansehen`}
                         onClick={() => setAnsehen(f.id)}
                       >
-                        <img src={href} alt={f.filename} />
+                        <img src={klein} alt={f.filename} loading="lazy" />
                       </button>
                       {/*
                         DER WEG ZUM TITELBILD führt über das Bild selbst.

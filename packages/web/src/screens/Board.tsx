@@ -560,11 +560,14 @@ export function Board({
                          * steht, ist eine Eigenschaft der Anfrage und keine des
                          * Bildes. Gespeichert ist der Weg.
                          */
-                        src={
-                          workspace === undefined
-                            ? task.cover.image
-                            : `${task.cover.image}?workspace=${workspace}`
-                        }
+                        /*
+                         * Die KLEINE Fassung: ein Band von 140 px Höhe lud
+                         * sonst die ganze Aufnahme. Gibt es keine, liefert der
+                         * Server das Original — `?size=web` ist eine Bitte.
+                         */
+                        src={`${task.cover.image}?size=web${
+                          workspace === undefined ? '' : `&workspace=${workspace}`
+                        }`}
                         alt=""
                         loading="lazy"
                         draggable={false}

@@ -16,7 +16,7 @@ import type { Pool } from 'pg';
 import { createWorkspace } from '../src/bootstrap.js';
 import { makePool, queryOne, queryRows } from '../src/db.js';
 import { migrate } from '../src/migrate.js';
-import { addFile, filesOf, readFileOf, removeFile, sweepFiles } from '../src/taskFiles.js';
+import { addFile, attachWeb, filesOf, readFileOf, removeFile, sweepFiles } from '../src/taskFiles.js';
 import { createFromLine } from '../src/tasks.js';
 
 const URL_ =
@@ -232,4 +232,69 @@ test('mit der Aufgabe geht die Zeile — die Datei bleibt liegen, und das steht 
    * Bytes nicht in Postgres liegen. Ein Aufräumer dafür fehlt noch, und dieser
    * Test hält fest, dass das so ist und nicht vergessen wurde.
    */
+});
+
+test('die kleine Fassung liegt neben dem Original, nicht statt seiner', async () => {
+  /*
+   * GEMELDET: „Ist es entsprechend verkleinert, damit keine mehrere MB grosse
+   * Datei geladen wird?"
+   *
+   * Die Antwort ist eine zweite Datei und NICHT ein kleiner gerechnetes
+   * Original: ein Anhang ist etwas, das jemand aufbewahren will. Ihn beim
+   * Hochladen kleinzurechnen waere eine stille Enteignung.
+   */
+  const taskId = await neu('Mit Foto');
+  const workspaceId = ws;
+  const userId = ich;
+  const gross = Buffer.from('x'.repeat(5000));
+  const f = await addFile(pool, {
+    taskId, workspaceId, userId,
+    filename: 'foto.jpg', mimeType: 'image/jpeg', bytes: gross,
+  });
+  assert.equal(f.hasWeb, false);
+
+  const klein = Buffer.from('y'.repeat(200));
+  assert.equal(await attachWeb(pool, { id: f.id, taskId, workspaceId, bytes: klein }), true);
+
+  // Ohne Bitte: das Original, unveraendert.
+  const original = await readFileOf(pool, { id: f.id, taskId, workspaceId });
+  assert.equal(original?.bytes.length, 5000);
+  assert.equal(original?.file.hasWeb, true);
+
+  // Mit Bitte: die kleine — und als JPEG ausgegeben, weil sie eines IST.
+  const web = await readFileOf(pool, { id: f.id, taskId, workspaceId, size: 'web' });
+  assert.equal(web?.bytes.length, 200);
+  assert.equal(web?.file.mimeType, 'image/jpeg');
+});
+
+test('ohne kleine Fassung kommt das Original — und kein 404', async () => {
+  // `?size=web` ist eine BITTE. Eine Vorschau, die 404 sagt, weil ein Bild zu
+  // klein fuer eine zweite Fassung war, waere ein Fehler, den die Regel selbst
+  // gemacht hat.
+  const taskId = await neu('Kleines Bild');
+  const workspaceId = ws;
+  const userId = ich;
+  const f = await addFile(pool, {
+    taskId, workspaceId, userId,
+    filename: 'klein.png', mimeType: 'image/png', bytes: Buffer.from('abc'),
+  });
+  const web = await readFileOf(pool, { id: f.id, taskId, workspaceId, size: 'web' });
+  assert.equal(web?.bytes.toString(), 'abc');
+  assert.equal(web?.file.mimeType, 'image/png');
+});
+
+test('eine zweite kleine Fassung ersetzt die erste nicht', async () => {
+  // Ein zweiter Aufruf ist entweder ein Wiederholungsversuch oder ein
+  // Versehen, und in beiden Faellen ist die vorhandene richtig.
+  const taskId = await neu('Zweimal');
+  const workspaceId = ws;
+  const userId = ich;
+  const f = await addFile(pool, {
+    taskId, workspaceId, userId,
+    filename: 'foto.jpg', mimeType: 'image/jpeg', bytes: Buffer.from('x'.repeat(999)),
+  });
+  await attachWeb(pool, { id: f.id, taskId, workspaceId, bytes: Buffer.from('erste') });
+  await attachWeb(pool, { id: f.id, taskId, workspaceId, bytes: Buffer.from('zweite!!') });
+  const web = await readFileOf(pool, { id: f.id, taskId, workspaceId, size: 'web' });
+  assert.equal(web?.bytes.toString(), 'erste');
 });

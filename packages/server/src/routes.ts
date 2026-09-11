@@ -75,7 +75,7 @@ import { addPerson, findPeople, people, removePerson, roles, setRole } from './p
 import { shareRoutes } from './shareRoutes.js';
 import { createShare, listShares, revokeShare, shareKeyPresent } from './shares.js';
 import { makeStatic } from './http/static.js';
-import { addFile, filesDir, filesOf, maxBytes, readFileOf, removeFile } from './taskFiles.js';
+import { addFile, attachWeb, filesDir, filesOf, maxBytes, readFileOf, removeFile } from './taskFiles.js';
 import { addReminder, remindersOf, removeReminder } from './taskReminders.js';
 import {
   complete,
@@ -2255,12 +2255,53 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
     return;
   }
 
+  /*
+   * Die kleine Fassung nachreichen — im Browser gerechnet.
+   *
+   * Der Server rechnet sie nicht selbst: eine Leitung, die eine 8-MB-Aufnahme
+   * hochträgt, trägt sie langsam, und wer im Browser rechnet, überträgt
+   * zweimal wenig statt einmal viel. Ausserdem wäre es Rechenzeit auf der
+   * Maschine, die davon am wenigsten hat.
+   */
+  const fileWeb = /^\/api\/tasks\/([0-9a-f-]{36})\/files\/([0-9a-f-]{36})\/web$/.exec(path);
+  if (fileWeb && method === 'PUT') {
+    if (filesDir() === undefined) {
+      fail(res, 501, 'files_off', 'dieser Server nimmt keine Anhänge');
+      return;
+    }
+    await detail(ctx.pool, fileWeb[1]!, workspaceId);
+    const grenze = maxBytes();
+    const stücke: Buffer[] = [];
+    let größe = 0;
+    for await (const stück of req) {
+      größe += (stück as Buffer).length;
+      if (größe > grenze) {
+        req.destroy();
+        fail(res, 413, 'too_big', 'die kleine Fassung ist zu groß');
+        return;
+      }
+      stücke.push(stück as Buffer);
+    }
+    const ok = await attachWeb(ctx.pool, {
+      id: fileWeb[2]!,
+      taskId: fileWeb[1]!,
+      workspaceId,
+      bytes: Buffer.concat(stücke),
+    });
+    json(res, ok ? 200 : 404, { ok });
+    return;
+  }
+
   const fileOne = /^\/api\/tasks\/([0-9a-f-]{36})\/files\/([0-9a-f-]{36})$/.exec(path);
   if (fileOne && method === 'GET') {
     const got = await readFileOf(ctx.pool, {
       id: fileOne[2]!,
       taskId: fileOne[1]!,
       workspaceId,
+      // `?size=web` ist eine BITTE: gibt es keine kleine Fassung, kommt das
+      // Original. Eine Vorschau, die 404 sagt, weil ein Bild zu klein für eine
+      // zweite Fassung war, wäre ein Fehler, den die Regel selbst gemacht hat.
+      ...(url.searchParams.get('size') === 'web' ? { size: 'web' as const } : {}),
     });
     if (got === undefined) {
       fail(res, 404, 'no_file', 'diesen Anhang gibt es nicht');

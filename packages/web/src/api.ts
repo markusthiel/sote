@@ -1011,19 +1011,92 @@ export const api = {
    * Der Name reist als Abfrageparameter, weil der Körper die Datei IST. Kein
    * Multipart: das wäre ein Parser für einen Vorteil, den niemand sieht.
    */
-  addFile: (id: string, file: File, workspace?: string) => {
+  /**
+   * Eine Datei anhängen — mit Fortschritt und kleiner Fassung.
+   *
+   * GEMELDET: „Uploads könnten einen Ladebalken vertragen und andeuten, wenn
+   * sie fertig sind."
+   *
+   * Darum `XMLHttpRequest` statt `fetch`: `fetch` kennt keinen Fortschritt
+   * beim SENDEN. Es gibt inzwischen einen Weg über Streams, und er ist in
+   * Safari nicht da — für eine Anzeige, die gerade dort am nötigsten ist (dort
+   * lädt man vom Telefon hoch).
+   *
+   * ZWEI AUFRUFE: erst das Original, dann die kleine Fassung. Der Upload trägt
+   * rohe Bytes; zwei Dateien in einem Körper brauchten ein Format, das sagt,
+   * wo die eine aufhört. Scheitert der zweite, liegt der Anhang trotzdem da —
+   * ohne Vorschau, aber vollständig.
+   */
+  addFile: async (
+    id: string,
+    file: File,
+    workspace?: string,
+    onProgress?: (anteil: number) => void,
+    web?: Blob | undefined,
+  ): Promise<{ file: { id: string; filename: string } }> => {
     const p = new URLSearchParams({ name: file.name });
     if (workspace !== undefined) p.set('workspace', workspace);
-    return call<{ file: { id: string; filename: string } }>(
-      `/api/tasks/${id}/files?${p}`,
-      {
-        method: 'POST',
-        body: file,
-        // Der Typ der Datei, nicht JSON — `call` setzt sonst
-        // `application/json`, und der Server würde ihn so speichern.
-        headers: { 'content-type': file.type === '' ? 'application/octet-stream' : file.type },
+
+    const out = await new Promise<{ file: { id: string; filename: string } }>(
+      (fertig, schiefgegangen) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', `/api/tasks/${id}/files?${p}`);
+        xhr.withCredentials = true;
+        xhr.setRequestHeader(
+          'content-type',
+          file.type === '' ? 'application/octet-stream' : file.type,
+        );
+        /*
+         * `lengthComputable` prüfen: bei einer Übertragung ohne bekannte Länge
+         * ist `total` null, und `geladen / 0` wäre `Infinity` — ein Balken, der
+         * sofort voll ist und dann stehenbleibt.
+         */
+        xhr.upload.onprogress = (e) => {
+          if (e.lengthComputable && onProgress !== undefined) {
+            onProgress(e.loaded / e.total);
+          }
+        };
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            try {
+              fertig(JSON.parse(xhr.responseText) as { file: { id: string; filename: string } });
+            } catch {
+              schiefgegangen(new ApiError(xhr.status, 'bad_json', 'Die Antwort war unverständlich.'));
+            }
+            return;
+          }
+          let sagt = 'Hochladen ging nicht.';
+          let code = 'upload_failed';
+          try {
+            const j = JSON.parse(xhr.responseText) as { error?: string; message?: string };
+            sagt = j.message ?? sagt;
+            code = j.error ?? code;
+          } catch {
+            // Keine Antwort im erwarteten Format: dann bleibt der Satz oben.
+          }
+          schiefgegangen(new ApiError(xhr.status, code, sagt));
+        };
+        xhr.onerror = () =>
+          schiefgegangen(new ApiError(0, 'network', 'Die Verbindung brach ab.'));
+        xhr.send(file);
       },
     );
+
+    if (web !== undefined) {
+      try {
+        await fetch(
+          `/api/tasks/${id}/files/${out.file.id}/web${
+            workspace === undefined ? '' : `?workspace=${workspace}`
+          }`,
+          { method: 'PUT', body: web, credentials: 'same-origin' },
+        );
+      } catch {
+        // Ohne kleine Fassung wird ueberall das Original gezeigt — langsamer,
+        // aber richtig. Ein Anhang, der wegen seines Vorschaubilds scheitert,
+        // waere die schlechteste Art, eine Verbesserung einzubauen.
+      }
+    }
+    return out;
   },
   removeFile: (id: string, fileId: string, workspace?: string) =>
     call<{ ok: true }>(
@@ -1031,8 +1104,15 @@ export const api = {
       { method: 'DELETE' },
     ),
   /** Wo ein Anhang liegt. Ein Link und kein Abruf: der Browser lädt ihn. */
-  fileHref: (id: string, fileId: string, workspace?: string) =>
-    `/api/tasks/${id}/files/${fileId}${workspace === undefined ? '' : `?workspace=${workspace}`}`,
+  fileHref: (id: string, fileId: string, workspace?: string, size?: 'web') => {
+    const q = new URLSearchParams();
+    if (workspace !== undefined) q.set('workspace', workspace);
+    // `?size=web` ist eine Bitte: gibt es keine kleine Fassung, kommt das
+    // Original.
+    if (size !== undefined) q.set('size', size);
+    const s = q.toString();
+    return `/api/tasks/${id}/files/${fileId}${s === '' ? '' : `?${s}`}`;
+  },
   detail: (id: string, workspace?: string) =>
     call<Detail>(
       `/api/tasks/${id}${workspace === undefined ? '' : `?workspace=${workspace}`}`,
