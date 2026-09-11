@@ -96,6 +96,8 @@ export function LookPicker({
         <input
           type="color"
           className="own-color"
+          title="eigene Farbe"
+          data-set={color?.startsWith('#') === true || eigen !== undefined ? 'yes' : 'no'}
           aria-label="eigene Farbe"
           value={eigen ?? (color?.startsWith('#') === true ? color : '#888888')}
           disabled={busy}

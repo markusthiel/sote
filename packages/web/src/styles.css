@@ -5915,6 +5915,23 @@ label.btn {
 
 /* Das Feld für eine eigene Farbe, in der Größe eines Farbfelds daneben —
    SONEs Pipette steht auch in der Reihe der Palette und nicht darunter. */
+/*
+ * Die Pipette — und sie muss AUSSEHEN wie eine.
+ *
+ * GEMELDET: „Bei Workspace hatten wir gesagt, unter Name und Zeichen soll auch
+ * eine eigene Farbe möglich sein."
+ *
+ * Sie war da. Sie stand als neunter Kreis hinter acht Palettenkreisen, grau,
+ * gleich gross, gleich rund — und damit war sie für jeden, der das Bild
+ * ansieht, eine neunte feste Farbe. Eine Möglichkeit, die man nicht als solche
+ * erkennt, gibt es für niemanden; das ist derselbe Satz, mit dem ich sie
+ * damals eingebaut habe, und er gilt hier gegen mich.
+ *
+ * Also ein Farbkreis als Grund: die ganze Palette in einem Kegel-Verlauf, wie
+ * an jedem Farbwähler, den man je gesehen hat. Wer eine eigene Farbe gewählt
+ * hat, sieht STATTDESSEN diese — dann ist der Kreis eine Anzeige und kein
+ * Angebot mehr.
+ */
 .own-color {
   inline-size: 22px;
   block-size: 22px;
@@ -5922,9 +5939,19 @@ label.btn {
   padding: 0;
   border: 1px solid var(--border-default);
   border-radius: 50%;
-  background: transparent;
   cursor: pointer;
+  /* Der Farbkreis liegt DAHINTER: der eigene Wert deckt ihn zu, sobald es
+     einen gibt. Ein leeres Feld zeigt ihn ganz. */
+  background:
+    conic-gradient(
+      #e0453c, #e08a1e, #d8c02a, #4caf50, #2f8fd8, #6b4fd8, #d84f9e, #e0453c
+    );
 }
+
+/* Solange nichts Eigenes gewählt ist, bleibt der Kreis sichtbar: das Feld
+   selbst wird durchsichtig gemacht, nicht der Rahmen. */
+.own-color[data-set="no"]::-webkit-color-swatch { opacity: 0; }
+.own-color[data-set="no"]::-moz-color-swatch { opacity: 0; }
 .own-color::-webkit-color-swatch-wrapper { padding: 0; }
 .own-color::-webkit-color-swatch { border: 0; border-radius: 50%; }
 .own-color::-moz-color-swatch { border: 0; border-radius: 50%; }

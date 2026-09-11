@@ -759,6 +759,10 @@ export function ProjectTree({
               <input
                 type="color"
                 className="own-color"
+                title="eigene Farbe"
+                data-set={
+                  eigen !== undefined || p.color?.startsWith('#') === true ? 'yes' : 'no'
+                }
                 aria-label="eigene Farbe"
                 /*
                   Nur ein Hex-Wert taugt hier: `colorValue` gäbe für einen

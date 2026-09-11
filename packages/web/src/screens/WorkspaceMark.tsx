@@ -149,6 +149,13 @@ export function WorkspaceMark({
         <input
           type="color"
           className="own-color"
+          title="eigene Farbe"
+          data-set={
+            (eigen[which] ?? (current?.startsWith('#') === true ? current : undefined)) ===
+            undefined
+              ? 'no'
+              : 'yes'
+          }
           aria-label={`${label}: eigene Farbe`}
           /*
             Nur ein Hex-Wert taugt hier. `colorValue` gäbe für einen

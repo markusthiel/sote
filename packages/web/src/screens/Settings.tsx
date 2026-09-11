@@ -581,6 +581,8 @@ export function Settings({
             <input
               type="color"
               className="own-color"
+              title="eigene Farbe"
+              data-set={board.doneAccent?.startsWith('#') === true ? 'yes' : 'no'}
               aria-label="Eigene Farbe für die Fertig-Spalte"
               disabled={busy}
               value={
@@ -809,6 +811,8 @@ export function Settings({
             <input
               type="color"
               className="own-color"
+              title="eigene Farbe"
+              data-set={look.accent?.startsWith('#') === true ? 'yes' : 'no'}
               aria-label="Eigene Akzentfarbe"
               disabled={busy}
               value={look.accent?.startsWith('#') === true ? look.accent : '#2f7d6f'}
