@@ -441,8 +441,31 @@ export interface Completion {
 export async function reopen(pool: Pool, taskId: string, workspaceId: string): Promise<TaskRow> {
   const row = await queryOne<TaskRow>(
     pool,
-    `UPDATE tasks SET completed_at = NULL, completed_by = NULL, updated_at = now()
-      WHERE id = $1 AND workspace_id = $2 AND trashed_at IS NULL
+    /*
+     * Wieder öffnen — und aus der Fertig-Spalte heraus.
+     *
+     * Sie steht auf „fertig", und eine offene Aufgabe darin wäre genau der
+     * Widerspruch, den die Regel oben vermeidet. Zurück ins AUFFANGBECKEN
+     * (`column_id = NULL`, also in die erste Spalte) und nicht dorthin, wo sie
+     * vor dem Abhaken lag: das müsste eine zweite Spalte in der Tabelle
+     * merken, und sie wäre falsch, sobald jemand die alte Spalte weggeräumt
+     * hat. Die erste Spalte ist der Ort, an dem auch alles Neue anfängt.
+     *
+     * Lag sie NICHT in der Fertig-Spalte, bleibt sie liegen — dann gibt es
+     * keinen Widerspruch aufzulösen.
+     */
+    `UPDATE tasks t SET
+        completed_at = NULL,
+        completed_by = NULL,
+        updated_at = now(),
+        column_id = CASE
+          WHEN EXISTS (
+            SELECT 1 FROM board_columns c
+             WHERE c.id = t.column_id AND c.is_done
+          ) THEN NULL
+          ELSE t.column_id
+        END
+      WHERE t.id = $1 AND t.workspace_id = $2 AND t.trashed_at IS NULL
      RETURNING ${RETURNING}`,
     [taskId, workspaceId],
   );
@@ -469,10 +492,34 @@ export async function complete(
     if (task === undefined) throw new NotFound(`Aufgabe ${taskId} gibt es nicht`);
     if (task.completed_at !== null) return { completed: task, next: undefined };
 
+    /*
+     * Abhaken — und auf der Tafel umziehen, WENN es eine Fertig-Spalte gibt.
+     *
+     * Abgesprochen: „sobald man diese Spalte im Projekt angelegt hat, wandern
+     * fertige Elemente automatisch da rein. Wenn man diese Spalte nicht
+     * angelegt hat, dann bleiben die Aufgaben als abgehakt in der jeweiligen
+     * Spalte liegen."
+     *
+     * Das Häkchen bleibt die WAHRHEIT, die Spalte folgt ihm. Umgekehrt wäre
+     * es zwei Antworten auf dieselbe Frage — und eine abgehakte Aufgabe in
+     * „In Arbeit" ein Widerspruch, den jemand auflösen muss.
+     *
+     * In DEMSELBEN Schreibvorgang wie das Häkchen: zwei Aufrufe wären ein
+     * Zwischenzustand, in dem etwas fertig ist und noch in der alten Spalte
+     * liegt — und wenn der zweite scheitert, bleibt er stehen.
+     */
     const done = await queryOne<TaskRow>(
       client,
-      `UPDATE tasks SET completed_at = $2, completed_by = $3, updated_at = $2
-        WHERE id = $1
+      `UPDATE tasks t SET
+          completed_at = $2,
+          completed_by = $3,
+          updated_at = $2,
+          column_id = COALESCE(
+            (SELECT c.id FROM board_columns c
+              WHERE c.project_id = t.project_id AND c.is_done),
+            t.column_id
+          )
+        WHERE t.id = $1
        RETURNING ${RETURNING}`,
       [taskId, at, userId],
     );

@@ -103,6 +103,14 @@ import {
   NoCalendar,
   revokeFeed,
 } from './calendar.js';
+import {
+  addColumn,
+  BoardTrouble,
+  columnsOf,
+  placeCard,
+  removeColumn,
+  updateColumn,
+} from './board.js';
 import { LabelTrouble, labelsOfWorkspace, removeLabel, renameLabel } from './labels.js';
 import { listViewsOf, setListView, ViewTrouble } from './listViews.js';
 import { childrenOf, counts, list, splitOverdue, type ViewId } from './views.js';
@@ -1267,6 +1275,90 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
    * ändert nichts, was ein anderer sieht. Die Vorgabe des Arbeitsbereichs
    * liegt bei den Einstellungen und wird dort auch bewacht.
    */
+  /*
+   * ── Die Tafel: Spalten einer Liste ───────────────────────────────────────
+   *
+   * Gelesen darf jedes Mitglied, geändert auch: Spalten sind die Gliederung
+   * eines Vorhabens und keine Einstellung des Arbeitsbereichs — wer die
+   * Aufgaben darin bearbeiten darf, darf auch sagen, wie sie liegen.
+   */
+  if (path === '/api/board' && method === 'GET') {
+    const projectId = url.searchParams.get('project');
+    if (projectId === null) {
+      fail(res, 400, 'no_project', 'welche Liste?');
+      return;
+    }
+    json(res, 200, { columns: await columnsOf(ctx.pool, workspaceId, projectId) });
+    return;
+  }
+
+  if (path === '/api/board' && method === 'POST') {
+    const body = (await readJson(req)) as Record<string, unknown>;
+    try {
+      const column = await addColumn(ctx.pool, workspaceId, String(body?.['project'] ?? ''), {
+        name: String(body?.['name'] ?? ''),
+        sortKey: String(body?.['sortKey'] ?? ''),
+        ...(body?.['isDone'] === true ? { isDone: true } : {}),
+      });
+      json(res, 201, { column });
+      return;
+    } catch (e) {
+      if (e instanceof BoardTrouble) {
+        fail(res, 409, 'board_trouble', e.message);
+        return;
+      }
+      throw e;
+    }
+  }
+
+  const spalte = /^\/api\/board\/([0-9a-f-]{36})$/.exec(path);
+  if (spalte !== null && (method === 'PATCH' || method === 'DELETE')) {
+    try {
+      if (method === 'DELETE') {
+        await removeColumn(ctx.pool, workspaceId, spalte[1]!);
+        json(res, 200, { ok: true });
+        return;
+      }
+      const body = (await readJson(req)) as Record<string, unknown>;
+      const column = await updateColumn(ctx.pool, workspaceId, spalte[1]!, {
+        ...(typeof body?.['name'] === 'string' ? { name: body['name'] } : {}),
+        ...(typeof body?.['sortKey'] === 'string' ? { sortKey: body['sortKey'] } : {}),
+        ...(typeof body?.['isDone'] === 'boolean' ? { isDone: body['isDone'] } : {}),
+      });
+      json(res, 200, { column });
+      return;
+    } catch (e) {
+      if (e instanceof BoardTrouble) {
+        fail(res, 409, 'board_trouble', e.message);
+        return;
+      }
+      throw e;
+    }
+  }
+
+  const karte = /^\/api\/tasks\/([0-9a-f-]{36})\/column$/.exec(path);
+  if (karte !== null && method === 'PUT') {
+    const body = (await readJson(req)) as Record<string, unknown>;
+    try {
+      await placeCard(
+        ctx.pool,
+        workspaceId,
+        karte[1]!,
+        typeof body?.['columnId'] === 'string' ? body['columnId'] : null,
+        userId,
+        now,
+      );
+      json(res, 200, { ok: true });
+      return;
+    } catch (e) {
+      if (e instanceof BoardTrouble) {
+        fail(res, 409, 'board_trouble', e.message);
+        return;
+      }
+      throw e;
+    }
+  }
+
   if (path === '/api/list-views' && method === 'GET') {
     json(res, 200, await listViewsOf(ctx.pool, workspaceId, userId));
     return;
