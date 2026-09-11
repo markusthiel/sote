@@ -3780,44 +3780,55 @@ select.target { }
 
 /* Der Umschalter im Kopf, bei der Frage, die er beantwortet. */
 /*
- * Die Knöpfe im Kopf — EINE Reihe Zeichen, nicht zwei Reihen Wörter.
+ * Die Knöpfe im Kopf — dieselbe Form wie der Leisten-Schalter oben links.
  *
- * Gemeldet: „Die Buttons oben rechts sind hässlich." Sie standen in zwei
- * Reihen übereinander, einer trug einen ganzen Satz und die anderen je ein
- * Wort — fünf verschieden breite Kästen über der Überschrift.
+ * GEMELDET: „Die Buttons links oben sind mir noch zu hässlich. Können wir die
+ * optisch nicht so machen wie den Auf-und-Zu-Button der linken Spalte? Einfach
+ * das Icon und ein Hover, der sich abhebt, und ein schönes Padding."
  *
- * Die Wörter stehen weiter da, nur als `title` und `aria-label`: dasselbe
- * Geschäft wie im Projektmenü, wo dieselbe Rechnung schon aufging.
+ * Er hat recht, und die Form gibt es schon: `.topbar-knob`. Sie ist die
+ * richtige — ein Zeichen ohne Rahmen, Grund erst beim Zeigen. Fünf Kästchen
+ * mit Rand nebeneinander sehen aus wie fünf Dinge; fünf Zeichen sehen aus wie
+ * eine Reihe.
+ *
+ * ÜBERNOMMEN UND NICHT NACHGEBAUT: dieselben Werte, damit die beiden Reihen im
+ * selben Kopf nicht um zwei Pixel auseinanderliegen. Was sich unterscheidet,
+ * steht einzeln darunter und hat je einen Grund.
  */
 .head-toggle {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  /* Quadratisch und eine Tippfläche groß: ein Zeichen von 16 px in einem
-     Kasten von 16 px trifft man nicht. */
-  inline-size: var(--sone-control-lg);
-  block-size: var(--sone-control-lg);
-  padding: 0;
-  border: 1px solid var(--line-strong);
+  width: 30px;
+  height: 30px;
+  border: 0;
   border-radius: var(--sote-radius-md);
   background: none;
-  color: var(--text-muted);
+  color: var(--text-faint);
   font: inherit;
   font-size: var(--sone-text-md);
   cursor: pointer;
 }
 
+.head-toggle:hover {
+  background: var(--sunken);
+  color: var(--text);
+}
+
 /*
- * Die Anzeigeformen als Reihe unter dem Erledigte-Schalter.
+ * Die GEWÄHLTE Form trägt den Akzent — hier weicht es vom Leisten-Schalter ab,
+ * und mit Grund: der schaltet eine Sache an und aus, hier wird EINE aus vier
+ * gewählt. Ohne sichtbare Wahl sind es vier gleich aussehende Zeichen, und man
+ * weiß nicht, welches gerade gilt.
  *
- * Sichtbar und nicht in einem Klappmenü: drei kurze Wörter passen
- * nebeneinander, und eine Wahl, die dasteht, beantwortet „wie steht das
- * gerade" ohne einen Klick.
- *
- * Die Knöpfe darin geben `position: absolute` wieder ab — sie erben die
- * Klasse `head-toggle` wegen des Aussehens, und drei absolut gesetzte Knöpfe
- * lägen alle drei an derselben Stelle.
+ * Nur der Grund, kein Rahmen: ein Rahmen um eines von fünf zieht mehr
+ * Aufmerksamkeit auf sich als die Überschrift daneben.
  */
+.head-toggle[aria-pressed="true"] {
+  background: var(--accent-quiet);
+  color: var(--accent-text);
+}
+
 .head-views {
   position: absolute;
   top: 14px;
