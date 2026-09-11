@@ -857,7 +857,23 @@ export function TaskList({
           (Konzept 10d, Migration 0009). Das Feld dort war ein Bedienelement
           für eine Sache, die es nicht gibt.
         */}
-        {istOrdner ? null : (
+        {/*
+          AUF DER TAFEL AUCH NICHT.
+
+          GEWÜNSCHT: „Dafür könnte die normale Hinzufügen-Zeile da
+          verschwinden, denke ich." Stimmt — jede Spalte hat jetzt ihre eigene,
+          und die sagt zusätzlich, WOHIN. Die Zeile oben könnte das nicht; sie
+          legte im Auffangbecken ab, und man müsste die Karte gleich danach
+          dorthin ziehen, wo man sie ohnehin gemeint hat.
+
+          Zwei Erfassungszeilen auf einem Bildschirm, von denen die eine weniger
+          kann, ist eine zu viel.
+
+          Eine Folge, die man wissen soll: auf einer Tafel OHNE Spalten gibt es
+          damit gar keine — dort steht stattdessen der Satz, der zur ersten
+          Spalte führt, und der ist der richtige nächste Schritt.
+        */}
+        {istOrdner || (form === 'board' && route.kind === 'project') ? null : (
           <QuickAdd
             now={now}
             onSubmit={(line) => void add(line)}
