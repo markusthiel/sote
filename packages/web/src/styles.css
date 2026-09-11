@@ -932,7 +932,9 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex]:focus-vi
  * sie nicht selbst beantworten will.
  */
 .body {
-  padding: 6px 32px 40px;
+  /* Links Platz für die beiden Spuren (Aufklapper und Anfasser), sonst ragen
+     sie aus dem Inhalt heraus und werden vom Rollbereich abgeschnitten. */
+  padding: 6px var(--sote-gap-x) 40px calc(var(--sote-gap-x) + var(--sote-gutter));
   max-width: var(--sote-read);
 }
 
@@ -1311,26 +1313,80 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex]:focus-vi
    Nur dort, wo es etwas aufzuklappen gibt — kein Platzhalter: die meisten
    Zeilen haben keine Unteraufgaben, und für alle einzurücken, damit wenige ein
    Zeichen tragen können, verschenkt Breite an jeder Zeile. */
+/*
+ * Der Aufklapper — eine EIGENE Spur neben dem Anfasser.
+ *
+ * GEMELDET mit Bild: „Der Aufklapp-Pfeil, der jetzt ganz links sitzt und mini
+ * ist, den kann ich jetzt nicht mehr nutzen. Er war auch zu klein, muss man
+ * sagen. Man sah ihn sowieso kaum."
+ *
+ * Zwei Fehler übereinander, und den zweiten habe ich selbst gebaut:
+ *
+ * 1. Er war 16 × 16 px mit einem 11-px-Zeichen darin — zu klein zum Treffen
+ *    und zu blass zum Sehen.
+ * 2. Seit der Anfasser eine volle Tippfläche breit ist, LAG ER DARUNTER. Zwei
+ *    Bedienelemente an derselben Stelle, und das obere gewinnt jeden Druck.
+ *
+ * Der Vorschlag aus der Meldung ist die Lösung: „etwas mehr Abstand zum
+ * Anfasser und eine eigene Fläche dort reservieren". Also zwei Spuren im Rand,
+ * je `--sote-lane` breit, und der Rand des Inhalts wächst um genau so viel.
+ * Innen der Aufklapper (er gehört zur Zeile), aussen der Anfasser (er ist der
+ * Griff am Rand).
+ *
+ * Volle Zeilenhöhe statt 16 px: man zielt auf eine Fläche, nicht auf ein
+ * Zeichen. Und deutlicher gefärbt — `--text-faint` war auf hellem Grund kaum
+ * da.
+ */
 .task-twisty {
   position: absolute;
-  inset-inline-start: -38px;
-  inset-block-start: 10px;
-  width: 16px;
-  min-height: 16px;
+  /* ERSTE Spur von aussen, also näher an der Zeile. */
+  inset-inline-start: calc(var(--sote-lane) * -1);
+  inset-block-start: 0;
+  inset-block-end: 0;
+  width: var(--sote-lane);
+  display: flex;
+  /*
+   * OBEN ausgerichtet, nicht mittig: bei einer Karte mit Notiz wandert eine
+   * mittige Marke weit unter den Titel, zu dem sie gehört. Der Abstand ist
+   * derselbe, den das Kästchen daneben hat.
+   */
+  align-items: flex-start;
+  justify-content: center;
+  padding-block-start: var(--sone-space-5);
   border: 0;
-  padding: 0;
+  padding-inline: 0;
   background: none;
-  color: var(--text-faint);
-  font-size: var(--sone-text-xs);
+  color: var(--text-muted);
+  font-size: var(--sone-text-sm);
   line-height: 1;
   cursor: pointer;
   transition: transform 120ms ease;
+}
+
+.task-twisty:hover {
+  color: var(--text);
 }
 
 /* Gedreht statt getauscht — wie im Baum und in SONE: zwei verschiedene
    Zeichen springen beim Umschalten, eine Drehung nicht. */
 .task-twisty[aria-expanded="true"] {
   transform: rotate(90deg);
+}
+
+/*
+ * Der Rand links trägt beide Spuren.
+ *
+ * `--sote-lane` ist die Breite einer Spur, `--sote-gutter` deren zwei. Als
+ * Werte und nicht als Zahlen an vier Stellen: die Zeile, der Anfasser, der
+ * Aufklapper und der Innenabstand des Inhalts müssen sich einigen, und vier
+ * Zahlen einigen sich beim ersten Ändern nicht mehr.
+ */
+:root {
+  --sote-lane: 24px;
+  --sote-gutter: calc(var(--sote-lane) * 2);
+  /* Der Rand des Inhalts neben den Spuren — als Wert, damit er nicht an zwei
+     Stellen als Zahl steht (und der Stil-Wächter zählt sie ohnehin). */
+  --sote-gap-x: 32px;
 }
 
 /* Die Kinder, eingerückt und mit einer Linie daran.
@@ -1786,9 +1842,16 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex]:focus-vi
     font-size: 8.5px;
   }
 
-  .main-head,
-  .body {
+  .main-head {
     padding-left: 18px;
+    padding-right: 18px;
+  }
+
+  /* Auf dem Telefon bleiben die Spuren, nur der Rand daneben schrumpft: ohne
+     sie wären Aufklapper und Anfasser genau dort nicht zu treffen, wo man
+     ohnehin mit dem Finger zielt. */
+  .body {
+    padding-left: calc(var(--sone-space-3) + var(--sote-gutter));
     padding-right: 18px;
   }
 
@@ -1957,10 +2020,11 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex]:focus-vi
  */
 .grip {
   position: absolute;
-  left: calc(var(--sone-tap) * -1);
+  /* ZWEITE Spur von aussen. Die Rechnung steht bei `--sote-gutter`. */
+  left: calc(var(--sote-gutter) * -1);
   top: 0;
   bottom: 0;
-  width: var(--sone-tap);
+  width: var(--sote-lane);
   display: flex;
   align-items: center;
   justify-content: center;
