@@ -106,6 +106,14 @@ export function ProjectTree({
    * Eintraege im Menue, und der Platzhalter im Feld soll sagen, welcher von
    * beiden gedrueckt wurde.
    */
+  /**
+   * Die eigene Farbe, während man sie zieht.
+   *
+   * Nur fürs Zeigen: geschrieben wird erst beim Bestätigen. Ohne diesen
+   * Zwischenwert sprränge das Feld bei jeder Bewegung auf den gespeicherten
+   * Wert zurück, weil es ein kontrolliertes Feld ist.
+   */
+  const [eigen, setEigen] = useState<string | undefined>(undefined);
   const [adding, setAdding] = useState<
     { parentId: string | null; kind: 'folder' | 'list' } | null
   >(null);
@@ -732,6 +740,45 @@ export function ProjectTree({
                   }}
                 />
               ))}
+              {/*
+                Und eine EIGENE Farbe — dieselbe Pipette wie am Arbeitsbereich.
+
+                GEMELDET: „Überall wo wir Farben auswählen können, sollte man
+                auch eine eigene Farbe hinzufügen können mit Picker. Also bei
+                Tafel, bei Name und Zeichen auch."
+
+                Der Kern konnte es die ganze Zeit: `ChosenColor = PaletteName |
+                \`#${string}\``, und `colorValue` gibt für einen Hex-Wert den
+                Wert selbst zurück. Nur diese Stelle bot es nicht an.
+
+                Was der NAME besser kann, steht oben bei `COLORS`: er folgt der
+                Palette und ist damit in beiden Themen richtig, ein Hex-Wert ist
+                in beiden derselbe. Darum steht er neben der Palette und nicht
+                an ihrer Stelle.
+              */}
+              <input
+                type="color"
+                className="own-color"
+                aria-label="eigene Farbe"
+                /*
+                  Nur ein Hex-Wert taugt hier: `colorValue` gäbe für einen
+                  Palettennamen `var(--sote-palette-…)` zurück, und ein
+                  Farbfeld mit einem `var()` darin zeigt schwarz — der
+                  Übersetzer merkt das nicht, der Browser sagt nichts, und man
+                  sieht es erst im Bild.
+                */
+                value={eigen ?? (p.color?.startsWith('#') === true ? p.color : '#888888')}
+                disabled={busy}
+                /* `onInput` zeigt, `onChange` speichert — ein Farbfeld schickt
+                   beim Ziehen laufend `input` und `change` erst beim
+                   Bestätigen. Jedes Zwischenbild zu schreiben wäre ein
+                   Schreibvorgang je Mausbewegung. */
+                onInput={(e) => setEigen(e.currentTarget.value)}
+                onChange={(e) => {
+                  setMenu(null);
+                  onColor(p.id, e.currentTarget.value);
+                }}
+              />
             </div>
             <div className="entry-menu-label" />
             <button

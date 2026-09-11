@@ -566,6 +566,30 @@ export function Settings({
                 onClick={() => save(scope, { board: { ...board, doneAccent: name } })}
               />
             ))}
+            {/*
+              Und eine EIGENE Farbe — dieselbe Pipette wie beim Akzent und am
+              Arbeitsbereich.
+
+              GEMELDET: „Überall wo wir Farben auswählen können, sollte man auch
+              eine eigene Farbe hinzufügen können mit Picker. Also bei Tafel,
+              bei Name und Zeichen auch."
+
+              Der Kern nimmt sie längst (`readBoard` prüft auf `#rrggbb`), nur
+              diese Stelle bot sie nicht an. Ein Name folgt der Palette und ist
+              in beiden Themen richtig; ein Wert bleibt er selbst.
+            */}
+            <input
+              type="color"
+              className="own-color"
+              aria-label="Eigene Farbe für die Fertig-Spalte"
+              disabled={busy}
+              value={
+                board.doneAccent?.startsWith('#') === true ? board.doneAccent : '#2f7d6f'
+              }
+              onChange={(e) =>
+                save(scope, { board: { ...board, doneAccent: e.target.value } })
+              }
+            />
           </div>
         </div>
       </div>
@@ -771,21 +795,27 @@ export function Settings({
                 onClick={() => saveLook(scope, look, { accent: name })}
               />
             ))}
-          </div>
-          <div className="pick">
             {/*
               Beides ist erlaubt, und der Unterschied ist keine Bequemlichkeit:
               ein NAME folgt der Palette und ist damit in beiden Themen richtig,
               ein HEX-WERT ist in beiden derselbe. Wer genau diesen einen Ton
               will, nimmt den Wähler.
+
+              IN DERSELBEN REIHE wie die Palette und in derselben Größe — wie an
+              den drei anderen Stellen, an denen es diese Wahl gibt. Vorher
+              stand das Feld hier eine Zeile tiefer und war größer: dieselbe
+              Sache, vier Zeilen weiter unten anders gebaut.
             */}
             <input
               type="color"
+              className="own-color"
               aria-label="Eigene Akzentfarbe"
               disabled={busy}
               value={look.accent?.startsWith('#') === true ? look.accent : '#2f7d6f'}
               onChange={(e) => saveLook(scope, look, { accent: e.target.value as `#${string}` })}
             />
+          </div>
+          <div className="pick">
             <span className="muted small">
               Eigene Farbe — ein Name folgt der Palette, ein Wert bleibt er selbst.
             </span>
