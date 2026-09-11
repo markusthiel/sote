@@ -1114,3 +1114,38 @@ test('eine Unteraufgabe steht nicht als eigene Zeile im Projekt', async () => {
   const rows = await list(pool, 'project', workspaceId, NOW, projectId);
   assert.deepEqual(rows.map((r) => r.title), ['Eltern']);
 });
+
+test('ein Titelbild wird angenommen, eine fremde Adresse abgelehnt', async () => {
+  /*
+   * Die Prüfung sitzt im Schreibweg und nicht im Lesen: ein fehlerhaftes
+   * Titelbild wird ABGELEHNT, nicht still geleert. Ein kaputtes als „lösch es"
+   * zu lesen wäre die schlechteste verfügbare Deutung (SONEs ADR-0117).
+   */
+  const { workspaceId } = await scratch('ws-titelbild');
+  const t = await createFromLine(pool, { workspaceId, userId, line: 'Mit Bild', now: NOW });
+  const anhang = `/api/tasks/${t.task.id}/files/22222222-2222-4222-8222-222222222222`;
+
+  const mit = await patch(pool, t.task.id, workspaceId, { cover: { image: anhang } });
+  assert.deepEqual(mit.cover, { image: anhang });
+
+  await assert.rejects(
+    () => patch(pool, t.task.id, workspaceId, { cover: { image: 'https://example.com/x.jpg' } }),
+    (e: Error) => e.name === 'OutOfOrder',
+  );
+
+  // Und der alte Wert steht noch: eine Ablehnung nimmt nichts weg.
+  const noch = await queryOne<{ cover: unknown }>(
+    pool,
+    'SELECT cover FROM tasks WHERE id = $1',
+    [t.task.id],
+  );
+  assert.deepEqual(noch!.cover, { image: anhang });
+});
+
+test('null nimmt das Titelbild weg', async () => {
+  const { workspaceId } = await scratch('ws-titelbild-weg');
+  const t = await createFromLine(pool, { workspaceId, userId, line: 'Mit Bild', now: NOW });
+  await patch(pool, t.task.id, workspaceId, { cover: { color: 'blue' } });
+  const ohne = await patch(pool, t.task.id, workspaceId, { cover: null });
+  assert.equal(ohne.cover, null);
+});

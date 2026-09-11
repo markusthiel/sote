@@ -33,7 +33,7 @@ const COLUMNS = `
   t.id, t.workspace_id, t.project_id, t.parent_id, t.title, t.note,
   t.planned_at, t.planned_all_day, t.due_at, t.due_all_day, t.priority,
   t.completed_at, t.recur_rrule, t.recur_dtstart, t.recur_after_n,
-  t.recur_after_unit, t.duration_min, t.column_id, t.sort_key,
+  t.recur_after_unit, t.duration_min, t.column_id, t.cover, t.sort_key,
   labels_of(t.id) AS labels, marks_of(t.id) AS marks`;
 
 /**

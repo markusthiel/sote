@@ -25,7 +25,7 @@
  * Zweige im Projektbaum vor dem Ziehen auch.
  */
 
-import { generateKeyBetween } from '@sote/core';
+import { colorValue, generateKeyBetween } from '@sote/core';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { api, ApiError, type Task } from '../api.js';
@@ -532,6 +532,40 @@ export function Board({
                       Liste. Die übrige Karte bleibt ziehbar, wo kein Knopf
                       liegt (Beiwerkzeile, Notiz, Ränder).
                     */}
+                    {/*
+                      DAS TITELBILD LEITET DIE KARTE EIN.
+
+                      GEWÜNSCHT: „Ein Vollbild, gecroppt, das die Karte
+                      einleitet, darunter dann erst die eigentliche Karte."
+
+                      Ein `<img>` und kein `background-image`: eine CSS-Zeichen-
+                      kette aus einem gespeicherten Wert zu bauen heisst, sich um
+                      Escaping zu kümmern, und das ist ein eigenes Thema. Ein
+                      `src` wird vom Rahmenwerk behandelt, trägt einen
+                      Alternativtext und kann sagen, wie es lädt (SONEs ADR-0117).
+
+                      `loading="lazy"`: eine Tafel mit dreissig Karten lädt
+                      sonst dreissig Bilder auf einmal, von denen man vier
+                      sieht.
+
+                      Eine FARBE wird dagegen Grund und kein Bild — dafür gibt
+                      es nichts zu laden.
+                    */}
+                    {task.cover?.image !== undefined ? (
+                      <img
+                        className="board-cover"
+                        src={task.cover.image}
+                        alt=""
+                        loading="lazy"
+                        draggable={false}
+                      />
+                    ) : task.cover?.color !== undefined ? (
+                      <span
+                        className="board-cover"
+                        aria-hidden="true"
+                        style={{ background: colorValue(task.cover.color) }}
+                      />
+                    ) : null}
                     <span
                       className="grip board-grip"
                       aria-hidden="true"

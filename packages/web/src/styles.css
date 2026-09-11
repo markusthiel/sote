@@ -1386,6 +1386,73 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex]:focus-vi
 }
 
 /*
+ * Ein Bild im Reiter, mit dem Knopf darauf.
+ *
+ * Der Knopf liegt ÜBER dem Bild und nicht darunter: eine Reihe von Knöpfen
+ * unter den Bildern macht aus einer Bildwand eine Formularzeile, und die Wahl
+ * gehört zu dem Bild, auf das man sieht.
+ */
+.detail-image-wrap {
+  position: relative;
+}
+
+.detail-image-cover {
+  position: absolute;
+  inset-inline-start: var(--sone-space-2);
+  inset-block-end: var(--sone-space-2);
+  padding: var(--sone-space-1) var(--sone-space-3);
+  border: 0;
+  border-radius: var(--sote-radius-md);
+  /* Dunkel hinterlegt statt in Themenfarben: der Knopf liegt auf einem BILD,
+     und ein Bild kann jede Farbe haben. Ein heller Grund mit dunkler Schrift
+     wäre auf einem hellen Foto unlesbar — und umgekehrt. */
+  background: rgb(0 0 0 / 55%);
+  color: #fff;
+  font: inherit;
+  font-size: var(--sone-text-xs);
+  cursor: pointer;
+  opacity: 0;
+}
+
+/* Sichtbar beim Zeigen — und dauerhaft, wenn es DAS Titelbild ist: sonst
+   müsste man jedes Bild anfahren, um herauszufinden, welches gerade gilt. */
+.detail-image-wrap:hover .detail-image-cover,
+.detail-image-cover:focus-visible,
+.detail-image-cover[aria-pressed="true"] {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .detail-image-cover { opacity: 1; }
+}
+
+/*
+ * Das Titelbild — ein Band über der Karte, gecroppt.
+ *
+ * GEWÜNSCHT: „Ein Vollbild, gecroppt, das die Karte einleitet, darunter dann
+ * erst die eigentliche Karte."
+ *
+ * `object-fit: cover` bei fester Höhe: ein Bild soll die Karte EINLEITEN und
+ * nicht ihre Höhe bestimmen. Ohne feste Höhe wäre eine Karte mit Hochformat
+ * dreimal so hoch wie ihre Nachbarn, und die Spalte liest sich als kaputt.
+ *
+ * Nur oben gerundet und bis an die Ränder: es sitzt IN der Karte und nicht
+ * darin — ein Rand ringsum machte daraus ein Bild in einem Rahmen, und der
+ * Wunsch war ein Vollbild.
+ */
+.board-cover {
+  display: block;
+  inline-size: 100%;
+  block-size: 96px;
+  object-fit: cover;
+  border-start-start-radius: var(--sote-radius-md);
+  border-start-end-radius: var(--sote-radius-md);
+  /* Ein Grund darunter, solange nichts geladen ist: sonst blitzt die Karte
+     durch, und ein Bild, das erscheint, verschiebt nichts mehr. */
+  background: var(--sunken);
+}
+
+/*
  * Der Anfasser an der Karte — sichtbar und nicht erst beim Zeigen.
  *
  * In der Liste erscheint er beim Zeigen, weil dort jede Zeile einen hat und
@@ -1408,6 +1475,16 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex]:focus-vi
   inset-block: 0;
   inset-inline-start: 0;
   width: var(--sone-control);
+  /*
+   * ÜBER DIE GANZE HÖHE, auch über dem Titelbild.
+   *
+   * Gewünscht: „Anfasser eventuell aber über die ganze Höhe." Ja — er gehört
+   * der Karte und nicht ihrem Inhalt. Ein Streifen, der unter dem Bild
+   * anfängt, sähe aus, als liesse sich nur der Text ziehen.
+   *
+   * `inset-block: 0` an der KARTE (nicht an `.task`) leistet das schon; hier
+   * steht es, damit beim nächsten Umbau niemand das Bild ausnimmt.
+   */
   /*
    * SICHTBAR, und zwar gemessen.
    *

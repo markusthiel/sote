@@ -6,6 +6,7 @@
  */
 
 import {
+  isTaskCover,
   generateKeyBetween,
   MAX_DURATION,
   MAX_LABEL,
@@ -43,6 +44,8 @@ export interface TaskRow {
   duration_min: number | null;
   /** Wo die Karte auf der Tafel liegt. `null` heißt Auffangbecken (0029). */
   column_id: string | null;
+  /** Das Titelbild der Karte, roh aus `jsonb` (0031). Gelesen von `readTaskCover`. */
+  cover: unknown;
   sort_key: string;
   /**
    * Die Schlagwörter, nach Namen sortiert — `[]` wenn keine.
@@ -128,7 +131,7 @@ const RETURNING = `
   id, workspace_id, project_id, parent_id, title, note,
   planned_at, planned_all_day, due_at, due_all_day, priority,
   completed_at, recur_rrule, recur_dtstart, recur_after_n,
-  recur_after_unit, duration_min, column_id, sort_key,
+  recur_after_unit, duration_min, column_id, cover, sort_key,
   labels_of(id) AS labels, marks_of(id) AS marks`;
 
 const SELECT = `SELECT ${RETURNING} FROM tasks`;
@@ -923,6 +926,15 @@ export interface Patch {
    */
   readonly recurrence?: Recurrence | null;
   /**
+   * Das Titelbild der Karte — `null` nimmt es weg.
+   *
+   * Geprüft wird beim SCHREIBEN und nicht beim Lesen: ein fehlerhaftes
+   * Titelbild wird abgelehnt, nicht still geleert. `null` ist, wie man es
+   * entfernt, und ein kaputtes als „lösch es" zu lesen wäre die schlechteste
+   * verfügbare Deutung (SONEs Satz, ADR-0117).
+   */
+  readonly cover?: unknown;
+  /**
    * Die geschätzte Dauer in Minuten — `null` nimmt sie weg.
    *
    * Als Zahl und nicht als Text: das Auslegen von „1h30" gehört dem Kern
@@ -989,6 +1001,20 @@ export async function patch(
    * die Eingabe, und das ist ein 409 mit einem Satz, den man lesen kann. Die
    * Grenze selbst kommt aus dem Kern, damit sie nicht an zwei Stellen wächst.
    */
+  if (fields.cover !== undefined) {
+    if (!isTaskCover(fields.cover)) {
+      /*
+       * Der Grund für die Ablehnung, und er ist wichtiger als die Regel: ein
+       * Titelbild wird bei jedem Zeichnen geladen. Eine fremde Adresse darin
+       * ist eine Karte, die jeden Betrachter bei jemand anderem meldet.
+       */
+      throw new OutOfOrder(
+        'ein Titelbild ist ein eigener Anhang oder eine Farbe — eine fremde Adresse nicht',
+      );
+    }
+    set('cover', fields.cover === null ? null : JSON.stringify(fields.cover));
+  }
+
   if (fields.duration !== undefined) {
     const d = fields.duration;
     if (d === null) set('duration_min', null);

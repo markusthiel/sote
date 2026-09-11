@@ -8,7 +8,7 @@
 
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 
-import { AVATAR_MAX_BYTES, isAvatarType, describe as describeRecurrence, isListLevel, isZone, readIcon } from '@sote/core';
+import { AVATAR_MAX_BYTES, isAvatarType, describe as describeRecurrence, isListLevel, isZone, readIcon, readTaskCover } from '@sote/core';
 import type { Pool } from 'pg';
 
 import { openSession, signIn, signOut, userOfToken } from './auth.js';
@@ -147,6 +147,19 @@ function readPatch(body: Record<string, unknown>): import('./tasks.js').Patch {
    */
   if ('duration' in body) {
     out['duration'] = body['duration'] === null ? null : Number(body['duration']);
+  }
+  /*
+   * Das Titelbild: ROH weitergereicht, `null` nimmt es weg.
+   *
+   * Keine Prüfung hier. Sie steht in `patch` (`isTaskCover`), weil der Grund
+   * für die Regel kein Formfehler ist, sondern eine Frage der Privatheit: ein
+   * Titelbild wird bei jedem Zeichnen geladen, und eine fremde Adresse darin
+   * meldet jeden Betrachter bei jemand anderem. Eine zweite Prüfung hier wäre
+   * eine zweite Antwort auf „was darf hinein" — und die laxere gewinnt immer,
+   * weil sie zuerst drankommt.
+   */
+  if ('cover' in body) {
+    out['cover'] = body['cover'] ?? null;
   }
   /*
    * Wiederholung: `null` nimmt sie weg, sonst eine der zwei Formen.
@@ -294,6 +307,7 @@ function taskView(row: TaskRow) {
     labels: row.labels,
     marks: row.marks,
     columnId: row.column_id,
+    cover: readTaskCover(row.cover),
     sortKey: row.sort_key,
   };
 }

@@ -119,6 +119,13 @@ export interface Task {
   duration: number | null;
   /** Wo die Karte auf der Tafel liegt. `null` heißt Auffangbecken. */
   columnId: string | null;
+  /**
+   * Das Titelbild der Karte — fehlt, wenn es keines gibt.
+   *
+   * `image` ist immer ein eigener Anhangsweg; eine fremde Adresse nimmt der
+   * Server nicht an, weil ein Titelbild bei jedem Zeichnen geladen wird.
+   */
+  cover?: { image?: string; color?: string };
   /** Die Schlagwörter, nach Namen sortiert. `[]` wenn keine. */
   labels: readonly string[];
   /**
@@ -269,6 +276,8 @@ export interface TaskPatch {
   due?: string | null;
   dueAllDay?: boolean;
   priority?: 1 | 2 | 3 | 4;
+  /** Titelbild setzen oder mit `null` wegnehmen. */
+  cover?: { image?: string; color?: string } | null;
   projectId?: string | null;
   /**
    * Die Wiederholung — `null` nimmt sie weg.

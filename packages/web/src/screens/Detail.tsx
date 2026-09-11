@@ -1162,16 +1162,48 @@ export function Detail({
               </p>
             ) : (
               <div className="detail-images">
-                {bilder.map((f) => (
-                  <a
-                    key={f.id}
-                    className="detail-image"
-                    href={anbindung.fileHref?.(f.id) ?? '#'}
-                    title={f.filename}
-                  >
-                    <img src={anbindung.fileHref?.(f.id) ?? ''} alt={f.filename} />
-                  </a>
-                ))}
+                {bilder.map((f) => {
+                  const href = anbindung.fileHref?.(f.id) ?? '';
+                  const istTitel = task.cover?.image === href && href !== '';
+                  return (
+                    <div key={f.id} className="detail-image-wrap">
+                      <a className="detail-image" href={href || '#'} title={f.filename}>
+                        <img src={href} alt={f.filename} />
+                      </a>
+                      {/*
+                        DER WEG ZUM TITELBILD führt über das Bild selbst.
+
+                        Gewünscht: „Kann man ein Bild auch als Headerbild für
+                        Kanban einstellen? Also bei der Aufgabe."
+
+                        Hier und nicht in einem eigenen Feld: die Auswahl ist
+                        „DIESES Bild", und man trifft sie, indem man auf das
+                        Bild sieht. Ein Feld „Titelbild" mit einer Liste von
+                        Dateinamen wäre dieselbe Wahl, nur blind.
+
+                        Derselbe Knopf nimmt es auch wieder weg — ein zweiter
+                        daneben wäre einer für den Fall, den es nur gibt, wenn
+                        der erste schon gedrückt wurde.
+                      */}
+                      {!darfSchreiben || href === '' ? null : (
+                        <button
+                          type="button"
+                          className="detail-image-cover"
+                          aria-pressed={istTitel}
+                          disabled={busy}
+                          title={istTitel ? 'Kein Titelbild mehr' : 'Als Titelbild'}
+                          onClick={() =>
+                            void save(() =>
+                              anbindung.patch({ cover: istTitel ? null : { image: href } }),
+                            )
+                          }
+                        >
+                          {istTitel ? 'Titelbild ✓' : 'Als Titelbild'}
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
