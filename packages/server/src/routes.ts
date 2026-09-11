@@ -56,6 +56,7 @@ import {
 import { knownKinds } from './jobs.js';
 import { list as listNotifications, markRead, unreadCount } from './notifications.js';
 import { stream } from './nudge.js';
+import { pushKeys, subscribePush, unsubscribePush } from './push.js';
 import { deleteWorkspace, exportWorkspace } from './workspace.js';
 import {
   add as addToGroup,
@@ -924,6 +925,54 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
        */
       workspaces: meine.map((w) => ({ id: w.id, name: w.name, icon: readIcon(w.icon) })),
     });
+    return;
+  }
+
+  /*
+   * ECHTE BENACHRICHTIGUNGEN — drei Wege, alle OHNE Arbeitsbereich.
+   *
+   * GEWÜNSCHT: „Wenn ich als App installiere, dass es richtige
+   * App-Benachrichtigungen sendet."
+   *
+   * Sie hängen am KONTO und nicht an einem Bereich: ein Gerät gehört einer
+   * Person, und eine Erinnerung an eine Aufgabe kommt aus dem Bereich, in dem
+   * sie liegt — welcher das ist, weiss der Versender und nicht das Gerät.
+   */
+  if (path === '/api/push/key' && method === 'GET') {
+    /* Der öffentliche Schlüssel ist öffentlich: der Browser braucht ihn, um
+       überhaupt ein Abonnement anzulegen. Er wird beim ersten Abruf erzeugt. */
+    json(res, 200, { key: (await pushKeys(ctx.pool)).publicKey });
+    return;
+  }
+
+  if (path === '/api/push' && method === 'POST') {
+    const body = (await readJson(req)) as {
+      endpoint?: unknown;
+      keys?: { p256dh?: unknown; auth?: unknown };
+      says?: unknown;
+    };
+    const endpoint = typeof body?.endpoint === 'string' ? body.endpoint : '';
+    const p256dh = typeof body?.keys?.p256dh === 'string' ? body.keys.p256dh : '';
+    const auth = typeof body?.keys?.auth === 'string' ? body.keys.auth : '';
+    if (endpoint === '' || p256dh === '' || auth === '') {
+      fail(res, 400, 'bad_subscription', 'dieses Abonnement ist unvollständig');
+      return;
+    }
+    await subscribePush(ctx.pool, {
+      userId,
+      endpoint,
+      p256dh,
+      auth,
+      ...(typeof body.says === 'string' ? { says: body.says.slice(0, 80) } : {}),
+    });
+    json(res, 200, { ok: true });
+    return;
+  }
+
+  if (path === '/api/push' && method === 'DELETE') {
+    const body = (await readJson(req)) as { endpoint?: unknown };
+    if (typeof body?.endpoint === 'string') await unsubscribePush(ctx.pool, body.endpoint);
+    json(res, 200, { ok: true });
     return;
   }
 

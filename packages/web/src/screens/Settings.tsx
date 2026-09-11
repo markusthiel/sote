@@ -56,6 +56,7 @@ import { useEffect, useState } from 'react';
 import { api, ApiError, type SettingsAnswer } from '../api.js';
 import { applyScheme } from '../appearance.js';
 import { OwnColor } from '../components/OwnColor.js';
+import { pushAus, pushEin, pushStand, type PushStand } from '../lib/push.js';
 import { avatarVariant } from '../imageVariant.js';
 
 /**
@@ -311,6 +312,14 @@ export function Settings({
 }) {
   const [data, setData] = useState<SettingsAnswer | undefined>(undefined);
   const [notice, setNotice] = useState<string | undefined>(undefined);
+  /**
+   * Ob dieses Gerät Meldungen bekommt.
+   *
+   * Aus dem BROWSER gelesen und nicht vom Server: er weiss, ob es ein
+   * Abonnement gibt, aber nicht, ob der Browser die Erlaubnis noch hat — die
+   * kann man ihm jederzeit entziehen, ohne dass jemand den Server fragt.
+   */
+  const [pushLage, setPushLage] = useState<PushStand>(() => pushStand());
   const [busy, setBusy] = useState(false);
   const { hatBild, picStand, picBusy, picNotice, bildHoch, bildWeg } = useAvatar(userId);
 
@@ -1078,6 +1087,66 @@ export function Settings({
       {section === 'erinnern' ? (
         <section className="settings-card">
           <h2>Erinnerungen</h2>
+          {/*
+            MELDUNGEN AUF DIESEM GERÄT.
+
+            GEWÜNSCHT: „Wenn ich als App installiere, dass es richtige
+            App-Benachrichtigungen sendet."
+
+            Die Erlaubnis wird auf KNOPFDRUCK gefragt und nie von selbst: ein
+            Browser fragt genau einmal, und wer beim ersten Laden gefragt wird,
+            ohne zu wissen wofür, sagt nein. Danach gibt es keinen zweiten
+            Versuch mehr — ausser in den Einstellungen des Browsers, die
+            niemand findet.
+
+            Je GERÄT und nicht je Konto: der Satz daneben sagt das, weil es
+            sonst aussieht, als hätte man es überall eingeschaltet.
+          */}
+          <div className="settings-row">
+            <span className="settings-row-label">
+              <b>Meldungen auf diesem Gerät</b>
+              <span>
+                Erinnerungen kommen als Benachrichtigung an, auch wenn SOTE zu
+                ist. Gilt für dieses Gerät — an einem zweiten schaltet man es
+                dort ein.
+              </span>
+            </span>
+            <div className="settings-row-value">
+              {pushLage === 'unmöglich' ? (
+                <span className="muted small">Dieser Browser kann das nicht.</span>
+              ) : pushLage === 'verweigert' ? (
+                <span className="muted small">
+                  Der Browser lässt keine zu — das lässt sich nur in seinen
+                  eigenen Einstellungen ändern.
+                </span>
+              ) : pushLage === 'an' ? (
+                <button
+                  type="button"
+                  className="btn quiet small"
+                  disabled={busy}
+                  onClick={() => {
+                    void pushAus().then(() => setPushLage(pushStand()));
+                  }}
+                >
+                  Ausschalten
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="btn small"
+                  disabled={busy}
+                  onClick={() => {
+                    void pushEin().then((r) => {
+                      setPushLage(pushStand());
+                      if (!r.ok && r.sagt !== undefined) setNotice(r.sagt);
+                    });
+                  }}
+                >
+                  Einschalten
+                </button>
+              )}
+            </div>
+          </div>
           <p className="muted">
             <strong>Ein</strong> Brief am Tag, zu deiner Zeit — mit dem, was
             heute anliegt und was überfällig ist. Nicht einer je Aufgabe: dreißig

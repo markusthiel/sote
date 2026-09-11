@@ -29,6 +29,7 @@ import type { Pool } from 'pg';
 import { queryRows, withTransaction } from './db.js';
 import { handle } from './jobs.js';
 import { enqueue } from './jobs.js';
+import { pushTo } from './push.js';
 import { mailConfig } from './mail.js';
 
 /** Wie oft der Bearbeiter nachsieht. */
@@ -129,6 +130,8 @@ export async function removeReminder(
 
 interface DueRow {
   id: string;
+  user_id: string;
+  task_id: string;
   offset_minutes: number | null;
   at: Date | null;
   sent_at: Date | null;
@@ -151,9 +154,9 @@ export async function sendTaskReminders(pool: Pool, now = new Date()): Promise<v
   const base = process.env['SOTE_BASE_URL'];
   const rows = await queryRows<DueRow>(
     pool,
-    `SELECT tr.id, tr.offset_minutes, tr.at, tr.sent_at,
+    `SELECT tr.id, tr.task_id, tr.offset_minutes, tr.at, tr.sent_at,
             t.planned_at, t.title,
-            u.email, u.display_name,
+            tr.user_id, u.email, u.display_name,
             -- Die Zone der Person, abgesehen bei der Tagesmail und nicht
             -- erfunden: mein erster Anlauf fragte s.value und s.key, die es
             -- beide nicht gibt. (Und KEINE Backticks in diesem Kommentar --
@@ -180,13 +183,14 @@ export async function sendTaskReminders(pool: Pool, now = new Date()): Promise<v
      * `sent_at IS NULL` als Bedingung: läuft der Bearbeiter zweimal
      * gleichzeitig, gewinnt einer und der andere sieht `rowCount === 0`.
      */
+    let wann = '';
     await withTransaction(pool, async (client) => {
       const res = await client.query(
         'UPDATE task_reminders SET sent_at = now() WHERE id = $1 AND sent_at IS NULL',
         [row.id],
       );
       if (res.rowCount === 0) return;
-      const wann = describeTaskReminder(reminder, row.zone ?? undefined);
+      wann = describeTaskReminder(reminder, row.zone ?? undefined);
       await client.query(`INSERT INTO jobs (kind, payload) VALUES ('mail.send', $1)`, [
         {
           to: row.email,
@@ -205,6 +209,35 @@ export async function sendTaskReminders(pool: Pool, now = new Date()): Promise<v
         },
       ]);
     });
+
+    /*
+     * UND DIE MELDUNG AUFS GERÄT.
+     *
+     * GEWÜNSCHT: „Wenn ich als App installiere, dass es richtige
+     * App-Benachrichtigungen sendet."
+     *
+     * NACH der Transaktion und nicht darin, und das ist die wichtige
+     * Entscheidung: die Quittung (`sent_at`) und die Mail gehören zusammen —
+     * eine Erinnerung darf nicht zweimal verschickt werden. Eine Meldung, die
+     * nicht zugestellt werden kann, darf diese Quittung aber nicht
+     * zurückrollen; sonst hinge eine bereits eingestellte Mail an einem
+     * Zustelldienst, der gerade nicht erreichbar ist.
+     *
+     * Also: Quittung und Mail sicher, Meldung als Zugabe. Sie ist das
+     * schnellere, aber nicht das verlässliche von beiden.
+     */
+    try {
+      await pushTo(pool, row.user_id, {
+        title: row.title,
+        ...(reminder.kind === 'before' ? { body: wann } : {}),
+        url: `/a/${row.task_id}`,
+        /* Zwei Erinnerungen an dieselbe Aufgabe ersetzen einander, statt sich
+           zu stapeln. */
+        tag: `task:${row.task_id}`,
+      });
+    } catch {
+      // Eine Meldung ist eine Zugabe. Die Erinnerung ist raus.
+    }
   }
 
   // Der nächste Durchgang steht im Auftrag selbst — ein Ort, an dem steht, wie

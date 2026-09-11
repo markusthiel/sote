@@ -606,6 +606,15 @@ export const api = {
       tasks: (Task & { workspaceId: string })[];
       workspaces: { id: string; name: string; icon?: unknown }[];
     }>(withZone(`/api/across?view=${view}`)),
+  /** Der öffentliche Schlüssel dieser Instanz — für das Abonnement im Browser. */
+  pushKey: () => call<{ key: string }>('/api/push/key'),
+  pushSubscribe: (abo: {
+    endpoint: string;
+    keys: { p256dh: string; auth: string };
+    says?: string;
+  }) => call<{ ok: true }>('/api/push', { method: 'POST', body: JSON.stringify(abo) }),
+  pushUnsubscribe: (endpoint: string) =>
+    call<{ ok: true }>('/api/push', { method: 'DELETE', body: JSON.stringify({ endpoint }) }),
   labels: (workspace?: string) =>
     call<{
       labels: { id: string; name: string; tasks: number; color: string | null }[];
