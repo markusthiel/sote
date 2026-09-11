@@ -10,6 +10,8 @@
 
 import { formatDuration } from '@sote/core';
 
+import type { ListView } from '@sote/core';
+
 import type { Task } from '../api.js';
 import { MARKS } from './marks.js';
 import { isOverdue, whenLabel } from '../dates.js';
@@ -27,6 +29,7 @@ export function TaskRow({
   onOpenMenu,
   onOpen,
   onLabel,
+  view,
 }: {
   task: Task;
   now: Date;
@@ -51,7 +54,20 @@ export function TaskRow({
    * Knopf, der nichts tut, ist schlechter als eine Auskunft.
    */
   onLabel?: ((name: string) => void) | undefined;
+  /**
+   * Wie dicht gezeichnet wird (Migration 0028).
+   *
+   * Die Zeile entscheidet das NICHT selbst und liest auch keine Einstellung:
+   * sie bekommt ein Wort. Sonst hätte jede Stelle, die eine Aufgabenzeile
+   * zeichnet — Liste, Suche, später die Tafel —, ihre eigene Auflösung von
+   * „was gilt hier", und drei Auflösungen sind drei Gelegenheiten, sich zu
+   * unterscheiden.
+   *
+   * Fehlt es, gilt `full`: das war der Stand, bevor es die Einstellung gab.
+   */
+  view?: ListView | undefined;
 }) {
+  const form: ListView = view ?? 'full';
   const done = task.completed !== null;
   const planned = task.planned === null ? null : new Date(task.planned);
   const due = task.due === null ? null : new Date(task.due);
@@ -59,6 +75,7 @@ export function TaskRow({
   return (
     <div
       className="task"
+      data-view={form}
       data-done={done}
       data-pending={pending === true}
       data-open={open === true}
@@ -96,6 +113,17 @@ export function TaskRow({
             {task.title}
           </button>
         )}
+        {/*
+          Die Beiwerkzeile — in `plain` gar nicht erst gezeichnet.
+
+          NICHT per CSS versteckt: was nicht dasteht, kostet auch kein
+          Zeichnen, und eine Liste mit dreihundert Zeilen zeichnet dann
+          dreihundert Zeilen weniger. Vor allem aber liest ein Vorleseprogramm
+          nichts vor, was `display: none` trägt — aber es läge trotzdem im
+          Baum, und die Prüfung „ist die zweite Zeile weg" würde behaupten, sie
+          sei da.
+        */}
+        {form === 'plain' ? null : (
         <div className="task-meta">
           {planned !== null ? (
             <span className={isOverdue(planned, now) ? 'when late' : 'when'}>
@@ -175,6 +203,21 @@ export function TaskRow({
             </span>
           ) : null}
         </div>
+        )}
+        {/*
+          Der Anfang der Notiz — nur in `cards`.
+
+          Zwei Zeilen und dann Schluss (per CSS): eine Karte soll einen
+          Eindruck geben, nicht den Text ersetzen. Wer die ganze Notiz will,
+          öffnet die Aufgabe — sonst wäre die Liste ein zweiter Ort, an dem
+          derselbe Text steht, nur unvollständig.
+
+          Und nur, wenn wirklich etwas drinsteht: ein leeres Kästchen unter
+          jedem Titel wäre Luft, die aussieht wie ein Fehler.
+        */}
+        {form === 'cards' && task.note.trim() !== '' ? (
+          <div className="task-note">{task.note.trim()}</div>
+        ) : null}
         {error !== undefined ? <div className="task-error">{error}</div> : null}
       </div>
 

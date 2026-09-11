@@ -12,7 +12,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 
-import type { Landing, Look } from '@sote/core';
+import type { Landing, ListView, Look } from '@sote/core';
 
 import { api, ApiError, type Me, type Project } from './api.js';
 import { useLook, useScheme } from './appearance.js';
@@ -24,7 +24,7 @@ import { ProjectTree } from './components/ProjectTree.js';
 import { TopBar } from './components/TopBar.js';
 import { WorkspaceMenu } from './components/WorkspaceMenu.js';
 import { modeOf, type ModeId } from './modes.js';
-import { modeOfRoute, parseRoute, pathOf, type Route } from './route.js';
+import { modeOfRoute, parseRoute, pathOf, viewOf, type Route } from './route.js';
 import { Setup } from './screens/Setup.js';
 import { SignIn } from './screens/SignIn.js';
 import { TaskList } from './screens/TaskList.js';
@@ -346,6 +346,20 @@ export function App() {
    */
   const [scheme, setScheme] = useState<'system' | 'light' | 'dark' | undefined>(undefined);
   const [look, setLook] = useState<Look | undefined>(undefined);
+  /**
+   * Die Vorgabe des Arbeitsbereichs für die Anzeigeform, und die Abweichungen
+   * dieser Person.
+   *
+   * BEIDES HIER und nicht in der Liste: die Wahl gilt auch in der Suche und
+   * später auf der Tafel. Drei Stellen, die dieselbe Einstellung laden, sind
+   * drei Ladezeiten — und in jeder davon zeichnet die Liste einen Moment lang
+   * die falsche Form, bevor die Antwort kommt.
+   */
+  const [workspaceListView, setWorkspaceListView] = useState<ListView | undefined>(undefined);
+  const [listViews, setListViews] = useState<{
+    projects: Record<string, string>;
+    places: Record<string, string>;
+  }>({ projects: {}, places: {} });
   const [landing, setLanding] = useState<Landing>({ kind: 'today' });
   /*
    * Die Hülle als Element, damit `useLook` Attribute daran setzen kann.
@@ -380,10 +394,23 @@ export function App() {
          * Landeseite zu schicken, macht jeden geteilten Link unbrauchbar.
          */
         setLanding(s.effective.landing);
+        setWorkspaceListView(s.effective.listView);
         if (window.location.pathname === '/') go(landingRoute(s.effective.landing, projects));
       })
       .catch(() => undefined);
   }, [me, workspace]);
+  /* Die Abweichungen dieser Person, einmal je Arbeitsbereich. */
+  useEffect(() => {
+    if (me === undefined) return;
+    void api
+      .listViews(workspace)
+      .then(setListViews)
+      // Still: ohne Antwort gilt die Vorgabe, und das ist die richtige
+      // Rückfallebene. Eine Fehlermeldung über eine Anzeigeform wäre lauter
+      // als die Sache ist.
+      .catch(() => undefined);
+  }, [me, workspace]);
+
   useScheme(scheme);
   useLook(look, shell);
 
@@ -969,6 +996,44 @@ export function App() {
             openTask={openTask}
             onOpenTask={setOpenTask}
             onLabel={(name) => go({ kind: 'search', q: `@${name}` })}
+            listView={
+              /*
+               * Welcher Ort gerade gemeint ist: eine Liste hat eine Id, Heute
+               * ein Wort. Dieselbe Zweiteilung wie in der Tabelle — und sie
+               * steht hier, weil nur hier bekannt ist, welche Route offen ist.
+               */
+              (route.kind === 'project'
+                ? listViews.projects[route.projectId]
+                : listViews.places[viewOf(route)]) as ListView | undefined
+            }
+            workspaceListView={workspaceListView}
+            onListView={(display) => {
+              const wo =
+                route.kind === 'project'
+                  ? { projectId: route.projectId }
+                  : { place: viewOf(route) };
+              /*
+               * Sofort im Bild und dann erst geschrieben.
+               *
+               * Eine Anzeigeform, die erst nach der Antwort des Servers
+               * umschaltet, fühlt sich kaputt an — sie ist die einzige
+               * Einstellung, deren Wirkung man unmittelbar sieht. Scheitert
+               * das Schreiben, holt der nächste Ladevorgang den alten Stand
+               * zurück; verloren ist dann eine Wahl, die einen Klick kostet.
+               */
+              setListViews((was) => {
+                const raus = (karte: Record<string, string>, schluessel: string) => {
+                  const naechste = { ...karte };
+                  if (display === null) delete naechste[schluessel];
+                  else naechste[schluessel] = display;
+                  return naechste;
+                };
+                return route.kind === 'project'
+                  ? { ...was, projects: raus(was.projects, route.projectId) }
+                  : { ...was, places: raus(was.places, viewOf(route)) };
+              });
+              void api.setListView({ ...wo, display }, workspace).catch(() => undefined);
+            }}
           />
         ) : route.kind === 'search' ? (
           <Search

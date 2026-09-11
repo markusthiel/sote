@@ -36,6 +36,7 @@
  */
 
 import { readLanding, type Landing } from './landing.js';
+import { isListView, type ListView } from './listView.js';
 import { readReminders, type Reminders } from './reminders.js';
 import { readLook, type Look } from './theme.js';
 import { isZone } from '../time/zone.js';
@@ -91,6 +92,18 @@ export interface Settings {
    * ausschließlich die Personen-Zeile.
    */
   readonly reminders?: Reminders;
+  /**
+   * Die Vorgabe, wie dicht Listen gezeichnet werden.
+   *
+   * Auf Arbeitsbereichs- und Instanzebene sinnvoll: sie gilt für alles, wozu
+   * eine Person nichts gesagt hat — auch für Heute und den Posteingang, die
+   * keine Liste sind und darum keine eigene Zeile haben können.
+   *
+   * Wo jemand abweicht, steht in `list_views` (Migration 0028) und nicht hier:
+   * eine Wahl je Person UND Ort in ein JSON-Feld zu legen hieße, eine Karte zu
+   * führen, die bei jeder gelöschten Liste eine Waise behält.
+   */
+  readonly listView?: ListView;
 }
 
 /** Liest, was in der Datenbank steht — und lässt weg, was keinen Sinn ergibt. */
@@ -102,12 +115,14 @@ export function readSettings(value: unknown): Settings {
   const look = readLook(raw['look']);
   const landing = readLanding(raw['landing']);
   const reminders = readReminders(raw['reminders']);
+  const listView = isListView(raw['listView']) ? raw['listView'] : undefined;
   return {
     ...(scheme === undefined ? {} : { scheme }),
     ...(zone === undefined ? {} : { zone }),
     ...(Object.keys(look).length === 0 ? {} : { look }),
     ...(landing === undefined ? {} : { landing }),
     ...(reminders === undefined ? {} : { reminders }),
+    ...(listView === undefined ? {} : { listView }),
   };
 }
 

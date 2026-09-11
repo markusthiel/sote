@@ -1022,6 +1022,43 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex]:focus-vi
   border-color: var(--danger);
 }
 
+/* ── Die drei Anzeigeformen (Migration 0028) ───────────────────────────────
+ *
+ * Was sie NICHT tun: die Beiwerkzeile verstecken. Die zeichnet `plain` gar
+ * nicht erst — was nicht dasteht, kostet kein Zeichnen und wird von keinem
+ * Vorleseprogramm gefunden. Hier steht nur, was sich am Maß ändert.
+ */
+
+/* Schmal: die Zeile ist nur noch ein Titel, also darf sie flacher sein. Nicht
+   flacher als die Tippfläche (44 px auf dem Telefon) — eine dichte Liste, die
+   man nicht mehr trifft, ist keine Verbesserung. */
+.task[data-view="plain"] {
+  padding-block: var(--sone-space-1);
+}
+
+/* Karten: Luft, ein eigener Grund und ein Rand. Erst beides zusammen macht
+   aus einer Zeile eine Karte — Luft allein liest sich als Fehler im Abstand. */
+.task[data-view="cards"] {
+  padding: var(--sone-space-3) var(--sone-space-4);
+  border: 1px solid var(--line);
+  border-radius: var(--sote-radius-md);
+  background: var(--surface);
+  margin-block-end: var(--sone-space-2);
+}
+
+/* Der Anfang der Notiz, zwei Zeilen und dann Schluss.
+   Eine Karte gibt einen Eindruck; wer den Text will, öffnet die Aufgabe. */
+.task-note {
+  margin-block-start: var(--sone-space-1);
+  color: var(--text-muted);
+  font-size: var(--sone-text-sm);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+}
+
 /* Was an der Aufgabe hängt.
    
    Eine eigene Gruppe mit engerem Abstand als die Beiwerkzeile sonst: sieben
@@ -3304,6 +3341,39 @@ select.target { }
   font: inherit;
   font-size: 12px;
   cursor: pointer;
+}
+
+/*
+ * Die Anzeigeformen als Reihe unter dem Erledigte-Schalter.
+ *
+ * Sichtbar und nicht in einem Klappmenü: drei kurze Wörter passen
+ * nebeneinander, und eine Wahl, die dasteht, beantwortet „wie steht das
+ * gerade" ohne einen Klick.
+ *
+ * Die Knöpfe darin geben `position: absolute` wieder ab — sie erben die
+ * Klasse `head-toggle` wegen des Aussehens, und drei absolut gesetzte Knöpfe
+ * lägen alle drei an derselben Stelle.
+ */
+.head-views {
+  position: absolute;
+  top: 46px;
+  right: 18px;
+  display: flex;
+  gap: var(--sone-space-1);
+}
+
+.head-views .head-toggle {
+  position: static;
+  top: auto;
+  right: auto;
+}
+
+/* Die gewählte Form trägt den Akzent — sonst sind es drei gleich aussehende
+   Knöpfe und keine Auswahl. */
+.head-toggle[aria-pressed="true"] {
+  border-color: var(--accent-line);
+  color: var(--accent-text);
+  background: var(--accent-quiet);
 }
 
 .head-toggle:hover {

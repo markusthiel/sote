@@ -11,7 +11,13 @@
  * dort zu ziehen, würde einen Schlüssel setzen, den niemand sieht.
  */
 
-import { formatDuration } from '@sote/core';
+import {
+  formatDuration,
+  LIST_VIEWS,
+  LIST_VIEW_SAYS,
+  resolveListView,
+  type ListView,
+} from '@sote/core';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
@@ -48,6 +54,9 @@ export function TaskList({
   openTask,
   onOpenTask,
   onLabel,
+  listView,
+  workspaceListView,
+  onListView,
 }: {
   route: Route;
   workspace: string | undefined;
@@ -58,6 +67,17 @@ export function TaskList({
   onOpenTask: (id: string | null) => void;
   /** Ein Klick auf ein Schlagwort — führt in die Suche. */
   onLabel: (name: string) => void;
+  /**
+   * Was diese Person hier gewählt hat, und was der Arbeitsbereich vorgibt.
+   *
+   * Beides kommt von oben und wird nicht hier geholt: die Wahl gilt auch in
+   * der Suche und später auf der Tafel, und drei Stellen, die dieselbe
+   * Einstellung laden, sind drei Ladezeiten und drei Gelegenheiten,
+   * verschiedene Antworten zu zeigen.
+   */
+  listView: ListView | undefined;
+  workspaceListView: ListView | undefined;
+  onListView: (display: ListView | null) => void;
 }) {
   const view = viewOf(route);
   const projectId = route.kind === 'project' ? route.projectId : undefined;
@@ -346,6 +366,9 @@ export function TaskList({
     },
   });
 
+  /** Was hier tatsächlich gilt — Person vor Arbeitsbereich, dann `full`. */
+  const form = resolveListView(listView, workspaceListView);
+
   const title =
     route.kind === 'project' ? (project?.name ?? 'Projekt') : (TITLES[view] ?? 'Aufgaben');
   const count = overdue.length + rows.filter((r) => r.completed === null).length;
@@ -430,6 +453,7 @@ export function TaskList({
       >
         <TaskRow
           task={task}
+          view={form}
           open={openTask === task.id}
           onLabel={onLabel}
           onOpen={() => onOpenTask(openTask === task.id ? null : task.id)}
@@ -475,6 +499,41 @@ export function TaskList({
         >
           {showDone ? 'Erledigte ausblenden' : 'Erledigte einblenden'}
         </button>
+        {/*
+          Die Anzeigeform, als Reihe und nicht als Klappmenü.
+
+          Drei Wörter passen nebeneinander, und eine Wahl, die man SIEHT,
+          beantwortet die Frage „wie steht das gerade" ohne einen Klick. Ein
+          Menü verstecken müsste man erst öffnen, um zu wissen, was gilt.
+
+          Die Wahl gehört der Person und diesem Ort (Migration 0028): sie
+          ändert nichts, was ein anderer sieht. Darum steht sie hier im Kopf
+          der Liste und nicht in den Einstellungen des Arbeitsbereichs — dort
+          liegt nur die Vorgabe.
+        */}
+        <div className="head-views" role="group" aria-label="Anzeige">
+          {LIST_VIEWS.map((wahl) => (
+            <button
+              key={wahl}
+              type="button"
+              className="head-toggle"
+              aria-pressed={form === wahl}
+              title={LIST_VIEW_SAYS[wahl].says}
+              onClick={() =>
+                /*
+                 * Nochmal auf dasselbe drücken nimmt die Wahl ZURÜCK, statt
+                 * sie erneut zu setzen. Damit gibt es einen Weg zu „wie der
+                 * Arbeitsbereich sagt" — ohne ihn wäre die Vorgabe nach der
+                 * ersten Wahl für diese Liste für immer unerreichbar, und das
+                 * merkt man erst, wenn der Bereich sie ändert.
+                 */
+                onListView(listView === wahl ? null : wahl)
+              }
+            >
+              {LIST_VIEW_SAYS[wahl].name}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/*

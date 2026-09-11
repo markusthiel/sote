@@ -37,6 +37,8 @@ import {
   resolveLook,
   themeFile,
   resolveSettings,
+  LIST_VIEWS,
+  LIST_VIEW_SAYS,
   SCHEMES,
   SURFACES,
   TREATMENTS,
@@ -1019,6 +1021,49 @@ export function Settings({
               haben.
             </p>
             {schemeRow('workspace', data.levels.workspace.scheme, 'Wie die Instanz')}
+            {/*
+              Die VORGABE für die Anzeigeform — nicht die Wahl.
+
+              Wo jemand abweicht, stellt er im Kopf der Liste selbst ein, und
+              das gehört ihm allein (Migration 0028): „jeder sollte die Liste
+              so anzeigen können wie er möchte". Hier steht, was gilt, solange
+              niemand etwas gesagt hat — auch für Heute und den Posteingang,
+              die keine Liste sind und darum keine eigene Wahl haben können.
+            */}
+            <div className="settings-row">
+              <span className="settings-row-label">
+                <b>Listen zeigen</b>
+                <span>
+                  Vorgabe für alle. Wer eine Liste anders sehen will, stellt
+                  das im Kopf der Liste ein — das gilt dann nur für ihn.
+                </span>
+              </span>
+              <div className="settings-row-value">
+                <div className="pick">
+                  {LIST_VIEWS.map((wahl) => (
+                    <button
+                      key={wahl}
+                      type="button"
+                      className="btn quiet small"
+                      aria-pressed={data.levels.workspace.listView === wahl}
+                      title={LIST_VIEW_SAYS[wahl].says}
+                      disabled={busy}
+                      onClick={() =>
+                        void save('workspace', {
+                          // Nochmal dasselbe nimmt die Vorgabe zurück — dann
+                          // gilt wieder die der Instanz. Ohne diesen Weg wäre
+                          // „nichts vorgeben" nach der ersten Wahl für immer
+                          // unerreichbar.
+                          listView: data.levels.workspace.listView === wahl ? null : wahl,
+                        })
+                      }
+                    >
+                      {LIST_VIEW_SAYS[wahl].name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
           </section>
           {lookCard('workspace', data.levels.workspace.look ?? {})}
           {typeCard('workspace', data.levels.workspace.look ?? {})}

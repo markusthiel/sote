@@ -11,6 +11,7 @@ export * from './task/quickAdd.js';
 export * from './task/query.js';
 export * from './time/zone.js';
 export * from './look/color.js';
+export * from './look/listView.js';
 export * from './look/settings.js';
 export * from './look/theme.js';
 export * from './look/contrast.js';

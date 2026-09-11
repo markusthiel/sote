@@ -128,7 +128,7 @@ export interface Task {
 }
 
 /** Was gilt, und wer was gesagt hat — beides in einer Antwort. */
-import type { Landing, Look, Right } from '@sote/core';
+import type { Landing, ListView, Look, Right } from '@sote/core';
 
 interface Level {
   scheme?: 'system' | 'light' | 'dark';
@@ -137,6 +137,13 @@ interface Level {
   landing?: Landing;
   /** Wann eine Erinnerung kommt — nur auf der Personen-Ebene sinnvoll. */
   reminders?: { at: string };
+  /**
+   * Die Vorgabe für die Anzeigeform — auf Arbeitsbereichs- und Instanzebene.
+   *
+   * Was eine Person je Liste wählt, steht nicht hier: das hängt an Person UND
+   * Ort und hätte auf einer Ebene keinen Platz (Migration 0028).
+   */
+  listView?: ListView;
 }
 
 export interface SettingsAnswer {
@@ -154,6 +161,13 @@ export interface SettingsAnswer {
     look?: Look;
     /** Wo eine Sitzung aufgeht — Person schlägt Arbeitsbereich (ADR-0032). */
     landing: Landing;
+    /**
+     * Die Vorgabe für die Anzeigeform, Arbeitsbereich über Instanz.
+     *
+     * Was eine Person je Liste gewählt hat, steht woanders (`listViews`) und
+     * schlägt diese hier — aufgelöst wird in der Liste, wo beides vorliegt.
+     */
+    listView?: ListView | undefined;
   };
   levels: {
     instance: Level;
@@ -425,6 +439,26 @@ export const api = {
    * `possible` sagt, ob die Instanz überhaupt Links ausgeben kann (sie braucht
    * `SOTE_SHARE_KEY`) — sonst stünde dort ein Knopf, der nichts tut.
    */
+  /**
+   * Wo diese Person von der Vorgabe abweicht — je Liste und je fester Ansicht.
+   *
+   * Nur die Abweichungen: wer nirgends etwas gewählt hat, bekommt zwei leere
+   * Karten. Was dann gilt, entscheidet `resolveListView` im Kern.
+   */
+  listViews: (workspace?: string) =>
+    call<{
+      projects: Record<string, string>;
+      places: Record<string, string>;
+    }>(`/api/list-views${workspace === undefined ? '' : `?workspace=${workspace}`}`),
+  /** Eine Wahl setzen; `display: null` nimmt sie zurück. */
+  setListView: (
+    body: { projectId?: string; place?: string; display: string | null },
+    workspace?: string,
+  ) =>
+    call<{ ok: true }>(
+      `/api/list-views${workspace === undefined ? '' : `?workspace=${workspace}`}`,
+      { method: 'PUT', body: JSON.stringify(body) },
+    ),
   calendar: (workspace?: string) =>
     call<{
       possible: boolean;

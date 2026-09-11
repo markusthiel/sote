@@ -104,6 +104,7 @@ import {
   revokeFeed,
 } from './calendar.js';
 import { LabelTrouble, labelsOfWorkspace, removeLabel, renameLabel } from './labels.js';
+import { listViewsOf, setListView, ViewTrouble } from './listViews.js';
 import { counts, list, splitOverdue, type ViewId } from './views.js';
 
 const COOKIE = 'sote_session';
@@ -1235,6 +1236,43 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
     } catch (e) {
       if (e instanceof NoCalendar) {
         fail(res, 409, 'no_calendar', e.message);
+        return;
+      }
+      throw e;
+    }
+  }
+
+  /*
+   * ── Wie dicht eine Liste gezeichnet wird ─────────────────────────────────
+   *
+   * Die Wahl gehört der PERSON und dem Ort zusammen, darum kein Recht: sie
+   * ändert nichts, was ein anderer sieht. Die Vorgabe des Arbeitsbereichs
+   * liegt bei den Einstellungen und wird dort auch bewacht.
+   */
+  if (path === '/api/list-views' && method === 'GET') {
+    json(res, 200, await listViewsOf(ctx.pool, workspaceId, userId));
+    return;
+  }
+
+  if (path === '/api/list-views' && method === 'PUT') {
+    const body = (await readJson(req)) as Record<string, unknown>;
+    try {
+      await setListView(ctx.pool, {
+        workspaceId,
+        userId,
+        ...(typeof body?.['projectId'] === 'string'
+          ? { projectId: body['projectId'] }
+          : {}),
+        ...(typeof body?.['place'] === 'string' ? { place: body['place'] } : {}),
+        // `null` heißt „wie der Arbeitsbereich sagt" und ist eine eigene
+        // Antwort — nicht dasselbe wie „voll".
+        display: body?.['display'] === null ? null : (body?.['display'] as never),
+      });
+      json(res, 200, { ok: true });
+      return;
+    } catch (e) {
+      if (e instanceof ViewTrouble) {
+        fail(res, 409, 'view_trouble', e.message);
         return;
       }
       throw e;

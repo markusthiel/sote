@@ -33,6 +33,7 @@ import {
   type Right,
   type Settings,
 } from '@sote/core';
+import type { ListView } from '@sote/core';
 import type { Pool } from 'pg';
 
 import { queryOne, queryRows, withTransaction, type PoolClient } from './db.js';
@@ -196,6 +197,7 @@ export async function effectiveFor(
   effective: ReturnType<typeof resolveSettings> & {
     look: ReturnType<typeof resolveLook>;
     landing: ReturnType<typeof resolveLanding>;
+    listView: ListView | undefined;
   };
   levels: { instance: Settings; workspace: Settings; user: Settings };
 }> {
@@ -216,6 +218,18 @@ export async function effectiveFor(
        * „wo du landest" ist keine Servereinstellung.
        */
       landing: resolveLanding(levels.user.landing, levels.workspace.landing),
+      /*
+       * Die VORGABE für die Anzeigeform, Arbeitsbereich über Instanz — wie
+       * beim Aussehen und aus demselben Grund: sie gilt für alle, die nichts
+       * gewählt haben.
+       *
+       * Die Person kommt hier nicht vor, obwohl ihre Wahl gewinnt. Die steht
+       * nämlich nicht je Person, sondern je Person UND Ort (`list_views`),
+       * und eine Antwort „für den ganzen Bereich" gäbe es dafür gar nicht.
+       * Aufgelöst wird erst dort, wo beide Angaben zusammenkommen: in der
+       * Liste.
+       */
+      listView: levels.workspace.listView ?? levels.instance.listView,
     },
     levels,
   };
