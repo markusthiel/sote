@@ -2716,6 +2716,25 @@ select.target { }
   margin-top: 0;
 }
 
+/*
+ * Der Satz an der Stelle, an der sonst das Feld stünde.
+ *
+ * Gemeldet: „Die Seitenleiste lässt mich auch bei Unteraufgaben Unteraufgaben
+ * hinzufügen. Das klappt dann zwar nicht, sollte aber hier ausgegraut werden."
+ *
+ * Ein Satz statt eines gesperrten Feldes: ein graues Eingabefeld sagt „gerade
+ * nicht", ein Satz sagt, warum — und hier ist das Warum eine Regel und kein
+ * Zustand. Er nimmt denselben Platz ein, damit die Spalte nicht springt, wenn
+ * man zwischen einer Aufgabe und ihrer Teilaufgabe hin und her sieht.
+ */
+.child-hint {
+  margin: 0;
+  padding: var(--sone-space-3) 0;
+  color: var(--text-faint);
+  font-size: var(--sone-text-xs);
+  line-height: 1.5;
+}
+
 .child.add {
   border-bottom: 0;
   color: var(--text-faint);

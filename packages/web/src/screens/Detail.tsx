@@ -1002,7 +1002,37 @@ export function Detail({
                   ) : null}
                 </div>
               ))}
-              {!darfSchreiben ? null : (
+              {/*
+                KEINE TEILAUFGABE AN EINER TEILAUFGABE.
+
+                GEMELDET: „Die Seitenleiste lässt mich auch bei Unteraufgaben
+                Unteraufgaben hinzufügen. Das klappt dann zwar nicht, sollte
+                aber hier ausgegraut werden oder so."
+
+                Es gibt eine Ebene (Migration 0028 und die Prüfung in `move`),
+                und der Server hat das auch abgelehnt — nur eben erst NACH dem
+                Tippen. Ein Feld, das eine Zeile entgegennimmt und sie dann
+                verwirft, ist schlechter als eines, das gar nichts verspricht.
+
+                GESPERRT und nicht weggelassen, und hier ist das der
+                Unterschied: bei „Teilen" an einem Ordner gibt es die Sache
+                nicht, hier gibt es sie — nur eine Ebene höher. Ein sichtbar
+                gesperrtes Feld mit einem Satz daneben beantwortet die Frage
+                „warum geht das hier nicht", ein fehlendes lässt sie offen.
+                Dieselbe Überlegung wie an den Pfeilen im Projektmenü.
+              */}
+              {/*
+                Ist das hier selbst eine Teilaufgabe? Dann gibt es darunter
+                keine weitere Ebene — die Regel steht im Server (`move` weist
+                es ab), und die Oberfläche soll sie zeigen, statt sie
+                herausfinden zu lassen.
+              */}
+              {!darfSchreiben ? null : data.task.parentId !== null ? (
+                <p className="child-hint">
+                  Teilaufgaben gibt es eine Ebene tief. Diese Aufgabe ist selbst
+                  eine — für mehr Tiefe sind die Ordner da.
+                </p>
+              ) : (
               <div className="child add">
                 <span className="plus" aria-hidden="true">
                   +
