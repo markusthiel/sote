@@ -16,6 +16,7 @@ import {
   LIST_VIEWS,
   LIST_VIEW_SAYS,
   resolveListView,
+  resolveTaskLook,
   type ListView,
 } from '@sote/core';
 
@@ -152,6 +153,32 @@ export function TaskList({
    * über die Liste zieht, soll keine Zeile aufleuchten lassen.
    */
   const [dateiUeber, setDateiUeber] = useState<string | null>(null);
+  /**
+   * Die Farben der Schlagwörter, nach Namen.
+   *
+   * Einmal je Arbeitsbereich geholt und nicht je Aufgabe: eine Zeile trägt
+   * Schlagwort-NAMEN, und die Farbe hängt am Schlagwort. Sie an jeder Aufgabe
+   * mitzuschicken wäre dieselbe Karte, dreissigmal.
+   */
+  const [farbenNachName, setFarben] = useState<ReadonlyMap<string, string>>(new Map());
+
+  useEffect(() => {
+    if (workspace === undefined) return;
+    void api
+      .labels(workspace)
+      .then((out) =>
+        setFarben(
+          new Map(
+            out.labels
+              .filter((l) => l.color !== null)
+              .map((l) => [l.name.toLowerCase(), l.color!] as const),
+          ),
+        ),
+      )
+      // Ohne Antwort bleiben die Aufgaben ungefärbt — das ist die richtige
+      // Rückfallebene und keine Meldung wert.
+      .catch(() => undefined);
+  }, [workspace]);
   const [dateiLaedt, setDateiLaedt] = useState<{
     id: string;
     nr: number;
@@ -268,6 +295,30 @@ export function TaskList({
     // Zwei Ebenen reichen: „Ordner ▸ Projekt". Der ganze Pfad in einer Zeile,
     // die vor allem die Aufgabe zeigen soll, wäre mehr Weg als Ziel.
     return teile.slice(-2).join(' ▸ ');
+  };
+
+  /**
+   * Das Aussehen einer Aufgabe, aus drei Ebenen.
+   *
+   * HIER und nicht in der Zeile: nur die Liste kennt das Projekt und die
+   * Farben der Schlagwörter. Die Zeile bekommt das Ergebnis und rechnet
+   * nichts.
+   */
+  const aussehenVon = (task: Task) => {
+    const projekt = projects.find((p) => p.id === task.projectId);
+    return resolveTaskLook(
+      task.look ?? {},
+      task.labels
+        .map((name) => farbenNachName.get(name.toLowerCase()))
+        .filter((c): c is string => c !== undefined)
+        .map((color) => ({ color })),
+      {
+        ...(projekt?.icon?.icon === undefined ? {} : { icon: projekt.icon.icon }),
+        ...(projekt?.color === undefined || projekt.color === null
+          ? {}
+          : { color: projekt.color }),
+      },
+    );
   };
 
   const errorOf = (id: string) => pending.find((p) => p.id === id)?.error;
@@ -798,6 +849,7 @@ export function TaskList({
           <TaskRow
             task={task}
             view={form}
+            look={aussehenVon(task)}
             open={openTask === task.id}
             onLabel={onLabel}
             onOpen={() => onOpenTask(openTask === task.id ? null : task.id)}
@@ -1012,6 +1064,7 @@ export function TaskList({
             onOpenTask={onOpenTask}
             onAdd={(line, columnId) => void addTo(line, columnId)}
             onFiles={(taskId, files) => void dateienAn(taskId, files)}
+            look={aussehenVon}
             onChanged={() => {
               void load();
               onChanged();

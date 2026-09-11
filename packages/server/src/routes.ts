@@ -8,7 +8,7 @@
 
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 
-import { AVATAR_MAX_BYTES, isAvatarType, describe as describeRecurrence, isListLevel, isZone, readIcon, readTaskCover, isInlineSafe } from '@sote/core';
+import { AVATAR_MAX_BYTES, isAvatarType, describe as describeRecurrence, isListLevel, isZone, readIcon, readTaskCover, readTaskLook, isInlineSafe } from '@sote/core';
 import type { Pool } from 'pg';
 
 import { openSession, signIn, signOut, userOfToken } from './auth.js';
@@ -111,7 +111,7 @@ import {
   removeColumn,
   updateColumn,
 } from './board.js';
-import { LabelTrouble, labelsOfWorkspace, removeLabel, renameLabel } from './labels.js';
+import { colorLabel, LabelTrouble, labelsOfWorkspace, removeLabel, renameLabel } from './labels.js';
 import { listViewsOf, setListView, ViewTrouble } from './listViews.js';
 import { childrenOf, counts, list, splitOverdue, type ViewId } from './views.js';
 
@@ -160,6 +160,10 @@ function readPatch(body: Record<string, unknown>): import('./tasks.js').Patch {
    */
   if ('cover' in body) {
     out['cover'] = body['cover'] ?? null;
+  }
+  /* Das Aussehen: roh weitergereicht, geprüft wird in `patch`. */
+  if ('look' in body) {
+    out['look'] = body['look'] ?? null;
   }
   /*
    * Wiederholung: `null` nimmt sie weg, sonst eine der zwei Formen.
@@ -308,6 +312,7 @@ function taskView(row: TaskRow) {
     marks: row.marks,
     columnId: row.column_id,
     cover: readTaskCover(row.cover),
+    look: readTaskLook(row.look),
     sortKey: row.sort_key,
   };
 }
@@ -1436,6 +1441,23 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
         return;
       }
       const body = (await readJson(req)) as Record<string, unknown>;
+      /*
+       * Die Farbe allein: dann wird nicht umbenannt.
+       *
+       * Umbenennen kann zwei Schlagwörter zusammenführen — das Färben nie. Ein
+       * Aufruf, der nur färben will, soll nicht durch die Zusammenführung
+       * laufen müssen.
+       */
+      if ('color' in (body ?? {}) && !('name' in (body ?? {}))) {
+        await colorLabel(
+          ctx.pool,
+          workspaceId,
+          id,
+          body['color'] === null ? null : String(body['color']),
+        );
+        json(res, 200, { ok: true });
+        return;
+      }
       const out = await renameLabel(ctx.pool, workspaceId, id, String(body?.['name'] ?? ''));
       json(res, 200, out);
       return;

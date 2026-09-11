@@ -126,6 +126,13 @@ export interface Task {
    * Server nicht an, weil ein Titelbild bei jedem Zeichnen geladen wird.
    */
   cover?: { image?: string; color?: string };
+  /**
+   * Das Aussehen DIESER Aufgabe — die genaueste der drei Ebenen.
+   *
+   * Was gilt, rechnet `resolveTaskLook` aus Projekt, Schlagwort und dieser
+   * Angabe. Hier steht nur, was jemand an der Aufgabe selbst gesetzt hat.
+   */
+  look?: { icon?: string; color?: string };
   /** Die Schlagwörter, nach Namen sortiert. `[]` wenn keine. */
   labels: readonly string[];
   /**
@@ -278,6 +285,8 @@ export interface TaskPatch {
   priority?: 1 | 2 | 3 | 4;
   /** Titelbild setzen oder mit `null` wegnehmen. */
   cover?: { image?: string; color?: string } | null;
+  /** Aussehen setzen oder mit `null` wegnehmen. */
+  look?: { icon?: string; color?: string } | null;
   projectId?: string | null;
   /**
    * Die Wiederholung — `null` nimmt sie weg.
@@ -567,9 +576,15 @@ export const api = {
       { method: 'DELETE' },
     ),
   /** Die Schlagwörter dieses Arbeitsbereichs, mit der Zahl der Aufgaben. */
+  /** Die Farbe eines Schlagworts setzen; `null` nimmt sie weg. */
+  colorLabel: (id: string, color: string | null, workspace?: string) =>
+    call<{ ok: true }>(
+      `/api/labels/${id}${workspace === undefined ? '' : `?workspace=${workspace}`}`,
+      { method: 'PATCH', body: JSON.stringify({ color }) },
+    ),
   labels: (workspace?: string) =>
     call<{
-      labels: { id: string; name: string; tasks: number }[];
+      labels: { id: string; name: string; tasks: number; color: string | null }[];
       mayManage: boolean;
     }>(`/api/labels${workspace === undefined ? '' : `?workspace=${workspace}`}`),
   /**

@@ -52,6 +52,7 @@ export function Board({
   onChanged,
   onAdd,
   onFiles,
+  look,
   showDone,
 }: {
   workspace: string | undefined;
@@ -77,6 +78,8 @@ export function Board({
    * Gelegenheiten, die kleine Fassung zu vergessen.
    */
   onFiles: (taskId: string, files: readonly File[]) => void;
+  /** Das aufgelöste Aussehen einer Aufgabe — gerechnet in der Liste. */
+  look: (task: Task) => { icon?: string; color?: string };
   /**
    * Ob Erledigtes gezeigt wird — derselbe Schalter wie in der Liste.
    *
@@ -636,6 +639,7 @@ export function Board({
                     <TaskRow
                       task={task}
                       view="cards"
+                      look={look(task)}
                       open={openTask === task.id}
                       onOpen={() => onOpenTask(openTask === task.id ? null : task.id)}
                       now={now}

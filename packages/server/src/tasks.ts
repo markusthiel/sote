@@ -7,6 +7,7 @@
 
 import {
   isTaskCover,
+  isTaskLook,
   generateKeyBetween,
   MAX_DURATION,
   MAX_LABEL,
@@ -46,6 +47,8 @@ export interface TaskRow {
   column_id: string | null;
   /** Das Titelbild der Karte, roh aus `jsonb` (0031). Gelesen von `readTaskCover`. */
   cover: unknown;
+  /** Das Aussehen DIESER Aufgabe, roh aus `jsonb` (0034). */
+  look: unknown;
   sort_key: string;
   /**
    * Die Schlagwörter, nach Namen sortiert — `[]` wenn keine.
@@ -131,7 +134,7 @@ const RETURNING = `
   id, workspace_id, project_id, parent_id, title, note,
   planned_at, planned_all_day, due_at, due_all_day, priority,
   completed_at, recur_rrule, recur_dtstart, recur_after_n,
-  recur_after_unit, duration_min, column_id, cover, sort_key,
+  recur_after_unit, duration_min, column_id, cover, look, sort_key,
   labels_of(id) AS labels, marks_of(id) AS marks`;
 
 const SELECT = `SELECT ${RETURNING} FROM tasks`;
@@ -935,6 +938,14 @@ export interface Patch {
    */
   readonly cover?: unknown;
   /**
+   * Das Aussehen dieser Aufgabe — `null` nimmt es weg.
+   *
+   * Die genaueste der drei Ebenen (Projekt, Schlagwort, Aufgabe). Geprüft wird
+   * beim Schreiben: ein unbekannter Schlüssel wird abgelehnt und nicht still
+   * weggefiltert.
+   */
+  readonly look?: unknown;
+  /**
    * Die geschätzte Dauer in Minuten — `null` nimmt sie weg.
    *
    * Als Zahl und nicht als Text: das Auslegen von „1h30" gehört dem Kern
@@ -1001,6 +1012,13 @@ export async function patch(
    * die Eingabe, und das ist ein 409 mit einem Satz, den man lesen kann. Die
    * Grenze selbst kommt aus dem Kern, damit sie nicht an zwei Stellen wächst.
    */
+  if (fields.look !== undefined) {
+    if (!isTaskLook(fields.look)) {
+      throw new OutOfOrder('ein Aussehen kennt nur ein Zeichen und eine Farbe');
+    }
+    set('look', fields.look === null ? null : JSON.stringify(fields.look));
+  }
+
   if (fields.cover !== undefined) {
     if (!isTaskCover(fields.cover)) {
       /*

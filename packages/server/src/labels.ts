@@ -30,6 +30,8 @@ import { queryOne, queryRows, withTransaction } from './db.js';
 
 /** Ein Schlagwort mit der Zahl der Aufgaben, an denen es hängt. */
 export interface LabelOverview {
+  /** Die Farbe dieses Schlagworts — sie färbt die Aufgaben, die es tragen. */
+  readonly color: string | null;
   readonly id: string;
   readonly name: string;
   /**
@@ -51,7 +53,7 @@ export async function labelsOfWorkspace(
 ): Promise<readonly LabelOverview[]> {
   return queryRows<LabelOverview>(
     pool,
-    `SELECT l.id, l.name,
+    `SELECT l.id, l.name, l.color,
             (SELECT count(*)::int FROM task_labels tl
                JOIN tasks t ON t.id = tl.task_id
               WHERE tl.label_id = l.id AND t.trashed_at IS NULL) AS tasks
@@ -69,6 +71,28 @@ export async function labelsOfWorkspace(
  * wurden. Die Oberfläche schreibt es hin, damit niemand später sucht, wo sein
  * zweites Schlagwort geblieben ist.
  */
+/**
+ * Die Farbe eines Schlagworts setzen oder wegnehmen.
+ *
+ * Eigene Funktion neben dem Umbenennen, obwohl beides eine Spalte derselben
+ * Zeile ändert: Umbenennen kann mit einem anderen Schlagwort ZUSAMMENFALLEN
+ * und führt dann zwei Listen zusammen — das Färben nie. Zwei Vorgänge mit
+ * verschiedenen Folgen in eine Funktion zu legen hiesse, die gefährlichere
+ * Fassung auch für den harmlosen Fall zu benutzen.
+ */
+export async function colorLabel(
+  pool: Pool,
+  workspaceId: string,
+  labelId: string,
+  color: string | null,
+): Promise<void> {
+  const out = await pool.query(
+    'UPDATE labels SET color = $3 WHERE id = $1 AND workspace_id = $2',
+    [labelId, workspaceId, color === null || color === '' ? null : color],
+  );
+  if (out.rowCount === 0) throw new LabelTrouble('dieses Schlagwort gibt es hier nicht');
+}
+
 export async function renameLabel(
   pool: Pool,
   workspaceId: string,

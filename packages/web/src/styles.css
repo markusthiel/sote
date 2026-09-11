@@ -1075,6 +1075,12 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex]:focus-vi
 
 .task-title {
   font-size: 14.5px;
+  /* Zeichen und Titel in einer Zeile: das Zeichen steht VOR dem Titel und in
+     derselben Zeile, nicht in einer eigenen Spalte — die müsste bei jeder
+     Zeile Platz halten, auch bei den neunundneunzig ohne Zeichen. */
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sone-space-3);
 }
 
 .task[data-done="true"] .task-title {
@@ -2043,6 +2049,36 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex]:focus-vi
   outline: none;
   border-color: var(--accent-line);
   background: var(--surface);
+}
+
+/* ── Das Aussehen einer Aufgabe ────────────────────────────────────────────
+ *
+ * Gewünscht: „Ein Icon, das dann vor dem Titel angezeigt wird, Textfarbe und
+ * Hintergrundfarbe für die Kartenansicht."
+ *
+ * EINE Farbe, zwei Wirkungen: die Schrift trägt sie, die Karte bekommt sie als
+ * leise Tönung. Zwei frei wählbare Farben erlaubten jede Kombination, auch
+ * Weiss auf Weiss — und die entsteht nicht aus Bosheit, sondern weil jemand
+ * den Grund ändert und vergisst, was er vor drei Wochen an der Schrift gesetzt
+ * hat. Das Verhältnis rechnet darum das Stylesheet, und es stimmt in Hell wie
+ * Dunkel.
+ */
+.task[data-eigen="yes"] .task-title {
+  color: var(--eigen);
+}
+
+/* Der Grund NUR auf Karten und auf der Tafel. In einer schmalen Zeile wäre er
+   ein Balken, der die Liste in bunte Streifen zerlegt — und das löst das
+   Farbfeld der Dringlichkeit schon ruhiger. */
+.task[data-view="cards"][data-eigen="yes"] {
+  background: color-mix(in srgb, var(--eigen) 10%, var(--surface));
+  border-color: color-mix(in srgb, var(--eigen) 30%, var(--line));
+}
+
+/* Das Zeichen etwas leiser als der Titel: es begleitet ihn. */
+.task-title .p-mark {
+  flex: none;
+  opacity: 0.85;
 }
 
 /* ── Dateien auf eine Zeile oder Karte fallen lassen ───────────────────────

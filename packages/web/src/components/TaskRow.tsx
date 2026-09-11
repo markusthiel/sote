@@ -12,7 +12,11 @@ import { formatDuration } from '@sote/core';
 
 import type { ListView } from '@sote/core';
 
+import { colorValue } from '@sote/core';
+import type { CSSProperties } from 'react';
+
 import type { Task } from '../api.js';
+import { ProjectMark } from './ProjectMark.js';
 import { MARKS } from './marks.js';
 import { isOverdue, whenLabel } from '../dates.js';
 
@@ -30,6 +34,7 @@ export function TaskRow({
   onOpen,
   onLabel,
   view,
+  look,
 }: {
   task: Task;
   now: Date;
@@ -66,8 +71,36 @@ export function TaskRow({
    * Fehlt es, gilt `full`: das war der Stand, bevor es die Einstellung gab.
    */
   view?: ListView | undefined;
+  /**
+   * Das aufgelöste Aussehen — Zeichen und Farbe.
+   *
+   * Fertig aufgelöst und nicht roh: die Zeile weiß nichts vom Projekt und
+   * nichts von den Farben der Schlagwörter. Wer sie zeichnet, weiß es.
+   */
+  look?: { icon?: string; color?: string } | undefined;
 }) {
   const form: ListView = view ?? 'full';
+  /*
+   * Was diese Aufgabe trägt — aufgelöst aus drei Ebenen.
+   *
+   * Die Auflösung steht im KERN und wird hier nur benutzt: Zeile, Karte und
+   * Tafel zeichnen dieselbe Aufgabe, und drei Auflösungen wären drei
+   * Gelegenheiten, verschieden zu antworten.
+   *
+   * Die Farbe kommt fertig herein (`look`): nur die Liste kennt das Projekt
+   * und die Schlagwortfarben, die Zeile kennt nur sich.
+   */
+  const aussehen = look ?? {};
+  /*
+   * Eine Farbe, zwei Wirkungen: die Schrift trägt sie, die Karte bekommt sie
+   * als leise Tönung. Das Verhältnis rechnet das Stylesheet — zwei frei
+   * wählbare Farben erlaubten auch Weiß auf Weiß, und die entsteht nicht aus
+   * Bosheit, sondern aus Vergesslichkeit.
+   */
+  const farbe =
+    aussehen.color === undefined
+      ? undefined
+      : ({ '--eigen': colorValue(aussehen.color) } as CSSProperties);
   const done = task.completed !== null;
   const planned = task.planned === null ? null : new Date(task.planned);
   const due = task.due === null ? null : new Date(task.due);
@@ -76,6 +109,8 @@ export function TaskRow({
     <div
       className="task"
       data-view={form}
+      data-eigen={aussehen.color === undefined ? undefined : 'yes'}
+      style={farbe}
       data-done={done}
       data-pending={pending === true}
       data-open={open === true}
@@ -113,10 +148,36 @@ export function TaskRow({
       <div className="task-mid">
         {/* Der Titel öffnet die Detailspalte. Ein eigener Knopf daneben wäre
             ein zweiter Weg in dieselbe Sache. */}
+        {/*
+          Das Zeichen VOR dem Titel und in derselben Zeile.
+
+          GEWÜNSCHT: „Ein Icon, das dann vor dem Titel angezeigt wird."
+
+          Im Titel und nicht davor in einer eigenen Spalte: eine eigene Spalte
+          müsste bei jeder Zeile Platz halten, auch bei den neunundneunzig ohne
+          Zeichen — dieselbe Rechnung wie beim Aufklapper, und dieselbe
+          Antwort.
+
+          Die FARBE trägt der Titel, nicht das Zeichen allein: gefärbt ist die
+          Aufgabe und nicht ihr Abzeichen.
+        */}
         {onOpen === undefined ? (
-          <div className="task-title">{task.title}</div>
+          <div className="task-title" style={farbe}>
+            {aussehen.icon === undefined ? null : (
+              <ProjectMark icon={aussehen.icon} kind="list" name="" color={undefined} />
+            )}
+            {task.title}
+          </div>
         ) : (
-          <button className="task-title as-link" onClick={onOpen} aria-expanded={open === true}>
+          <button
+            className="task-title as-link"
+            style={farbe}
+            onClick={onOpen}
+            aria-expanded={open === true}
+          >
+            {aussehen.icon === undefined ? null : (
+              <ProjectMark icon={aussehen.icon} kind="list" name="" color={undefined} />
+            )}
             {task.title}
           </button>
         )}
