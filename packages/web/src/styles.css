@@ -3702,7 +3702,10 @@ select.target { }
 
   .detail {
     width: 100vw;
+    /* Dieselbe Rechnung wie beim Gast: `vh` misst das Fenster ohne die Leiste
+       des Browsers, `dvh` das, was gerade da ist. */
     block-size: 58vh;
+    block-size: 58dvh;
     flex: none;
     /* Der Rücksprung, wenn man loslässt, ohne weit genug gezogen zu haben.
        Während des Ziehens steht am Element `transition: none` — der Finger
@@ -5606,16 +5609,37 @@ a.btn {
   .guest[data-detail='true'] .detail {
     position: fixed;
     inset: auto 0 0 0;
+    /*
+     * `dvh` UND NICHT `vh`.
+     *
+     * GEMELDET: „Wenn ich die Detailspalte offen habe, sehe ich, dass sie nach
+     * unten hin nicht zum Bildschirmrand geht. Es ist dann abgeschnitten."
+     *
+     * `vh` rechnet mit dem GRÖSSTEN Fenster, das der Browser haben kann — also
+     * ohne seine eigene Leiste unten. Auf dem iPhone ist die aber da, und die
+     * Fläche reicht damit ein Stück dahinter: unten fehlt genau die Höhe der
+     * Browserleiste, und was dort steht, ist abgeschnitten.
+     *
+     * `dvh` ist dieselbe Einheit, gerechnet mit dem Fenster, das gerade WIRKLICH
+     * da ist. Die alte Zeile bleibt als Rückfall darüber stehen: ein Browser,
+     * der `dvh` nicht kennt, nimmt sie — und liegt damit falsch wie bisher,
+     * statt gar keine Höhe zu haben.
+     */
     block-size: 58vh;
+    block-size: 58dvh;
     z-index: 30;
     border-top: 1px solid var(--line);
     box-shadow: var(--sote-shadow-lg);
+    /* Und der Streifen ganz unten, den iPhones für die Wischgeste frei halten:
+       ohne ihn läge die letzte Zeile darunter. */
+    padding-bottom: env(safe-area-inset-bottom);
   }
 
   /* Und Platz darunter, damit die letzte Zeile der Liste erreichbar bleibt:
      eine Fläche, die über dem Ende liegt, macht das Ende unerreichbar. */
   .guest[data-detail='true'] .guest-body {
     padding-bottom: 60vh;
+    padding-bottom: 60dvh;
   }
 }
 

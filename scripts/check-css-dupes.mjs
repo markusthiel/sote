@@ -122,12 +122,36 @@ for (const block of blocks) {
 
 /* ── 2. Dieselbe Eigenschaft zweimal in einem Block ─────────────────────── */
 
+/*
+ * DER RUECKFALL IST KEINE DUBLETTE.
+ *
+ * Zwei Zeilen wie
+ *
+ *     block-size: 58vh;
+ *     block-size: 58dvh;
+ *
+ * sind die einzige Art, eine neue Einheit zu benutzen, ohne aeltere Browser
+ * ohne Hoehe dastehen zu lassen: wer `dvh` nicht kennt, verwirft die zweite
+ * Zeile und behaelt die erste. Das ist kein Rest und keine vergessene Regel --
+ * es ist die Bauform.
+ *
+ * Erkannt an der NACHBARSCHAFT: ein Rueckfall steht unmittelbar vor seiner
+ * Ersetzung. Zwei gleiche Eigenschaften mit etwas dazwischen sind weiterhin
+ * ein Fehler, und genau die hat dieser Waechter gefunden (`.grip` mit zweimal
+ * `align-items`, acht Zeilen auseinander).
+ */
 for (const block of blocks) {
   const props = new Map();
+  let vorige = null;
   for (const line_ of block.body.split(';')) {
     const m = /^\s*([a-z-]+)\s*:/.exec(line_);
     if (m === null) continue;
     const name = m[1];
+    if (name === vorige) {
+      // Unmittelbar wiederholt: ein Rueckfall. Nicht zaehlen.
+      continue;
+    }
+    vorige = name;
     // Eigenschaften mit `--` sind Tokens; auch dort ist die Wiederholung ein
     // Rest, aber sie stehen in den Themenblöcken absichtlich nebeneinander —
     // dort gilt derselbe Name je Block trotzdem nur einmal.
