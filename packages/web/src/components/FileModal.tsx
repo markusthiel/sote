@@ -32,6 +32,8 @@
 
 import { useEffect, useState } from 'react';
 
+import { PdfViewer } from './PdfViewer.js';
+
 /** Wie viel Text höchstens gezeigt wird, bevor abgeschnitten wird. */
 const MAX_TEXT = 200_000;
 
@@ -196,18 +198,14 @@ export function FileModal({
             <audio src={zeigen} controls preload="metadata" />
           ) : art === 'pdf' ? (
             /*
-             * `<object>` und nicht `<iframe>`: es kennt einen Rückfall für den
-             * Fall, dass der Browser kein PDF zeichnen kann, und der Rückfall
-             * ist hier der einzige ehrliche — ein Link auf die Datei.
+             * EIGENER BETRACHTER statt `<object>`.
+             *
+             * Gemeldet: „Auf iPad und iPhone klappt es nicht so gut, weil man
+             * mehrere Seiten nicht durchscrollen konnte … Wir hatten dann
+             * PDF.js eingebaut." Dieselbe Erfahrung wie bei SONE, dieselbe
+             * Antwort.
              */
-            <object data={zeigen} type="application/pdf">
-              <p className="muted small">
-                Dieser Browser zeigt keine PDF an.{' '}
-                <a href={href} download={filename}>
-                  Herunterladen
-                </a>
-              </p>
-            </object>
+            <PdfViewer src={zeigen} filename={filename} />
           ) : art === 'text' ? (
             fehler ? (
               <p className="muted small">Der Text ließ sich nicht laden.</p>

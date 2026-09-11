@@ -29,6 +29,7 @@ import {
   DownloadIcon,
   ImageIcon,
   PageIcon,
+  VideoIcon,
   MessageIcon,
   PaperclipIcon,
   SlidersIcon,
@@ -36,8 +37,8 @@ import {
   UsersIcon,
   type IconProps,
 } from '../components/icons.js';
-import { EyeIcon } from '../components/viewIcons.js';
-import { FileModal, kindName, kindOf } from '../components/FileModal.js';
+import { AudioIcon, EyeIcon } from '../components/viewIcons.js';
+import { FileModal, kindName, kindOf, type FileKind } from '../components/FileModal.js';
 import { useDetailTab } from '../hooks/useDetailTab.js';
 import { whenOptions } from '../components/HandleMenu.js';
 import { whenLabel } from '../dates.js';
@@ -132,6 +133,25 @@ function kilobytes(n: number): string {
  * Leute. Dieselbe Ordnung wie in SONEs Panel, und aus demselben Grund: die
  * Sachen des Gegenstands vor den Sachen der Menschen.
  */
+/**
+ * Welches Zeichen für welche Art Datei.
+ *
+ * GEMELDET: „Die Icons werden noch nicht angepasst hinten." Video und Ton
+ * bekamen dasselbe Blatt wie ein Archiv — und ein Zeichen, das dasselbe sagt
+ * wie das Wort daneben, ist kein Beiwerk: man sieht es zuerst.
+ *
+ * Als Karte und nicht als Kette von Fragen: wer dem Wortschatz eine Art
+ * hinzufügt, soll hier eine fehlende Zeile finden.
+ */
+const ART_ICONS: Record<FileKind, ReactElement> = {
+  image: <ImageIcon size={15} />,
+  video: <VideoIcon size={15} />,
+  audio: <AudioIcon />,
+  pdf: <PageIcon size={15} />,
+  text: <TextIcon size={15} />,
+  other: <PageIcon size={15} />,
+};
+
 const TABS = [
   'felder',
   'notiz',
@@ -1174,11 +1194,20 @@ export function Detail({
                             aria-expanded={fileMenu === f.id}
                             onClick={() => setFileMenu(fileMenu === f.id ? null : f.id)}
                           >
-                            {kindOf(f.mimeType) === 'image' ? (
-                              <ImageIcon size={15} />
-                            ) : (
-                              <PageIcon size={15} />
-                            )}
+                            {/*
+                              DAS ZEICHEN SAGT DIE ART.
+
+                              GEMELDET: „Die Icons werden noch nicht angepasst
+                              hinten." Richtig — der Knopf trug für alles ein
+                              Blatt, obwohl die Art daneben schon als Wort
+                              dasteht. Ein Zeichen, das dasselbe sagt wie das
+                              Wort, ist kein Beiwerk: man sieht es zuerst.
+
+                              Als Karte und nicht als Kette von Fragen: wer dem
+                              Wortschatz eine Art hinzufügt, soll hier eine
+                              fehlende Zeile finden.
+                            */}
+                            {ART_ICONS[kindOf(f.mimeType)]}
                           </button>
                           {fileMenu === f.id ? (
                             <div className="menu" role="menu">

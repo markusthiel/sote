@@ -89,6 +89,21 @@ export function CheckIcon(props: SVGProps<SVGSVGElement>): ReactElement {
 }
 
 /**
+ * Ein Lautsprecher — für Ton.
+ *
+ * Im übernommenen Satz gibt es `VideoIcon`, aber keines für Audio: SONE zeigt
+ * Ton im Dokument und braucht kein Zeichen dafür in einer Liste.
+ */
+export function AudioIcon(props: SVGProps<SVGSVGElement>): ReactElement {
+  return (
+    <svg {...base(props)}>
+      <path d="M11 5 6.5 9H3v6h3.5L11 19z" />
+      <path d="M15.5 9.5a3.5 3.5 0 0 1 0 5M18 7a7 7 0 0 1 0 10" />
+    </svg>
+  );
+}
+
+/**
  * Ein Auge — ansehen statt herunterladen.
  *
  * Im übernommenen Satz gibt es keines: SONE zeigt seine Bilder im Dokument und
