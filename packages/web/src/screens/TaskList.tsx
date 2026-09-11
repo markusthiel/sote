@@ -789,6 +789,7 @@ export function TaskList({
             projectId={route.projectId}
             tasks={rows}
             now={now}
+            showDone={showDone}
             openTask={openTask}
             onOpenTask={onOpenTask}
             onChanged={() => {

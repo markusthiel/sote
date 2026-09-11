@@ -49,6 +49,7 @@ export function Board({
   openTask,
   onOpenTask,
   onChanged,
+  showDone,
 }: {
   workspace: string | undefined;
   projectId: string;
@@ -58,6 +59,18 @@ export function Board({
   openTask: string | null;
   onOpenTask: (id: string | null) => void;
   onChanged: () => void;
+  /**
+   * Ob Erledigtes gezeigt wird — derselbe Schalter wie in der Liste.
+   *
+   * GEWÜNSCHT: „Wenn man eine Erledigt-Spalte hat, dann könnte damit die ganze
+   * Spalte ausgeblendet werden, das wäre doppelt sinnvoll, weil man so auch
+   * Platz schaffen kann, wenn man mehrere Spalten hat."
+   *
+   * Genau so: ohne Erledigtes ist die Fertig-Spalte ohnehin leer, und eine
+   * leere Spalte, die nur da ist, kostet auf einer Tafel das, wovon es am
+   * wenigsten gibt — Breite.
+   */
+  showDone: boolean;
 }) {
   const [columns, setColumns] = useState<BoardColumn[] | undefined>(undefined);
   const [notice, setNotice] = useState<string | undefined>(undefined);
@@ -203,6 +216,23 @@ export function Board({
 
   if (columns === undefined) return <div className="board" aria-busy="true" />;
 
+  /*
+   * Was gezeichnet wird — ohne die Fertig-Spalte, solange Erledigtes
+   * ausgeblendet ist.
+   *
+   * GETRENNT von `columns`: die Rechnungen für Reihenfolge und Sortierschlüssel
+   * arbeiten weiter auf ALLEN Spalten. Würde man die Liste selbst kürzen,
+   * bekäme die Spalte links neben der ausgeblendeten beim Verschieben einen
+   * Schlüssel, der die versteckte überspringt — und beim Wiedereinblenden
+   * stünde sie woanders.
+   *
+   * Das Auffangbecken bleibt die erste der VOLLEN Liste. Wäre die erste
+   * zugleich die Fertig-Spalte (möglich, wenn auch seltsam), würde sonst beim
+   * Ausblenden alles Unzugeordnete in die nächste Spalte rutschen — eine
+   * Bewegung, die niemand angestoßen hat.
+   */
+  const sichtbar = showDone ? columns : columns.filter((c) => !c.is_done);
+
   const neuerSchluessel = (at: number): string =>
     generateKeyBetween(columns[at - 1]?.sort_key ?? null, columns[at]?.sort_key ?? null);
 
@@ -237,6 +267,8 @@ export function Board({
 
       {notice === undefined ? null : <p className="note-error">{notice}</p>}
 
+      {/* Die leere Tafel richtet sich nach ALLEN Spalten: eine Tafel, deren
+          einzige Spalte gerade ausgeblendet ist, ist nicht „noch keine Tafel". */}
       {columns.length === 0 && !adding ? (
         <div className="empty board-empty">
           <strong>Diese Liste hat noch keine Tafel.</strong>
@@ -259,7 +291,10 @@ export function Board({
       ) : null}
 
       <div className="board" ref={boardRef}>
-        {columns.map((column, index) => {
+        {sichtbar.map((column) => {
+          // Der Index kommt aus der VOLLEN Liste: nur er sagt, welche Spalte
+          // das Auffangbecken ist, und das ändert sich beim Ausblenden nicht.
+          const index = columns.indexOf(column);
           const karten = kartenIn(column, index);
           return (
             <section
