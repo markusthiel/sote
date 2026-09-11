@@ -219,7 +219,7 @@
      Anfasser. `--sote-gutter` ist deren zwei, `--sote-gap-x` der Rand des
      Inhalts daneben. Als Werte, weil Zeile, Anfasser, Aufklapper und
      Innenabstand sich einigen muessen. */
-  --sote-lane: 24px;
+  --sote-lane: 20px;
   --sote-gutter: calc(var(--sote-lane) * 2);
   --sote-gap-x: 32px;
   --sote-read: 46rem;
@@ -943,9 +943,24 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex]:focus-vi
  * sie nicht selbst beantworten will.
  */
 .body {
-  /* Links Platz für die beiden Spuren (Aufklapper und Anfasser), sonst ragen
-     sie aus dem Inhalt heraus und werden vom Rollbereich abgeschnitten. */
-  padding: 6px var(--sote-gap-x) 40px calc(var(--sote-gap-x) + var(--sote-gutter));
+  /*
+   * Links tragen die beiden Spuren den Rand, statt zu ihm DAZUZUKOMMEN.
+   *
+   * GEMELDET mit Bild: „Wir haben jetzt vor dem Anfasser bzw. vor dem
+   * Aufklapp-Pfeil viel Platz. Da kannst du wieder reduzieren, so dass es
+   * mittig sitzt."
+   *
+   * Ich hatte `32px + 48px` gerechnet — also den gewohnten Rand UND die Spuren
+   * obendrauf. Achtzig Pixel links gegen zweiunddreissig rechts: der ganze
+   * Inhalt sass sichtbar zu weit rechts. Die Spuren sind aber Rand und nicht
+   * Inhalt; sie gehören IN den Rand.
+   *
+   * Jetzt ist der linke Rand genau die Spurbreite (zweimal zwanzig), und die
+   * Spuren sitzen darin. Vierzig gegen zweiunddreissig — nahe genug beieinander,
+   * dass der Textblock mittig wirkt, und die Zeichen stehen trotzdem nicht am
+   * Fensterrand.
+   */
+  padding: 6px var(--sote-gap-x) 40px calc(var(--sote-gutter) + var(--sone-space-2));
   max-width: var(--sote-read);
 }
 
@@ -1498,8 +1513,21 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex]:focus-vi
  * lesen sich als zwei eigene Zeilen mit merkwürdigem Rand. Die Linie sagt,
  * dass sie zu dem darüber gehören. */
 .task-kids {
-  margin-inline-start: var(--sone-space-6);
-  padding-inline-start: var(--sone-space-4);
+  /*
+   * GEMELDET: „Bei den Unteraufgaben fehlt überhaupt Abstand."
+   *
+   * Stimmt, und der Grund ist derselbe wie eine Zeile weiter oben: eine
+   * Unteraufgabe hat AUCH einen Anfasser, und der sitzt links ausserhalb
+   * ihrer Zeile. Die Einrückung war aber nur für das Auge gedacht — der
+   * Anfasser landete damit auf der Linie oder dahinter.
+   *
+   * Eine Unteraufgabe braucht EINE Spur (sie hat keine eigenen Kinder, also
+   * keinen Aufklapper), und genau die trägt jetzt der Innenabstand. Die Linie
+   * steht davor, so dass sie zwischen Elternteil und Anfasser des Kindes
+   * verläuft und nicht mittendurch.
+   */
+  margin-inline-start: var(--sone-space-4);
+  padding-inline-start: calc(var(--sote-lane) + var(--sone-space-2));
   border-inline-start: 1px solid var(--line);
 }
 
@@ -1954,7 +1982,7 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex]:focus-vi
      sie wären Aufklapper und Anfasser genau dort nicht zu treffen, wo man
      ohnehin mit dem Finger zielt. */
   .body {
-    padding-left: calc(var(--sone-space-3) + var(--sote-gutter));
+    padding-left: calc(var(--sote-gutter) + var(--sone-space-2));
     padding-right: 18px;
     padding-bottom: calc(var(--sote-bar) + 24px);
   }
