@@ -2589,9 +2589,29 @@ select.target { }
   border-bottom: 1px solid var(--line);
 }
 
+/*
+ * Der Schliessen-Knopf sitzt IN der Zeile des Titels, rechts.
+ *
+ * Gemeldet: „Was mir fehlt, ist der Schliessen-Knopf fuer die Seitenleiste der
+ * Details." Er sass aussen in der Kopfleiste — und seit die Spalte ueber dem
+ * Inhalt liegt, liegt er unter ihr.
+ *
+ * Absolut und nicht als eigene Zeile: die Spalte ist 340 px breit, und eine
+ * Zeile Hoehe fuer einen Knopf ist genau die Zeile, die dem Inhalt fehlt. Der
+ * Titel bekommt rechts Platz, damit er nicht darunter laeuft.
+ */
+.detail-close {
+  position: absolute;
+  inset-block-start: var(--sone-space-4);
+  inset-inline-end: var(--sone-space-4);
+  z-index: 1;
+}
+
 .detail-title {
   display: block;
   width: 100%;
+  /* Platz fuer den Knopf daneben. */
+  padding-inline-end: var(--sone-control-lg);
   border: 0;
   background: none;
   padding: 16px 18px 10px;

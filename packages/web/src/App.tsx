@@ -921,8 +921,19 @@ export function App() {
         <TopBar
           sidebarVisible={sidebar.visible}
           onToggleSidebar={sidebar.toggle}
+          /*
+           * KEIN Schliessen-Knopf mehr in der Kopfleiste.
+           *
+           * Er sass rechts aussen — und seit die Detailspalte ueber dem Inhalt
+           * liegt statt neben ihm, liegt er UNTER ihr. Sichtbar war er nur,
+           * solange die Spalte Platz wegnahm; danach war er ein Knopf, den
+           * niemand erreichen konnte.
+           *
+           * Gemeldet als „was mir fehlt, ist der Schliessen-Knopf". Er steht
+           * jetzt IN der Spalte, in der Zeile des Titels.
+           */
           detailOpen={openTask !== null}
-          onToggleDetail={openTask === null ? undefined : () => setOpenTask(null)}
+          onToggleDetail={undefined}
         />
         {route.kind === 'admin' && route.section === 'einladungen' ? (
           <Invitations />
@@ -1084,6 +1095,7 @@ export function App() {
           /* Für „nur meine Erinnerung wegnehmen": der Server prüft es, und die
              Oberfläche zeigt den Handgriff nur da, wo er auch geht. */
           me={me.id}
+          onClose={() => setOpenTask(null)}
           workspace={workspace}
           now={now}
           onChanged={() => void loadPanel()}

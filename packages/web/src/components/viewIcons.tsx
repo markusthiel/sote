@@ -89,6 +89,22 @@ export function CheckIcon(props: SVGProps<SVGSVGElement>): ReactElement {
 }
 
 /**
+ * Ein Kreuz zum Schliessen.
+ *
+ * Im übernommenen Satz gibt es keines — SONE schliesst seine Spalte über den
+ * Knopf in der Kopfleiste und braucht darum keins. Also hier, wie die anderen
+ * beiden eigenen Zeichen, und nicht in `icons.tsx`: die Datei ist eins zu eins
+ * aus SONE kopiert und soll das bleiben.
+ */
+export function CloseIcon(props: SVGProps<SVGSVGElement>): ReactElement {
+  return (
+    <svg {...base(props)}>
+      <path d="M6 6l12 12M18 6L6 18" />
+    </svg>
+  );
+}
+
+/**
  * Erledigte ausgeblendet: das Kästchen mit Haken, durchgestrichen.
  *
  * Der Strich läuft über das ganze Zeichen und nicht nur über den Haken: was

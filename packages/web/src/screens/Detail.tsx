@@ -34,6 +34,7 @@ import {
   UsersIcon,
   type IconProps,
 } from '../components/icons.js';
+import { CloseIcon } from '../components/viewIcons.js';
 import { useDetailTab } from '../hooks/useDetailTab.js';
 import { whenOptions } from '../components/HandleMenu.js';
 import { whenLabel } from '../dates.js';
@@ -168,6 +169,7 @@ export function Detail({
   canWrite,
   me,
   now,
+  onClose,
   onChanged,
 }: {
   taskId: string;
@@ -195,12 +197,24 @@ export function Detail({
   /** Die eigene Konto-Id. Fehlt beim Gast — er hat keine. */
   me?: string;
   now: Date;
-  /*
-   * `onClose` ist weg: die Spalte schliesst der Knopf in der Kopfleiste, links
-   * neben ihr — wie in SONE, und wie gemeldet. Zwei Knoepfe fuer dasselbe
-   * waren einer zu viel, und der innere kostete eine Zeile Hoehe in genau der
-   * Spalte, die zu voll war.
+  /**
+   * Die Spalte schliessen.
+   *
+   * GEMELDET: „Was mir fehlt, ist der Schliessen-Knopf fuer die Seitenleiste
+   * der Details. Da muss ich sonst explizit die Aufgabe abwaehlen, was zum
+   * Suchen fuehrt."
+   *
+   * Er stand einmal hier, wanderte dann nach draussen in die Kopfleiste (links
+   * neben der Spalte, wie in SONE) — und wurde von MIR unerreichbar gemacht:
+   * seit die Detailspalte ueber dem Inhalt liegt statt neben ihm, liegt der
+   * Knopf unter ihr. Sichtbar war er nur, solange die Spalte Platz wegnahm.
+   *
+   * Jetzt wieder hier, und diesmal bleibt er: solange die Spalte ueberlagert,
+   * ist „aussen" der falsche Ort — dort muesste der Knopf ueber dem Inhalt
+   * schweben, und das ist schlechter als eine Zeile Hoehe. Die kostet er
+   * ausserdem nicht mehr; er sitzt in der Zeile des Titels.
    */
+  onClose: () => void;
   onChanged: () => void;
 }) {
   const anbindung = io ?? memberIO(taskId, workspace);
@@ -364,13 +378,21 @@ export function Detail({
         einstellt. Dasselbe Verhältnis wie in SONE zwischen dem Dokument und
         seiner Spalte.
 
-        Der Schließen-Knopf, der hier stand, ist weg: er sitzt jetzt aussen in
-        der Kopfleiste, links neben der Spalte — wie in SONE, und wie gemeldet.
-        Zwei Knöpfe für dasselbe waren einer zu viel, und der innere kostete
-        eine Zeile Höhe in genau der Spalte, die zu voll war.
+        Der Schließen-Knopf steht in DERSELBEN Zeile, rechts — er kostet damit
+        keine Höhe. Dass er wieder hier ist, hat einen Grund: seit die Spalte
+        über dem Inhalt liegt, liegt alles „links neben ihr" unter ihr.
       */}
       {/* Der Titel ist ein Feld und kein Text mit Stift daneben: wer ihn
           ändern will, klickt hinein. */}
+      <button
+        type="button"
+        className="topbar-knob detail-close"
+        aria-label="Aufgabe schließen"
+        title="Aufgabe schließen"
+        onClick={onClose}
+      >
+        <CloseIcon />
+      </button>
       <input
         className="detail-title"
         defaultValue={task.title}

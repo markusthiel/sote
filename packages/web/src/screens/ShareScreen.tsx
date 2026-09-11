@@ -284,6 +284,7 @@ export function ShareScreen({ token, now }: { token: string; now: Date }) {
           // Ohne Schreibrecht sind die Felder ABWESEND, nicht deaktiviert:
           // der Server lehnt mit 403 ab, und ein Feld, in das man tippen kann
           // und das dann ablehnt, ist schlimmer als keines.
+          onClose={() => setOffenAufgabe(null)}
           canWrite={darfSchreiben}
           now={new Date()}
           onChanged={() => void load().catch(() => undefined)}
