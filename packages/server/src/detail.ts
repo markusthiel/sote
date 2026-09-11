@@ -64,7 +64,8 @@ const COLUMNS = `
   id, workspace_id, project_id, parent_id, title, note,
   planned_at, planned_all_day, due_at, due_all_day, priority,
   completed_at, recur_rrule, recur_dtstart, recur_after_n,
-  recur_after_unit, duration_min, sort_key, labels_of(id) AS labels`;
+  recur_after_unit, duration_min, sort_key,
+  labels_of(id) AS labels, marks_of(id) AS marks`;
 
 export async function detail(
   pool: Pool,

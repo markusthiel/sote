@@ -119,6 +119,11 @@ export interface Task {
   duration: number | null;
   /** Die Schlagwörter, nach Namen sortiert. `[]` wenn keine. */
   labels: readonly string[];
+  /**
+   * Was an der Aufgabe hängt: `note`, `image`, `file`, `comment`, `subtask`,
+   * `assignee`, `reminder`. Sortiert, `[]` wenn nichts.
+   */
+  marks: readonly string[];
   sortKey: string;
 }
 

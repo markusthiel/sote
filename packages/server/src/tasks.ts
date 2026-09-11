@@ -51,6 +51,14 @@ export interface TaskRow {
    * Schlagwörter hat und im Detail nicht, sieht wie ein Verlust aus.
    */
   labels: string[];
+  /**
+   * Was an der Aufgabe hängt, als sortierte Wörter — `[]` wenn nichts.
+   *
+   * `note`, `image`, `file`, `comment`, `subtask`, `assignee`, `reminder`.
+   * Keine Zahlen: die Zeile sagt, DASS etwas dran ist. Wer wissen will, wie
+   * viel, öffnet die Aufgabe (Migration 0027).
+   */
+  marks: string[];
 }
 
 /**
@@ -118,7 +126,8 @@ const RETURNING = `
   id, workspace_id, project_id, parent_id, title, note,
   planned_at, planned_all_day, due_at, due_all_day, priority,
   completed_at, recur_rrule, recur_dtstart, recur_after_n,
-  recur_after_unit, duration_min, sort_key, labels_of(id) AS labels`;
+  recur_after_unit, duration_min, sort_key,
+  labels_of(id) AS labels, marks_of(id) AS marks`;
 
 const SELECT = `SELECT ${RETURNING} FROM tasks`;
 

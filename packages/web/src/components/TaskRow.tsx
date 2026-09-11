@@ -11,6 +11,7 @@
 import { formatDuration } from '@sote/core';
 
 import type { Task } from '../api.js';
+import { MARKS } from './marks.js';
 import { isOverdue, whenLabel } from '../dates.js';
 
 export function TaskRow({
@@ -139,6 +140,33 @@ export function TaskRow({
                 {name}
               </button>
             ),
+          )}
+          {/*
+            Was an der Aufgabe hängt — Notiz, Bild, Anhang, Kommentar,
+            Teilaufgaben, Zuständige, Erinnerung.
+
+            GEMELDET: „in der Aufgabenliste würde ich gerne sehen, was die
+            Aufgabe beinhaltet." Die Wiederholung stand schon da, alles andere
+            nicht — nicht weil es fehlte, sondern weil es nicht mitkam: es
+            liegt in eigenen Tabellen, und die Zeile fragte nur `tasks`.
+
+            ZEICHEN UND KEINE WÖRTER: sieben Wörter in einer Zeile, die von
+            Titel und Datum lebt, wären sieben zu viel. Und keine Zahlen daran
+            — die Zeile sagt, DASS etwas dran ist; wer wissen will, wie viel,
+            öffnet die Aufgabe.
+
+            HINTER den Schlagwörtern und vor dem Projekt, nach derselben Regel
+            wie diese: was in der Zahl schwankt, gehört hinter das, was immer
+            gleich breit ist — und das Projekt bleibt der Anker am Ende.
+          */}
+          {task.marks.length === 0 ? null : (
+            <span className="marks">
+              {MARKS.filter((m) => task.marks.includes(m.id)).map(({ id, says, Icon }) => (
+                <span key={id} className="mark" role="img" aria-label={says} title={says}>
+                  <Icon />
+                </span>
+              ))}
+            </span>
           )}
           {projectName !== undefined ? (
             <span className="crumb">

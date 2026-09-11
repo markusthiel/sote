@@ -283,6 +283,7 @@ function taskView(row: TaskRow) {
        aussieht, sagt `formatDuration` an der Stelle, an der es steht. */
     duration: row.duration_min,
     labels: row.labels,
+    marks: row.marks,
     sortKey: row.sort_key,
   };
 }

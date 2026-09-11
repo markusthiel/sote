@@ -771,3 +771,176 @@ test('die Suche findet ein Schlagwort in jeder Schreibweise', async () => {
     assert.equal(gefunden.tasks.some((r) => r.id === out.task.id), true, q);
   }
 });
+
+/* ── Was an einer Aufgabe hängt, in der Zeile ──────────────────────────── */
+
+/** Die Zeichen einer Aufgabe, direkt aus der Funktion gelesen. */
+async function marks(id: string): Promise<string[]> {
+  const out = await pool.query<{ marks: string[] }>(
+    'SELECT marks_of($1) AS marks',
+    [id],
+  );
+  return out.rows[0]!.marks;
+}
+
+test('eine nackte Aufgabe trägt keine Zeichen', async () => {
+  const { workspaceId } = await scratch('ws-marks-leer');
+  const out = await createFromLine(pool, { workspaceId, userId, line: 'Nackt', now: NOW });
+  assert.deepEqual(await marks(out.task.id), []);
+  // Und `[]`, nicht NULL — eine zweite Schreibweise für „nichts“ müsste jede
+  // Stelle in der Oberfläche kennen.
+  assert.deepEqual(out.task.marks, []);
+});
+
+test('eine Notiz zählt nur, wenn etwas drinsteht', async () => {
+  /*
+   * Ein leeres Notizfeld entsteht beim Öffnen und Wiederschließen des Feldes.
+   * Ein Zeichen dafür wäre ein Hinweis auf einen Inhalt, den es nicht gibt —
+   * und man klickt darauf und findet nichts.
+   */
+  const { workspaceId } = await scratch('ws-marks-notiz');
+  const out = await createFromLine(pool, { workspaceId, userId, line: 'Mit Notiz', now: NOW });
+  await pool.query('UPDATE tasks SET note = $1 WHERE id = $2', ['   ', out.task.id]);
+  assert.deepEqual(await marks(out.task.id), []);
+  await pool.query('UPDATE tasks SET note = $1 WHERE id = $2', ['etwas', out.task.id]);
+  assert.deepEqual(await marks(out.task.id), ['note']);
+});
+
+test('ein Bild ist kein Anhang und ein Anhang kein Bild', async () => {
+  // Der Grund, aus dem gefragt wurde: „ob ein Anhang dabei ist, ein Bild.“
+  const { workspaceId } = await scratch('ws-marks-datei');
+  const out = await createFromLine(pool, { workspaceId, userId, line: 'Mit Datei', now: NOW });
+  const einfuegen = (mime: string) =>
+    pool.query(
+      `INSERT INTO task_files
+         (task_id, workspace_id, filename, mime_type, size_bytes, storage, storage_key, uploaded_by)
+       VALUES ($1,$2,'x',$3,1,'local',$4,$5)`,
+      [out.task.id, workspaceId, mime, `k-${Math.random()}`, userId],
+    );
+
+  await einfuegen('application/pdf');
+  assert.deepEqual(await marks(out.task.id), ['file']);
+  await einfuegen('image/png');
+  assert.deepEqual(await marks(out.task.id), ['file', 'image']);
+});
+
+test('mehrere Anhänge sind ein Zeichen und keine Zahl', async () => {
+  // Die Zeile sagt, DASS etwas dran ist. Eine Zahl wäre eine Auskunft, die man
+  // liest und nicht braucht — und sie kostet Platz in einer Zeile, die von
+  // Titel und Datum lebt.
+  const { workspaceId } = await scratch('ws-marks-viele');
+  const out = await createFromLine(pool, { workspaceId, userId, line: 'Viele', now: NOW });
+  for (let i = 0; i < 5; i += 1) {
+    await pool.query(
+      `INSERT INTO task_files
+         (task_id, workspace_id, filename, mime_type, size_bytes, storage, storage_key, uploaded_by)
+       VALUES ($1,$2,'x','image/png',1,'local',$3,$4)`,
+      [out.task.id, workspaceId, `k-${i}-${Math.random()}`, userId],
+    );
+  }
+  assert.deepEqual(await marks(out.task.id), ['image']);
+});
+
+test('nur OFFENE Teilaufgaben zählen', async () => {
+  /*
+   * Ein Zeichen für drei erledigte Unterpunkte wäre ein Hinweis auf Arbeit,
+   * die getan ist — und die Zeile soll sagen, was noch dranhängt.
+   */
+  const { workspaceId } = await scratch('ws-marks-kinder');
+  const eltern = await createFromLine(pool, { workspaceId, userId, line: 'Eltern', now: NOW });
+  const kind = await createFromLine(pool, { workspaceId, userId, line: 'Kind', now: NOW });
+  await pool.query('UPDATE tasks SET parent_id = $1 WHERE id = $2', [
+    eltern.task.id,
+    kind.task.id,
+  ]);
+  assert.deepEqual(await marks(eltern.task.id), ['subtask']);
+
+  await pool.query('UPDATE tasks SET completed_at = now() WHERE id = $1', [kind.task.id]);
+  assert.deepEqual(await marks(eltern.task.id), []);
+
+  // Und Weggeworfenes zählt auch nicht.
+  await pool.query('UPDATE tasks SET completed_at = NULL, trashed_at = now() WHERE id = $1', [
+    kind.task.id,
+  ]);
+  assert.deepEqual(await marks(eltern.task.id), []);
+});
+
+test('nur AUSSTEHENDE Erinnerungen zählen', async () => {
+  // Eine abgeschickte ist Vergangenheit, und ein Glockenzeichen dafür wäre die
+  // Ankündigung einer Post, die schon da war.
+  const { workspaceId } = await scratch('ws-marks-erinnern');
+  const out = await createFromLine(pool, {
+    workspaceId,
+    userId,
+    line: 'Mit Erinnerung morgen 9 Uhr',
+    now: NOW,
+  });
+  await pool.query(
+    'INSERT INTO task_reminders (task_id, user_id, offset_minutes) VALUES ($1,$2,30)',
+    [out.task.id, userId],
+  );
+  assert.deepEqual(await marks(out.task.id), ['reminder']);
+
+  await pool.query('UPDATE task_reminders SET sent_at = now() WHERE task_id = $1', [
+    out.task.id,
+  ]);
+  assert.deepEqual(await marks(out.task.id), []);
+});
+
+test('Zuständige und Kommentare tragen je ein Zeichen', async () => {
+  const { workspaceId } = await scratch('ws-marks-rest');
+  const out = await createFromLine(pool, { workspaceId, userId, line: 'Rest', now: NOW });
+  await pool.query('INSERT INTO task_assignees (task_id, user_id) VALUES ($1,$2)', [
+    out.task.id,
+    userId,
+  ]);
+  await pool.query(
+    'INSERT INTO task_comments (task_id, author_id, body) VALUES ($1,$2,$3)',
+    [out.task.id, userId, 'ein Wort'],
+  );
+  assert.deepEqual(await marks(out.task.id), ['assignee', 'comment']);
+});
+
+test('die Reihenfolge ist stabil, damit die Zeile nicht springt', async () => {
+  /*
+   * Sortiert in der Datenbank und nicht in der Oberfläche: käme die Liste in
+   * der Reihenfolge der Einfügungen, sähe dieselbe Zeile bei jedem Laden
+   * anders aus. Die Reihenfolge auf dem Bildschirm macht `MARKS` daraus —
+   * gruppiert nach Sinn statt nach Alphabet.
+   */
+  const { workspaceId } = await scratch('ws-marks-ordnung');
+  const out = await createFromLine(pool, { workspaceId, userId, line: 'Alles', now: NOW });
+  await pool.query('UPDATE tasks SET note = $1 WHERE id = $2', ['da', out.task.id]);
+  await pool.query('INSERT INTO task_assignees (task_id, user_id) VALUES ($1,$2)', [
+    out.task.id,
+    userId,
+  ]);
+  await pool.query(
+    'INSERT INTO task_comments (task_id, author_id, body) VALUES ($1,$2,$3)',
+    [out.task.id, userId, 'x'],
+  );
+  const erst = await marks(out.task.id);
+  const nochmal = await marks(out.task.id);
+  assert.deepEqual(erst, nochmal);
+  assert.deepEqual(erst, ['assignee', 'comment', 'note']);
+});
+
+test('jede Ansicht liefert die Zeichen mit', async () => {
+  const { workspaceId } = await scratch('ws-marks-ansichten');
+  const out = await createFromLine(pool, {
+    workspaceId,
+    userId,
+    line: 'Sichtbar heute',
+    now: NOW,
+  });
+  await pool.query('UPDATE tasks SET note = $1 WHERE id = $2', ['eine Notiz', out.task.id]);
+
+  const rows = await list(pool, 'today', workspaceId, NOW);
+  assert.deepEqual(rows.find((r) => r.id === out.task.id)?.marks, ['note']);
+
+  const d = await detail(pool, out.task.id, workspaceId);
+  assert.deepEqual(d.task.marks, ['note']);
+
+  const gefunden = await search(pool, workspaceId, 'Sichtbar', NOW);
+  assert.deepEqual(gefunden.tasks.find((r) => r.id === out.task.id)?.marks, ['note']);
+});

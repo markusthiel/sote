@@ -1022,6 +1022,25 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex]:focus-vi
   border-color: var(--danger);
 }
 
+/* Was an der Aufgabe hängt.
+   
+   Eine eigene Gruppe mit engerem Abstand als die Beiwerkzeile sonst: sieben
+   Zeichen mit dem vollen Abstand dazwischen lesen sich als sieben Angaben,
+   mit engem Abstand als eine. */
+.marks {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.mark {
+  display: inline-flex;
+  /* Etwas größer als der Text daneben: ein Strichzeichen auf Textgröße wirkt
+     kleiner als eine Ziffer derselben Größe, weil es keine Grundlinie hat. */
+  font-size: var(--sone-text-sm);
+  color: var(--text-faint);
+}
+
 /* Ein Schlagwort in der Zeile.
    
    Kein Rahmen und keine Füllung: acht Etiketten mit Kästchen drumherum sind
