@@ -13,8 +13,9 @@
 
 import { formatDuration } from '@sote/core';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
+import { useListDrag } from '../hooks/useListDrag.js';
 import { useNudge } from '../hooks/useNudge.js';
 import { api, ApiError, type Project, type Task, type TaskPatch } from '../api.js';
 import { HandleMenu } from '../components/HandleMenu.js';
@@ -75,7 +76,6 @@ export function TaskList({
    */
   const { showDone, toggle: toggleShowDone } = useShowDone(view);
   const [openMenu, setOpenMenu] = useState<string | null>(null);
-  const [dragging, setDragging] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -311,6 +311,41 @@ export function TaskList({
     await moveTo(from, direction === -1 ? from - 1 : from + 2);
   }
 
+  /**
+   * Ziehen mit dem Zeiger statt mit HTML5-Drag.
+   *
+   * GEMELDET, zweierlei: „teilweise das Problem, dass man beim Ziehen Teile
+   * der Seite markiert" und „man sieht noch nicht gut, wohin man es zieht."
+   *
+   * Beides sind Eigenschaften des alten Verfahrens und keine Einstellung
+   * daran. `draggable` überlässt dem Browser, wann eine Geste eine Geste ist
+   * — auf dem Weg dahin markiert er Text, und auf iOS feuert er gar nicht,
+   * also ließ sich am Telefon überhaupt nichts umsortieren.
+   *
+   * `useListDrag` ist SONEs Fassung, kopiert: kurzes Halten am Finger (350 ms)
+   * statt sofort, Zeiger-Capture, und der abschließende Klick wird
+   * geschluckt. Was es nicht mitbringt, zeichnet die Liste selbst — die Linie
+   * in der Lücke und die schwebende Zeile unter dem Zeiger.
+   */
+  const listRef = useRef<HTMLDivElement | null>(null);
+  const drag = useListDrag({
+    container: listRef,
+    onDrop: (id, position) => {
+      const from = ids.indexOf(id);
+      if (from === -1) return;
+      /*
+       * „Hinter welche" wird zu „an welchen Platz".
+       *
+       * `useListDrag` benennt eine Lücke nach der Zeile darüber (`afterId`,
+       * `null` für ganz oben) — eine Lücke, ein Name. `moveTo` denkt in
+       * Indizes der ungeänderten Liste, wie beim Tastaturweg: die Ziel-Stelle
+       * ist die Position NACH der Nachbarin, also deren Index plus eins.
+       */
+      const to = position.afterId === null ? 0 : ids.indexOf(position.afterId) + 1;
+      void moveTo(from, to);
+    },
+  });
+
   const title =
     route.kind === 'project' ? (project?.name ?? 'Projekt') : (TITLES[view] ?? 'Aufgaben');
   const count = overdue.length + rows.filter((r) => r.completed === null).length;
@@ -363,20 +398,23 @@ export function TaskList({
       <div
         key={task.id}
         className="task-wrap"
-        data-dragging={dragging === task.id}
-        draggable={canDrag && task.completed === null}
-        onDragStart={() => setDragging(task.id)}
-        onDragEnd={() => setDragging(null)}
-        onDragOver={(e) => {
-          if (canDrag && dragging !== null) e.preventDefault();
-        }}
-        onDrop={(e) => {
-          e.preventDefault();
-          if (dragging === null) return;
-          const from = ids.indexOf(dragging);
-          setDragging(null);
-          void moveTo(from, index);
-        }}
+        data-dragging={drag.dragging === task.id}
+        /*
+         * Die Marke, an der die Geste die Zeile erkennt — und nur, wenn hier
+         * überhaupt sortiert wird. Ohne Projekt ist die Reihenfolge die der
+         * Zeit, und eine Zeile, die sich ziehen lässt, ohne dass etwas
+         * passiert, ist ein Versprechen, das der Server nicht hält.
+         */
+        {...(canDrag && task.completed === null
+          ? { 'data-list-row': task.id, onPointerDown: drag.onPointerDown }
+          : {})}
+        data-drop={
+          drag.target?.afterId === task.id
+            ? 'after'
+            : drag.target?.afterId === null && index === 0
+              ? 'before'
+              : undefined
+        }
         onKeyDown={(e) => {
           // Ziehen allein wäre eine Reihenfolge, die man mit der Tastatur
           // nicht ändern kann.
@@ -439,7 +477,29 @@ export function TaskList({
         </button>
       </div>
 
-      <div className="body">
+      {/*
+        Was gerade reist, unter dem Zeiger.
+
+        GEMELDET: „man sieht die Aufgabe schwebend" — SONEs `.drag-preview`,
+        und die Begründung von dort gilt hier wörtlich: die Linie sagt, WOHIN
+        ein Ablegen führt, nicht WAS abgelegt wird. HTML5-Ziehen zeichnete das
+        umsonst mit; wer es durch Zeiger-Ereignisse ersetzt, muss es selbst
+        zeichnen.
+
+        Ein Geschwister der Liste und kein Kind: die Liste rollt, und ein Kind
+        würde an ihrem Rand abgeschnitten.
+      */}
+      {drag.dragging !== null && drag.pointer !== null ? (
+        <div
+          className="drag-preview"
+          style={{ left: drag.pointer.x, top: drag.pointer.y }}
+          aria-hidden="true"
+        >
+          {rows.find((r) => r.id === drag.dragging)?.title ?? ''}
+        </div>
+      ) : null}
+
+      <div className="body" ref={listRef}>
         <QuickAdd
           now={now}
           onSubmit={(line) => void add(line)}
@@ -487,22 +547,16 @@ export function TaskList({
           </>
         ) : null}
 
-        {/* Eine Ablegestelle hinter der letzten Zeile, sonst gibt es kein
-            „nach ganz unten". */}
-        {canDrag && dragging !== null ? (
-          <div
-            className="drop-tail"
-            onDragOver={(e) => e.preventDefault()}
-            onDrop={(e) => {
-              e.preventDefault();
-              const from = ids.indexOf(dragging);
-              setDragging(null);
-              void moveTo(from, ids.length);
-            }}
-          >
-            hierhin, ans Ende
-          </div>
-        ) : null}
+        {/*
+          Die Ablegestelle „ans Ende" ist weggefallen, und zwar ersatzlos.
+
+          Sie war nötig, solange eine Zeile nur als Ganzes ein Ziel war: dann
+          gab es keinen Platz hinter der letzten. `useListDrag` teilt jede
+          Zeile in zwei Hälften, und die untere Hälfte der letzten IST das
+          Ende. Ein Kasten, der dasselbe noch einmal anbietet, wäre ein
+          zweiter Weg an denselben Ort — und einer, der beim Ziehen erscheint
+          und die Liste länger macht, während man zielt.
+        */}
 
         {loaded && overdue.length === 0 && rows.length === 0 ? (
           <div className="empty">

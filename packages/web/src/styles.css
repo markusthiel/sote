@@ -1433,10 +1433,134 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex]:focus-vi
 
 .task-wrap {
   position: relative;
+  /*
+   * GEMELDET: „teilweise das Problem, dass man beim Ziehen Teile der Seite
+   * markiert."
+   *
+   * Die Geste allein behebt das NICHT, und ich hatte es zuerst geglaubt. Im
+   * Browser nachgestellt: mit Zeiger-Ereignissen und ohne HTML5-Drag markiert
+   * der Browser beim Ziehen weiter munter Text, weil Ziehen mit gedrückter
+   * Taste eben auch Markieren heißt. Das Bild zeigte drei blau hinterlegte
+   * Zeilen unter der Ablegelinie.
+   *
+   * SONE hat die Zeile am ELEMENT und nicht in der Geste — an `.tree-row` und
+   * an `.switcher-item`, mit derselben Begründung. Hier gilt sie genauso: der
+   * Titel einer Aufgabe ist nichts, was man aus der Liste heraus kopiert; wer
+   * den Text will, öffnet die Aufgabe.
+   *
+   * `-webkit-touch-callout` dazu, wieder SONEs Zeile: ohne sie legt iOS beim
+   * langen Drücken sein eigenes Menü über genau die Zeile, die gerade
+   * aufgehoben wird — und das lange Drücken IST hier die Geste.
+   */
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 
 .task-wrap[data-dragging="true"] {
   opacity: 0.4;
+}
+
+/* Eine Zeile, die gezogen wird, darf die Zeiger-Ereignisse ihrer eigenen
+   Kinder nicht schlucken — sonst zielt man auf eine Nachbarin und trifft den
+   Knopf in der eigenen. SONEs Zeile, wortgleich übernommen. */
+.task-wrap[data-dragging="true"] * {
+  pointer-events: none;
+}
+
+/* Wohin das Ablegen führt.
+ *
+ * GEMELDET: „man sieht noch nicht gut, wohin man es zieht." Eine Linie IN DER
+ * LÜCKE und nicht ein Rahmen um die Zeile: ein Rahmen heißt „diese hier",
+ * eine Linie heißt „zwischen diesen beiden" — und gemeint ist das Zweite.
+ *
+ * Über die Ränder der Zeile hinaus (`inset-inline: -2px`), damit sie sich als
+ * etwas ZWISCHEN zwei Zeilen liest und nicht als Rand einer von beiden.
+ *
+ * Ohne Streuschatten, und das ist eine Erfahrung aus SONE: ein 3-px-Schatten
+ * auf einem 3-px-Balken zeichnet einen 9-px-Klotz daneben, und der liest sich
+ * als zweite Marke — ein Teil davon, warum dort eine Lücke wie zwei aussah. */
+.task-wrap[data-drop="before"]::before,
+.task-wrap[data-drop="after"]::after {
+  content: "";
+  position: absolute;
+  inset-inline: -2px;
+  block-size: 2px;
+  border-radius: 1px;
+  background: var(--accent);
+  z-index: 2;
+}
+.task-wrap[data-drop="before"]::before {
+  inset-block-start: -2px;
+}
+.task-wrap[data-drop="after"]::after {
+  inset-block-end: -2px;
+}
+
+/* Der Baum, gezogen.
+ *
+ * Dieselben zwei Zeichen wie in der Liste, plus eines, das es dort nicht gibt:
+ * ein Ordner hat ein INNEN. Eine Linie heißt „zwischen diese beiden", eine
+ * gefüllte Zeile heißt „hier hinein" — die zwei müssen verschieden aussehen,
+ * sonst ist jedes Ablegen ein Raten (SONEs Satz, übernommen). */
+.tree-row[data-drop="into"] {
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  border-radius: var(--sote-radius-md);
+}
+
+.tree-row[data-dragging="true"] {
+  opacity: 0.4;
+}
+
+.tree-row[data-dragging="true"] * {
+  pointer-events: none;
+}
+
+.tree-row[data-drop="before"]::before,
+.tree-row[data-drop="after"]::after {
+  content: "";
+  position: absolute;
+  inset-inline: -2px;
+  block-size: 2px;
+  border-radius: 1px;
+  background: var(--accent);
+  z-index: 2;
+}
+.tree-row[data-drop="before"]::before {
+  inset-block-start: -2px;
+}
+.tree-row[data-drop="after"]::after {
+  inset-block-end: -2px;
+}
+
+/* Was gerade reist, unter dem Zeiger.
+ *
+ * Die Linie sagt, WOHIN ein Ablegen führt; sie sagt nicht, WAS abgelegt wird.
+ * HTML5-Ziehen zeichnete das umsonst mit — wer es durch Zeiger-Ereignisse
+ * ersetzt, muss es selbst zeichnen (SONEs `.drag-preview`, übernommen).
+ *
+ * Nach unten rechts versetzt, damit es nie unter dem Finger liegt: sonst
+ * verdeckt es genau die Zeile, auf die gezielt wird. */
+.drag-preview {
+  position: fixed;
+  z-index: 100;
+  max-inline-size: 16rem;
+  margin-block-start: 10px;
+  margin-inline-start: 12px;
+  padding: var(--sone-space-2) var(--sone-space-3);
+  border-radius: var(--sote-radius-md);
+  background: var(--surface-overlay);
+  box-shadow: var(--sote-shadow-lg);
+  font-size: var(--sone-text-sm);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  /* Nie selbst ein Ziel, und nie `elementFromPoint` im Weg. */
+  pointer-events: none;
+  /* Leicht gekippt — das übliche Zeichen für „aufgehoben". */
+  transform: rotate(-1.5deg);
 }
 
 /*
@@ -1612,16 +1736,6 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex]:focus-vi
 
 /* Ohne diese Stelle gibt es kein „nach ganz unten" — die letzte Zeile hat
    keinen Nachbarn hinter sich, auf den man zielen könnte. */
-.drop-tail {
-  border: 1px dashed var(--line-strong);
-  border-radius: var(--sote-radius-md);
-  padding: 10px 12px;
-  margin-top: 8px;
-  font-family: var(--sote-mono);
-  font-size: 11px;
-  color: var(--text-faint);
-  text-align: center;
-}
 
 .menu-item.danger {
   color: var(--danger);
@@ -3832,6 +3946,11 @@ label.btn {
 
 .tree-row {
   display: flex;
+  /* Dieselbe Zeile wie an der Aufgabenzeile, aus demselben Grund — und in
+     SONE steht sie an genau dieser Klasse. */
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
   align-items: center;
   gap: var(--sone-space-1);
   min-height: 34px;

@@ -860,6 +860,13 @@ export function App() {
             onSort={(id, sortKey) =>
               void panelWrite(() => api.patchProject(id, { sortKey }, workspace))
             }
+            /* Ziehen schreibt beides in EINEM Aufruf: Ort und Platz. Zwei
+               Aufrufe wären zwei Wege, von denen der zweite scheitern kann —
+               und dann steht ein Projekt im neuen Ordner an einer Stelle, die
+               dort niemand gewählt hat. */
+            onMove={(id, parentId, sortKey) =>
+              void panelWrite(() => api.patchProject(id, { parentId, sortKey }, workspace))
+            }
             /*
               Teilen führt auf die Freigaben, mit diesem Projekt vorgewählt.
               Nicht sofort einen Link anlegen: Recht und Ablauf sind eine Wahl

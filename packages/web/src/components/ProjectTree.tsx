@@ -16,6 +16,8 @@
  * values" in SONEs Gestaltungs-Records.
  */
 
+import { useTreeDrag } from '../hooks/useTreeDrag.js';
+import { pathOf } from '../route.js';
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 
 import { colorValue, generateKeyBetween, PALETTE } from '@sote/core';
@@ -62,6 +64,7 @@ export function ProjectTree({
   onIcon,
   onTrash,
   onSort,
+  onMove,
   onShare,
 }: {
   projects: readonly Project[];
@@ -77,6 +80,16 @@ export function ProjectTree({
    * in einer Datei.
    */
   onSort: (id: string, sortKey: string) => void;
+  /**
+   * Umhängen und einsortieren in einem — was das Ziehen schreibt.
+   *
+   * Getrennt von `onSort`, weil es eine andere Sache ist: `onSort` bewegt
+   * innerhalb der Geschwister (die Knöpfe im Menü), `onMove` kann den Ort
+   * wechseln. Beides in einen Aufruf zu legen hieße, dass die Knöpfe jedes
+   * Mal `parentId` mitschicken müssten — und dann steht dort an zwei Stellen
+   * eine Angabe, die sich nicht ändern soll.
+   */
+  onMove: (id: string, parentId: string | null, sortKey: string) => void;
   /** Per Link teilen — der Aufrufer weiß, wohin das führt. */
   onShare: (id: string) => void;
   onCreate: (name: string, parentId: string | null, kind: 'folder' | 'list') => void;
@@ -211,9 +224,106 @@ export function ProjectTree({
   const childrenOf = (parentId: string | null) =>
     projects.filter((p) => p.parentId === parentId);
 
+  /** Liegt `id` unter `maybeAncestor`? Ein Ordner darf nicht in sich selbst. */
+  const inside = (id: string, maybeAncestor: string): boolean => {
+    let at = projects.find((x) => x.id === id)?.parentId ?? null;
+    // Begrenzt und nicht `while (true)`: stünde in den Daten je ein Kreis,
+    // hinge die Oberfläche — und zwar beim Ziehen, also mit gedrücktem Finger.
+    for (let schritt = 0; at !== null && schritt < 100; schritt += 1) {
+      if (at === maybeAncestor) return true;
+      at = projects.find((x) => x.id === at)?.parentId ?? null;
+    }
+    return false;
+  };
+
+  /**
+   * Ziehen im Baum.
+   *
+   * GEMELDET: „Baum sortieren. Das sollte man übrigens auch bei SOTE können."
+   * Konnte man nicht — es gab nur „eine Position höher/tiefer" im Menü, und
+   * damit ließ sich ein Projekt nie in einen anderen Ordner bringen.
+   *
+   * Die Geste ist SONEs (`useTreeDrag` über `usePointerDrag`), samt der
+   * Regeln, welche Lücke wem gehört: ein Ordner bekommt ein mittleres Band
+   * („hinein"), ein Projekt teilt sich in zwei Hälften, und „vor dieser" wird
+   * unter Geschwistern zu „hinter der darüber" — sonst zeichnet eine Lücke
+   * zwei Linien dicht nebeneinander.
+   *
+   * WAS HIER DAZUKOMMT, sind SOTEs eigene Regeln (Migration 0009): ganz oben
+   * stehen nur Ordner, ein Projekt hat keine Kinder, und nichts darf in sich
+   * selbst. Der Server hält alle drei — aber eine Linie, die etwas anbietet,
+   * das er dann ablehnt, ist schlimmer als keine: man legt ab und bekommt
+   * einen Fehler statt einer Bewegung.
+   */
+  const drag = useTreeDrag({
+    canDrop: (id, position) => {
+      const mich = projects.find((x) => x.id === id);
+      const ziel = projects.find((x) => x.id === position.rowId);
+      if (mich === undefined || ziel === undefined) return false;
+      if (ziel.id === id || inside(ziel.id, id)) return false;
+
+      const neuerVater =
+        position.intent === 'into' ? ziel.id : (ziel.parentId ?? null);
+      // Ein Projekt hat keine Kinder (Trigger in 0009).
+      if (neuerVater !== null) {
+        const vater = projects.find((x) => x.id === neuerVater);
+        if (vater === undefined || vater.kind !== 'folder') return false;
+      }
+      // Ganz oben nur Ordner (CHECK in 0009).
+      if (neuerVater === null && mich.kind !== 'folder') return false;
+      return true;
+    },
+    onDrop: (id, position) => {
+      const mich = projects.find((x) => x.id === id);
+      const ziel = projects.find((x) => x.id === position.rowId);
+      if (mich === undefined || ziel === undefined) return;
+
+      if (position.intent === 'into') {
+        // Ans Ende der Kinder: „hinein" sagt nichts über die Stelle, und ganz
+        // unten ist die Stelle, an der etwas Neues in einer Liste erscheint.
+        const drin = childrenOf(ziel.id);
+        const letzter = drin.filter((x) => x.id !== id).at(-1);
+        onMove(id, ziel.id, generateKeyBetween(letzter?.sortKey ?? null, null));
+        return;
+      }
+
+      const neuerVater = ziel.parentId ?? null;
+      /*
+       * Die Nachbarn OHNE die gezogene Zeile.
+       *
+       * Zieht man innerhalb derselben Ebene, steht sie selbst noch in der
+       * Reihe — und dann wäre der neue Schlüssel zwischen ihr und dem Ziel
+       * gerechnet, also dort, wo sie schon ist.
+       */
+      const reihe = projects
+        .filter((x) => (x.parentId ?? null) === neuerVater && x.id !== id)
+        .sort((a, b) => (a.sortKey < b.sortKey ? -1 : a.sortKey > b.sortKey ? 1 : 0));
+      const i = reihe.findIndex((x) => x.id === ziel.id);
+      if (i < 0) return;
+      const [a, b] =
+        position.intent === 'after'
+          ? [reihe[i]!.sortKey, reihe[i + 1]?.sortKey ?? null]
+          : [reihe[i - 1]?.sortKey ?? null, reihe[i]!.sortKey];
+      onMove(id, neuerVater, generateKeyBetween(a, b));
+    },
+  });
+
   function rows(parentId: string | null, depth: number): React.ReactNode[] {
     return childrenOf(parentId).flatMap((p) => [
-      <div className="tree-row" key={p.id}>
+      <div
+        className="tree-row"
+        key={p.id}
+        data-tree-row={p.id}
+        data-tree-parent={p.parentId ?? 'root'}
+        /* Der Name, den die Geste liest: `folder` bekommt ein mittleres Band
+           („hinein"), alles andere teilt sich in zwei Hälften. SONEs Wort für
+           das Zweite ist `page` — hier heißt es `list`, und die Geste fragt
+           nur, ob es `folder` ist. */
+        data-tree-kind={p.kind}
+        data-dragging={drag.dragging === p.id}
+        data-drop={drag.target?.rowId === p.id ? drag.target.intent : undefined}
+        onPointerDown={drag.onPointerDown}
+      >
         {renaming === p.id ? (
           <input
             className="tree-rename"
@@ -271,8 +381,32 @@ export function ProjectTree({
                 style={{ marginInlineStart: depth * 18 }}
               />
             )}
-            <button
+            {/*
+              EIN LINK UND KEIN KNOPF, und das ist nicht nur Formsache.
+
+              Zwei Gründe, und beide sind praktisch. Erstens: die Zeile führt
+              woandershin, und ein Ziel, das eine Adresse hat, gehört in ein
+              `a`. Damit gehen Mittelklick, „in neuem Tab öffnen" und das
+              Vorschauen der Adresse in der Statusleiste — alles Dinge, die ein
+              Knopf nicht kann und die niemand gemeldet hätte, weil man sie an
+              einem Knopf gar nicht erst versucht.
+
+              Zweitens, und das ist der Anlass: die Geste lehnt einen Druck auf
+              ein BEDIENELEMENT in der Zeile ab (`button, input, select,
+              textarea`) — sonst würde der Umbenennen-Knopf beim Antippen die
+              Zeile aufheben. Solange der Name selbst ein Knopf war, war die
+              ganze Zeilenmitte nicht zu ziehen, also praktisch die ganze
+              Zeile. In SONE ist es ein `a`, und genau darum fiel das dort nie
+              auf.
+
+              `draggable={false}`: ein Link ist von Haus aus ziehbar, und das
+              eingebaute Ziehen des Browsers würde diese Geste abbrechen,
+              bevor sie beginnt (SONEs Zeile, mit Begründung übernommen).
+            */}
+            <a
               className="tree-link"
+              href={pathOf({ kind: 'project', projectId: p.id })}
+              draggable={false}
               /*
                * Die Beschriftung nennt den Namen und die Zahl getrennt.
                *
@@ -289,7 +423,19 @@ export function ProjectTree({
                 (p.open === null ? '' : `, ${p.open} offen`)
               }
               aria-current={activeId === p.id ? 'page' : undefined}
-              onClick={() => onOpen(p.id)}
+              onClick={(e) => {
+                /*
+                 * Die Zusatztasten bleiben dem Browser.
+                 *
+                 * Wer mit Strg oder der mittleren Taste klickt, will einen
+                 * zweiten Tab — und eine Oberfläche, die das abfängt, um
+                 * „selbst zu navigieren", nimmt genau das weg, wofür der Link
+                 * da ist.
+                 */
+                if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+                e.preventDefault();
+                onOpen(p.id);
+              }}
             >
               <ProjectMark
                 icon={p.icon?.icon}
@@ -310,7 +456,7 @@ export function ProjectTree({
                   {p.open}
                 </span>
               )}
-            </button>
+            </a>
             <button
               className="entry-more"
               aria-label={`Menü für ${p.name}`}
@@ -633,6 +779,19 @@ export function ProjectTree({
 
   return (
     <>
+      {/* Was gerade reist, unter dem Zeiger — dieselbe Fläche wie in der
+          Aufgabenliste. Ein Geschwister und kein Kind der Leiste: die Leiste
+          rollt, und ein Kind würde an ihrem Rand abgeschnitten. */}
+      {drag.dragging !== null && drag.pointer !== null ? (
+        <div
+          className="drag-preview"
+          style={{ left: drag.pointer.x, top: drag.pointer.y }}
+          aria-hidden="true"
+        >
+          {projects.find((x) => x.id === drag.dragging)?.name ?? ''}
+        </div>
+      ) : null}
+
       {/*
         SONEs Abschnittskopf: Beschriftung und das Plus DANEBEN — nicht als
         Zeile unter der Liste. Immer gezeichnet, nie erst beim Hover: ein
