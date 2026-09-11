@@ -89,6 +89,22 @@ export function CheckIcon(props: SVGProps<SVGSVGElement>): ReactElement {
 }
 
 /**
+ * Ein Kalenderblatt mit Strich — „kein Datum".
+ *
+ * Den Kalender gibt es im übernommenen Satz, das Durchgestrichene nicht: SONE
+ * nimmt Termine nicht weg, es hat keine.
+ */
+export function CalendarOffIcon(props: SVGProps<SVGSVGElement>): ReactElement {
+  return (
+    <svg {...base(props)}>
+      <path d="M8 3v3M16 3v3M3.5 9.5h17" />
+      <rect x="3.5" y="5" width="17" height="15.5" rx="2" />
+      <path d="M4 20 20 5.5" />
+    </svg>
+  );
+}
+
+/**
  * Ein Lautsprecher — für Ton.
  *
  * Im übernommenen Satz gibt es `VideoIcon`, aber keines für Audio: SONE zeigt

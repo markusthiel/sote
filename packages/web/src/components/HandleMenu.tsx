@@ -15,6 +15,8 @@
 import { useEffect, useRef } from 'react';
 
 import type { TaskPatch, Task } from '../api.js';
+import { CalendarOffIcon } from './viewIcons.js';
+import { TrashIcon } from './icons.js';
 import { whenLabel } from '../dates.js';
 
 const PRIORITIES: readonly { level: 1 | 2 | 3 | 4; name: string; color: string }[] = [
@@ -107,7 +109,7 @@ export function HandleMenu({
           disabled={busy}
           onClick={() => onPatch({ planned: null })}
         >
-          kein Datum
+          <CalendarOffIcon /> Kein Datum
         </button>
       ) : null}
 
@@ -136,7 +138,10 @@ export function HandleMenu({
         disabled={busy}
         onClick={onTrash}
       >
-        In den Papierkorb
+        {/* Zeichen UND Wort: der Papierkorb ist der einzige Eintrag hier, den
+            man nicht durch nochmaliges Wählen zurückholt — und das einzige
+            Zeichen in dieser Liste sagt genau das. */}
+        <TrashIcon size={15} /> In den Papierkorb
       </button>
     </div>
   );

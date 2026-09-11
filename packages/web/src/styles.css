@@ -2919,6 +2919,35 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex]:focus-vi
   min-height: 32px;
 }
 
+/*
+ * Das Zeichen in einem Menüpunkt — SONEs Regel für `.entry-menu-item svg`.
+ *
+ * GEMELDET: „Bitte auch wie bei SONE überall bei den Menüs Icons verwenden.
+ * Nicht ausschliesslich, sondern da, wo es Sinn macht, Icon + Text."
+ *
+ * `flex: none`: ein Zeichen darf nicht schrumpfen, wenn der Text lang wird —
+ * sonst wird aus einem runden Symbol ein Ei. Und in der Farbe des Textes
+ * gedämpft: es begleitet das Wort und ersetzt es nicht.
+ */
+.menu-item svg {
+  flex: none;
+  inline-size: 1.05em;
+  block-size: 1.05em;
+  color: var(--text-faint);
+}
+
+/* Im Gefahrenpunkt trägt es dessen Farbe: ein graues Zeichen neben rotem Wort
+   sähe aus, als gehörte es nicht dazu. */
+.menu-item.danger svg {
+  color: inherit;
+}
+
+/* Nach links: dasselbe Zeichen, gespiegelt. Zwei Zeichen für eine Richtung
+   und ihre Umkehrung wären zwei Dinge zu zeichnen und eines zu pflegen. */
+.menu-item svg.flip {
+  transform: scaleX(-1);
+}
+
 .menu-item:hover:not(:disabled) {
   background: var(--sunken);
 }

@@ -30,6 +30,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { api, ApiError, type Task } from '../api.js';
 import { TaskRow } from '../components/TaskRow.js';
+import { ChevronRightIcon, PencilIcon, TrashIcon } from '../components/icons.js';
 import { CheckIcon } from '../components/viewIcons.js';
 import { useColumnDrag } from '../hooks/useColumnDrag.js';
 import { useRowDrag } from '../hooks/useRowDrag.js';
@@ -411,7 +412,7 @@ export function Board({
                         setRenaming(column.id);
                       }}
                     >
-                      Umbenennen
+                      <PencilIcon size={15} /> Umbenennen
                     </button>
                     <button
                       type="button"
@@ -420,7 +421,7 @@ export function Board({
                       disabled={index === 0}
                       onClick={() => ruecken(column.id, -1)}
                     >
-                      ← nach links
+                      <ChevronRightIcon size={15} className="flip" /> Nach links
                     </button>
                     <button
                       type="button"
@@ -429,7 +430,7 @@ export function Board({
                       disabled={index === columns.length - 1}
                       onClick={() => ruecken(column.id, 1)}
                     >
-                      nach rechts →
+                      <ChevronRightIcon size={15} /> Nach rechts
                     </button>
                     {/*
                       Die Fertig-Spalte, umschaltbar. Es kann nur eine geben —
@@ -488,7 +489,7 @@ export function Board({
                         löschen" allein lässt offen, ob die Arbeit mitgeht —
                         und das ist die einzige Frage, die dabei zählt.
                       */}
-                      Spalte weg, Karten in den Eingang
+                      <TrashIcon size={15} /> Spalte weg, Karten in den Eingang
                     </button>
                   </div>
                 ) : null}

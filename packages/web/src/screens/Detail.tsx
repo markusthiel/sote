@@ -34,6 +34,7 @@ import {
   PaperclipIcon,
   SlidersIcon,
   TextIcon,
+  TrashIcon,
   UsersIcon,
   type IconProps,
 } from '../components/icons.js';
@@ -1240,7 +1241,7 @@ export function Detail({
                                   setAnsehen(f.id);
                                 }}
                               >
-                                Ansehen
+                                <EyeIcon /> Ansehen
                               </button>
                               <a
                                 role="menuitem"
@@ -1249,7 +1250,7 @@ export function Detail({
                                 download={f.filename}
                                 onClick={() => setFileMenu(null)}
                               >
-                                Herunterladen
+                                <DownloadIcon size={15} /> Herunterladen
                               </a>
                               {anbindung.removeFile === undefined ? null : (
                                 <button
@@ -1262,7 +1263,21 @@ export function Detail({
                                     void save(() => anbindung.removeFile!(f.id));
                                   }}
                                 >
-                                  Wegnehmen
+                                  {/*
+                                    „Löschen" und nicht „Wegnehmen".
+
+                                    GEMELDET: „Warum schreibst du hier im Menü
+                                    eigentlich wegnehmen? Löschen wäre doch ein
+                                    normaler Begriff."
+
+                                    Er hat recht, und der Unterschied zur
+                                    Aufgabe ist gerade der Grund: die geht in
+                                    den PAPIERKORB, und das Wort dort sagt, dass
+                                    es einen Weg zurück gibt. Eine Datei hat
+                                    keinen — sie ist weg, Zeile und Bytes. Dann
+                                    soll das Wort das auch sagen.
+                                  */}
+                                  <TrashIcon size={15} /> Löschen
                                 </button>
                               )}
                             </div>
