@@ -577,3 +577,197 @@ test('jede Ansicht liefert die Dauer mit', async () => {
   const gefunden = await search(pool, workspaceId, 'Ablage', NOW);
   assert.equal(gefunden.tasks.find((r) => r.id === out.task.id)?.duration_min, 30);
 });
+
+/* ── Schlagwörter ──────────────────────────────────────────────────────── */
+
+test('@wort beim Anlegen wird ein Schlagwort und steht an der Zeile', async () => {
+  const { workspaceId } = await scratch('ws-tag');
+  const out = await createFromLine(pool, {
+    workspaceId,
+    userId,
+    line: 'Schrauben kaufen @baumarkt @unterwegs',
+    now: NOW,
+  });
+  assert.equal(out.task.title, 'Schrauben kaufen');
+  // Nach Namen sortiert, damit die Zeile bei jedem Laden gleich aussieht.
+  assert.deepEqual(out.task.labels, ['baumarkt', 'unterwegs']);
+});
+
+test('ohne Schlagwörter steht ein leeres Array und nicht NULL', async () => {
+  // NULL wäre eine zweite Schreibweise für „keine“, und jede Stelle in der
+  // Oberfläche müsste beide kennen.
+  const { workspaceId } = await scratch('ws-tag-leer');
+  const out = await createFromLine(pool, { workspaceId, userId, line: 'Nichts', now: NOW });
+  assert.deepEqual(out.task.labels, []);
+});
+
+test('@Haus und @haus sind EIN Schlagwort, die erste Schreibweise gilt', async () => {
+  /*
+   * Der Fehler, den Migration 0025 abstellt: `ON CONFLICT (workspace_id,
+   * name)` verglich Zeichen für Zeichen, die Suche verglich `lower(name)`.
+   * Also entstanden zwei Zeilen, die in einer Liste gleich aussahen — und
+   * die Suche fand Aufgaben aus beiden.
+   */
+  const { workspaceId } = await scratch('ws-tag-gross');
+  const erst = await createFromLine(pool, {
+    workspaceId,
+    userId,
+    line: 'Eins @Haus',
+    now: NOW,
+  });
+  const dann = await createFromLine(pool, {
+    workspaceId,
+    userId,
+    line: 'Zwei @haus',
+    now: NOW,
+  });
+  assert.deepEqual(erst.task.labels, ['Haus']);
+  assert.deepEqual(dann.task.labels, ['Haus']);
+  const zeilen = await pool.query('SELECT name FROM labels WHERE workspace_id = $1', [
+    workspaceId,
+  ]);
+  assert.equal(zeilen.rows.length, 1);
+});
+
+test('der Index lässt keine zweite Schreibweise daneben', async () => {
+  // Als eindeutiger Index über lower(name) und nicht als Prüfung im Code: ein
+  // weiterer Schreibweg kennt ihn, ohne ihn zu kennen.
+  const { workspaceId } = await scratch('ws-tag-index');
+  await pool.query('INSERT INTO labels (workspace_id, name) VALUES ($1,$2)', [
+    workspaceId,
+    'Büro',
+  ]);
+  await assert.rejects(() =>
+    pool.query('INSERT INTO labels (workspace_id, name) VALUES ($1,$2)', [workspaceId, 'büro']),
+  );
+});
+
+test('Schlagwörter lassen sich nachträglich setzen, ergänzen und wegnehmen', async () => {
+  const { workspaceId } = await scratch('ws-tag-patch');
+  const out = await createFromLine(pool, { workspaceId, userId, line: 'Streichen', now: NOW });
+
+  const eins = await patch(pool, out.task.id, workspaceId, { labels: ['baumarkt'] });
+  assert.deepEqual(eins.labels, ['baumarkt']);
+
+  const zwei = await patch(pool, out.task.id, workspaceId, {
+    labels: ['baumarkt', 'unterwegs'],
+  });
+  assert.deepEqual(zwei.labels, ['baumarkt', 'unterwegs']);
+
+  // Die Liste ist VOLLSTÄNDIG: was nicht drinsteht, geht ab.
+  const weniger = await patch(pool, out.task.id, workspaceId, { labels: ['unterwegs'] });
+  assert.deepEqual(weniger.labels, ['unterwegs']);
+
+  const keine = await patch(pool, out.task.id, workspaceId, { labels: [] });
+  assert.deepEqual(keine.labels, []);
+});
+
+test('die Antwort auf einen Patch trägt den NEUEN Stand', async () => {
+  /*
+   * `labels` ist keine Spalte, sondern `labels_of(id)`. Die Zeile aus dem
+   * UPDATE trägt also den Stand VOR dem Schreiben der Zuordnungen — ohne das
+   * zweite Lesen antwortet die Route mit den alten Etiketten, die Oberfläche
+   * zeichnet sie, und das nächste Laden zeigt andere. Das sieht aus wie „hat
+   * nicht gespeichert“.
+   */
+  const { workspaceId } = await scratch('ws-tag-antwort');
+  const out = await createFromLine(pool, { workspaceId, userId, line: 'Etwas @alt', now: NOW });
+  const nachher = await patch(pool, out.task.id, workspaceId, { labels: ['neu'] });
+  assert.deepEqual(nachher.labels, ['neu']);
+});
+
+test('ein Patch ohne Schlagwörter lässt sie stehen', async () => {
+  const { workspaceId } = await scratch('ws-tag-unberuehrt');
+  const out = await createFromLine(pool, { workspaceId, userId, line: 'Etwas @haus', now: NOW });
+  const nachher = await patch(pool, out.task.id, workspaceId, { priority: 1 });
+  assert.deepEqual(nachher.labels, ['haus']);
+});
+
+test('ein Name mit Leerzeichen wird beim Setzen abgelehnt, mit Grund', async () => {
+  const { workspaceId } = await scratch('ws-tag-schlecht');
+  const out = await createFromLine(pool, { workspaceId, userId, line: 'Etwas', now: NOW });
+  await assert.rejects(
+    () => patch(pool, out.task.id, workspaceId, { labels: ['zu hause'] }),
+    (e: Error) => e.name === 'OutOfOrder',
+  );
+  // Und nichts halb geschrieben.
+  const wieder = await patch(pool, out.task.id, workspaceId, { priority: 4 });
+  assert.deepEqual(wieder.labels, []);
+});
+
+test('dasselbe Schlagwort in zwei Schreibweisen ist beim Setzen eines', async () => {
+  const { workspaceId } = await scratch('ws-tag-doppelt');
+  const out = await createFromLine(pool, { workspaceId, userId, line: 'Etwas', now: NOW });
+  const nachher = await patch(pool, out.task.id, workspaceId, {
+    labels: ['Haus', 'haus', 'HAUS'],
+  });
+  assert.deepEqual(nachher.labels, ['Haus']);
+});
+
+test('Schlagwörter gelten je Arbeitsbereich', async () => {
+  // `UNIQUE (workspace_id, lower(name))`: derselbe Name in zwei Bereichen sind
+  // zwei Schlagwörter, und keiner sieht das des anderen.
+  const a = await scratch('ws-tag-a');
+  const b = await scratch('ws-tag-b');
+  const eins = await createFromLine(pool, {
+    workspaceId: a.workspaceId,
+    userId,
+    line: 'Hier @gemeinsam',
+    now: NOW,
+  });
+  const zwei = await createFromLine(pool, {
+    workspaceId: b.workspaceId,
+    userId,
+    line: 'Dort @gemeinsam',
+    now: NOW,
+  });
+  assert.deepEqual(eins.task.labels, ['gemeinsam']);
+  assert.deepEqual(zwei.task.labels, ['gemeinsam']);
+  /*
+   * Auf die beiden Bereiche eingeschränkt, und das ist keine Feinheit: die
+   * Testdatenbank bleibt zwischen den Läufen stehen, also zählte die Abfrage
+   * ohne Einschränkung die `gemeinsam` aller früheren Läufe mit — beim
+   * ersten Lauf grün, beim zweiten 8 statt 2. Genau die Sorte Test, die
+   * einmal gutgeht und dann anfängt zu lügen.
+   */
+  const zeilen = await pool.query(
+    `SELECT workspace_id FROM labels
+      WHERE lower(name) = $1 AND workspace_id = ANY($2::uuid[])`,
+    ['gemeinsam', [a.workspaceId, b.workspaceId]],
+  );
+  assert.equal(zeilen.rows.length, 2);
+});
+
+test('jede Ansicht liefert die Schlagwörter mit', async () => {
+  const { workspaceId } = await scratch('ws-tag-ansichten');
+  const out = await createFromLine(pool, {
+    workspaceId,
+    userId,
+    line: 'Ablage sortieren heute @büro',
+    now: NOW,
+  });
+  const rows = await list(pool, 'today', workspaceId, NOW);
+  assert.deepEqual(rows.find((r) => r.id === out.task.id)?.labels, ['büro']);
+
+  const d = await detail(pool, out.task.id, workspaceId);
+  assert.deepEqual(d.task.labels, ['büro']);
+  // Und der Vorrat für das Feld: was es hier schon gibt.
+  assert.deepEqual(d.known, ['büro']);
+
+  const gefunden = await search(pool, workspaceId, '@büro', NOW);
+  assert.deepEqual(gefunden.tasks.find((r) => r.id === out.task.id)?.labels, ['büro']);
+});
+
+test('die Suche findet ein Schlagwort in jeder Schreibweise', async () => {
+  const { workspaceId } = await scratch('ws-tag-suche');
+  const out = await createFromLine(pool, {
+    workspaceId,
+    userId,
+    line: 'Termin @Arzt',
+    now: NOW,
+  });
+  for (const q of ['@Arzt', '@arzt', '@ARZT']) {
+    const gefunden = await search(pool, workspaceId, q, NOW);
+    assert.equal(gefunden.tasks.some((r) => r.id === out.task.id), true, q);
+  }
+});

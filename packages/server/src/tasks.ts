@@ -8,6 +8,9 @@
 import {
   generateKeyBetween,
   MAX_DURATION,
+  MAX_LABEL,
+  normalizeLabel,
+  uniqueLabels,
   nextAfterCompletion,
   nextOccurrence,
   parseQuickAdd,
@@ -39,6 +42,15 @@ export interface TaskRow {
   recur_after_unit: string | null;
   duration_min: number | null;
   sort_key: string;
+  /**
+   * Die Schlagwörter, nach Namen sortiert — `[]` wenn keine.
+   *
+   * Keine Spalte, sondern `labels_of(id)` aus Migration 0025. Sie kommen
+   * damit an ALLEN vier Lesestellen mit, ohne dass eine davon eine
+   * Verbindung selbst zusammensetzt: eine Zeile, die in der Liste
+   * Schlagwörter hat und im Detail nicht, sieht wie ein Verlust aus.
+   */
+  labels: string[];
 }
 
 /**
@@ -106,7 +118,7 @@ const RETURNING = `
   id, workspace_id, project_id, parent_id, title, note,
   planned_at, planned_all_day, due_at, due_all_day, priority,
   completed_at, recur_rrule, recur_dtstart, recur_after_n,
-  recur_after_unit, duration_min, sort_key`;
+  recur_after_unit, duration_min, sort_key, labels_of(id) AS labels`;
 
 const SELECT = `SELECT ${RETURNING} FROM tasks`;
 
@@ -261,7 +273,7 @@ export async function createFromLine(pool: Pool, input: CreateFromLine): Promise
     const rec = q.recurrence;
     const sortKey = await keyAtEnd(client, input.workspaceId, projectId);
 
-    const row = await queryOne<TaskRow>(
+    let row = await queryOne<TaskRow>(
       client,
       `INSERT INTO tasks (
          workspace_id, project_id, title,
@@ -341,20 +353,28 @@ export async function createFromLine(pool: Pool, input: CreateFromLine): Promise
       }
     }
 
-    for (const label of q.labels) {
-      const l = await queryOne<{ id: string }>(
-        client,
-        `INSERT INTO labels (workspace_id, name) VALUES ($1,$2)
-         ON CONFLICT (workspace_id, name) DO UPDATE SET name = EXCLUDED.name
-         RETURNING id`,
-        [input.workspaceId, label],
+    // Dazu und nichts weg: eine Zeile nennt, was drankommt.
+    await setLabels(client, row.id, input.workspaceId, q.labels, false);
+
+    /*
+     * NOCHMAL LESEN, wenn Schlagwörter dabei waren.
+     *
+     * `labels` ist keine Spalte, sondern `labels_of(id)` — das `RETURNING` des
+     * INSERT wertet sie aus, BEVOR die Zuordnungen geschrieben sind, und liefert
+     * darum immer `[]`. Der Test „@wort beim Anlegen steht an der Zeile" hat
+     * genau das gefunden; im Browser wäre es „die Etiketten erscheinen erst
+     * beim Neuladen" gewesen, also die Sorte Fehler, die man dem Netz
+     * zuschreibt.
+     *
+     * Nur wenn es welche gab: eine zweite Abfrage für jede Zeile ohne
+     * Schlagwörter wäre eine Abfrage, die nichts erfährt.
+     */
+    if (q.labels.length > 0) {
+      const wieder = await client.query<TaskRow>(
+        `${SELECT} WHERE id = $1`,
+        [row.id],
       );
-      if (l) {
-        await client.query(
-          'INSERT INTO task_labels (task_id, label_id) VALUES ($1,$2) ON CONFLICT DO NOTHING',
-          [row.id, l.id],
-        );
-      }
+      row = wieder.rows[0] ?? row;
     }
 
     return {
@@ -600,6 +620,91 @@ export class OutOfOrder extends Error {
 }
 
 /**
+ * Schlagwörter an eine Aufgabe hängen — die EINE Stelle, die das tut.
+ *
+ * Zwei Aufrufer: das Anlegen aus einer Zeile (`@wort` im Schnellerfasser) und
+ * das nachträgliche Setzen aus der Oberfläche. Die erste Fassung hatte die
+ * Einfügung nur im Anlegen, und sie verglich `ON CONFLICT (workspace_id, name)`
+ * — also Zeichen für Zeichen. Ein zweiter Aufrufer mit derselben Zeile wäre ein
+ * zweiter Vergleich, und einer von beiden hätte irgendwann ein `lower()` und der
+ * andere nicht.
+ *
+ * `replace` unterscheidet die beiden Fälle, und zwar deutlich:
+ *
+ * - **false** (Anlegen): dazu, nichts weg. Eine Zeile nennt, was drankommt.
+ * - **true** (Setzen): die Liste ist VOLLSTÄNDIG, was nicht drinsteht, geht ab.
+ *   Ganz und nicht als Zu-/Abgang — dieselbe Regel wie bei den Zuständigen: eine
+ *   Liste, die man nur ergänzen kann, hat keinen Weg zurück.
+ *
+ * GEFUNDEN WIRD OHNE RÜCKSICHT AUF GROSS UND KLEIN, angelegt wird in der
+ * getippten Schreibweise. Wer `@Haus` schreibt, wo `@haus` schon steht, bekommt
+ * `haus` — die erste Schreibweise ist die, die jemand bewusst gewählt hat, und
+ * der eindeutige Index aus 0025 lässt die zweite ohnehin nicht daneben.
+ */
+async function setLabels(
+  client: PoolClient,
+  taskId: string,
+  workspaceId: string,
+  names: readonly string[],
+  replace: boolean,
+): Promise<void> {
+  const wanted = uniqueLabels(names);
+  if (wanted.length !== names.filter((n) => n.trim() !== '').length && replace) {
+    // Nur beim Setzen ein Wurf: dort hat jemand ein Feld ausgefüllt und soll
+    // erfahren, warum es nicht gilt. Beim Anlegen bleibt ein unbrauchbares
+    // `@…` im Titel stehen (der Kern nimmt es dort nicht heraus), und ein
+    // Wurf würde die ganze Aufgabe verhindern.
+    const bad = names.find((n) => n.trim() !== '' && normalizeLabel(n) === undefined);
+    if (bad !== undefined) {
+      throw new OutOfOrder(
+        `„${bad.trim()}“ ist kein Schlagwort — ein Wort ohne Leerzeichen, höchstens ${MAX_LABEL} Zeichen`,
+      );
+    }
+  }
+
+  const ids: string[] = [];
+  for (const name of wanted) {
+    /*
+     * Erst suchen, dann anlegen — und beides über `lower(name)`.
+     *
+     * Kein `ON CONFLICT`, weil der Konflikt hier auf einem AUSDRUCK liegt
+     * (`labels_by_name_ci`): `ON CONFLICT (workspace_id, lower(name))` wäre
+     * möglich, aber dann steht die Regel ein zweites Mal im Abfragetext. Die
+     * Suche davor ist ausserdem die, die die getippte Schreibweise verwirft
+     * und die vorhandene behält.
+     */
+    const found = await queryOne<{ id: string }>(
+      client,
+      'SELECT id FROM labels WHERE workspace_id = $1 AND lower(name) = lower($2)',
+      [workspaceId, name],
+    );
+    if (found !== undefined) {
+      ids.push(found.id);
+      continue;
+    }
+    const made = await queryOne<{ id: string }>(
+      client,
+      'INSERT INTO labels (workspace_id, name) VALUES ($1,$2) RETURNING id',
+      [workspaceId, name],
+    );
+    if (made !== undefined) ids.push(made.id);
+  }
+
+  if (replace) {
+    await client.query(
+      'DELETE FROM task_labels WHERE task_id = $1 AND NOT (label_id = ANY($2::uuid[]))',
+      [taskId, ids],
+    );
+  }
+  for (const id of ids) {
+    await client.query(
+      'INSERT INTO task_labels (task_id, label_id) VALUES ($1,$2) ON CONFLICT DO NOTHING',
+      [taskId, id],
+    );
+  }
+}
+
+/**
  * Einzelne Felder ändern — was das Anfasser-Menü schreibt.
  *
  * **Nur die genannten Felder.** Ein `undefined` heißt „nicht angefasst", ein
@@ -643,6 +748,14 @@ export interface Patch {
    * Frage. Der Aufrufer schickt, wer es sein soll.
    */
   readonly assignees?: readonly string[];
+  /**
+   * Die Schlagwörter, vollständig — `[]` nimmt alle weg.
+   *
+   * Namen und nicht Ids: ein Schlagwort ENTSTEHT beim Vergeben, so wie im
+   * Schnellerfasser. Wer erst eines anlegen müsste, um es zu benutzen, legt
+   * keines an.
+   */
+  readonly labels?: readonly string[];
 }
 
 export async function patch(
@@ -735,7 +848,7 @@ export async function patch(
     }
   }
 
-  if (sets.length === 0 && fields.assignees === undefined) {
+  if (sets.length === 0 && fields.assignees === undefined && fields.labels === undefined) {
     throw new OutOfOrder('nichts zu ändern');
   }
 
@@ -756,8 +869,8 @@ export async function patch(
       );
       row = out.rows[0];
     } else {
-      // Nur Zuständige: die Aufgabe wird trotzdem angefasst, damit `updated_at`
-      // stimmt und die Türklingel läutet.
+      // Nur Zuständige oder Schlagwörter: die Aufgabe wird trotzdem angefasst,
+      // damit `updated_at` stimmt und die Türklingel läutet.
       const out = await client.query<TaskRow>(
         `UPDATE tasks SET updated_at = now()
           WHERE id = $1 AND workspace_id = $2
@@ -793,6 +906,24 @@ export async function patch(
           [taskId, userId],
         );
       }
+    }
+
+    if (fields.labels !== undefined) {
+      await setLabels(client, taskId, workspaceId, fields.labels, true);
+      /*
+       * NOCHMAL LESEN, und das ist kein Luxus.
+       *
+       * `labels` ist keine Spalte, sondern `labels_of(id)` — die Zeile von
+       * oben trägt also den Stand VOR dieser Änderung. Ohne das zweite Lesen
+       * antwortet die Route mit den alten Etiketten, die Oberfläche zeichnet
+       * sie, und das nächste Laden zeigt plötzlich andere. Genau die Sorte
+       * Fehler, die aussieht wie „hat nicht gespeichert".
+       */
+      const wieder = await client.query<TaskRow>(
+        `${SELECT} WHERE id = $1 AND workspace_id = $2`,
+        [taskId, workspaceId],
+      );
+      row = wieder.rows[0] ?? row;
     }
     return row;
   });

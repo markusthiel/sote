@@ -19,11 +19,11 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { COMMON_LEAD_MINUTES, formatDuration, saysLead } from '@sote/core';
+import { COMMON_LEAD_MINUTES, formatDuration, sameLabel, saysLead } from '@sote/core';
 
 import { api, ApiError, type Detail as DetailData, type Project, type Task } from '../api.js';
 import { toggleDone } from '../tasks/toggleDone.js';
-import { FieldRow, FreeDate, FreeDuration } from '../components/FieldRow.js';
+import { FieldRow, FreeDate, FreeDuration, FreeLabel } from '../components/FieldRow.js';
 import { whenOptions } from '../components/HandleMenu.js';
 import { whenLabel } from '../dates.js';
 
@@ -749,6 +749,79 @@ export function Detail({
               onPick={(minutes) => {
                 close();
                 void save(() => anbindung.patch({ duration: minutes }));
+              }}
+            />
+          </>
+        )}
+      </FieldRow>
+
+      {/*
+        Schlagwörter — jetzt ECHTE.
+
+        Die Tabellen stehen seit Migration 0001, der Schnellerfasser schrieb
+        `@wort` seit damals, die Suche filterte darauf. Zu sehen waren sie
+        nirgends und zu ändern gar nicht: wieder die Sorte Lücke, die auch
+        Wiederholung und Zuständige hatten — es fehlte der Weg von der
+        Oberfläche dorthin.
+
+        Der VORRAT steht oben (was es hier schon gibt, angehaktes zuerst
+        erkennbar), das freie Feld unten. Ohne den Vorrat wäre es ein leeres
+        Textfeld, und wer nicht sieht, was es gibt, legt beim dritten Mal
+        `unterweg` an.
+      */}
+      <FieldRow
+        label="schlagwörter"
+        value={task.labels.length === 0 ? null : task.labels.join(', ')}
+        empty="keine"
+        disabled={busy || !darfSchreiben}
+      >
+        {(close) => (
+          <>
+            {data.known.length === 0 ? (
+              <div className="fpop-empty">
+                Noch keine — schreib eines ins Feld, dann gibt es eines.
+              </div>
+            ) : (
+              data.known.map((name) => {
+                const dran = task.labels.some((have) => sameLabel(have, name));
+                return (
+                  <button
+                    key={name}
+                    type="button"
+                    role="menuitemcheckbox"
+                    className="fpop-row"
+                    aria-checked={dran}
+                    onClick={() => {
+                      /*
+                       * Umschalten und nicht setzen: das Feld schickt die
+                       * VOLLSTÄNDIGE Liste (`labels` ist ein Ersetzen), also
+                       * wird sie hier gebaut. Ein Zu- und ein Abgangsweg wären
+                       * zwei Routen für eine Frage.
+                       *
+                       * Offen bleiben (`close` wird nicht gerufen): wer eines
+                       * anhakt, hakt oft zwei an. Beim Datum ist es umgekehrt,
+                       * weil es dort nur eines geben kann.
+                       */
+                      const next = dran
+                        ? task.labels.filter((have) => !sameLabel(have, name))
+                        : [...task.labels, name];
+                      void save(() => anbindung.patch({ labels: next }));
+                    }}
+                  >
+                    <span className="fpop-check" aria-hidden="true">
+                      {dran ? '✓' : ''}
+                    </span>
+                    {name}
+                  </button>
+                );
+              })
+            )}
+            <FreeLabel
+              label="oder ein neues"
+              known={task.labels}
+              onPick={(name) => {
+                close();
+                void save(() => anbindung.patch({ labels: [...task.labels, name] }));
               }}
             />
           </>

@@ -28,7 +28,7 @@
  * schlimmer als eins, das eine halbe Sekunde braucht.
  */
 
-import { parseDuration } from '@sote/core';
+import { normalizeLabel, parseDuration, sameLabel } from '@sote/core';
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 
 export function FieldRow({
@@ -159,6 +159,61 @@ export function FreeDuration({
         />
       </label>
       {bad ? <div className="fpop-note">so kann ich das nicht lesen</div> : null}
+    </div>
+  );
+}
+
+/**
+ * Ein neues Schlagwort.
+ *
+ * Dasselbe Muster wie beim freien Datum und der freien Dauer: der Vorrat deckt
+ * das Meiste, aber das erste Mal deckt er nie — und ohne dieses Feld gäbe es
+ * keinen Weg, das erste anzulegen.
+ *
+ * ABGELEHNT WIRD HIER UND NICHT AM SERVER. Ein Leerzeichen macht aus einem
+ * Schlagwort eines, das man mit `@` nicht wiederfindet; das sagt das Feld,
+ * bevor jemand Enter drückt, und in der Sprache, in der es getippt wurde.
+ * `normalizeLabel` ist dieselbe Funktion, die der Server benutzt — es gibt
+ * genau eine Antwort auf „ist das ein Name".
+ */
+export function FreeLabel({
+  onPick,
+  label,
+  known,
+}: {
+  onPick: (name: string) => void;
+  label: string;
+  /** Was an dieser Aufgabe schon dranhängt — doppelt anhängen wäre nichts. */
+  known: readonly string[];
+}) {
+  const [text, setText] = useState('');
+  const name = normalizeLabel(text);
+  const bad = text.trim() !== '' && name === undefined;
+  const schon = name !== undefined && known.some((have) => sameLabel(have, name));
+  return (
+    <div className="fpop-date">
+      <label>
+        <span>{label}</span>
+        <input
+          type="text"
+          value={text}
+          placeholder="unterwegs"
+          aria-invalid={bad}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key !== 'Enter') return;
+            e.preventDefault();
+            if (name === undefined || schon) return;
+            onPick(name);
+            setText('');
+          }}
+        />
+      </label>
+      {bad ? (
+        <div className="fpop-note">ein Wort ohne Leerzeichen — damit `@` es wiederfindet</div>
+      ) : schon ? (
+        <div className="fpop-note">hängt schon dran</div>
+      ) : null}
     </div>
   );
 }

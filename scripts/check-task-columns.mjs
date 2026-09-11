@@ -46,8 +46,14 @@ const problems = [];
 /**
  * Die Namen aus `const NAME = ` … `` `; ``.
  *
- * Das `t.`-Präfix fällt weg: die Suche verbindet Tabellen und muss qualifizieren
- * — verglichen werden die Spalten, nicht die Schreibweise.
+ * Das `t.`-Präfix fällt weg: die Suche verbindet Tabellen und muss
+ * qualifizieren — verglichen werden die Spalten, nicht die Schreibweise.
+ *
+ * ÜBERALL im Eintrag und nicht nur am Anfang. Der erste Wurf schnitt nur vorn,
+ * und dann sind `labels_of(id) AS labels` und `labels_of(t.id) AS labels` zwei
+ * verschiedene Einträge — der Wächter meldete einen Unterschied, den es nicht
+ * gab. Aufgefallen bei genau dieser Zeile, also gleich hier notiert: nicht
+ * jede Aufzählung besteht aus nackten Spaltennamen.
  */
 function columnsOf(file, name) {
   const text = readFileSync(file, 'utf8');
@@ -59,7 +65,7 @@ function columnsOf(file, name) {
   return text
     .slice(open + 1, close)
     .split(',')
-    .map((s) => s.trim().replace(/^t\./, ''))
+    .map((s) => s.trim().replace(/\bt\./g, ''))
     .filter((s) => s !== '');
 }
 

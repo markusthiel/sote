@@ -926,6 +926,7 @@ export function App() {
             onChanged={() => void loadPanel()}
             openTask={openTask}
             onOpenTask={setOpenTask}
+            onLabel={(name) => go({ kind: 'search', q: `@${name}` })}
           />
         ) : route.kind === 'search' ? (
           <Search

@@ -25,6 +25,7 @@ export function TaskRow({
   onComplete,
   onOpenMenu,
   onOpen,
+  onLabel,
 }: {
   task: Task;
   now: Date;
@@ -37,6 +38,18 @@ export function TaskRow({
   onComplete: (task: Task) => void;
   onOpenMenu?: () => void;
   onOpen?: () => void;
+  /**
+   * Ein Klick auf ein Schlagwort — führt in die Suche.
+   *
+   * KEIN eigener Bildschirm „alle Aufgaben mit @wort": den gibt es schon, er
+   * heisst Suche und ist ein Ort mit einer Adresse (`claude/suche-als-ort.md`).
+   * Ein zweiter Weg zu derselben Liste wäre einer, den man pflegen muss, damit
+   * beide dasselbe zeigen.
+   *
+   * Fehlt der Rückruf, stehen die Etiketten trotzdem da — nur als Text. Ein
+   * Knopf, der nichts tut, ist schlechter als eine Auskunft.
+   */
+  onLabel?: ((name: string) => void) | undefined;
 }) {
   const done = task.completed !== null;
   const planned = task.planned === null ? null : new Date(task.planned);
@@ -107,6 +120,26 @@ export function TaskRow({
               {task.recurrence.says.replace(/\.$/, '')}
             </span>
           ) : null}
+          {/* Die Schlagwörter zuletzt in der Beiwerkzeile, vor dem Projekt:
+              es können mehrere sein, und was in der Zahl schwankt, gehört
+              hinter das, was immer gleich breit ist. */}
+          {task.labels.map((name) =>
+            onLabel === undefined ? (
+              <span key={name} className="tag">
+                {name}
+              </span>
+            ) : (
+              <button
+                key={name}
+                type="button"
+                className="tag as-tag"
+                title={`Aufgaben mit @${name} suchen`}
+                onClick={() => onLabel(name)}
+              >
+                {name}
+              </button>
+            ),
+          )}
           {projectName !== undefined ? (
             <span className="crumb">
               <span className="p-sq" aria-hidden="true" />

@@ -162,6 +162,13 @@ function readPatch(body: Record<string, unknown>): import('./tasks.js').Patch {
       throw new OutOfOrder('eine Wiederholung braucht `rrule` oder `n` und `unit`');
     }
   }
+  /* Schlagwörter: eine vollständige Liste von NAMEN, `[]` nimmt alle weg.
+     Namen und nicht Ids, weil ein Schlagwort beim Vergeben entsteht. */
+  if ('labels' in body) {
+    const l = body['labels'];
+    if (!Array.isArray(l)) throw new OutOfOrder('`labels` ist eine Liste von Namen');
+    out['labels'] = l.map((x) => String(x));
+  }
   /* Zuständige: eine vollständige Liste von Ids, `[]` nimmt alle weg. */
   if ('assignees' in body) {
     const a = body['assignees'];
@@ -216,6 +223,8 @@ export function detailView(
     children: d.children.map(taskView),
     comments: d.comments.map((c) => ({ ...c, createdAt: c.createdAt.toISOString() })),
     assignees: d.assignees,
+    /* Der Vorrat, aus dem das Schlagwortfeld vorschlägt. */
+    known: d.known,
     reminders: reminders.map((r) => ({
       id: r.id,
       userId: r.userId,
@@ -264,6 +273,7 @@ function taskView(row: TaskRow) {
        ein „1:30 h" müsste sie dafür erst wieder auseinandernehmen. Wie es
        aussieht, sagt `formatDuration` an der Stelle, an der es steht. */
     duration: row.duration_min,
+    labels: row.labels,
     sortKey: row.sort_key,
   };
 }

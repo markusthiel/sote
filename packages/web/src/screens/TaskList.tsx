@@ -46,6 +46,7 @@ export function TaskList({
   onChanged,
   openTask,
   onOpenTask,
+  onLabel,
 }: {
   route: Route;
   workspace: string | undefined;
@@ -54,6 +55,8 @@ export function TaskList({
   onChanged: () => void;
   openTask: string | null;
   onOpenTask: (id: string | null) => void;
+  /** Ein Klick auf ein Schlagwort — führt in die Suche. */
+  onLabel: (name: string) => void;
 }) {
   const view = viewOf(route);
   const projectId = route.kind === 'project' ? route.projectId : undefined;
@@ -390,6 +393,7 @@ export function TaskList({
         <TaskRow
           task={task}
           open={openTask === task.id}
+          onLabel={onLabel}
           onOpen={() => onOpenTask(openTask === task.id ? null : task.id)}
           now={now}
           pending={isPending(task.id)}

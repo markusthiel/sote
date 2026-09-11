@@ -41,6 +41,16 @@ export interface Detail {
   readonly comments: readonly Comment[];
   readonly assignees: readonly Assignee[];
   /**
+   * Die Schlagwörter, die es in diesem Arbeitsbereich SCHON gibt.
+   *
+   * Nicht die der Aufgabe — die stehen an `task.labels`. Das hier ist der
+   * Vorschlagsvorrat für das Feld, und ohne ihn wäre das Feld ein leeres
+   * Textfeld: wer nicht sieht, was es gibt, tippt `unterwegs`, wo `Unterwegs`
+   * steht, und legt beim dritten Mal `unterweg` an. Ein Vorrat macht aus einem
+   * Freitextfeld eine Auswahl mit Notausgang.
+   */
+  readonly known: readonly string[];
+  /**
    * Nur vorhanden, wenn es eine Herkunft gibt.
    *
    * Kein Feld „Herkunft: keine" — jede Stelle, an der SONE vorkommt, hat einen
@@ -54,7 +64,7 @@ const COLUMNS = `
   id, workspace_id, project_id, parent_id, title, note,
   planned_at, planned_all_day, due_at, due_all_day, priority,
   completed_at, recur_rrule, recur_dtstart, recur_after_n,
-  recur_after_unit, duration_min, sort_key`;
+  recur_after_unit, duration_min, sort_key, labels_of(id) AS labels`;
 
 export async function detail(
   pool: Pool,
@@ -111,6 +121,12 @@ export async function detail(
       [taskId],
     );
 
+    const known = await queryRows<{ name: string }>(
+      client,
+      `SELECT name FROM labels WHERE workspace_id = $1 ORDER BY lower(name)`,
+      [workspaceId],
+    );
+
     const origin = await queryOne<{ url: string; page_title: string; seen_at: Date }>(
       client,
       'SELECT url, page_title, seen_at FROM task_origins WHERE task_id = $1',
@@ -133,6 +149,7 @@ export async function detail(
         name: a.name,
         guestKey: a.guest_key,
       })),
+      known: known.map((l) => l.name),
       origin:
         origin === undefined
           ? undefined

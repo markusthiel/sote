@@ -16,7 +16,7 @@
  * Bildschirme das nicht tun.
  */
 
-import { buildTaskQuery, parseTaskQuery, type Facet } from '@sote/core';
+import { buildTaskQuery, parseTaskQuery, sameLabel, type Facet } from '@sote/core';
 import { useCallback, useEffect, useState } from 'react';
 
 import { api, ApiError, type Project, type Task } from '../api.js';
@@ -57,6 +57,22 @@ export function Search({
   const [loaded, setLoaded] = useState(false);
 
   const parsed = parseTaskQuery(q);
+
+  /**
+   * Ein Klick auf ein Schlagwort in einem TREFFER verengt die Suche.
+   *
+   * Und ersetzt sie nicht: hier steht schon eine Frage, und ein Klick, der sie
+   * wegwirft, ist einer, nach dem man von vorn tippt. Zwei Schlagwörter
+   * nebeneinander sind ein UND (so liest die Suche sie), also ist Anhängen
+   * genau das, was der Klick bedeutet: „davon nur die mit auch diesem".
+   *
+   * Steht es schon in der Zeile, passiert nichts — ein Klick, der die Zeile
+   * verdoppelt, sähe wie ein Fehler aus.
+   */
+  const refine = (name: string) => {
+    if (parsed.labels.some((have) => sameLabel(have, name))) return;
+    onQuery(`${q.trim()} @${name}`.trim());
+  };
   const nothingAsked =
     parsed.text === '' &&
     parsed.projects.length === 0 &&
@@ -223,6 +239,7 @@ export function Search({
             now={now}
             projectName={nameOf(task.projectId)}
             open={openTask === task.id}
+            onLabel={refine}
             onOpen={() => onOpenTask(openTask === task.id ? null : task.id)}
             onComplete={() => {
               // In beide Richtungen: eine Suche zeigt Erledigtes mit, also
@@ -251,6 +268,7 @@ export function Search({
                   now={now}
                   projectName={nameOf(task.projectId)}
                   open={openTask === task.id}
+                  onLabel={refine}
                   onOpen={() => onOpenTask(openTask === task.id ? null : task.id)}
                   onComplete={() => {
                     void toggleDone(task, workspace).then(load, () =>

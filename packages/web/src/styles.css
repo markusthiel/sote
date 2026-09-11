@@ -1022,6 +1022,42 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex]:focus-vi
   border-color: var(--danger);
 }
 
+/* Ein Schlagwort in der Zeile.
+   
+   Kein Rahmen und keine Füllung: acht Etiketten mit Kästchen drumherum sind
+   acht Kästen in einer Zeile, die drei Wörter zeigen soll. Das `@` steht davor
+   und trägt die Bedeutung — es ist dasselbe Zeichen, mit dem man es tippt und
+   sucht, also sagt es „das ist ein Schlagwort" ohne ein Wort dafür. */
+.tag {
+  font-family: var(--sote-mono);
+  font-size: var(--sone-text-xs);
+  color: var(--text-muted);
+}
+.tag::before {
+  content: "@";
+  color: var(--text-faint);
+}
+
+/* Als Knopf: derselbe Text, nur anfassbar. Erst beim Zeigen sieht man, dass
+   er einer ist — eine Zeile mit acht unterstrichenen Wörtern liest sich als
+   Fussnotenapparat. */
+.tag.as-tag {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  font: inherit;
+  font-family: var(--sote-mono);
+  cursor: pointer;
+}
+.tag.as-tag:hover {
+  color: var(--accent-text);
+  text-decoration: underline;
+}
+.tag.as-tag:focus-visible {
+  outline: 2px solid var(--accent-line);
+  outline-offset: 2px;
+}
+
 /* Die Dauer, in derselben Schmalschrift wie die Zeitpunkte — sie ist eine
    Zahl und keine Auskunft. Ohne Rahmen: der Rahmen an der Frist bedeutet
    „Grenze", und eine Schätzung ist keine.
@@ -2187,6 +2223,29 @@ select.target { }
   font-size: 13.5px;
   text-align: left;
   cursor: pointer;
+}
+
+/* Das Häkchen vor einem Schlagwort.
+   
+   Eine feste Breite, auch wenn es leer ist: sonst rücken die Namen beim
+   An- und Abhaken um ein Zeichen hin und her, und die Liste zappelt unter
+   dem Finger. */
+.fpop-check {
+  display: inline-block;
+  inline-size: 11px;
+  color: var(--accent-text);
+  font-size: var(--sone-text-xs);
+}
+
+/* „Es gibt noch keine" — und ein Satz, der sagt, was zu tun ist. Ein leerer
+   Aufsatz sähe aus wie einer, der nicht geladen hat. */
+.fpop-empty {
+  /* Aus der Skala, nicht die 7px/9px der Zeilen daneben: der Wächter zählt
+     harte Pixel und lässt sie nicht wachsen. Ein Pixel Unterschied an einem
+     Satz, der ohnehin keine Zeile ist. */
+  padding: var(--sone-space-3) var(--sone-space-4);
+  color: var(--text-muted);
+  font-size: var(--sone-text-sm);
 }
 
 /* Umbruch verboten: eine Angabe, die über zwei Zeilen läuft, sieht wie zwei

@@ -117,6 +117,8 @@ export interface Task {
   recurrence: { kind: 'calendar' | 'afterCompletion'; says: string } | null;
   /** Geschätzte Dauer in Minuten, `null` heißt keine Angabe. */
   duration: number | null;
+  /** Die Schlagwörter, nach Namen sortiert. `[]` wenn keine. */
+  labels: readonly string[];
   sortKey: string;
 }
 
@@ -206,6 +208,8 @@ export interface Detail {
   children: Task[];
   comments: Comment[];
   assignees: { userId: string | null; name: string | null; guestKey: string | null }[];
+  /** Die Schlagwörter, die es in diesem Arbeitsbereich schon gibt. */
+  known: readonly string[];
   /**
    * Die Erinnerungen an dieser Aufgabe — alle, nicht nur die eigenen.
    *
@@ -251,6 +255,13 @@ export interface TaskPatch {
   recurrence?: { rrule: string; dtstart?: string } | { n: number; unit: string } | null;
   /** Geschätzte Dauer in Minuten — `null` nimmt sie weg. */
   duration?: number | null;
+  /**
+   * Die Schlagwörter, vollständig — `[]` nimmt alle weg.
+   *
+   * Namen und nicht Ids: ein Schlagwort entsteht beim Vergeben. Wer erst
+   * eines anlegen müsste, um es zu benutzen, legt keines an.
+   */
+  labels?: readonly string[];
   /** Wer zuständig ist, vollständig. `[]` nimmt alle weg. */
   assignees?: readonly string[];
 }
