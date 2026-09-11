@@ -238,6 +238,15 @@
   --sote-mark-gap: 8px;
   --sote-gutter: calc(var(--sote-lane) * 2 + var(--sote-mark-gap));
   --sote-gap-x: 32px;
+  /*
+   * Die Breite der Detailspalte.
+   *
+   * Als Wert, weil drei Stellen sie brauchen: die Spalte selbst, das Raster
+   * des Gast-Bildschirms und der Innenabstand der Kopfleiste, der den
+   * Schliessen-Knopf davor stellt. Drei Zahlen einigen sich beim ersten
+   * Aendern nicht mehr — dieselbe Lehre wie bei den Spuren im linken Rand.
+   */
+  --sote-detail: 340px;
   --sote-read: 46rem;
   --sote-shadow-sm: 0 1px 2px rgb(22 22 21 / 6%);
   --sote-shadow-md: 0 1px 2px rgb(22 22 21 / 6%), 0 4px 12px rgb(22 22 21 / 8%);
@@ -2910,7 +2919,7 @@ select.target { }
     position: absolute;
     inset-block: 0;
     inset-inline-end: 0;
-    width: 340px;
+    width: var(--sote-detail);
     z-index: 25;
     box-shadow: var(--sote-shadow-lg);
   }
@@ -2940,28 +2949,21 @@ select.target { }
 }
 
 /*
- * Der Schliessen-Knopf sitzt IN der Zeile des Titels, rechts.
+ * (Der Schliessen-Knopf sitzt wieder AUSSEN — siehe `.topbar` weiter unten.)
+ *
+ * Die alte Begruendung fuer den inneren Knopf: 
  *
  * Gemeldet: „Was mir fehlt, ist der Schliessen-Knopf fuer die Seitenleiste der
  * Details." Er sass aussen in der Kopfleiste — und seit die Spalte ueber dem
  * Inhalt liegt, liegt er unter ihr.
  *
- * Absolut und nicht als eigene Zeile: die Spalte ist 340 px breit, und eine
- * Zeile Hoehe fuer einen Knopf ist genau die Zeile, die dem Inhalt fehlt. Der
- * Titel bekommt rechts Platz, damit er nicht darunter laeuft.
+ * Sie war richtig in dem, was sie beobachtet hat, und falsch im Mittel.
  */
-.detail-close {
-  position: absolute;
-  inset-block-start: var(--sone-space-4);
-  inset-inline-end: var(--sone-space-4);
-  z-index: 1;
-}
 
 .detail-title {
   display: block;
   width: 100%;
-  /* Platz fuer den Knopf daneben. */
-  padding-inline-end: var(--sone-control-lg);
+
   border: 0;
   background: none;
   padding: 16px 18px 10px;
@@ -4119,6 +4121,30 @@ select.target { }
   flex: none;
 }
 
+/*
+ * BEI OFFENER SPALTE RÜCKT DIE KOPFLEISTE NACH LINKS.
+ *
+ * GEMELDET: „Den Schliessen-Button für die Seitenleiste hätte ich gerne mit
+ * demselben Icon wie SONE und vor der Leiste. Schwebend über dem Inhalt."
+ *
+ * Bei SONE steht er dort von selbst: die Spalte nimmt eine eigene
+ * Rasterspalte, also endet die Kopfleiste vor ihr. Hier liegt die Spalte über
+ * dem Inhalt — die Kopfleiste läuft darunter weiter, und ihr rechtes Ende lag
+ * verdeckt.
+ *
+ * Also rückt sie um die Breite der Spalte. Der Knopf steht damit unmittelbar
+ * davor und schwebt über dem Inhalt, wie gewünscht — und die Spalte bleibt
+ * eine Überlagerung, die nichts zusammenschiebt.
+ *
+ * Nur ab 800 px: darunter füllt die Spalte den Bildschirm, und ein Knopf
+ * „davor" wäre ausserhalb. Dort liegt er darüber.
+ */
+@media (min-width: 800px) {
+  .app[data-detail="true"] .topbar {
+    padding-inline-end: calc(var(--sote-detail) + var(--sone-space-5));
+  }
+}
+
 .topbar-gap {
   flex: 1;
 }
@@ -4947,7 +4973,7 @@ a.btn {
 @media (min-width: 800px) {
   .guest[data-detail='true'] {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 340px;
+    grid-template-columns: minmax(0, 1fr) var(--sote-detail);
     grid-template-rows: auto 1fr;
     align-items: start;
   }

@@ -36,7 +36,7 @@ import {
   UsersIcon,
   type IconProps,
 } from '../components/icons.js';
-import { CloseIcon, EyeIcon } from '../components/viewIcons.js';
+import { EyeIcon } from '../components/viewIcons.js';
 import { FileModal, kindName, kindOf } from '../components/FileModal.js';
 import { useDetailTab } from '../hooks/useDetailTab.js';
 import { whenOptions } from '../components/HandleMenu.js';
@@ -391,21 +391,14 @@ export function Detail({
         einstellt. Dasselbe Verhältnis wie in SONE zwischen dem Dokument und
         seiner Spalte.
 
-        Der Schließen-Knopf steht in DERSELBEN Zeile, rechts — er kostet damit
-        keine Höhe. Dass er wieder hier ist, hat einen Grund: seit die Spalte
-        über dem Inhalt liegt, liegt alles „links neben ihr" unter ihr.
+        Der Schließen-Knopf steht wieder AUSSEN, in der Kopfleiste — mit SONEs
+        Zeichen, unmittelbar vor der Leiste. Dass er hier einmal stand, war
+        eine Korrektur an der richtigen Beobachtung („er liegt unter der
+        Spalte") mit dem falschen Mittel: die Spalte rückt jetzt die
+        Kopfleiste, statt den Knopf zu verschlucken.
       */}
       {/* Der Titel ist ein Feld und kein Text mit Stift daneben: wer ihn
           ändern will, klickt hinein. */}
-      <button
-        type="button"
-        className="topbar-knob detail-close"
-        aria-label="Aufgabe schließen"
-        title="Aufgabe schließen"
-        onClick={onClose}
-      >
-        <CloseIcon />
-      </button>
       <input
         className="detail-title"
         defaultValue={task.title}

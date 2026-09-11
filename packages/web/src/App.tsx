@@ -922,18 +922,24 @@ export function App() {
           sidebarVisible={sidebar.visible}
           onToggleSidebar={sidebar.toggle}
           /*
-           * KEIN Schliessen-Knopf mehr in der Kopfleiste.
+           * Der Schliessen-Knopf steht wieder HIER, in der Kopfleiste.
            *
-           * Er sass rechts aussen — und seit die Detailspalte ueber dem Inhalt
-           * liegt statt neben ihm, liegt er UNTER ihr. Sichtbar war er nur,
-           * solange die Spalte Platz wegnahm; danach war er ein Knopf, den
-           * niemand erreichen konnte.
+           * GEMELDET: „Den Schliessen-Button fuer die Seitenleiste haette ich
+           * wie gesagt gerne mit demselben Icon wie SONE und vor der Leiste.
+           * Schwebend ueber dem Inhalt."
            *
-           * Gemeldet als „was mir fehlt, ist der Schliessen-Knopf". Er steht
-           * jetzt IN der Spalte, in der Zeile des Titels.
+           * Genau dort sass er ursprünglich, und genau dort war er unsichtbar,
+           * seit die Spalte ueber dem Inhalt liegt: er lag darunter. Ich habe
+           * ihn daraufhin IN die Spalte geholt — die falsche Korrektur an der
+           * richtigen Beobachtung.
+           *
+           * Die richtige ist eine Zeile im Stylesheet: bei offener Spalte
+           * rueckt die Kopfleiste um deren Breite nach links. Dann steht der
+           * Knopf da, wo er bei SONE steht — unmittelbar vor der Leiste, ueber
+           * dem Inhalt schwebend.
            */
           detailOpen={openTask !== null}
-          onToggleDetail={undefined}
+          onToggleDetail={openTask === null ? undefined : () => setOpenTask(null)}
         />
         {route.kind === 'admin' && route.section === 'einladungen' ? (
           <Invitations />
