@@ -554,7 +554,17 @@ export function Board({
                     {task.cover?.image !== undefined ? (
                       <img
                         className="board-cover"
-                        src={task.cover.image}
+                        /*
+                         * Der Arbeitsbereich wird beim ZEICHNEN angehängt und
+                         * nicht mitgespeichert: in welchem Bereich jemand
+                         * steht, ist eine Eigenschaft der Anfrage und keine des
+                         * Bildes. Gespeichert ist der Weg.
+                         */
+                        src={
+                          workspace === undefined
+                            ? task.cover.image
+                            : `${task.cover.image}?workspace=${workspace}`
+                        }
                         alt=""
                         loading="lazy"
                         draggable={false}

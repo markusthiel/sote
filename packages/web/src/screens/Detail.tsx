@@ -1164,7 +1164,26 @@ export function Detail({
               <div className="detail-images">
                 {bilder.map((f) => {
                   const href = anbindung.fileHref?.(f.id) ?? '';
-                  const istTitel = task.cover?.image === href && href !== '';
+                  /*
+                   * DER WEG OHNE FRAGEZEICHEN.
+                   *
+                   * GEMELDET: „Beim Klick auf den Button kommt: ein Titelbild
+                   * ist ein eigener Anhang oder eine Farbe — eine fremde
+                   * Adresse nicht."
+                   *
+                   * Mein Fehler, und ein lehrreicher: `fileHref` hängt
+                   * `?workspace=…` an, weil jede Abfrage sagen muss, in welchem
+                   * Bereich sie steht. Die Prüfung im Kern ist an BEIDEN Enden
+                   * verankert — und genau das hat sie getan: die Adresse endete
+                   * nicht nach der Datei-Id, also war sie keine eigene.
+                   *
+                   * Die Prüfung hatte recht. Gespeichert gehört der WEG, nicht
+                   * der Abruf: in welchem Arbeitsbereich jemand gerade steht,
+                   * ist eine Eigenschaft der Anfrage und keine des Bildes. Wer
+                   * die Karte zeichnet, hängt den Bereich wieder an.
+                   */
+                  const pfad = `/api/tasks/${taskId}/files/${f.id}`;
+                  const istTitel = task.cover?.image === pfad;
                   return (
                     <div key={f.id} className="detail-image-wrap">
                       <a className="detail-image" href={href || '#'} title={f.filename}>
@@ -1194,7 +1213,7 @@ export function Detail({
                           title={istTitel ? 'Kein Titelbild mehr' : 'Als Titelbild'}
                           onClick={() =>
                             void save(() =>
-                              anbindung.patch({ cover: istTitel ? null : { image: href } }),
+                              anbindung.patch({ cover: istTitel ? null : { image: pfad } }),
                             )
                           }
                         >

@@ -75,3 +75,21 @@ test('lesen und annehmen sind zwei Fragen', () => {
 test('null ist, wie man es wegnimmt', () => {
   assert.equal(isTaskCover(null), true);
 });
+
+test('ein Abruf mit Arbeitsbereich ist kein Weg', () => {
+  /*
+   * GEMELDET: „Beim Klick auf den Button kommt: ein Titelbild ist ein eigener
+   * Anhang oder eine Farbe — eine fremde Adresse nicht."
+   *
+   * Die Oberfläche hatte den Wert aus `fileHref` genommen, und der hängt
+   * `?workspace=…` an. Die Prüfung hat das abgelehnt, und sie hatte RECHT: sie
+   * ist an beiden Enden verankert, und die Adresse endete nicht nach der
+   * Datei-Id.
+   *
+   * Die Lehre steht in der Oberfläche, nicht hier: gespeichert gehört der WEG,
+   * nicht der Abruf. In welchem Arbeitsbereich jemand gerade steht, ist eine
+   * Eigenschaft der Anfrage und keine des Bildes.
+   */
+  assert.equal(isOwnFile(`${ANHANG}?workspace=33333333-3333-4333-8333-333333333333`), false);
+  assert.equal(isTaskCover({ image: `${ANHANG}?workspace=x` }), false);
+});
