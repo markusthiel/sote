@@ -3104,6 +3104,18 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex]:focus-vi
   font-family: var(--sote-mono);
   font-size: 10.5px;
   color: var(--text-faint);
+  /*
+   * Sie darf umbrechen und schrumpfen.
+   *
+   * „Mo, 14. Sept., 09:00" ist die längste Beschriftung, die hier vorkommt,
+   * und sie stand als eine unteilbare Zeile neben einem Wort, das selbst schon
+   * umbrach. Ohne `min-width: 0` schrumpft ein Flex-Kind nicht unter seinen
+   * Inhalt — das ist die Regel, die hier gefehlt hat, und dieselbe wie an der
+   * Dateizeile.
+   */
+  min-width: 0;
+  text-align: end;
+  white-space: normal;
 }
 
 .menu-item .swatch {
@@ -3970,6 +3982,21 @@ select.target { }
   flex: 1;
   min-block-size: 0;
   overflow-y: auto;
+  /*
+   * WAAGERECHT NICHT.
+   *
+   * GEMELDET mit Bild: „Im Aufgaben-Submenü habe ich einen kleinen
+   * Scrollbalken." Am Fuss des Menüs, quer — und er kam von der rechten
+   * Beschriftung einer Zeile: „Mo, 14. Sept., 09:00" in Schmalschrift passt
+   * neben „nächster Montag" nicht in 232 Pixel, und weil sie nicht umbrechen
+   * durfte, wuchs das Menü nach rechts über sich hinaus.
+   *
+   * `hidden` allein wäre ein Deckel auf dem Problem: es versteckte den Balken
+   * und schnitte den Text ab. Darum zusätzlich unten die Regel, die die
+   * Beschriftung umbrechen lässt — dann gibt es nichts mehr zu verstecken, und
+   * dies hier ist nur noch die Zusage, dass ein Menü nicht quer rollt.
+   */
+  overflow-x: hidden;
 }
 
 /* Bilder als Bilder: ein Raster aus Vorschauen, nicht eine Liste aus Namen. */
