@@ -13,6 +13,8 @@
  */
 
 import { formatDuration, parseQuickAdd, describe as describeRecurrence } from '@sote/core';
+
+import { browserZone } from '../api.js';
 import { useMemo, useState } from 'react';
 
 import { whenLabel } from '../dates.js';
@@ -35,9 +37,24 @@ export function QuickAdd({
 }) {
   const [line, setLine] = useState('');
 
-  // Rein und ohne Server: das Parsen ist eine Funktion, kein Aufruf.
+  /*
+   * Rein und ohne Server: das Parsen ist eine Funktion, kein Aufruf.
+   *
+   * MIT DER ZONE DES BROWSERS, und das war der gemeldete Fehler: „In dieser
+   * kleinen Vorschau unter dem Text erscheint dann die falsche Uhrzeit, da
+   * steht 11 Uhr anstatt 9 Uhr. Eingetragen wird es korrekt."
+   *
+   * Genau so: der Server bekommt die Zone an jeder Anfrage mit und rechnet
+   * richtig; die Vorschau rief dieselbe Funktion OHNE sie auf und las „9 Uhr"
+   * darum als UTC — angezeigt wurde die örtliche Entsprechung, also 11:00.
+   *
+   * Dieselbe Sorte Fehler stand hier schon einmal, und der Kommentar an
+   * `zoneOfBrowser` beschreibt sie wörtlich: „morgen 9 Uhr eingetippt, morgen
+   * 11:00 angezeigt". Behoben wurde damals der Weg zum Server — die Vorschau
+   * blieb übrig, weil sie denselben Weg nicht nimmt.
+   */
   const parsed = useMemo(
-    () => (line.trim() === '' ? undefined : parseQuickAdd(line, { now })),
+    () => (line.trim() === '' ? undefined : parseQuickAdd(line, { now, zone: browserZone() })),
     [line, now],
   );
 

@@ -45,6 +45,16 @@ function zoneOfBrowser(): string {
 const TZ = zoneOfBrowser();
 
 /**
+ * Dieselbe Zone, auch für die Vorschau.
+ *
+ * Sie hing bisher nur an den Anfragen — und darum stimmte, was der Server
+ * speicherte, während die Vorschau daneben etwas anderes behauptete. Eine
+ * zweite Auskunft über die Zone wäre der Fehler, der hier schon einmal
+ * passiert ist; also dieselbe.
+ */
+export const browserZone = (): string => TZ;
+
+/**
  * Hängt `tz` an, ohne über ein vorhandenes `?` zu stolpern.
  *
  * Die Aufrufe unten bauen ihre Pfade teils mit und teils ohne Abfrageteil, und

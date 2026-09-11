@@ -280,3 +280,26 @@ test('Dauer und Priorität stören sich nicht', () => {
   assert.equal(q.project, 'haus');
   assert.equal(q.title, 'Etwas');
 });
+
+test('dieselbe Zeile ergibt mit Zone dieselbe Wanduhrzeit wie ohne Zone in UTC', () => {
+  /*
+   * GEMELDET: „In dieser kleinen Vorschau unter dem Text erscheint dann die
+   * falsche Uhrzeit, da steht 11 Uhr anstatt 9 Uhr. Eingetragen wird es
+   * korrekt."
+   *
+   * Der Fehler sass nicht hier, sondern im AUFRUF: die Vorschau rief diese
+   * Funktion ohne `zone` auf und las „9 Uhr" darum als UTC. Dieser Test haelt
+   * den Unterschied fest, damit sichtbar bleibt, was ein fehlendes `zone`
+   * bedeutet -- naemlich zwei Stunden im Sommer und eine im Winter, also
+   * genau die Art Fehler, die man an einem Tag nicht sieht und am anderen
+   * schon.
+   */
+  const jetzt = new Date('2026-09-11T08:00:00Z');
+  const ohne = parseQuickAdd('morgen 9 uhr', { now: jetzt });
+  const mit = parseQuickAdd('morgen 9 uhr', { now: jetzt, zone: 'Europe/Berlin' });
+
+  assert.ok(ohne.planned !== undefined && mit.planned !== undefined);
+  // Ohne Zone: 9 Uhr UTC. Mit Zone: 9 Uhr in Berlin, also 7 Uhr UTC.
+  assert.equal(ohne.planned.toISOString(), '2026-09-12T09:00:00.000Z');
+  assert.equal(mit.planned.toISOString(), '2026-09-12T07:00:00.000Z');
+});
