@@ -875,7 +875,28 @@ export const api = {
    * nur eine zweite Antwort, die niemand nachzog.
    */
   shareTasks: (token: string, done: boolean) =>
-    call<{ tasks: Task[] }>(`/api/share/${token}/tasks${done ? '?done=1' : ''}`),
+    call<{ tasks: Task[]; children: Record<string, Task[]> }>(
+      `/api/share/${token}/tasks${done ? '?done=1' : ''}`,
+    ),
+  /**
+   * Eine Aufgabe in einer Freigabe umsortieren oder umhängen.
+   *
+   * Ein Gast mit Bearbeitungsrecht DARF das: „Er hat Bearbeitungsrechte, das
+   * gehört dazu." Eine Freigabe, in der man anlegen und abhaken, aber nicht
+   * ordnen darf, wäre eine halbe Erlaubnis.
+   *
+   * Die Grenze zieht der Server: Ziel und Nachbarn müssen zu DIESER Freigabe
+   * gehören, sonst 403.
+   */
+  shareMove: (
+    token: string,
+    id: string,
+    wohin: { after?: string | null; before?: string | null; parentId?: string | null },
+  ) =>
+    call<{ task: Task }>(`/api/share/${token}/tasks/${id}/move`, {
+      method: 'PUT',
+      body: JSON.stringify(wohin),
+    }),
   shareAdd: (token: string, line: string) =>
     call<{ id: string; title: string }>(`/api/share/${token}/tasks`, {
       method: 'POST',

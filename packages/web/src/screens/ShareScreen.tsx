@@ -19,11 +19,12 @@
  * Angabe mehr macht eine Freigabe über ihren Gegenstand hinaus.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { useNudge } from '../hooks/useNudge.js';
 import { api, ApiError, type Task } from '../api.js';
 import { TaskRow } from '../components/TaskRow.js';
+import { useRowDrag } from '../hooks/useRowDrag.js';
 import { Detail, guestIO } from './Detail.js';
 import { PanelRightIcon } from '../components/icons.js';
 import { SoteMark } from '../components/Logo.js';
@@ -32,6 +33,10 @@ import { QuickAdd } from '../components/QuickAdd.js';
 export function ShareScreen({ token, now }: { token: string; now: Date }) {
   const [head, setHead] = useState<{ name: string; right: 'read' | 'edit' } | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
+  /** Die Unteraufgaben, je Elternaufgabe — wie beim Mitglied mit der Liste. */
+  const [children, setChildren] = useState<Record<string, Task[]>>({});
+  const [offenKinder, setOffenKinder] = useState<ReadonlySet<string>>(new Set());
+  const listRef = useRef<HTMLDivElement | null>(null);
   const [notice, setNotice] = useState<string | undefined>(undefined);
   const [gone, setGone] = useState(false);
   const [showDone, setShowDone] = useState(false);
@@ -46,6 +51,7 @@ export function ShareScreen({ token, now }: { token: string; now: Date }) {
     ]);
     setHead({ name: oben.project.name, right: oben.right });
     setTasks(liste.tasks);
+    setChildren(liste.children ?? {});
   }, [token, showDone]);
 
   /*
@@ -74,6 +80,82 @@ export function ShareScreen({ token, now }: { token: string; now: Date }) {
       else setNotice('Laden ging nicht.');
     });
   }, [load]);
+
+  /*
+    ZIEHEN — mit demselben Hook wie beim Mitglied.
+
+    GEFRAGT und beantwortet: „Ja, er darf ändern. Er hat Bearbeitungsrechte,
+    das gehört dazu."
+
+    `useRowDrag` ist dasselbe Bauteil, das die Liste benutzt; was hier fehlt,
+    sind die Fälle, die es in einer Freigabe nicht gibt: keine Prioritätsblöcke
+    (eine Projektliste hat keine) und keine Ansicht, die ihre Reihenfolge
+    selbst bestimmt (eine Freigabe zeigt immer das Projekt).
+
+    Die Ein-Ebenen-Regel steht trotzdem hier, und das ist kein Misstrauen gegen
+    den Server: es ist der Unterschied zwischen „abgelehnt" und „gar nicht erst
+    angeboten". Eine Linie, die etwas verspricht, das der Server zurückweist,
+    endet in einem Fehler statt in einer Bewegung.
+  */
+  const alle = [...tasks, ...Object.values(children).flat()];
+  const drag = useRowDrag({
+    container: listRef,
+    canDrop: (id, position) => {
+      if (!darfSchreiben) return false;
+      const mich = alle.find((t) => t.id === id);
+      const ziel = alle.find((t) => t.id === position.rowId);
+      if (mich === undefined || ziel === undefined || mich.id === ziel.id) return false;
+      const zielVater = position.intent === 'into' ? ziel.id : ziel.parentId;
+      if (zielVater === mich.id) return false;
+      if (zielVater !== null) {
+        const vater = alle.find((t) => t.id === zielVater);
+        if (vater === undefined || vater.parentId !== null) return false;
+        if ((children[mich.id] ?? []).length > 0) return false;
+      }
+      return true;
+    },
+    onDrop: (id, position) => {
+      const mich = alle.find((t) => t.id === id);
+      const ziel = alle.find((t) => t.id === position.rowId);
+      if (mich === undefined || ziel === undefined) return;
+
+      if (position.intent === 'into') {
+        // Ans Ende der Kinder: „hinein" sagt nichts über die Stelle, und unten
+        // ist die Stelle, an der Neues in einer Liste erscheint.
+        const drin = (children[ziel.id] ?? []).filter((k) => k.id !== id);
+        void tun(
+          () =>
+            api.shareMove(token, id, {
+              parentId: ziel.id,
+              after: drin.at(-1)?.id ?? null,
+              before: null,
+            }),
+          'Verschieben ging nicht.',
+        );
+        return;
+      }
+
+      const zielVater = ziel.parentId ?? null;
+      /* Die Nachbarn OHNE die gezogene Zeile: zieht man innerhalb derselben
+         Ebene, stünde sie sonst in der Reihe und der neue Schlüssel läge dort,
+         wo sie schon ist. */
+      const reihe = (
+        zielVater === null ? tasks.filter((t) => t.parentId === null) : (children[zielVater] ?? [])
+      ).filter((t) => t.id !== id);
+      const at = reihe.findIndex((t) => t.id === ziel.id);
+      if (at === -1) return;
+      void tun(
+        () =>
+          api.shareMove(token, id, {
+            ...(zielVater === (mich.parentId ?? null) ? {} : { parentId: zielVater }),
+            after: position.intent === 'after' ? reihe[at]!.id : (reihe[at - 1]?.id ?? null),
+            before: position.intent === 'after' ? (reihe[at + 1]?.id ?? null) : reihe[at]!.id,
+          }),
+        'Verschieben ging nicht.',
+      );
+    },
+  });
+
 
   if (gone) {
     return (
@@ -116,40 +198,73 @@ export function ShareScreen({ token, now }: { token: string; now: Date }) {
   /*
     DIESELBE ZEILE WIE BEIM MITGLIED.
 
-    GEMELDET: „Die geteilte Ansicht klappt nicht korrekt. Da müssen wir
-    vermutlich an Features noch nachziehen. Sortieren, Unteraufgaben, Drag and
-    Drop, das ganze Untermenü."
+    GEMELDET: „Die geteilte Ansicht klappt nicht korrekt … Sortieren,
+    Unteraufgaben, Drag and Drop, das ganze Untermenü."
 
-    Die Ursache war eine EIGENE Zeile: dieser Bildschirm baute sich seine aus
-    Kästchen und Titel, und alles, was seitdem an einer Zeile dazugekommen ist
-    — Schlagwörter, Dauer, Merkmale für Notiz und Anhang, das eigene Aussehen,
-    die Anzeigeformen — kam hier nie an. Zwei Zeichnungen derselben Sache
-    laufen auseinander, und dies ist der Beleg dafür in Monaten.
+    Die Ursache war eine EIGENE Zeile aus Kästchen und Titel: alles, was
+    seitdem dazugekommen ist, kam beim Gast nie an. Jetzt `TaskRow`.
 
-    Jetzt `TaskRow`, dasselbe Bauteil. Was der Gast dadurch NICHT bekommt, ist
-    bewusst ausgelassen und nicht vergessen: kein Anfasser (Ziehen wäre eine
-    Reihenfolge, die der Server für eine Freigabe nicht schreibt) und kein
-    Zeilenmenü (es führt in den Papierkorb und zu Prioritäten — beides
-    Wirkungen ausserhalb dessen, was eine Freigabe hergibt).
+    Kein Zeilenmenü: es führt in den Papierkorb und zu Prioritäten — Wirkungen
+    ausserhalb dessen, was eine Freigabe hergibt.
   */
-  const zeile = (t: Task) => (
-    <TaskRow
-      key={t.id}
-      task={t}
-      now={now}
-      open={offenAufgabe === t.id}
-      onOpen={() => setOffenAufgabe(offenAufgabe === t.id ? null : t.id)}
-      onComplete={() =>
-        void tun(
-          () =>
-            t.completed === null
-              ? api.shareComplete(token, t.id)
-              : api.shareReopen(token, t.id),
-          t.completed === null ? 'Abhaken ging nicht.' : 'Wieder öffnen ging nicht.',
-        )
-      }
-    />
-  );
+  const zeile = (t: Task, parentId: string | null = null) => {
+    const kinder = children[t.id] ?? [];
+    const auf = offenKinder.has(t.id);
+    return (
+      <div key={t.id}>
+        <div
+          className="task-wrap"
+          data-dragging={drag.dragging === t.id}
+          data-child={parentId === null ? undefined : 'yes'}
+          {...(darfSchreiben
+            ? {
+                'data-row': t.id,
+                'data-row-parent': parentId ?? 'root',
+                'data-row-nest': parentId === null ? 'yes' : 'no',
+                onPointerDown: drag.onPointerDown,
+              }
+            : {})}
+          data-drop={drag.target?.rowId === t.id ? drag.target.intent : undefined}
+        >
+          {kinder.length > 0 ? (
+            <button
+              type="button"
+              className="task-twisty"
+              aria-expanded={auf}
+              aria-label={`${t.title} ${auf ? 'zuklappen' : 'aufklappen'}`}
+              onClick={() =>
+                setOffenKinder((war) => {
+                  const neu = new Set(war);
+                  if (neu.has(t.id)) neu.delete(t.id);
+                  else neu.add(t.id);
+                  return neu;
+                })
+              }
+            >
+              <span aria-hidden="true">▸</span>
+            </button>
+          ) : null}
+          <TaskRow
+            task={t}
+            now={now}
+            grip={darfSchreiben}
+            open={offenAufgabe === t.id}
+            onOpen={() => setOffenAufgabe(offenAufgabe === t.id ? null : t.id)}
+            onComplete={() =>
+              void tun(
+                () =>
+                  t.completed === null
+                    ? api.shareComplete(token, t.id)
+                    : api.shareReopen(token, t.id),
+                t.completed === null ? 'Abhaken ging nicht.' : 'Wieder öffnen ging nicht.',
+              )
+            }
+          />
+        </div>
+        {auf ? kinder.map((k) => zeile(k, t.id)) : null}
+      </div>
+    );
+  };
 
   return (
     <div className="guest" data-detail={offenAufgabe !== null}>
@@ -208,7 +323,7 @@ export function ShareScreen({ token, now }: { token: string; now: Date }) {
           />
         ) : null}
 
-        {offen.map(zeile)}
+        <div ref={listRef}>{offen.map((t) => zeile(t))}</div>
 
         {offen.length === 0 && erledigt.length === 0 ? (
           <div className="empty">
@@ -236,7 +351,7 @@ export function ShareScreen({ token, now }: { token: string; now: Date }) {
               Erledigt
               <span className="rule" />
             </div>
-            {erledigt.map(zeile)}
+            {erledigt.map((t) => zeile(t))}
           </>
         ) : null}
       </div>

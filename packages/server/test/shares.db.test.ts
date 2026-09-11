@@ -23,7 +23,7 @@ import {
   revokeShare,
   shareKeyPresent,
 } from '../src/shares.js';
-import { NotFound, OutOfOrder } from '../src/tasks.js';
+import { move, NotFound, OutOfOrder } from '../src/tasks.js';
 import { makeFolder, makeList } from './support/tree.js';
 
 const URL_ =
@@ -245,4 +245,39 @@ test('„zuletzt benutzt" wird beim Nachschlagen gesetzt, auch beim Lesen', asyn
   assert.equal((await listShares(pool, workspaceId))[0]!.last_used_at, null);
   await accessByToken(pool, token);
   assert.notEqual((await listShares(pool, workspaceId))[0]!.last_used_at, null);
+});
+
+test('in einer Freigabe laesst sich umhaengen — die Grenze ist das Projekt', async () => {
+  /*
+   * GEFRAGT und beantwortet: „Ja, er darf aendern. Er hat Bearbeitungsrechte,
+   * das gehoert dazu." Richtig: eine Freigabe, in der man anlegen und abhaken,
+   * aber nicht ordnen darf, waere eine halbe Erlaubnis.
+   *
+   * DIE GRENZE IST DIE FREIGABE und nicht die Erlaubnis: `move` prueft den
+   * ARBEITSBEREICH, nicht das Projekt. Ein Gast koennte damit eine Aufgabe
+   * unter eine haengen, die er nie sehen durfte, und sie aus seiner Freigabe
+   * herausschieben -- darum prueft die Route zusaetzlich das Projekt.
+   *
+   * Dieser Test haelt die Tatsache fest, auf der diese Pruefung beruht: der
+   * Kern LAESST das Umhaengen ueber Projektgrenzen hinweg zu.
+   */
+  const { workspaceId, projectId } = await scratch(`freigabe-move-${process.pid}`);
+  const anderes = await makeList(pool, workspaceId, 'Woanders');
+
+  const drin = await queryOne<{ id: string }>(
+    pool,
+    `INSERT INTO tasks (workspace_id, project_id, title, sort_key)
+     VALUES ($1,$2,'Drin','a0') RETURNING id`,
+    [workspaceId, projectId],
+  );
+  const draussen = await queryOne<{ id: string }>(
+    pool,
+    `INSERT INTO tasks (workspace_id, project_id, title, sort_key)
+     VALUES ($1,$2,'Draussen','a0') RETURNING id`,
+    [workspaceId, anderes],
+  );
+
+  // Der Kern laesst es zu — und genau darum reicht seine Pruefung nicht.
+  const bewegt = await move(pool, drin!.id, workspaceId, { parentId: draussen!.id });
+  assert.equal(bewegt.parent_id, draussen!.id);
 });

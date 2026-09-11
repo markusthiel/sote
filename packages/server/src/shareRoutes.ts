@@ -32,8 +32,8 @@ import { stream } from './nudge.js';
 import { fail, json, readJson } from './http/respond.js';
 import { detailView, taskView } from './routes.js';
 import { accessByToken, type RightLevel } from './shares.js';
-import { complete, NotFound, OutOfOrder, patch, reopen, createFromLine } from './tasks.js';
-import { list } from './views.js';
+import { complete, move, NotFound, OutOfOrder, patch, reopen, createFromLine } from './tasks.js';
+import { childrenOf, list } from './views.js';
 
 interface Ctx {
   readonly pool: Pool;
@@ -157,11 +157,103 @@ export async function shareRoutes(
      * Es ist dieselbe Abfrage (`list`), also war die Kürzung nie eine
      * Ersparnis, sondern nur eine zweite Antwort.
      */
-    json(res, 200, { tasks: rows.map(taskView) });
+    /*
+     * MIT den Unteraufgaben.
+     *
+     * GEMELDET: „Mache noch die Unteraufgaben und Reihenfolge."
+     *
+     * Mit der Liste und nicht beim Aufklappen — derselbe Grund wie beim
+     * Mitglied: das Ziehen braucht sie schon vorher, denn wer eine Aufgabe auf
+     * eine ZUGEKLAPPTE zieht, soll sie ans Ende der Kinder setzen, und der
+     * Schlüssel dafür wird in der Oberfläche gerechnet.
+     */
+    json(res, 200, {
+      tasks: rows.map(taskView),
+      children: Object.fromEntries(
+        Object.entries(
+          await childrenOf(
+            ctx.pool,
+            access.workspaceId,
+            rows.map((r) => r.id),
+            withDone,
+          ),
+        ).map(([id, kinder]) => [id, kinder.map(taskView)]),
+      ),
+    });
     return;
   }
 
   /* ── Was ein Link mit `edit` ändern darf ───────────────────────────────── */
+
+  /*
+   * DIE REIHENFOLGE ÄNDERN — auch als Gast.
+   *
+   * GEFRAGT und beantwortet: „Ja, er darf ändern. Er hat Bearbeitungsrechte,
+   * das gehört dazu."
+   *
+   * Das ist die richtige Antwort und nicht die bequeme: Bearbeiten heisst
+   * Bearbeiten. Eine Freigabe, in der man Aufgaben anlegen und abhaken, aber
+   * nicht ordnen darf, wäre eine halbe Erlaubnis — und die erklärt sich
+   * niemandem, der die Liste vor sich hat.
+   *
+   * DIE GRENZE IST DIE FREIGABE, nicht die Erlaubnis: `parentId` darf nur auf
+   * eine Aufgabe DESSELBEN Projekts zeigen. `move` prüft den Arbeitsbereich,
+   * nicht das Projekt — ein Gast könnte sonst eine Aufgabe unter eine hängen,
+   * die er nie sehen durfte, und sie damit aus seiner Freigabe herausschieben.
+   * Also hier geprüft, wo die Freigabe bekannt ist.
+   */
+  if (/^\/tasks\/[0-9a-f-]{36}\/move$/.test(rest) && method === 'PUT') {
+    if (!darfSchreiben()) return nurLesen();
+    const id = rest.split('/')[2]!;
+    const body = (await readJson(req)) as Record<string, unknown>;
+
+    const imProjekt = async (taskId: string): Promise<boolean> => {
+      const row = await queryOne<{ id: string }>(
+        ctx.pool,
+        `SELECT id FROM tasks
+          WHERE id = $1 AND workspace_id = $2 AND project_id = $3 AND trashed_at IS NULL`,
+        [taskId, access.workspaceId, access.projectId],
+      );
+      return row !== undefined;
+    };
+
+    if (!(await imProjekt(id))) {
+      fail(res, 404, 'no_task', 'diese Aufgabe gehört nicht zu dieser Freigabe');
+      return;
+    }
+    const elter = 'parentId' in body ? body['parentId'] : undefined;
+    if (typeof elter === 'string' && !(await imProjekt(elter))) {
+      fail(res, 403, 'outside', 'nur innerhalb dieser Liste');
+      return;
+    }
+    /* Die Nachbarn ebenso: ein Schlüssel „zwischen" zwei fremden Aufgaben wäre
+       eine Auskunft über eine Liste, die man nicht sieht. */
+    for (const seite of ['after', 'before'] as const) {
+      const wert = body[seite];
+      if (typeof wert === 'string' && !(await imProjekt(wert))) {
+        fail(res, 403, 'outside', 'nur innerhalb dieser Liste');
+        return;
+      }
+    }
+
+    try {
+      const task = await move(ctx.pool, id, access.workspaceId, {
+        ...(typeof body['after'] === 'string' ? { after: body['after'] } : {}),
+        ...(typeof body['before'] === 'string' ? { before: body['before'] } : {}),
+        ...('parentId' in body
+          ? { parentId: elter === null ? null : String(elter) }
+          : {}),
+      });
+      json(res, 200, { task: taskView(task) });
+    } catch (e) {
+      if (e instanceof OutOfOrder) {
+        fail(res, 422, 'out_of_order', e.message);
+        return;
+      }
+      throw e;
+    }
+    return;
+  }
 
   if (rest === '/tasks' && method === 'POST') {
     if (!darfSchreiben()) return nurLesen();
