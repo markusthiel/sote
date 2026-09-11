@@ -292,3 +292,94 @@ test('ein leerer Name wird abgelehnt', async () => {
     (e: Error) => e instanceof BoardTrouble,
   );
 });
+
+test('eine Karte lässt sich innerhalb der Spalte einsortieren', async () => {
+  /*
+   * Die Tafel führt KEINE eigene Reihenfolge: sie sortiert nach demselben
+   * Schlüssel wie die Liste. Ein zweiter Schlüssel je Spalte wäre eine zweite
+   * Ordnung derselben Aufgaben — und dann stünde dieselbe Liste in zwei
+   * Ansichten verschieden, ohne dass jemand das entschieden hätte.
+   */
+  const { ws, liste } = await scratch();
+  const spalte = await addColumn(pool, ws, liste, { name: 'Offen', sortKey: 'a0' });
+  const karten = [];
+  for (const titel of ['A', 'B', 'C']) {
+    const t = await createFromLine(pool, {
+      workspaceId: ws,
+      userId,
+      line: titel,
+      now: NOW,
+      projectId: liste,
+    });
+    await placeCard(pool, ws, t.task.id, spalte.id, userId, NOW);
+    karten.push(t.task.id);
+  }
+
+  const reihe = async () =>
+    (
+      await pool.query<{ title: string }>(
+        `SELECT title FROM tasks WHERE column_id = $1 ORDER BY sort_key ASC`,
+        [spalte.id],
+      )
+    ).rows.map((r) => r.title);
+
+  const vorher = await reihe();
+  // C nach ganz vorn.
+  await placeCard(pool, ws, karten[2]!, spalte.id, userId, NOW, {
+    afterId: null,
+    beforeId: vorher[0] === 'C' ? null : karten[0]!,
+  });
+  assert.equal((await reihe())[0], 'C');
+});
+
+test('eine Karte behält ihre Stelle, wenn nur die Spalte wechselt', async () => {
+  // Fehlende Nachbarn heißen „Reihenfolge lassen“ — sonst würde jedes
+  // Verschieben zwischen Spalten die Liste umsortieren.
+  const { ws, liste } = await scratch();
+  const a = await addColumn(pool, ws, liste, { name: 'A', sortKey: 'a0' });
+  const b = await addColumn(pool, ws, liste, { name: 'B', sortKey: 'a1' });
+  const t = await createFromLine(pool, {
+    workspaceId: ws,
+    userId,
+    line: 'Wandert',
+    now: NOW,
+    projectId: liste,
+  });
+  const vorher = (
+    await pool.query<{ sort_key: string }>('SELECT sort_key FROM tasks WHERE id = $1', [
+      t.task.id,
+    ])
+  ).rows[0]!.sort_key;
+
+  await placeCard(pool, ws, t.task.id, a.id, userId, NOW);
+  await placeCard(pool, ws, t.task.id, b.id, userId, NOW);
+  const nachher = (
+    await pool.query<{ sort_key: string }>('SELECT sort_key FROM tasks WHERE id = $1', [
+      t.task.id,
+    ])
+  ).rows[0]!.sort_key;
+  assert.equal(nachher, vorher);
+});
+
+test('Spalten lassen sich umsortieren', async () => {
+  const { ws, liste } = await scratch();
+  const a = await addColumn(pool, ws, liste, { name: 'A', sortKey: 'a1' });
+  await addColumn(pool, ws, liste, { name: 'B', sortKey: 'a2' });
+  await addColumn(pool, ws, liste, { name: 'C', sortKey: 'a3' });
+  // A ans Ende.
+  await updateColumn(pool, ws, a.id, { sortKey: 'a4' });
+  assert.deepEqual((await columnsOf(pool, ws, liste)).map((c) => c.name), ['B', 'C', 'A']);
+});
+
+test('zwei Spalten können nicht denselben Platz haben', async () => {
+  // Der eindeutige Index über (Liste, Schlüssel). Er fängt eine veraltete
+  // Ansicht ab: wer gegen einen Stand von vorhin rechnet, bekommt einen Satz
+  // statt einer Spalte, die woanders landet als gezeigt.
+  const { ws, liste } = await scratch();
+  await addColumn(pool, ws, liste, { name: 'A', sortKey: 'a1' });
+  const b = await addColumn(pool, ws, liste, { name: 'B', sortKey: 'a2' });
+  await assert.rejects(
+    () => updateColumn(pool, ws, b.id, { sortKey: 'a1' }),
+    (e: Error) => e instanceof BoardTrouble,
+  );
+});

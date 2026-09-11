@@ -1058,6 +1058,18 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex]:focus-vi
   gap: var(--sone-space-4);
   overflow-x: auto;
   padding-block-end: var(--sone-space-4);
+  /*
+   * Platz für die Ablegelinie an der ERSTEN und der LETZTEN Spalte.
+   *
+   * Die Linie liegt 6 px neben der Spalte — zwischen zweien ist dafür die
+   * Lücke da, aussen aber nichts, und `overflow-x: auto` schneidet sie dort
+   * ab. Im Bild sah es aus, als würde beim Ziehen ganz nach links gar keine
+   * Stelle angeboten; gemessen war die Linie da und nur nicht zu sehen.
+   *
+   * Genau der Fall, den ein Test nicht findet: `data-drop` stand richtig, die
+   * Regel griff, die Farbe stimmte.
+   */
+  padding-inline: var(--sone-space-3);
 }
 
 .board-column {
@@ -1071,16 +1083,46 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex]:focus-vi
 }
 
 /* „Hier hinein" — dieselbe Sprache wie in der Liste: gefüllt heißt „in diese
-   hier", eine Linie hieße „dazwischen". Die Tafel führt keine Reihenfolge
-   innerhalb einer Spalte, also gibt es hier nur das Erste. */
+   hier", eine Linie heißt „dazwischen". Auf die Spalte gelegt heißt „ans
+   Ende"; zwischen zwei Karten gelegt heißt an deren Stelle. */
 .board-column[data-drop="into"] {
   outline: 2px solid var(--accent);
   outline-offset: -2px;
   background: color-mix(in srgb, var(--accent) 12%, var(--sunken));
 }
 
+.board-column[data-dragging="true"] {
+  opacity: 0.4;
+}
+
+/* Die senkrechte Linie zwischen zwei Spalten — dieselbe Sprache wie die
+   waagerechte zwischen zwei Zeilen, nur um neunzig Grad gedreht. */
+.board-column[data-drop="before"]::before,
+.board-column[data-drop="after"]::after {
+  content: "";
+  position: absolute;
+  inset-block: -2px;
+  inline-size: 2px;
+  border-radius: 1px;
+  background: var(--accent);
+  z-index: 2;
+}
+.board-column[data-drop="before"]::before {
+  inset-inline-start: calc(var(--sone-space-3) * -1);
+}
+.board-column[data-drop="after"]::after {
+  inset-inline-end: calc(var(--sone-space-3) * -1);
+}
+
 .board-head {
   display: flex;
+  /* Der Kopf ist der Anfasser der Spalte: in der Spalte liegen die Karten, und
+     die haben ihre eigene Geste. Ein gemeinsamer Anfasser wäre ein Druck mit
+     zwei Bedeutungen. */
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
   align-items: center;
   gap: var(--sone-space-2);
   margin-block-end: var(--sone-space-3);
@@ -1090,6 +1132,9 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex]:focus-vi
   font-weight: 600;
   font-size: var(--sone-text-sm);
 }
+
+/* Die Karten selbst zeigen die Linie wie in der Liste — sie erben die Regeln
+   von `.task-wrap`, weil sie dieselbe Klasse tragen. */
 
 /* Die Zahl in Schmalschrift, wie alle Zahlen hier. */
 .board-count {

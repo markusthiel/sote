@@ -30,6 +30,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { api, ApiError, type Task } from '../api.js';
 import { TaskRow } from '../components/TaskRow.js';
+import { useColumnDrag } from '../hooks/useColumnDrag.js';
 import { useRowDrag } from '../hooks/useRowDrag.js';
 
 export interface BoardColumn {
@@ -103,22 +104,97 @@ export function Board({
   const drag = useRowDrag({
     container: boardRef,
     canDrop: (id, position) => {
-      // Ziel ist immer eine SPALTE: Karten tragen kein `data-row-nest`, also
-      // bietet die Geste an ihnen nur „davor/dahinter" an — und das wäre eine
-      // Reihenfolge, die die Tafel nicht führt (sie folgt der Liste).
-      const ziel = columns?.find((c) => c.id === position.rowId);
-      if (ziel === undefined || position.intent !== 'into') return false;
-      const karte = tasks.find((t) => t.id === id);
-      if (karte === undefined) return false;
-      // In dieselbe Spalte zu legen ist keine Bewegung. Beim Auffangbecken
-      // zählt auch „gar keine Zuordnung" als dieselbe.
-      const drin = karte.columnId === ziel.id ||
-        (karte.columnId === null && columns?.[0]?.id === ziel.id);
-      return !drin;
+      if (tasks.find((t) => t.id === id) === undefined) return false;
+      // Auf eine SPALTE: ans Ende. Auf eine KARTE: an deren Stelle.
+      if (position.intent === 'into') return columns?.some((c) => c.id === position.rowId) === true;
+      return tasks.some((t) => t.id === position.rowId);
     },
     onDrop: (id, position) => {
+      if (position.intent === 'into') {
+        /*
+         * Auf die Spalte gelegt: ans Ende, und die Reihenfolge sonst lassen.
+         * „Hinein" sagt nichts über die Stelle — und unten ist die Stelle, an
+         * der Neues in einer Liste erscheint.
+         */
+        const at = columns?.findIndex((c) => c.id === position.rowId) ?? -1;
+        const ziel = columns?.[at];
+        if (ziel === undefined) return;
+        const drin = kartenIn(ziel, at).filter((t) => t.id !== id);
+        void tun(
+          () =>
+            api.placeCard(
+              id,
+              ziel.id,
+              { afterId: drin.at(-1)?.id ?? null, beforeId: null },
+              workspace,
+            ),
+          'Verschieben ging nicht.',
+        );
+        return;
+      }
+
+      /*
+       * Zwischen zwei Karten: dieselbe Spalte wie die Zielkarte, und die
+       * Stelle daneben.
+       *
+       * Die Tafel führt KEINE eigene Reihenfolge — sie sortiert nach demselben
+       * Schlüssel wie die Liste. Wer hier umsortiert, sortiert damit auch die
+       * Liste um. Ein zweiter Schlüssel je Spalte wäre eine zweite Ordnung
+       * derselben Aufgaben, und dann stünde dieselbe Liste in zwei Ansichten
+       * verschieden, ohne dass jemand das entschieden hätte.
+       */
+      const ziel = tasks.find((t) => t.id === position.rowId);
+      if (ziel === undefined || columns === undefined) return;
+      const at = columns.findIndex(
+        (c) => c.id === ziel.columnId || (ziel.columnId === null && c.id === columns[0]?.id),
+      );
+      const spalte = columns[at];
+      if (spalte === undefined) return;
+
+      // Ohne die gezogene Karte: sonst läge der neue Schlüssel dort, wo sie
+      // schon ist.
+      const reihe = kartenIn(spalte, at).filter((t) => t.id !== id);
+      const i = reihe.findIndex((t) => t.id === ziel.id);
+      if (i === -1) return;
       void tun(
-        () => api.placeCard(id, position.rowId, workspace),
+        () =>
+          api.placeCard(
+            id,
+            spalte.id,
+            {
+              afterId: position.intent === 'after' ? reihe[i]!.id : (reihe[i - 1]?.id ?? null),
+              beforeId: position.intent === 'after' ? (reihe[i + 1]?.id ?? null) : reihe[i]!.id,
+            },
+            workspace,
+          ),
+        'Verschieben ging nicht.',
+      );
+    },
+  });
+
+  /**
+   * Spalten ziehen — waagerecht, und darum ein eigener Griff.
+   *
+   * Der Kopf ist der Anfasser und nicht die ganze Spalte: in der Spalte liegen
+   * die Karten, und die haben ihre eigene Geste. Ein gemeinsamer Anfasser wäre
+   * ein Druck mit zwei Bedeutungen.
+   *
+   * Die Pfeile im Menü BLEIBEN. Ziehen allein wäre eine Reihenfolge, die man
+   * ohne Zeiger nicht ändern kann — dieselbe Überlegung wie bei ⌥↑/⌥↓ in der
+   * Liste.
+   */
+  const colDrag = useColumnDrag({
+    container: boardRef,
+    onDrop: (id, position) => {
+      const reihe = (columns ?? []).filter((c) => c.id !== id);
+      const at = reihe.findIndex((c) => c.id === position.columnId);
+      if (at === -1) return;
+      const [a, b] =
+        position.side === 'after'
+          ? [reihe[at]!.sort_key, reihe[at + 1]?.sort_key ?? null]
+          : [reihe[at - 1]?.sort_key ?? null, reihe[at]!.sort_key];
+      void tun(
+        () => api.updateColumn(id, { sortKey: generateKeyBetween(a, b) }, workspace),
         'Verschieben ging nicht.',
       );
     },
@@ -197,9 +273,20 @@ export function Board({
                 Reihenfolge der Spalten durch Ziehen.
               */
               data-row-nest="only"
-              data-drop={drag.target?.rowId === column.id ? 'into' : undefined}
+              data-drop={
+                drag.target?.rowId === column.id
+                  ? 'into'
+                  : colDrag.target?.columnId === column.id
+                    ? colDrag.target.side
+                    : undefined
+              }
+              data-dragging={colDrag.dragging === column.id}
             >
-              <header className="board-head">
+              <header
+                className="board-head"
+                data-col={column.id}
+                onPointerDown={colDrag.onPointerDown}
+              >
                 {renaming === column.id ? (
                   <input
                     className="set-input"
@@ -344,6 +431,9 @@ export function Board({
                     data-row-parent={column.id}
                     onPointerDown={drag.onPointerDown}
                     data-dragging={drag.dragging === task.id}
+                    data-drop={
+                      drag.target?.rowId === task.id ? drag.target.intent : undefined
+                    }
                   >
                     <TaskRow
                       task={task}

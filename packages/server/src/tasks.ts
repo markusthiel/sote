@@ -598,6 +598,70 @@ export class NotFound extends Error {
  * Reihenfolge der Browser gesehen hat, und eine vertauschte Angabe ist eine
  * veraltete Ansicht und keine Anweisung.
  */
+/**
+ * Der neue Sortierschlüssel für eine Zeile, zwischen zwei genannten Nachbarn.
+ *
+ * Herausgelöst, weil es zwei Aufrufer gibt: das Verschieben in der Liste
+ * (`move`) und das Legen einer Karte auf der Tafel (`placeCard`). Zwei
+ * Fassungen derselben Rechnung wären zwei Antworten auf „wo landet das", und
+ * die beiden liefen genau bei dem Fall auseinander, der selten vorkommt.
+ *
+ * Der Kreis, in dem gerechnet wird, ist (Bereich, Projekt, Elternteil) — also
+ * derselbe, über den `tasks_sibling_order` eindeutig ist.
+ */
+export async function sortKeyFor(
+  client: PoolClient,
+  input: {
+    taskId: string;
+    workspaceId: string;
+    projectId: string | null;
+    parentId: string | null;
+    between: { afterId?: string | null; beforeId?: string | null };
+  },
+): Promise<string> {
+  const { taskId, workspaceId, projectId, parentId, between } = input;
+
+  /** Ein Nachbar muss im selben Geschwisterkreis liegen wie der Index. */
+  const keyOf = async (id: string | null | undefined): Promise<string | null> => {
+    if (id === null || id === undefined) return null;
+    const row = await queryOne<{ sort_key: string }>(
+      client,
+      `SELECT sort_key FROM tasks
+        WHERE id = $1 AND workspace_id = $2
+          AND project_id IS NOT DISTINCT FROM $3
+          AND parent_id IS NOT DISTINCT FROM $4`,
+      [id, workspaceId, projectId, parentId],
+    );
+    if (row === undefined) throw new NotFound(`${id} ist hier kein Nachbar`);
+    return row.sort_key;
+  };
+
+  const after = await keyOf(between.afterId);
+  const claimed = await keyOf(between.beforeId);
+  if (after !== null && claimed !== null && after >= claimed) {
+    throw new OutOfOrder(
+      'die beiden Nachbarn stehen nicht in dieser Reihenfolge — die Ansicht ist veraltet',
+    );
+  }
+
+  // Der tatsächliche rechte Nachbar: der kleinste Schlüssel, der größer ist
+  // als der linke. Die eigene Zeile zählt nicht mit, sonst wäre sie beim
+  // Verschieben um eine Stelle ihr eigener Nachbar.
+  const next = await queryOne<{ sort_key: string }>(
+    client,
+    `SELECT sort_key FROM tasks
+      WHERE workspace_id = $1
+        AND project_id IS NOT DISTINCT FROM $2
+        AND parent_id IS NOT DISTINCT FROM $3
+        AND id <> $4
+        AND ($5::text IS NULL OR sort_key > $5)
+      ORDER BY sort_key ASC LIMIT 1`,
+    [workspaceId, projectId, parentId, taskId, after],
+  );
+
+  return generateKeyBetween(after, next?.sort_key ?? null);
+}
+
 export async function move(
   pool: Pool,
   taskId: string,
@@ -712,47 +776,13 @@ export async function move(
         umgehaengt = true;
       }
 
-      /** Ein Nachbar muss im selben Geschwisterkreis liegen wie der Index. */
-      const keyOf = async (id: string | null | undefined): Promise<string | null> => {
-        if (id === null || id === undefined) return null;
-        const row = await queryOne<{ sort_key: string }>(
-          client,
-          `SELECT sort_key FROM tasks
-            WHERE id = $1 AND workspace_id = $2
-              AND project_id IS NOT DISTINCT FROM $3
-              AND parent_id IS NOT DISTINCT FROM $4`,
-          [id, workspaceId, me.project_id, me.parent_id],
-        );
-        if (row === undefined) {
-          throw new NotFound(`${id} ist hier kein Nachbar`);
-        }
-        return row.sort_key;
-      };
-
-      const after = await keyOf(between.afterId);
-      const claimed = await keyOf(between.beforeId);
-      if (after !== null && claimed !== null && after >= claimed) {
-        throw new OutOfOrder(
-          'die beiden Nachbarn stehen nicht in dieser Reihenfolge — die Ansicht ist veraltet',
-        );
-      }
-
-      // Der tatsächliche rechte Nachbar: der kleinste Schlüssel, der größer ist
-      // als der linke. Die eigene Zeile zählt nicht mit, sonst wäre sie beim
-      // Verschieben um eine Stelle ihr eigener Nachbar.
-      const next = await queryOne<{ sort_key: string }>(
-        client,
-        `SELECT sort_key FROM tasks
-          WHERE workspace_id = $1
-            AND project_id IS NOT DISTINCT FROM $2
-            AND parent_id IS NOT DISTINCT FROM $3
-            AND id <> $4
-            AND ($5::text IS NULL OR sort_key > $5)
-          ORDER BY sort_key ASC LIMIT 1`,
-        [workspaceId, me.project_id, me.parent_id, taskId, after],
-      );
-
-      const key = generateKeyBetween(after, next?.sort_key ?? null);
+      const key = await sortKeyFor(client, {
+        taskId,
+        workspaceId,
+        projectId: me.project_id,
+        parentId: me.parent_id,
+        between,
+      });
       const row = await queryOne<TaskRow>(
         client,
         umgehaengt

@@ -505,10 +505,22 @@ export const api = {
    * In die Fertig-Spalte zu legen hakt ab, heraus zu legen öffnet wieder: die
    * Spalte heißt so, und eine offene Aufgabe darin wäre ein Widerspruch.
    */
-  placeCard: (id: string, columnId: string | null, workspace?: string) =>
+  placeCard: (
+    id: string,
+    columnId: string | null,
+    /**
+     * Wo in der Spalte. Fehlt beides, bleibt die Reihenfolge, wie sie war.
+     *
+     * Die Tafel führt keine eigene Ordnung: sie sortiert nach demselben
+     * Schlüssel wie die Liste. Wer auf der Tafel umsortiert, sortiert damit
+     * auch die Liste um — eine Ordnung, zwei Ansichten.
+     */
+    between: { afterId?: string | null; beforeId?: string | null } = {},
+    workspace?: string,
+  ) =>
     call<{ ok: true }>(
       `/api/tasks/${id}/column${workspace === undefined ? '' : `?workspace=${workspace}`}`,
-      { method: 'PUT', body: JSON.stringify({ columnId }) },
+      { method: 'PUT', body: JSON.stringify({ columnId, ...between }) },
     ),
   listViews: (workspace?: string) =>
     call<{

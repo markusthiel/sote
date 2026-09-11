@@ -26,6 +26,7 @@
 import type { Pool } from 'pg';
 
 import { queryOne, queryRows, withTransaction } from './db.js';
+import { sortKeyFor } from './tasks.js';
 
 export class BoardTrouble extends Error {
   override name = 'BoardTrouble';
@@ -226,8 +227,19 @@ export async function placeCard(
   columnId: string | null,
   userId: string | null,
   at: Date,
+  /**
+   * Wo in der Spalte — zwischen welchen beiden Karten.
+   *
+   * Leer heißt „Spalte wechseln, Reihenfolge lassen". Die Tafel führt KEINE
+   * eigene Reihenfolge: sie sortiert nach demselben Schlüssel wie die Liste.
+   * Ein zweiter Schlüssel je Spalte wäre eine zweite Ordnung derselben
+   * Aufgaben — und dann stünde dieselbe Liste in zwei Ansichten verschieden,
+   * ohne dass jemand das entschieden hätte.
+   */
+  between: { afterId?: string | null; beforeId?: string | null } = {},
 ): Promise<void> {
-  const out = await pool.query(
+  return withTransaction(pool, async (client) => {
+  const out = await client.query(
     `UPDATE tasks t SET
         column_id = $3,
         updated_at = now(),
@@ -257,4 +269,30 @@ export async function placeCard(
   if (out.rowCount === 0) {
     throw new BoardTrouble('diese Aufgabe oder diese Spalte gibt es hier nicht');
   }
+
+  if (between.afterId === undefined && between.beforeId === undefined) return;
+
+  /*
+   * Und die Stelle innerhalb der Spalte — im SELBEN Schreibvorgang.
+   *
+   * Zwei Aufrufe wären ein Zwischenzustand, in dem die Karte schon in der
+   * neuen Spalte liegt und noch an der alten Stelle steht; scheitert der
+   * zweite, bleibt er stehen. Dieselbe Überlegung wie beim Abhaken.
+   */
+  const wo = await queryOne<{ project_id: string | null; parent_id: string | null }>(
+    client,
+    'SELECT project_id, parent_id FROM tasks WHERE id = $1 AND workspace_id = $2',
+    [taskId, workspaceId],
+  );
+  if (wo === undefined) throw new BoardTrouble('diese Aufgabe gibt es hier nicht');
+
+  const key = await sortKeyFor(client, {
+    taskId,
+    workspaceId,
+    projectId: wo.project_id,
+    parentId: wo.parent_id,
+    between,
+  });
+  await client.query('UPDATE tasks SET sort_key = $2 WHERE id = $1', [taskId, key]);
+  });
 }

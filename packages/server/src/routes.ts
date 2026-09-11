@@ -1348,6 +1348,16 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
         typeof body?.['columnId'] === 'string' ? body['columnId'] : null,
         userId,
         now,
+        {
+          // Fehlend heißt „Reihenfolge lassen" — `null` heißt „ganz nach
+          // oben". Zwei verschiedene Dinge, wie beim Umhängen.
+          ...('afterId' in (body ?? {})
+            ? { afterId: body['afterId'] === null ? null : String(body['afterId']) }
+            : {}),
+          ...('beforeId' in (body ?? {})
+            ? { beforeId: body['beforeId'] === null ? null : String(body['beforeId']) }
+            : {}),
+        },
       );
       json(res, 200, { ok: true });
       return;
