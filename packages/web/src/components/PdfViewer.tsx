@@ -61,10 +61,21 @@ export function PdfViewer({ src, filename }: { src: string; filename: string }) 
          * Beide Teile dynamisch, und der Arbeiter als URL: pdf.js rechnet in
          * einem eigenen Faden, und ohne ihn steht die Oberfläche still,
          * während eine Seite entsteht.
+         *
+         * DIE `legacy`-FASSUNG, und das ist kein Vorsichtsmass, sondern eine
+         * Messung: die gewöhnliche benutzt `Map.prototype.getOrInsertComputed`
+         * — eine Sprachfunktion aus 2025, die es in Firefox und Safari noch
+         * nicht gibt und in Chrome erst seit kurzem. Im Browser kam genau das
+         * heraus: „TypeError: getOrInsertComputed is not a function", und
+         * nach aussen „Dieses PDF liess sich nicht öffnen".
+         *
+         * `legacy` ist dieselbe Fassung, übersetzt auf älteren Sprachstand.
+         * Sie kostet etwas mehr Umfang und ist die einzige, die überall
+         * zeichnet.
          */
         const [pdfjs, workerUrl] = await Promise.all([
-          import('pdfjs-dist'),
-          import('pdfjs-dist/build/pdf.worker.min.mjs?url').then((m) => m.default),
+          import('pdfjs-dist/legacy/build/pdf.mjs'),
+          import('pdfjs-dist/legacy/build/pdf.worker.min.mjs?url').then((m) => m.default),
         ]);
         if (weg) return;
         pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
@@ -89,17 +100,39 @@ export function PdfViewer({ src, filename }: { src: string; filename: string }) 
          * Spalte, während man rollt, und die Stelle, die man gerade liest,
          * wandert weg.
          */
+        /*
+         * Welche Seiten gerade zu sehen sind — und angezeigt wird die ERSTE.
+         *
+         * Der erste Wurf schrieb einfach jede Seite hin, die hereinkam. Im
+         * Bild stand darum „Seite 2 von 2", während man noch die erste las:
+         * beide waren sichtbar, und die zweite kam zuletzt. Wo man IST, ist
+         * die oberste sichtbare Seite.
+         */
+        const sichtbar = new Set<number>();
         const beobachter = new IntersectionObserver(
           (eintraege) => {
             for (const e of eintraege) {
               const nr = Number((e.target as HTMLElement).dataset['page']);
               if (e.isIntersecting) {
-                setSeite(nr);
+                sichtbar.add(nr);
                 void zeichne(nr, e.target as HTMLCanvasElement);
+              } else {
+                sichtbar.delete(nr);
               }
             }
+            if (sichtbar.size > 0) setSeite(Math.min(...sichtbar));
           },
-          { root: ziel, rootMargin: NEAR },
+          {
+            root: ziel,
+            /*
+             * Zwei Beobachter wären sauberer und sind es nicht wert: DERSELBE
+             * Rand entscheidet über „zeichnen" und „hier bin ich". 600 px
+             * voraus zu zeichnen ist richtig; 600 px voraus als Standort zu
+             * melden wäre es nicht — darum steht der Rand nur unten, wo er
+             * dem Zeichnen dient, und oben bei null.
+             */
+            rootMargin: `0px 0px ${NEAR} 0px`,
+          },
         );
         aufraeumen.push(() => beobachter.disconnect());
 
