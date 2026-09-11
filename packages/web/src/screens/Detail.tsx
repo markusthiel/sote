@@ -24,6 +24,7 @@ import { COMMON_LEAD_MINUTES, formatDuration, sameLabel, saysLead } from '@sote/
 import { api, ApiError, type Detail as DetailData, type Project, type Task } from '../api.js';
 import { toggleDone } from '../tasks/toggleDone.js';
 import { FieldRow, FreeDate, FreeDuration, FreeLabel } from '../components/FieldRow.js';
+import { LookPicker } from '../components/LookPicker.js';
 import {
   CheckSquareIcon,
   DownloadIcon,
@@ -1024,6 +1025,79 @@ export function Detail({
                   </p>
                 ) : null}
               </div>
+            )}
+
+            {/*
+              DAS AUSSEHEN DIESER AUFGABE.
+
+              GEWÜNSCHT: „Könnte man die noch gestalten? Ein Icon, das dann vor
+              dem Titel angezeigt wird, Textfarbe und Hintergrundfarbe."
+
+              Als aufklappbare Reihe wie die anderen: der Wähler bringt den
+              ganzen Zeichensatz mit, und der gehört nicht dauerhaft in eine
+              Spalte von 340 Pixeln — er wird geholt, wenn jemand ihn aufmacht.
+
+              Was hier steht, ist die GENAUESTE der drei Ebenen. Steht nichts,
+              gilt das Schlagwort, und darunter das Projekt — darum sagt die
+              Zeile „vom Projekt oder Schlagwort" und nicht „ohne".
+            */}
+            {!darfSchreiben ? null : (
+              <FieldRow
+                label="aussehen"
+                value={
+                  task.look?.icon !== undefined || task.look?.color !== undefined
+                    ? 'eigenes'
+                    : null
+                }
+                empty="vom Projekt oder Schlagwort"
+                disabled={busy}
+              >
+                {() => (
+                  <>
+                    <LookPicker
+                      icon={task.look?.icon}
+                      color={task.look?.color}
+                      busy={busy}
+                      onIcon={(name) =>
+                        void save(() =>
+                          anbindung.patch({
+                            look: {
+                              ...(name === null ? {} : { icon: name }),
+                              // Die Farbe bleibt: wer das Zeichen wechselt, hat
+                              // über die Farbe nichts gesagt.
+                              ...(task.look?.color === undefined
+                                ? {}
+                                : { color: task.look.color }),
+                            },
+                          }),
+                        )
+                      }
+                      onColor={(farbe) =>
+                        void save(() =>
+                          anbindung.patch({
+                            look: {
+                              ...(task.look?.icon === undefined
+                                ? {}
+                                : { icon: task.look.icon }),
+                              ...(farbe === null ? {} : { color: farbe }),
+                            },
+                          }),
+                        )
+                      }
+                    />
+                    {task.look?.icon !== undefined || task.look?.color !== undefined ? (
+                      <button
+                        type="button"
+                        className="btn quiet small"
+                        disabled={busy}
+                        onClick={() => void save(() => anbindung.patch({ look: null }))}
+                      >
+                        Zurück auf Projekt und Schlagwort
+                      </button>
+                    ) : null}
+                  </>
+                )}
+              </FieldRow>
             )}
 
             {/* Nur wenn es eine Herkunft gibt. Gespeicherte URL und Titel, damit der

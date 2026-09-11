@@ -28,7 +28,10 @@
  * der Schalter, der nichts tut.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { colorValue } from '@sote/core';
+import { useCallback, useEffect, useState, type CSSProperties } from 'react';
+
+import { LookPicker } from '../components/LookPicker.js';
 
 import { api, ApiError } from '../api.js';
 
@@ -47,6 +50,8 @@ export function Labels({ workspace }: { workspace: string | undefined }) {
    * steht in der Frage.
    */
   const [fragt, setFragt] = useState<string | undefined>(undefined);
+  /** Welches Schlagwort gerade gefärbt wird. */
+  const [faerbt, setFaerbt] = useState<string | undefined>(undefined);
 
   const load = useCallback(async () => {
     setData(await api.labels(workspace));
@@ -138,7 +143,25 @@ export function Labels({ workspace }: { workspace: string | undefined }) {
           ) : (
             <div className="role-head">
               <strong>
-                <span className="tag">{l.name}</span>
+                {/*
+                  Das Schlagwort in SEINER Farbe.
+
+                  Gewünscht: die Farbe einer Aufgabe „kann vom Projekt kommen
+                  oder vom Schlagwort". Dann soll man hier sehen, welche das
+                  ist — eine Farbe, die nur an den Aufgaben erscheint und nicht
+                  an ihrer Quelle, ist eine, die man raten muss.
+                */}
+                <span
+                  className="tag"
+                  data-eigen={l.color === null ? undefined : 'yes'}
+                  style={
+                    l.color === null
+                      ? undefined
+                      : ({ '--eigen': colorValue(l.color) } as CSSProperties)
+                  }
+                >
+                  {l.name}
+                </span>
               </strong>
               <span className="muted">
                 {l.tasks === 0
@@ -154,6 +177,15 @@ export function Labels({ workspace }: { workspace: string | undefined }) {
                     onClick={() => setEdit({ id: l.id, text: l.name })}
                   >
                     Umbenennen
+                  </button>
+                  <button
+                    type="button"
+                    className="btn quiet small"
+                    disabled={busy}
+                    aria-expanded={faerbt === l.id}
+                    onClick={() => setFaerbt(faerbt === l.id ? undefined : l.id)}
+                  >
+                    Farbe
                   </button>
                   {fragt === l.id ? (
                     <>
@@ -189,6 +221,26 @@ export function Labels({ workspace }: { workspace: string | undefined }) {
               ) : null}
             </div>
           )}
+          {/*
+            Der Wähler steht UNTER der Zeile und nicht in einem Aufsatz: er
+            bringt eine Reihe Farbfelder mit, und ein Aufsatz über einer Liste
+            verdeckt die Schlagwörter, deren Farben man gerade vergleicht.
+          */}
+          {faerbt === l.id && data.mayManage ? (
+            <LookPicker
+              withIcon={false}
+              icon={undefined}
+              color={l.color ?? undefined}
+              busy={busy}
+              onIcon={() => undefined}
+              onColor={(farbe) =>
+                void tun(async () => {
+                  await api.colorLabel(l.id, farbe, workspace);
+                  setFaerbt(undefined);
+                }, 'Färben ging nicht.')
+              }
+            />
+          ) : null}
         </section>
       ))}
     </div>

@@ -2051,6 +2051,23 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex]:focus-vi
   background: var(--surface);
 }
 
+/* Der Wähler für Zeichen und Farbe — an der Aufgabe und am Schlagwort. */
+.look-pick {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sone-space-3);
+  padding-block: var(--sone-space-2);
+}
+
+/* Ein gefärbtes Schlagwort in der Liste: es soll dort aussehen, wie es an den
+   Aufgaben wirkt — eine Farbe, die nur am Ergebnis erscheint und nicht an
+   ihrer Quelle, ist eine, die man raten muss. */
+.tag[data-eigen="yes"] {
+  color: var(--eigen);
+  border-color: color-mix(in srgb, var(--eigen) 45%, var(--line));
+  background: color-mix(in srgb, var(--eigen) 12%, var(--surface));
+}
+
 /* ── Das Aussehen einer Aufgabe ────────────────────────────────────────────
  *
  * Gewünscht: „Ein Icon, das dann vor dem Titel angezeigt wird, Textfarbe und
