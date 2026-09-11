@@ -25,6 +25,21 @@ export type Route =
    * ersten Gebrauch auseinander (SONE, `claude/suche-als-ort.md`).
    */
   | { readonly kind: 'search'; readonly q: string }
+  /**
+   * EINE AUFGABE IST EIN ORT.
+   *
+   * Gebraucht wurde das von der Kalender-Ausgabe: ein Eintrag im Kalender, von
+   * dem man nicht zur Aufgabe kommt, ist eine Sackgasse — man liest ihn und
+   * sucht dann von Hand in der Anwendung. Also braucht eine Aufgabe eine
+   * Adresse, und damit gilt für sie, was für die Suche gilt: verlinkbar,
+   * zurückgehen führt zurück, ein Neuladen bleibt dort
+   * (`claude/suche-als-ort.md`).
+   *
+   * Dahinter steht „Heute", weil hinter etwas stehen muss: die Detailspalte
+   * ist eine Spalte und kein Bildschirm. Welche Liste das ist, sagt der Link
+   * nicht — und das ist richtig, denn eine Aufgabe kann in mehreren stehen.
+   */
+  | { readonly kind: 'task'; readonly taskId: string }
   | { readonly kind: 'mode'; readonly mode: string }
   /**
    * Einstellungen sind ein **Ort**, keine Klappe.
@@ -117,6 +132,11 @@ export function parseRoute(pathname: string, queryString = ''): Route {
       : { kind: 'today' };
   }
 
+  if (parts[0] === 'a' && parts[1] !== undefined) {
+    // Wie bei den Projekten: eine unbekannte Id ist keine Aufgabe.
+    return UUID.test(parts[1]) ? { kind: 'task', taskId: parts[1] } : { kind: 'today' };
+  }
+
   if (parts[0] === 'p' && parts[1] !== undefined) {
     // Eine unbekannte Id ist kein Projekt. Sonst fragt die Oberfläche den
     // Server nach etwas, das sie sich selbst ausgedacht hat.
@@ -174,6 +194,8 @@ export function pathOf(route: Route): string {
       return `/einladung/${route.token}`;
     case 'project':
       return `/p/${route.projectId}`;
+    case 'task':
+      return `/a/${route.taskId}`;
     case 'search':
       return route.q === '' ? '/suche' : `/suche?q=${encodeURIComponent(route.q)}`;
     case 'settings':

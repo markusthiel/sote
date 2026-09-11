@@ -17,6 +17,9 @@ importers:
       '@types/node':
         specifier: ^22.10.0
         version: 22.20.1
+      ical.js:
+        specifier: ^2.2.1
+        version: 2.2.1
       tsx:
         specifier: ^4.19.0
         version: 4.23.13
@@ -737,6 +740,9 @@ packages:
     resolution: {integrity: sha512-3hN7NaskYvMDLQY55gnW3NQ+mesEAepTqlg+VEbj7zzqEMBVNhzcGYYeqFo/TlYz6eQiFcp1HcsCZO+nGgS8zg==}
     engines: {node: '>=6.9.0'}
 
+  ical.js@2.2.1:
+    resolution: {integrity: sha512-yK/UlPbEs316igb/tjRgbFA8ZV75rCsBJp/hWOatpyaPNlgw0dGDmU+FoicOcwX4xXkeXOkYiOmCqNPFpNPkQg==}
+
   js-tokens@4.0.0:
     resolution: {integrity: sha512-RdJUflcE3cUzKiMqQgsCu06FPu9UdIJO0beYbPhHN4k6apgJtifcoCtT9bcxOpYBtpD2kCM6Sbzg4CausW/PKQ==}
 
@@ -1454,6 +1460,8 @@ snapshots:
     optional: true
 
   gensync@1.0.0-beta.2: {}
+
+  ical.js@2.2.1: {}
 
   js-tokens@4.0.0: {}
 

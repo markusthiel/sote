@@ -46,6 +46,7 @@ import {
 import { Maintenance } from './screens/Maintenance.js';
 import { People } from './screens/People.js';
 import { Groups } from './screens/Groups.js';
+import { CalendarFeed } from './screens/CalendarFeed.js';
 import { Labels } from './screens/Labels.js';
 import { Roles } from './screens/Roles.js';
 import { WorkspaceExit } from './screens/WorkspaceExit.js';
@@ -101,7 +102,7 @@ export function App() {
    */
   const sidebar = useSidebar(route);
   const panelWidth = useSidebarWidth();
-  const [openTask, setOpenTask] = useState<string | null>(null);
+  const [openTaskState, setOpenTaskState] = useState<string | null>(null);
   /*
    * Die letzte Abfrage, damit das Symbol in der Schiene zurückführt.
    *
@@ -259,6 +260,35 @@ export function App() {
     // die Schublade. Eine Spalte zu schließen, weil jemand geklickt hat, wäre
     // zum Wahnsinnigwerden.
   }, []);
+
+  /**
+   * Welche Aufgabe offen ist — aus der Adresse, wenn die eine nennt.
+   *
+   * `/a/<id>` ist die Adresse einer Aufgabe (gebraucht von der
+   * Kalender-Ausgabe: ein Eintrag, von dem man nicht hinkommt, ist eine
+   * Sackgasse). Auf dieser Adresse ist die ADRESSE die Antwort auf „was ist
+   * offen" und nicht der Zustand daneben — zwei Antworten wären eine zu viel.
+   *
+   * Aus einer Liste heraus bleibt es Zustand, wie bisher. Jedes Öffnen zu
+   * einem Ort zu machen, wäre die richtige Fortsetzung, aber eine Änderung an
+   * der Bedienung des Zurück-Knopfes — und die gehört nicht in einen Commit
+   * über Kalender.
+   */
+  const openTask = route.kind === 'task' ? route.taskId : openTaskState;
+  const setOpenTask = useCallback(
+    (id: string | null) => {
+      if (route.kind === 'task') {
+        // Auf der Adresse einer Aufgabe ist Zumachen ein Weggehen — sonst
+        // bliebe die Adresse stehen und die Spalte wäre zu, also zwei
+        // widersprechende Auskünfte.
+        setOpenTaskState(id === route.taskId ? null : id);
+        go({ kind: 'today' }, true);
+        return;
+      }
+      setOpenTaskState(id);
+    },
+    [route, go],
+  );
 
   useEffect(() => {
     const back = () =>
@@ -871,6 +901,8 @@ export function App() {
             view={shareView}
             onList={setShareList}
           />
+        ) : route.kind === 'settings' && route.section === 'kalender' ? (
+          <CalendarFeed workspace={workspace} workspaceName={wsName} />
         ) : route.kind === 'workspaces' && route.section === 'alle' ? (
           <WorkspaceOverview workspaces={me.workspaces} current={workspace} />
         ) : route.kind === 'workspaces' && route.section === 'gruppen' ? (

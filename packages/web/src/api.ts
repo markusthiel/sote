@@ -414,6 +414,29 @@ export const api = {
     }),
 
   /* ── Gruppen ───────────────────────────────────────────────────────────── */
+  /**
+   * Der Kalender-Link dieser Person in diesem Arbeitsbereich.
+   *
+   * `possible` sagt, ob die Instanz überhaupt Links ausgeben kann (sie braucht
+   * `SOTE_SHARE_KEY`) — sonst stünde dort ein Knopf, der nichts tut.
+   */
+  calendar: (workspace?: string) =>
+    call<{
+      possible: boolean;
+      base: string | null;
+      feed: { token: string | null; createdAt: string; lastUsedAt: string | null } | null;
+    }>(`/api/calendar${workspace === undefined ? '' : `?workspace=${workspace}`}`),
+  /** Einen neuen machen — der alte ist danach tot. */
+  newCalendar: (workspace?: string) =>
+    call<{ token: string }>(
+      `/api/calendar${workspace === undefined ? '' : `?workspace=${workspace}`}`,
+      { method: 'POST' },
+    ),
+  revokeCalendar: (workspace?: string) =>
+    call<{ ok: true }>(
+      `/api/calendar${workspace === undefined ? '' : `?workspace=${workspace}`}`,
+      { method: 'DELETE' },
+    ),
   /** Die Schlagwörter dieses Arbeitsbereichs, mit der Zahl der Aufgaben. */
   labels: (workspace?: string) =>
     call<{

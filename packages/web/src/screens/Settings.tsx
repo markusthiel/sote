@@ -69,6 +69,7 @@ export const SETTING_SECTIONS = [
   { id: 'zeit', label: 'Zeit', hint: 'Deine Zeitzone' },
   { id: 'landen', label: 'Wo du landest', hint: 'Beim Anmelden' },
   { id: 'erinnern', label: 'Erinnerungen', hint: 'Post am Morgen' },
+  { id: 'kalender', label: 'Kalender', hint: 'Abonnement für dein Programm' },
 ] as const;
 
 /**

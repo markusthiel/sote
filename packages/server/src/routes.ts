@@ -95,6 +95,14 @@ import {
   type TrashKind,
 } from './tasks.js';
 import { search } from './search.js';
+import {
+  calendarKeyPresent,
+  feedOf,
+  icsByToken,
+  newFeed,
+  NoCalendar,
+  revokeFeed,
+} from './calendar.js';
 import { LabelTrouble, labelsOfWorkspace, removeLabel, renameLabel } from './labels.js';
 import { counts, list, splitOverdue, type ViewId } from './views.js';
 
@@ -501,6 +509,40 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
   const sharePath = /^\/api\/share\/([A-Za-z0-9_-]{20,200})(\/.*)?$/.exec(path);
   if (sharePath !== null) {
     await shareRoutes(ctx, req, res, sharePath[1]!, sharePath[2] ?? '', method, now);
+    return;
+  }
+
+  /* ── Kalender: der Weg, den ein Kalenderprogramm gehen kann ──────────────
+   *
+   * VOR der Anmeldeschranke, und zwar zwangsweise: ein Kalenderprogramm kann
+   * sich nicht anmelden. Es holt eine Adresse ab, in einem Rutsch, ohne Konto
+   * — also trägt die Adresse das Geheimnis.
+   *
+   * `.ics` am Ende, weil manche Programme nach der Endung gehen und nicht nach
+   * dem Kopf der Antwort. Er steht trotzdem richtig da.
+   */
+  const icsPath = /^\/kalender\/([A-Za-z0-9_-]{20,200})\.ics$/.exec(path);
+  if (icsPath !== null) {
+    if (method !== 'GET' && method !== 'HEAD') {
+      fail(res, 405, 'no_method', 'ein Kalender wird geholt und nicht geschrieben');
+      return;
+    }
+    const text = await icsByToken(ctx.pool, icsPath[1]!, now, baseUrl());
+    if (text === undefined) {
+      /*
+       * Unbekannt und widerrufen sehen GLEICH aus. Ein „widerrufen" wäre die
+       * Auskunft, dass es diesen Link einmal gab — die schuldet der Server
+       * niemandem, der ihn nicht (mehr) hat.
+       */
+      fail(res, 404, 'no_calendar', 'diesen Kalender gibt es nicht');
+      return;
+    }
+    res.statusCode = 200;
+    res.setHeader('content-type', 'text/calendar; charset=utf-8');
+    // Kein Zwischenspeichern: ein Kalender, der eine alte Antwort aus einem
+    // Puffer bekommt, zeigt mit Überzeugung den Stand von vorher.
+    res.setHeader('cache-control', 'no-store');
+    res.end(method === 'HEAD' ? undefined : text);
     return;
   }
 
@@ -1152,6 +1194,52 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
    * ein Name mehr im Rechte-Vokabular ist einer, den jemand in jeder Rolle
    * einzeln entscheiden muss.
    */
+  /*
+   * ── Der Kalender-Link dieser Person in diesem Bereich ────────────────────
+   *
+   * Je Person und nicht je Bereich: der Link ist ein Passwort-Ersatz, und ein
+   * gemeinsamer wäre einer, den niemand allein widerrufen kann. Darum braucht
+   * es hier auch kein Recht — wer Mitglied ist, darf sich selbst einen machen,
+   * und er zeigt nichts, was die Listen nicht ohnehin zeigen.
+   */
+  if (path === '/api/calendar' && method === 'GET') {
+    const feed = await feedOf(ctx.pool, workspaceId, userId);
+    json(res, 200, {
+      // Der Schlüssel der Instanz fehlt? Dann sagt das die Antwort, statt
+      // einen Knopf anzubieten, der nichts tut.
+      possible: calendarKeyPresent(),
+      base: baseUrl() ?? null,
+      feed:
+        feed === undefined
+          ? null
+          : {
+              token: feed.token,
+              createdAt: feed.created_at.toISOString(),
+              lastUsedAt: feed.last_used_at?.toISOString() ?? null,
+            },
+    });
+    return;
+  }
+
+  if (path === '/api/calendar' && (method === 'POST' || method === 'DELETE')) {
+    try {
+      if (method === 'DELETE') {
+        await revokeFeed(ctx.pool, workspaceId, userId);
+        json(res, 200, { ok: true });
+        return;
+      }
+      const out = await newFeed(ctx.pool, workspaceId, userId);
+      json(res, 201, { token: out.token });
+      return;
+    } catch (e) {
+      if (e instanceof NoCalendar) {
+        fail(res, 409, 'no_calendar', e.message);
+        return;
+      }
+      throw e;
+    }
+  }
+
   if (path === '/api/labels' && method === 'GET') {
     json(res, 200, {
       labels: await labelsOfWorkspace(ctx.pool, workspaceId),
