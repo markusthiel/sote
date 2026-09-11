@@ -293,8 +293,23 @@ export function ShareScreen({ token, now }: { token: string; now: Date }) {
           ein Gast sie nicht mehr zubekommen. Der Gast-Bildschirm hat keine
           Kopfleiste wie die Anwendung, also bekommt er den Knopf hier.
         */}
+        <span className="guest-right">
+          {head === null
+            ? ''
+            : darfSchreiben
+              ? 'Du darfst mitarbeiten'
+              : 'Du darfst mitlesen'}
+        </span>
         {/*
-          NUR AUF DEM RECHNER — die Klasse `nur-breit` blendet ihn darunter aus.
+          AM ENDE DER ZEILE, nur auf dem Rechner.
+
+          GEMELDET: „Der Button zum Schliessen hängt irgendwo in der Mitte." Er
+          stand zwischen Zeichen und Rechte-Satz, und die Kopfzeile verteilt
+          ihre Kinder gleichmässig — bei dreien landet das mittlere in der
+          Mitte. Jetzt steht er zuletzt, also rechts; die Kopfzeile endet vor
+          der Spalte, damit er unmittelbar davor sitzt.
+
+          `nur-breit` blendet ihn auf dem Telefon aus:
 
           GEMELDET: „Es gibt den Sidebar-Button, den wir in der mobilen Ansicht
           schon entfernt hatten." Richtig, und aus demselben Grund wie dort:
@@ -319,13 +334,6 @@ export function ShareScreen({ token, now }: { token: string; now: Date }) {
             <PanelRightIcon size={17} />
           </button>
         )}
-        <span className="guest-right">
-          {head === null
-            ? ''
-            : darfSchreiben
-              ? 'Du darfst mitarbeiten'
-              : 'Du darfst mitlesen'}
-        </span>
       </div>
 
       <div className="guest-body">

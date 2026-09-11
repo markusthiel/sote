@@ -5207,11 +5207,22 @@ select.target { }
    keine anderen Orte, also auch keine Liste davon. */
 
 .guest {
+  /*
+   * DIESELBE HÜLLE WIE DIE ANWENDUNG: aussen fest, innen rollt der Inhalt.
+   *
+   * Vorher rollte `.guest` selbst. Das ist der Grund, aus dem die Spalte beim
+   * Gast ein eigenes Layout brauchte: eine Spalte, die absolut im Roller
+   * hängt, rollt mit ihm weg — also klebte sie dort mit `sticky` in einem
+   * eigenen Raster, und jede Änderung an der echten Spalte ging daran vorbei.
+   *
+   * Jetzt hält die Hülle, und `.guest-body` rollt. Damit gilt für die Spalte
+   * dieselbe Regel wie in der Anwendung, und es gibt nichts mehr nachzuziehen.
+   */
   display: flex;
   flex-direction: column;
   height: 100%;
   background: var(--page);
-  overflow: auto;
+  overflow: hidden;
 }
 
 .guest-head {
@@ -5248,6 +5259,10 @@ select.target { }
  * so weit draussen wie vorher. Nachgemessen: Aufklapper bei −32, danach bei 4.
  */
 .guest-body {
+  /* Der Roller — wie `.body` in der Anwendung. */
+  flex: 1;
+  min-block-size: 0;
+  overflow: auto;
   width: 100%;
   max-width: 720px;
   margin: 0 auto;
@@ -5548,28 +5563,34 @@ a.btn {
 }
 
 
-/* Die Detailspalte beim Gast.
-   Derselbe Aufbau wie beim Mitglied: die Liste schrumpft, die Spalte kommt
-   rechts daneben — und erst ab 800px, weil darunter zwei Spalten aus einer
-   Liste eine Wand machen. */
+/*
+ * DIE DETAILSPALTE BEIM GAST — dieselben Regeln wie beim Mitglied.
+ *
+ * GEFRAGT: „Wieso sind denn da so viele Fehler drin? Kann man das nicht
+ * einfach vom System so übernehmen, wie es auch für eingeloggte User
+ * funktioniert?"
+ *
+ * Genau das ist die richtige Frage, und die Antwort ist die Ursache aller
+ * Meldungen zu diesem Bildschirm: der Gast hatte ein EIGENES Layout. Ein
+ * Raster mit `align-items: start` und einer klebenden Spalte — nachgebaut,
+ * nicht übernommen. Jede Änderung an der echten Spalte ging daran vorbei, und
+ * jede Meldung war ein Nachziehen von Hand.
+ *
+ * Hier steht jetzt nichts mehr über die Geometrie. Die Regel für `.detail`
+ * weiter oben gilt überall, wo eine Detailspalte steht; sie war nur
+ * überschrieben. Was bleibt, ist die eine Angabe, die der Gast wirklich
+ * braucht: der Bezugsrahmen, an dem die Spalte hängt — beim Mitglied ist das
+ * `.app`, hier `.guest`.
+ */
 @media (min-width: 800px) {
-  .guest[data-detail='true'] {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) var(--sote-detail);
-    grid-template-rows: auto 1fr;
-    align-items: start;
+  .guest {
+    position: relative;
   }
 
+  /* Und die Kopfzeile endet vor der Spalte, damit der Knopf davor steht und
+     nicht darunter. Dieselbe Zeile wie bei `.topbar` — der Grund steht dort. */
   .guest[data-detail='true'] .guest-head {
-    grid-column: 1 / -1;
-  }
-
-  .guest[data-detail='true'] .detail {
-    position: sticky;
-    top: 0;
-    max-height: 100vh;
-    overflow-y: auto;
-    border-left: 1px solid var(--line);
+    padding-inline-end: calc(var(--sote-detail) + var(--sone-space-5));
   }
 }
 
