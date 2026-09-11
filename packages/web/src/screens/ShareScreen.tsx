@@ -24,6 +24,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useNudge } from '../hooks/useNudge.js';
 import { api, ApiError } from '../api.js';
 import { Detail, guestIO } from './Detail.js';
+import { PanelRightIcon } from '../components/icons.js';
 import { SoteMark } from '../components/Logo.js';
 import { QuickAdd } from '../components/QuickAdd.js';
 
@@ -178,6 +179,27 @@ export function ShareScreen({ token, now }: { token: string; now: Date }) {
     <div className="guest" data-detail={offenAufgabe !== null}>
       <div className="guest-head">
         <SoteMark size={22} />
+        {/*
+          Der Schliessen-Knopf fuer die Detailspalte — aussen, links neben ihr,
+          wie in der Anwendung selbst.
+
+          Er stand frueher IN der Spalte; als er dort wegfiel (die Spalte ist
+          ein Reiter-Panel geworden und der Knopf gehoert nach aussen), haette
+          ein Gast sie nicht mehr zubekommen. Der Gast-Bildschirm hat keine
+          Kopfleiste wie die Anwendung, also bekommt er den Knopf hier.
+        */}
+        {offenAufgabe === null ? null : (
+          <button
+            type="button"
+            className="topbar-knob"
+            aria-label="Detailspalte schliessen"
+            title="Detailspalte schliessen"
+            aria-pressed={true}
+            onClick={() => setOffenAufgabe(null)}
+          >
+            <PanelRightIcon size={17} />
+          </button>
+        )}
         <span className="guest-right">
           {head === null
             ? ''
@@ -264,7 +286,6 @@ export function ShareScreen({ token, now }: { token: string; now: Date }) {
           // und das dann ablehnt, ist schlimmer als keines.
           canWrite={darfSchreiben}
           now={new Date()}
-          onClose={() => setOffenAufgabe(null)}
           onChanged={() => void load().catch(() => undefined)}
         />
       )}

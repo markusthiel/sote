@@ -2439,6 +2439,8 @@ select.target { }
 }
 
 .detail {
+  display: flex;
+  flex-direction: column;
   background: var(--surface);
   border-left: 1px solid var(--line);
   overflow: auto;
@@ -3059,6 +3061,92 @@ select.target { }
   padding: 2px 9px 4px;
   font-size: var(--sone-text-xs);
   color: var(--danger);
+}
+
+/* ── Die Reiter der Detailspalte ───────────────────────────────────────────
+ *
+ * SONEs Form (`.right-tabs`), uebernommen und an SOTEs Werte gebunden: eine
+ * Reihe Zeichen, je eines pro Bereich, darunter der Name des gewaehlten in
+ * Worten.
+ *
+ * Zeichen und keine Woerter: sieben Woerter passen nicht in eine 340 px
+ * schmale Spalte, und die Leiste wird eher laenger als kuerzer.
+ */
+.detail-tabs {
+  display: flex;
+  flex: none;
+  gap: var(--sone-space-1);
+  padding: var(--sone-space-4);
+  border-block-end: 1px solid var(--line);
+}
+
+.detail-tab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Gleich breit, damit die Reihe ein Raster ist und kein Gedraenge. */
+  flex: 1;
+  min-block-size: var(--sone-control-lg);
+  padding: var(--sone-space-2);
+  border: 0;
+  border-radius: var(--sote-radius-md);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.detail-tab svg {
+  inline-size: 17px;
+  block-size: 17px;
+}
+
+.detail-tab:hover {
+  background: var(--sunken);
+  color: var(--text);
+}
+
+/* Der gewaehlte traegt den Grund — dieselbe Sprache wie bei den Knoepfen im
+   Listenkopf: der Grund sagt „dieser gilt", ohne einen Rahmen zu brauchen. */
+.detail-tab[aria-selected="true"] {
+  background: var(--accent-quiet);
+  color: var(--accent-text);
+}
+
+/* Der Name des gewaehlten Reiters, in Worten. Die Leiste sagt ihn in Zeichen;
+   hier liest man ihn nach. */
+.detail-tab-title {
+  margin: 0;
+  padding: var(--sone-space-4) var(--sone-space-5) 0;
+  color: var(--text-faint);
+  font-family: var(--sote-mono);
+  font-size: var(--sone-text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* Der Inhalt des gewaehlten Reiters.
+ *
+ * Er rollt fuer sich: die Leiste und der Titel bleiben stehen, damit man beim
+ * Lesen eines langen Gespraechs nicht die Reiter verliert. */
+.detail-body {
+  flex: 1;
+  min-block-size: 0;
+  overflow-y: auto;
+}
+
+/* Bilder als Bilder: ein Raster aus Vorschauen, nicht eine Liste aus Namen. */
+.detail-images {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
+  gap: var(--sone-space-2);
+}
+
+.detail-image img {
+  inline-size: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: var(--sote-radius-md);
+  border: 1px solid var(--line);
 }
 
 /* ── Projektzeile: Zeichen, Aufklappen ─────────────────────────────────────

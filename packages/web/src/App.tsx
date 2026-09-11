@@ -1085,7 +1085,6 @@ export function App() {
           me={me.id}
           workspace={workspace}
           now={now}
-          onClose={() => setOpenTask(null)}
           onChanged={() => void loadPanel()}
         />
       ) : null}
