@@ -1531,13 +1531,23 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex]:focus-vi
 /* Der Name eines Anhangs öffnet die Vorschau — also ein Knopf, der wie Text
    aussieht. */
 .file-name {
-  /* Nimmt die Breite und endet mit Punkten: ein Dateiname kann lang sein, und
-     die Groesse daneben soll nicht wandern. */
+  /*
+   * Nimmt die Breite und BRICHT UM, statt zu enden.
+   *
+   * Gemeldet mit Bild: „Die Dateiliste sieht jetzt nicht so gut aus, wenn es
+   * lange Dateinamen gibt."
+   *
+   * Punkte am Ende wären bei Dateien die falsche Kürzung: das Wichtigste
+   * steht hinten (`.pdf`, `.JPG`), und „829fc65b-91ae-4682…" sagt gar nichts.
+   * In einer Karte ist Platz nach unten, also darf der Name ihn nehmen.
+   *
+   * `anywhere` und nicht `break-word`: ein Name aus einer einzigen langen
+   * Zeichenkette ohne Bindestrich (genau der Fall im Bild) bricht sonst gar
+   * nicht und schiebt die Grösse aus der Karte.
+   */
   flex: 1;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
   border: 0;
   padding: 0;
   background: none;
@@ -1642,7 +1652,10 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex]:focus-vi
 .board-cover {
   display: block;
   inline-size: 100%;
-  block-size: 96px;
+  /* Gemeldet: „Es könnte ein wenig grösser sein." 96 px waren ein Streifen;
+     bei 140 erkennt man, was auf dem Bild ist, und die Karte bleibt eine
+     Karte. */
+  block-size: 140px;
   object-fit: cover;
   border-start-start-radius: var(--sote-radius-md);
   border-start-end-radius: var(--sote-radius-md);
@@ -3594,6 +3607,7 @@ select.target { }
 }
 
 .detail-image img {
+  display: block;
   inline-size: 100%;
   aspect-ratio: 1;
   object-fit: cover;

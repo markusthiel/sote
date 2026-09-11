@@ -203,3 +203,80 @@ test('„zuletzt benutzt" an einer Freigabe klingelt nicht', async () => {
   );
   assert.deepEqual(beim_widerrufen, ['shares']);
 });
+
+test('das Titelbild klingelt — und jede andere Spalte, die man in der Liste sieht', async () => {
+  /*
+   * GEMELDET: „Wenn ich es als Titelbild setze, dann sollte es live updaten.
+   * Ich muss erst die Seite reloaden."
+   *
+   * Die Ursache: die Spaltenliste im Trigger stand seit Migration 0020 und
+   * kannte `duration_min`, `column_id` und `cover` nicht — alles, was nach ihr
+   * dazukam.
+   */
+  const laut = await horch(() =>
+    pool.query(`UPDATE tasks SET cover = '{"color":"blue"}'::jsonb WHERE id = $1`, [task]),
+  );
+  assert.deepEqual(laut, ['tasks']);
+});
+
+test('die Liste im Trigger kennt JEDE Spalte der Tabelle', async () => {
+  /*
+   * DER TEST GEGEN DAS VERALTEN — und der eigentliche Ertrag dieser Runde.
+   *
+   * Die Spaltenliste im Trigger ist eine Entscheidung („es klingelt, was
+   * andere in ihrer LISTE sehen") und kein Versehen. Aber sie ist auch eine
+   * Liste, die bei jeder neuen Spalte nachgezogen werden muss — und genau das
+   * ist dreimal nicht passiert, ohne dass etwas daran erinnert hätte.
+   *
+   * Also erinnert jetzt dieser Test: er holt die tatsächlichen Spalten aus der
+   * Datenbank und verlangt, dass jede entweder klingelt oder ausdrücklich als
+   * schweigend eingetragen ist. Eine neue Spalte lässt ihn fallen, bis jemand
+   * entschieden hat, was sie soll.
+   *
+   * Dieselbe Bauart wie `check-task-columns.mjs`, nur für den Trigger — dort
+   * sieht kein Wächter hin, weil die Liste in SQL steht.
+   */
+  const SCHWEIGT = new Set([
+    // Schlüssel und Herkunft: ändern sich nicht, und wenn, dann nicht sichtbar.
+    'id',
+    'workspace_id',
+    'created_by',
+    'created_at',
+    'updated_at',
+    'completed_by',
+    'trashed_by',
+    /*
+     * Die Notiz — die dokumentierte Ausnahme aus Migration 0020: sie steht nur
+     * in der Detailspalte, und die hat die Aufgabe schon offen. Ein Anstoss je
+     * Tastendruck wäre ein Push, der schlechter ist als das Polling, das er
+     * ersetzt.
+     */
+    'note',
+    // Die Herkunft eines geteilten Eintrags: steht in der Detailspalte.
+    'origin_url',
+    'origin_title',
+    'origin_seen_at',
+  ]);
+
+  const spalten = await pool.query<{ column_name: string }>(
+    `SELECT column_name FROM information_schema.columns
+      WHERE table_name = 'tasks' AND table_schema = 'public'`,
+  );
+  const quelle = await pool.query<{ prosrc: string }>(
+    `SELECT prosrc FROM pg_proc WHERE proname = 'notify_tasks_upd'`,
+  );
+  const koerper = quelle.rows[0]!.prosrc;
+
+  const fehlend = spalten.rows
+    .map((r) => r.column_name)
+    .filter((name) => !SCHWEIGT.has(name))
+    .filter((name) => !new RegExp(`\\bn\\.${name}\\b`).test(koerper));
+
+  assert.deepEqual(
+    fehlend,
+    [],
+    `Diese Spalten sieht der Trigger nicht: ${fehlend.join(', ')}. ` +
+      'Entweder in die Liste in der Migration aufnehmen (dann klingelt eine ' +
+      'Aenderung) oder oben als schweigend eintragen — mit Grund.',
+  );
+});
