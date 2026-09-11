@@ -220,7 +220,23 @@
      Inhalts daneben. Als Werte, weil Zeile, Anfasser, Aufklapper und
      Innenabstand sich einigen muessen. */
   --sote-lane: 20px;
-  --sote-gutter: calc(var(--sote-lane) * 2);
+  /*
+   * Die Lücke zwischen dem Anfasser und der Zeile.
+   *
+   * GEMELDET mit Bild: „Die Markierung vor der Aufgabe, wenn man eine
+   * auswählt, ist jetzt auf dem Anfasser — da gerne noch ein wenig Abstand
+   * dazwischen lassen."
+   *
+   * Der Streifen der offenen Zeile sass bei -8 px, und seit der Anfasser eine
+   * volle Spur breit ist, liegt dort seine Fläche. Zwei Zeichen auf demselben
+   * Fleck, und das obere gewinnt den Blick.
+   *
+   * Also eine eigene Lücke zwischen Spur und Zeile, in der der Streifen
+   * steht. Als Wert, weil drei Stellen sie brauchen: der Anfasser (er rückt um
+   * sie nach links), der Aufklapper (er rückt mit) und der Rand des Inhalts.
+   */
+  --sote-mark-gap: 8px;
+  --sote-gutter: calc(var(--sote-lane) * 2 + var(--sote-mark-gap));
   --sote-gap-x: 32px;
   --sote-read: 46rem;
   --sote-shadow-sm: 0 1px 2px rgb(22 22 21 / 6%);
@@ -2241,8 +2257,9 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex]:focus-vi
  */
 .grip {
   position: absolute;
-  /* DIE INNERE Spur — direkt an der Zeile, die er bewegt. */
-  left: calc(var(--sote-lane) * -1);
+  /* DIE INNERE Spur — an der Zeile, die er bewegt, aber mit der Lücke davor:
+     dort steht der Streifen der offenen Zeile. */
+  left: calc((var(--sote-lane) + var(--sote-mark-gap)) * -1);
   /* AUF GLEICHER HÖHE wie der Aufklapper: beide beginnen oben und tragen
      denselben Abstand, damit die beiden Zeichen eine Linie bilden statt
      zweier. */
@@ -2774,7 +2791,10 @@ select.target { }
   position: absolute;
   top: 0;
   bottom: 0;
-  left: -8px;
+  /* Mittig in der Lücke zwischen Anfasser und Zeile: (8 − 2) / 2 = 3 auf
+     jeder Seite. Als Rechnung und nicht als Zahl, damit die Lücke sich ändern
+     darf, ohne dass der Streifen an ihren Rand rutscht. */
+  left: calc((var(--sote-mark-gap) - 2px) / -2 - 2px);
   width: 2px;
   background: var(--accent);
 }
