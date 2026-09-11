@@ -362,7 +362,7 @@ export async function shareRoutes(
     }
     /* Die Nachbarn ebenso: ein Schlüssel „zwischen" zwei fremden Aufgaben wäre
        eine Auskunft über eine Liste, die man nicht sieht. */
-    for (const seite of ['after', 'before'] as const) {
+    for (const seite of ['afterId', 'beforeId'] as const) {
       const wert = body[seite];
       if (typeof wert === 'string' && !(await imProjekt(wert))) {
         fail(res, 403, 'outside', 'nur innerhalb dieser Liste');
@@ -371,9 +371,28 @@ export async function shareRoutes(
     }
 
     try {
+      /*
+       * DIE NAMEN SIND `afterId` UND `beforeId`.
+       *
+       * GEMELDET: „Sortieren klappt jetzt, aber egal wo ich etwas hin ziehe, es
+       * landet immer ganz oben. Rein ziehen als Unteraufgabe klappt aber."
+       *
+       * Genau dieses Bild gehört zu genau diesem Fehler: ich hatte hier `after`
+       * und `before` geschrieben, und `move` kennt nur `afterId`/`beforeId`.
+       * Unbekannte Schlüssel fallen still weg — also kam ein Zug ohne Nachbarn
+       * an, und ohne Nachbarn heisst „ganz nach vorn".
+       *
+       * `parentId` heisst in beiden gleich. Darum ging das Hineinziehen, und
+       * darum war die Meldung so genau: sie hat den Fehler beschrieben, bevor
+       * ich ihn gesehen habe.
+       */
       const task = await move(ctx.pool, id, access.workspaceId, {
-        ...(typeof body['after'] === 'string' ? { after: body['after'] } : {}),
-        ...(typeof body['before'] === 'string' ? { before: body['before'] } : {}),
+        ...('afterId' in body
+          ? { afterId: body['afterId'] === null ? null : String(body['afterId']) }
+          : {}),
+        ...('beforeId' in body
+          ? { beforeId: body['beforeId'] === null ? null : String(body['beforeId']) }
+          : {}),
         ...('parentId' in body
           ? { parentId: elter === null ? null : String(elter) }
           : {}),

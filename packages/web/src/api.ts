@@ -891,7 +891,10 @@ export const api = {
   shareMove: (
     token: string,
     id: string,
-    wohin: { after?: string | null; before?: string | null; parentId?: string | null },
+    /* DIESELBEN Namen wie beim Mitglied (`afterId`/`beforeId`): zwei
+       Schreibweisen für dieselbe Angabe waren genau der Fehler, der jeden Zug
+       nach ganz oben schickte. */
+    wohin: { afterId?: string | null; beforeId?: string | null; parentId?: string | null },
   ) =>
     call<{ task: Task }>(`/api/share/${token}/tasks/${id}/move`, {
       method: 'PUT',

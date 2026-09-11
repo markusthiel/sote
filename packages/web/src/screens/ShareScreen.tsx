@@ -127,8 +127,8 @@ export function ShareScreen({ token, now }: { token: string; now: Date }) {
           () =>
             api.shareMove(token, id, {
               parentId: ziel.id,
-              after: drin.at(-1)?.id ?? null,
-              before: null,
+              afterId: drin.at(-1)?.id ?? null,
+              beforeId: null,
             }),
           'Verschieben ging nicht.',
         );
@@ -148,8 +148,8 @@ export function ShareScreen({ token, now }: { token: string; now: Date }) {
         () =>
           api.shareMove(token, id, {
             ...(zielVater === (mich.parentId ?? null) ? {} : { parentId: zielVater }),
-            after: position.intent === 'after' ? reihe[at]!.id : (reihe[at - 1]?.id ?? null),
-            before: position.intent === 'after' ? (reihe[at + 1]?.id ?? null) : reihe[at]!.id,
+            afterId: position.intent === 'after' ? reihe[at]!.id : (reihe[at - 1]?.id ?? null),
+            beforeId: position.intent === 'after' ? (reihe[at + 1]?.id ?? null) : reihe[at]!.id,
           }),
         'Verschieben ging nicht.',
       );
