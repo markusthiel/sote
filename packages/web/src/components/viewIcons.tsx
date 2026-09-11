@@ -70,6 +70,25 @@ export function ViewCardsIcon(props: SVGProps<SVGSVGElement>): ReactElement {
 }
 
 /**
+ * Ein Haken, ohne Kästchen.
+ *
+ * Für die Fertig-Spalte: sie trägt ihren eigenen Namen („Fertig", „Erledigt",
+ * wie man will), und daneben soll ein Zeichen sagen, was sie BEDEUTET. Ein
+ * zweites Wort dort wäre eine Zeile, die sich selbst wiederholt.
+ *
+ * Ohne Kästchen, anders als `CheckSquareIcon`: das Kästchen gehört zum
+ * Abhaken einer einzelnen Aufgabe. Hier geht es um eine Eigenschaft der
+ * Spalte, und dieselbe Form für beides ließe einen Klick darauf erwarten.
+ */
+export function CheckIcon(props: SVGProps<SVGSVGElement>): ReactElement {
+  return (
+    <svg {...base(props)}>
+      <path d="m5 12.5 4.5 4.5L19 7" />
+    </svg>
+  );
+}
+
+/**
  * Erledigte ausgeblendet: das Kästchen mit Haken, durchgestrichen.
  *
  * Der Strich läuft über das ganze Zeichen und nicht nur über den Haken: was

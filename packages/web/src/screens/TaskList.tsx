@@ -705,7 +705,20 @@ export function TaskList({
           der Liste und nicht in den Einstellungen des Arbeitsbereichs — dort
           liegt nur die Vorgabe.
         */}
-          {LIST_VIEWS.map((wahl) => (
+          {/*
+            DIE TAFEL STEHT NUR DA, WO ES EINE GIBT.
+
+            GEMELDET: „Bei Heute gibt's noch kein Kanban." Richtig — die
+            Spalten gehören einer Liste, und „Heute" hat keine. Angeboten wurde
+            der Knopf trotzdem, und er schaltete auf `full` zurück: ein Knopf,
+            der etwas anderes tut, als er sagt.
+
+            Weggelassen und nicht gesperrt: ein gesperrter Knopf ist ein
+            Versprechen mit Fußnote, und die Fußnote steht nirgends (ADR-0027).
+            Wer in eine Liste wechselt, findet ihn dort — und seine Wahl steht
+            noch, denn gespeichert bleibt sie.
+          */}
+          {LIST_VIEWS.filter((wahl) => wahl !== 'board' || route.kind === 'project').map((wahl) => (
             <button
               key={wahl}
               type="button"

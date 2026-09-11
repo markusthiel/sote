@@ -30,6 +30,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { api, ApiError, type Task } from '../api.js';
 import { TaskRow } from '../components/TaskRow.js';
+import { CheckIcon } from '../components/viewIcons.js';
 import { useColumnDrag } from '../hooks/useColumnDrag.js';
 import { useRowDrag } from '../hooks/useRowDrag.js';
 
@@ -281,6 +282,15 @@ export function Board({
                     : undefined
               }
               data-dragging={colDrag.dragging === column.id}
+              /*
+                Die Fertig-Spalte hebt sich ab — gemeldet: „Die ganze Spalte
+                könnte sich dann optisch etwas abheben."
+
+                Ein Merkmal am Element und keine Farbe im Bauteil: WAS „fertig"
+                aussieht, entscheidet das Stylesheet (und später der
+                Arbeitsbereich), nicht diese Datei.
+              */
+              data-done={column.is_done ? 'yes' : undefined}
             >
               <header
                 className="board-head"
@@ -320,8 +330,15 @@ export function Board({
                     */}
                     <span className="board-count">{karten.length}</span>
                     {column.is_done ? (
-                      <span className="board-done" title="Abgehaktes wandert hierher">
-                        fertig
+                      <span
+                        className="board-done"
+                        title="Abgehaktes wandert hierher"
+                        aria-label="Fertig-Spalte"
+                      >
+                        {/* Ein Haken statt des Wortes: die Spalte trägt ihren
+                            Namen schon, und „Fertig · fertig" ist eine Zeile,
+                            die sich selbst wiederholt. */}
+                        <CheckIcon />
                       </span>
                     ) : null}
                     {index === 0 ? (
@@ -377,11 +394,22 @@ export function Board({
                       der Server tut das in einem Zug, damit es nicht an einem
                       eindeutigen Index scheitert.
                     */}
+                    {/*
+                      Ein HAKEN und ein kurzes Wort — gemeldet: „Da würde ein
+                      Haken-Icon für Erledigt reichen."
+
+                      Vorher standen hier zwei ganze Sätze, je nach Zustand
+                      („Das ist die Fertig-Spalte" / „Nicht mehr die
+                      Fertig-Spalte"). Ein Menüpunkt, dessen TEXT sich ändert,
+                      zwingt zum Lesen, bevor man weiß, was er tut. Ein Haken,
+                      der da ist oder nicht, sagt dasselbe im Vorbeisehen —
+                      und der Name bleibt stehen, statt sich zu verwandeln.
+                    */}
                     <button
                       type="button"
-                      role="menuitem"
+                      role="menuitemcheckbox"
                       className="menu-item"
-                      aria-pressed={column.is_done}
+                      aria-checked={column.is_done}
                       onClick={() => {
                         setMenu(null);
                         void tun(
@@ -395,9 +423,10 @@ export function Board({
                         );
                       }}
                     >
-                      {column.is_done
-                        ? 'Nicht mehr die Fertig-Spalte'
-                        : 'Das ist die Fertig-Spalte'}
+                      <span className="fpop-check" aria-hidden="true">
+                        {column.is_done ? '✓' : ''}
+                      </span>
+                      Fertig-Spalte
                     </button>
                     <button
                       type="button"

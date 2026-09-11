@@ -1188,11 +1188,42 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex]:focus-vi
    Mensch, die Bedeutung die Einstellung. */
 .board-done {
   margin-inline-start: auto;
+  display: inline-flex;
+  align-items: center;
   padding: 1px var(--sone-space-2);
   border: 1px solid var(--accent-line);
   border-radius: var(--sote-radius-md);
   color: var(--accent-text);
   font-size: var(--sone-text-xs);
+}
+
+/*
+ * ── Die Fertig-Spalte hebt sich ab ────────────────────────────────────────
+ *
+ * GEMELDET: „Die ganze Spalte könnte sich dann optisch etwas abheben."
+ *
+ * Eine TÖNUNG und kein zweiter Rahmen: die Spalte hat schon einen, und ein
+ * zweiter drumherum sähe aus wie ein Ablege-Ziel (das ist die Sprache, die
+ * `data-drop` spricht). Eine andere Fläche liest sich als „hier ist etwas
+ * anders" und streitet mit nichts.
+ *
+ * Aus dem Akzent gemischt und nicht als feste Farbe: sie folgt damit dem
+ * Arbeitsbereich und dem hellen wie dem dunklen Thema. Der Anteil steht als
+ * eigener Wert, weil genau er einstellbar werden soll — gewünscht ist
+ * „konfigurierbar in den Workspace-Einstellungen, welche Tönung und
+ * Akzentfarbe speziell für diese Spalte". Bis dahin ist es eine Vorgabe an
+ * EINER Stelle statt einer Farbe an dreien.
+ */
+.board-column[data-done="yes"] {
+  --board-done-tint: 7%;
+  background: color-mix(in srgb, var(--accent) var(--board-done-tint), var(--sunken));
+  border-color: color-mix(in srgb, var(--accent) 25%, var(--line));
+}
+
+/* Die Karten darin bleiben hell — sonst verschwindet der Unterschied
+   zwischen Spalte und Karte, und die Tafel wird eine Fläche. */
+.board-column[data-done="yes"] .board-card .task[data-view="cards"] {
+  background: var(--surface);
 }
 
 .board-cards {
