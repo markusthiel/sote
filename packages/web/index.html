@@ -5,7 +5,31 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>SOTE</title>
     <meta name="description" content="Aufgaben verwalten. Auf deinem Server." />
+    <!-- Fuer geteilte Links: ohne Bild zeigt jeder Dienst einen grauen Kasten. -->
+    <meta property="og:title" content="SOTE" />
+    <meta property="og:description" content="Aufgaben verwalten. Auf deinem Server." />
+    <meta property="og:image" content="/og-image.png" />
+    <meta name="apple-mobile-web-app-title" content="SOTE" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <!--
+      Vier Zeilen, vier verschiedene Leser.
+
+      GEMELDET: „Ich habe sie gerade als App auf den Desktop gelegt. Da steht
+      jetzt nur ein S anstatt des Favicons." Genau das passiert, wenn nur das
+      SVG dasteht: ein Betriebssystem, das eine Verknuepfung anlegt, sucht ein
+      PNG in einer festen Groesse — findet es keins, malt es den Anfangs-
+      buchstaben.
+
+      - `favicon.svg` fuer Browser, die es koennen (scharf in jeder Groesse)
+      - `favicon.ico` fuer die, die es nicht koennen, und fuer die Leiste
+      - `apple-touch-icon` fuer „Zum Home-Bildschirm" auf iOS
+      - das Manifest fuer alles andere: Name, Farbe, Fenster ohne Browser
+    -->
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
     <meta name="theme-color" content="#faf8f4" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#161615" media="(prefers-color-scheme: dark)" />
   </head>

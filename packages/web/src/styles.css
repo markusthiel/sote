@@ -2068,6 +2068,50 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex]:focus-vi
   background: color-mix(in srgb, var(--eigen) 12%, var(--surface));
 }
 
+/* ── Die Seite darf sich nicht selbst vergrössern ──────────────────────────
+ *
+ * GEMELDET: „Die Seite zoomt immer ein Stück rein, wenn man auf dem iPhone
+ * durch die Seiten navigiert … Es lag wohl an den Eingabemöglichkeiten, wenn
+ * man in einem Eingabefeld landet, zoomt das iPhone rein und die ganze Seite
+ * wird dann grösser."
+ *
+ * Genau so, und SONE hat es wörtlich so beschrieben: iOS vergrössert, sobald
+ * ein angetipptes Formularelement eine Schrift unter 16 px hat — und es
+ * verkleinert danach NICHT wieder. Ein Tipp ins Erfassungsfeld liess damit die
+ * ganze Seite vergrössert stehen.
+ *
+ * BEHOBEN, indem die Felder gross genug werden, und NICHT indem das
+ * Vergrössern verboten wird. `user-scalable=no` im Viewport täte es auch — und
+ * es nähme jemandem, der eine Seite vergrössern MUSS, die Möglichkeit dazu.
+ * Eine Fähigkeit wegzunehmen, um eine Schriftgrösse zu umgehen, ist kein
+ * Tausch, den man macht (SONEs Satz, und er gilt hier genauso).
+ *
+ * Nur auf Geräten ohne Zeiger: an einer Maus ist die kleinere Schrift Absicht.
+ */
+@media (pointer: coarse) {
+  input,
+  select,
+  textarea,
+  .detail-title,
+  .quick-add input,
+  .board-add-task,
+  .file-name,
+  .set-input {
+    font-size: max(16px, 1rem);
+  }
+}
+
+/* Und das versehentliche Neuladen.
+ *
+ * `none` hält die Seite davon ab, am oberen Rand weiterzuziehen — und damit
+ * die Ziehbewegung, mit der man eine vergrösserte Seite zurückholen will,
+ * davon ab, ein Neuladen auszulösen. Bei SONE war genau das die zweite Hälfte
+ * derselben Meldung. */
+html,
+body {
+  overscroll-behavior: none;
+}
+
 /* ── „Überall": eine Liste aus allen Arbeitsbereichen ──────────────────────
  *
  * Dieselbe Zeile wie in einer Liste, nur mit der Marke des Bereichs am Ende —

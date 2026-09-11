@@ -82,8 +82,14 @@ const ohneRegel = [...used.keys()].filter((c) => !rules.has(c) && !markupOnly.ha
  * also faellt die Grenze um eins. Sie zieht nur nach unten nach.
  * Wer eine senkt, zieht die Zahl hier nach -- von Hand, damit es ein bewusster
  * Schritt ist und kein Nebeneffekt.
+ *
+ * EINMAL NACH OBEN, und darum steht es hier: `font-size: max(16px, 1rem)` an
+ * den Eingabefeldern auf Tastgeraeten. Die 16 sind keine Stufe einer Skala,
+ * sondern eine Grenze des Systems -- iOS vergroessert die Seite unter diesem
+ * Wert und verkleinert sie nicht wieder. Eine Skala kann das nicht ausdruecken,
+ * denn sie wuerde sich aendern duerfen, und diese Zahl darf es nicht.
  */
-const LIMIT = { 'font-size': 72, padding: 71, gap: 41, margin: 45, 'min-height': 11 };
+const LIMIT = { 'font-size': 73, padding: 71, gap: 41, margin: 45, 'min-height': 11 };
 const count = (prop) =>
   [...css.matchAll(new RegExp(`^\\s*${prop}[a-z-]*:\\s*[^;]*\\b\\d+px`, 'gm'))].length;
 const gewachsen = Object.entries(LIMIT)
