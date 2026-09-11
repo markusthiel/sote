@@ -49,6 +49,7 @@ export function Board({
   openTask,
   onOpenTask,
   onChanged,
+  onAdd,
   showDone,
 }: {
   workspace: string | undefined;
@@ -59,6 +60,13 @@ export function Board({
   openTask: string | null;
   onOpenTask: (id: string | null) => void;
   onChanged: () => void;
+  /**
+   * Eine Zeile in dieser Spalte erfassen.
+   *
+   * Dieselbe Sprache wie oben im Kopf — die Liste macht das Anlegen, die Tafel
+   * sagt nur, wohin.
+   */
+  onAdd: (line: string, columnId: string) => void;
   /**
    * Ob Erledigtes gezeigt wird — derselbe Schalter wie in der Liste.
    *
@@ -552,6 +560,36 @@ export function Board({
                   </div>
                 ))}
               </div>
+
+              {/*
+                DIE ERFASSUNGSZEILE, UNAUFFÄLLIG UND IMMER DA.
+
+                GEWÜNSCHT: „Es wäre super, wenn man direkt die Möglichkeit hat,
+                ein Input pro Spalte. Nicht zu auffällig. Ich möchte nicht erst
+                auf ein + oder so klicken, sondern direkt eintragen können."
+
+                Also ein Feld ohne Rahmen und ohne Grund, das erst beim Tippen
+                aussieht wie eines. Ein `+`, das man erst anklickt, macht aus
+                einem Vorgang zwei — und der erste davon sagt nur, dass man den
+                zweiten möchte.
+
+                ENTER legt an und lässt das Feld offen: wer eine Spalte füllt,
+                füllt sie selten mit einem Eintrag. Die Zeile wird geleert und
+                behält den Blick.
+              */}
+              <input
+                className="board-add-task"
+                placeholder="Aufgabe…"
+                aria-label={`Aufgabe in ${column.name}`}
+                disabled={busy}
+                onKeyDown={(e) => {
+                  if (e.key !== 'Enter') return;
+                  const line = e.currentTarget.value.trim();
+                  if (line === '') return;
+                  e.currentTarget.value = '';
+                  onAdd(line, column.id);
+                }}
+              />
             </section>
           );
         })}

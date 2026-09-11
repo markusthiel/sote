@@ -241,6 +241,36 @@ export function TaskList({
    */
   const canDrag = view === 'project' || view === 'today';
 
+  /**
+   * Dieselbe Erfassung, aber in eine Spalte der Tafel.
+   *
+   * GEWÜNSCHT: „Beim Kanban will man ja direkt in der Spalte eine Aufgabe
+   * hinzufügen … Ich möchte nicht erst auf ein + klicken, sondern direkt
+   * eintragen können."
+   *
+   * DIESELBE Zeile wie oben, nicht ein eigener Weg: `#projekt`, `@person`,
+   * `morgen 9 Uhr`, `~45`, `!!` gelten auch hier. Ein zweites Erfassen mit
+   * halber Sprache wäre ein zweites Erfassen, das man erklären muss.
+   *
+   * Erst anlegen, dann legen. Zwei Aufrufe, und das ist hier in Ordnung:
+   * scheitert der zweite, liegt die Aufgabe im Auffangbecken und nicht
+   * nirgends — sichtbar, an der falschen Stelle, mit einem Zug zu beheben.
+   */
+  async function addTo(line: string, columnId: string) {
+    setBusy(true);
+    setNotice(undefined);
+    try {
+      const out = await api.createTask(line, workspace, projectId);
+      await api.placeCard(out.task.id, columnId, {}, workspace);
+      await load();
+      onChanged();
+    } catch (e) {
+      setNotice(e instanceof ApiError ? e.message : 'Anlegen ging nicht.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function add(line: string) {
     setBusy(true);
     setNotice(undefined);
@@ -871,6 +901,7 @@ export function TaskList({
             showDone={showDone}
             openTask={openTask}
             onOpenTask={onOpenTask}
+            onAdd={(line, columnId) => void addTo(line, columnId)}
             onChanged={() => {
               void load();
               onChanged();

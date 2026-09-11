@@ -1443,6 +1443,45 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex]:focus-vi
   cursor: pointer;
 }
 
+/*
+ * Die Erfassungszeile in einer Spalte — unauffällig, bis man sie benutzt.
+ *
+ * Gewünscht: „nicht zu auffällig. Ich möchte nicht erst auf ein + klicken."
+ *
+ * Also ohne Rahmen und ohne Grund, in der Farbe eines Platzhalters. Erst beim
+ * Zeigen bekommt sie einen Grund und beim Tippen einen Rahmen: eine Zeile, die
+ * immer wie ein Feld aussieht, macht aus jeder Spalte einen Vordruck.
+ *
+ * Die volle Tippfläche hoch, obwohl sie so leise ist — man muss sie treffen
+ * können, und auf dem Telefon ist „leise" kein Grund für „klein".
+ */
+.board-add-task {
+  inline-size: 100%;
+  min-block-size: var(--sone-tap);
+  margin-block-start: var(--sone-space-2);
+  padding: var(--sone-space-2) var(--sone-space-3);
+  border: 1px solid transparent;
+  border-radius: var(--sote-radius-md);
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: var(--sone-text-sm);
+}
+
+.board-add-task::placeholder {
+  color: var(--text-faint);
+}
+
+.board-add-task:hover {
+  background: var(--surface);
+}
+
+.board-add-task:focus {
+  outline: none;
+  border-color: var(--accent-line);
+  background: var(--surface);
+}
+
 /* ── Unteraufgaben in der Liste ────────────────────────────────────────────
  *
  * Eine Ebene, also eine Einrückung und keine Treppe.
