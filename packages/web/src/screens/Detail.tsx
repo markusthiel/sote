@@ -39,7 +39,7 @@ import {
   UsersIcon,
   type IconProps,
 } from '../components/icons.js';
-import { AudioIcon, EyeIcon } from '../components/viewIcons.js';
+import { AudioIcon, CloseIcon, EyeIcon } from '../components/viewIcons.js';
 import { webVariant } from '../lib/webVariant.js';
 import { FileModal, kindName, kindOf, type FileKind } from '../components/FileModal.js';
 import { useDetailTab } from '../hooks/useDetailTab.js';
@@ -487,12 +487,46 @@ export function Detail({
         einstellt. Dasselbe Verhältnis wie in SONE zwischen dem Dokument und
         seiner Spalte.
 
-        Der Schließen-Knopf steht wieder AUSSEN, in der Kopfleiste — mit SONEs
-        Zeichen, unmittelbar vor der Leiste. Dass er hier einmal stand, war
-        eine Korrektur an der richtigen Beobachtung („er liegt unter der
-        Spalte") mit dem falschen Mittel: die Spalte rückt jetzt die
-        Kopfleiste, statt den Knopf zu verschlucken.
+        Der Schließen-Knopf steht AUSSEN in der Kopfleiste — auf dem Rechner.
+        Auf dem Telefon steht er direkt darüber, siehe unten.
       */}
+
+      {/*
+        AUF DEM TELEFON: EIN GRIFF AM OBEREN RAND DER SPALTE.
+
+        GEMELDET: „Der Schließen-Button ist aber nach wie vor ganz oben rechts
+        und hat das Icon einer Seitenleiste. Ich glaube, da müssen wir bei der
+        Ansicht eine bessere Lösung finden."
+
+        Beides stimmt. Das Zeichen bedeutet „Spalte an der Seite", und auf dem
+        Telefon ist es keine Spalte an der Seite, sondern eine Fläche, die von
+        unten aufgeht — ein Zeichen, das etwas anderes zeigt, als man sieht.
+        Und es steht am oberen Bildschirmrand, während die Sache, die es
+        schliesst, unten klebt: der Weg dorthin führt quer über den ganzen
+        Bildschirm, vorbei an der Liste, in die man nicht tippen wollte.
+
+        Also ein Streifen oben auf der Fläche, wie an jeder Schublade dieser
+        Art, und das Kreuz daneben. Der Streifen ist (noch) kein Ziehgriff — er
+        sagt „das hier ist eine Fläche, die aufgeht", und das Kreuz macht sie
+        zu.
+
+        Gezeichnet wird er IMMER und nur unter 800 px gezeigt: ob ein Gerät
+        schmal ist, weiss das Stylesheet und nicht dieses Bauteil. Eine
+        Breitenabfrage in JavaScript wäre eine zweite Antwort auf „wie breit
+        ist es" — und die beiden laufen beim ersten Drehen auseinander.
+      */}
+      <div className="detail-grab">
+        <span className="detail-grab-bar" aria-hidden="true" />
+        <button
+          type="button"
+          className="topbar-knob detail-grab-close"
+          aria-label="Aufgabe schließen"
+          title="Aufgabe schließen"
+          onClick={onClose}
+        >
+          <CloseIcon />
+        </button>
+      </div>
       {/* Der Titel ist ein Feld und kein Text mit Stift daneben: wer ihn
           ändern will, klickt hinein. */}
       <input

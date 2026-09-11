@@ -3272,6 +3272,18 @@ select.target { }
   }
 }
 
+/*
+ * Der Griff am oberen Rand der Fläche — nur auf dem Telefon.
+ *
+ * Auf dem Rechner ist die Detailspalte eine Spalte an der Seite, und der Knopf
+ * dafür steht in der Kopfleiste. Auf dem Telefon geht sie von unten auf, und
+ * dann ist beides falsch: das Zeichen zeigt eine Seitenspalte, und es steht am
+ * oberen Bildschirmrand, während die Fläche unten klebt.
+ */
+.detail-grab {
+  display: none;
+}
+
 .detail {
   display: flex;
   flex-direction: column;
@@ -3517,6 +3529,38 @@ select.target { }
    * der Vorteil dieser Bauform gegenüber SONEs Vollbild, und den soll sie
    * behalten.
    */
+  .detail-grab {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    flex: none;
+    padding: var(--sone-space-2);
+    border-bottom: 1px solid var(--line);
+  }
+
+  /* Der Streifen wie an jeder Schublade dieser Art: er sagt „das hier ist eine
+     Fläche, die aufgeht". Mittig, weil er die Fläche meint und keinen Rand. */
+  .detail-grab-bar {
+    inline-size: 36px;
+    block-size: 4px;
+    border-radius: 2px;
+    background: var(--line-strong);
+  }
+
+  /* Das Kreuz rechts daneben — auf derselben Höhe, damit die Fläche mit einer
+     Zeile beginnt und nicht mit zweien. */
+  .detail-grab-close {
+    position: absolute;
+    inset-inline-end: var(--sone-space-2);
+  }
+
+  /* Und der Knopf in der Kopfleiste verschwindet: zwei Wege, dieselbe Fläche
+     zu schliessen, und der obere zeigt das falsche Bild. */
+  .app[data-detail="true"] .topbar-knob[aria-pressed="true"] {
+    display: none;
+  }
+
   .detail {
     width: 100vw;
     block-size: 58vh;
