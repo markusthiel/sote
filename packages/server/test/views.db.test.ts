@@ -562,3 +562,76 @@ test('die Zähler zählen weiter nur Offenes', async () => {
   await complete(pool, t.task.id, userId, NOW);
   assert.equal((await counts(pool, workspaceId, NOW)).today, 0);
 });
+
+test('Heute sortiert nach Dringlichkeit, dann von Hand', async () => {
+  /*
+   * GEMELDET: „Bei der Heute-Ansicht kann man nicht sortieren … ich tendiere
+   * dazu, dass man auch dort sortieren kann, da wir ja gesagt haben, dass ich
+   * auch heute eine Prio ordnen möchte."
+   *
+   * Vorher stand die Uhrzeit zwischen Dringlichkeit und Sortierschlüssel.
+   * Damit war Ziehen unmöglich: zwei Zeilen mit verschiedenen Zeiten hätte der
+   * Schlüssel nie auseinanderhalten können, und jede abgelegte Zeile wäre
+   * zurückgesprungen. Ein Ablegen, das nicht hält, ist schlimmer als eines,
+   * das gar nicht angeboten wird.
+   */
+  const { workspaceId } = await scratch('ws-heute-hand');
+  // Vom TAGESANFANG aus gerechnet und nicht von NOW: NOW ist 10 Uhr, und
+  // „plus 18 Stunden" landete damit am nächsten Tag — die Zeile fiel aus der
+  // Ansicht, und der Test meldete eine falsche Reihenfolge statt des Grundes.
+  const achtUhr = new Date(Date.UTC(2026, 8, 7, 8));
+  const achtzehnUhr = new Date(Date.UTC(2026, 8, 7, 18));
+
+  const spaet = await createFromLine(pool, {
+    workspaceId, userId, line: 'Spaet', now: NOW,
+  });
+  const frueh = await createFromLine(pool, {
+    workspaceId, userId, line: 'Frueh', now: NOW,
+  });
+  await pool.query(
+    `UPDATE tasks SET planned_at = $2, planned_all_day = false WHERE id = $1`,
+    [spaet.task.id, achtzehnUhr],
+  );
+  await pool.query(
+    `UPDATE tasks SET planned_at = $2, planned_all_day = false WHERE id = $1`,
+    [frueh.task.id, achtUhr],
+  );
+
+  // Beide gleich dringend: jetzt entscheidet die Hand — und die hat „Spaet"
+  // zuerst angelegt, also steht es vorn, obwohl es später am Tag liegt.
+  const rows = await list(pool, 'today', workspaceId, NOW);
+  const titel = rows.map((r) => r.title);
+  assert.deepEqual(titel, ['Spaet', 'Frueh']);
+
+  // Und nach dem Ziehen andersherum.
+  await move(pool, frueh.task.id, workspaceId, { afterId: null, beforeId: spaet.task.id });
+  assert.deepEqual(
+    (await list(pool, 'today', workspaceId, NOW)).map((r) => r.title),
+    ['Frueh', 'Spaet'],
+  );
+});
+
+test('die Dringlichkeit bleibt vor der Hand', async () => {
+  // Sie ist die Aussage „das ist wichtiger", und die soll eine Handbewegung
+  // nicht beiläufig überschreiben. Wer über die Grenze zieht, ändert sie
+  // ausdrücklich — das entscheidet die Oberfläche und schreibt beides.
+  const { workspaceId } = await scratch('ws-heute-prio');
+  const wichtig = await createFromLine(pool, {
+    workspaceId, userId, line: 'Wichtig !!', now: NOW,
+  });
+  const egal = await createFromLine(pool, { workspaceId, userId, line: 'Egal', now: NOW });
+  for (const id of [wichtig.task.id, egal.task.id]) {
+    await pool.query('UPDATE tasks SET planned_at = $2 WHERE id = $1', [id, NOW]);
+  }
+
+  // Der Titel heisst „Wichtig" und nicht „Wichtig !!": das Ausrufezeichen ist
+  // die Dringlichkeit und wandert aus dem Titel in das Feld — das ist der
+  // Sinn der Schnellerfassung.
+  //
+  // `egal` ganz nach vorn ziehen — die Dringlichkeit hält dagegen.
+  await move(pool, egal.task.id, workspaceId, { afterId: null });
+  assert.deepEqual(
+    (await list(pool, 'today', workspaceId, NOW)).map((r) => r.title),
+    ['Wichtig', 'Egal'],
+  );
+});

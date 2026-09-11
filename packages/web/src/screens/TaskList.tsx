@@ -223,7 +223,23 @@ export function TaskList({
     () => [...overdue, ...rows, ...Object.values(children).flat()],
     [overdue, rows, children],
   );
-  const canDrag = view === 'project';
+  /**
+   * Wo von Hand sortiert wird.
+   *
+   * GEMELDET: „Bei der Heute-Ansicht kann man nicht sortieren. Bei der Aufgabe
+   * mit Unteraufgaben erscheint aber der Anfasser. Entweder kann man auch dort
+   * sortieren oder Anfasser weg. Ich tendiere zu ersterem."
+   *
+   * Also auch in Heute — dafür musste die Uhrzeit aus der Sortierung dieser
+   * Ansicht heraus (siehe `views.ts`), sonst hielte kein Ablegen.
+   *
+   * NICHT in Demnächst, Irgendwann und Posteingang: Demnächst ist eine
+   * Zeitleiste (eine Hand-Reihenfolge über Tage hinweg ergibt keinen Sinn),
+   * und die beiden anderen sind Sammelbecken, die man leert statt sie zu
+   * ordnen. Wo nicht sortiert wird, erscheint auch kein Anfasser — das war ja
+   * der gemeldete Widerspruch.
+   */
+  const canDrag = view === 'project' || view === 'today';
 
   async function add(line: string) {
     setBusy(true);
@@ -427,9 +443,10 @@ export function TaskList({
         if ((children[mich.id] ?? []).length > 0) return false;
       }
       /*
-       * Umsortieren geht nur, wo sortiert wird. UMHÄNGEN geht überall: in
-       * „Heute" ist die Reihenfolge die der Zeit, aber eine Aufgabe aus ihrer
-       * Elternaufgabe zu lösen ist keine Sortierung.
+       * Umsortieren geht nur, wo sortiert wird. UMHÄNGEN geht überall: eine
+       * Aufgabe aus ihrer Elternaufgabe zu lösen ist keine Sortierung, und das
+       * soll auch in einer Ansicht gehen, die ihre Reihenfolge selbst
+       * bestimmt.
        */
       if (!canDrag && zielVater === (mich.parentId ?? null)) return false;
       return true;
@@ -463,13 +480,30 @@ export function TaskList({
       ).filter((t) => t.id !== id);
       const at = reihe.findIndex((t) => t.id === ziel.id);
       if (at === -1) return;
-      void reorder(id, {
-        ...(zielVater === (mich.parentId ?? null) ? {} : { parentId: zielVater }),
-        afterId:
-          position.intent === 'after' ? reihe[at]!.id : (reihe[at - 1]?.id ?? null),
-        beforeId:
-          position.intent === 'after' ? (reihe[at + 1]?.id ?? null) : reihe[at]!.id,
-      });
+      void reorder(
+        id,
+        {
+          ...(zielVater === (mich.parentId ?? null) ? {} : { parentId: zielVater }),
+          afterId:
+            position.intent === 'after' ? reihe[at]!.id : (reihe[at - 1]?.id ?? null),
+          beforeId:
+            position.intent === 'after' ? (reihe[at + 1]?.id ?? null) : reihe[at]!.id,
+        },
+        /*
+         * In Heute steht die Dringlichkeit VOR der Hand-Reihenfolge. Wer über
+         * die Grenze zwischen zwei Blöcken zieht, bekäme sonst ein Ablegen,
+         * das nicht hält: die Zeile spränge zurück in ihren alten Block.
+         *
+         * Also ändert der Zug die Dringlichkeit MIT — und das ist keine
+         * Nebenwirkung, sondern genau das, was jemand meint, der eine Aufgabe
+         * nach oben zu den wichtigen zieht. Sichtbar wird es am Kästchen, das
+         * seine Farbe wechselt.
+         *
+         * Nur in Heute: im Projekt ordnet die Hand allein, dort gibt es keine
+         * Blöcke, über die man ziehen könnte.
+         */
+        view === 'today' && ziel.priority !== mich.priority ? ziel.priority : undefined,
+      );
     },
   });
 
@@ -485,8 +519,21 @@ export function TaskList({
   async function reorder(
     id: string,
     between: { afterId: string | null; beforeId: string | null; parentId?: string | null },
+    /** Die Dringlichkeit des Zielblocks, wenn der Zug über eine Grenze ging. */
+    priority?: number | undefined,
   ) {
     try {
+      /*
+       * Erst die Dringlichkeit, dann die Stelle.
+       *
+       * In dieser Reihenfolge, weil die Stelle IM Zielblock gemeint ist: würde
+       * zuerst verschoben und danach umgestuft, läge die Zeile einen Moment
+       * lang mit ihrer alten Dringlichkeit zwischen fremden Nachbarn — und
+       * scheitert der zweite Aufruf, bleibt sie dort.
+       */
+      if (priority !== undefined) {
+        await api.patch(id, { priority: priority as 1 | 2 | 3 | 4 }, workspace);
+      }
       await api.move(id, between, workspace);
     } catch (e) {
       setNotice(e instanceof ApiError ? e.message : 'Verschieben ging nicht.');

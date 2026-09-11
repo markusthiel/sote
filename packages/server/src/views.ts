@@ -150,7 +150,32 @@ function whereFor(
         sql: `workspace_id = $1 AND ${alive}
               AND (planned_at <= $2 OR due_at <= $2)`,
         params: [workspaceId, bounds.endOfDay],
-        order: `${last}priority ASC, COALESCE(planned_at, due_at) ASC, sort_key ASC`,
+        /*
+         * HEUTE WIRD VON HAND SORTIERT — innerhalb der Dringlichkeit.
+         *
+         * GEMELDET: „Bei der Heute-Ansicht kann man nicht sortieren. Bei der
+         * Aufgabe mit Unteraufgaben erscheint aber der Anfasser. Entweder kann
+         * man auch dort sortieren oder Anfasser weg. Ich tendiere zu ersterem,
+         * da wir ja gesagt haben, dass ich auch heute eine Prio ordnen möchte."
+         *
+         * Vorher stand die Uhrzeit zwischen Dringlichkeit und Hand-Reihenfolge.
+         * Damit war Ziehen in Heute unmöglich: zwei Zeilen mit verschiedenen
+         * Zeiten hätte der Sortierschlüssel nie auseinanderhalten können, und
+         * jede abgelegte Zeile wäre an ihren alten Platz zurückgesprungen. Ein
+         * Ablegen, das nicht hält, ist schlimmer als eines, das gar nicht
+         * angeboten wird.
+         *
+         * Was dabei aufgegeben wird, und man soll es wissen: die Termine des
+         * Tages stehen nicht mehr von selbst in Uhrzeit-Reihenfolge. Sie tragen
+         * ihre Zeit weiterhin sichtbar in der Zeile — und wer sie in dieser
+         * Reihenfolge haben will, zieht sie einmal dorthin. Danach bleibt es so.
+         *
+         * Die Dringlichkeit bleibt VOR der Hand: sie ist die Aussage „das ist
+         * wichtiger", und die soll eine Handbewegung nicht beiläufig
+         * überschreiben. Wer über die Grenze zieht, ändert sie ausdrücklich —
+         * das entscheidet die Oberfläche und schreibt beides.
+         */
+        order: `${last}priority ASC, sort_key ASC`,
       };
     case 'upcoming':
       return {
