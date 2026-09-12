@@ -268,6 +268,34 @@ export function TaskList({
    * Dass ausgerechnet der Titel auffiel, ist Zufall: er ist die Änderung, die
    * man sofort sieht. Abhaken, Datum, Farbe — nichts davon kam an.
    */
+  /*
+   * WER HIER MITARBEITET — für die Auswahl hinter `@`.
+   *
+   * GEWÜNSCHT: „Beim Zuweisen eines Users über @ sollte es ein Dropdown geben
+   * … so schreibt man was rein und weiss gar nicht, ob es korrekt war."
+   *
+   * EINMAL je Arbeitsbereich geladen und nicht bei jedem `@`: es sind wenige
+   * Zeilen, sie ändern sich selten, und eine Abfrage je Tastendruck wäre eine
+   * Verzögerung genau dort, wo jemand tippt.
+   *
+   * Ein Fehlschlag bleibt still: dann tippt man den Namen wie bisher. Eine
+   * Fehlermeldung über eine fehlende BEQUEMLICHKEIT stünde im Weg.
+   */
+  const [leute, setLeute] = useState<{ id: string; name: string }[]>([]);
+
+  useEffect(() => {
+    let weg = false;
+    void api
+      .people(workspace)
+      .then((r) => {
+        if (!weg) setLeute(r.people.map((p) => ({ id: p.userId, name: p.displayName })));
+      })
+      .catch(() => undefined);
+    return () => {
+      weg = true;
+    };
+  }, [workspace]);
+
   useNudge(streamUrl(workspace), 'tasks', () => {
     // Ohne `setLoaded(false)`: ein Anstoß soll die Liste austauschen, nicht
     // durch einen leeren Zustand blinken. Sie steht schon da und ist bloß
@@ -1040,6 +1068,7 @@ export function TaskList({
             onSubmit={(line) => void add(line)}
             busy={busy}
             unknownProject={unknownProject}
+            people={leute}
           />
         )}
         {notice !== undefined ? <p className="note-error">{notice}</p> : null}

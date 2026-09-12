@@ -2112,6 +2112,45 @@ body {
   overscroll-behavior: none;
 }
 
+/* Die Auswahl hinter `@` — wer ist gemeint.
+ *
+ * GEWÜNSCHT: „Beim Zuweisen eines Users über @ sollte es ein Dropdown geben …
+ * so schreibt man was rein und weiss gar nicht, ob es korrekt war."
+ *
+ * KEIN schwebendes Fenster, sondern eine Liste unter dem Feld: sie schiebt die
+ * Merkmale ein Stück nach unten und verdeckt dabei nichts. Ein Aufsatz müsste
+ * sich um Ränder, Rollen und das Telefon kümmern — für eine Liste mit sechs
+ * Namen ist das die aufwendigere Hälfte der Arbeit.
+ */
+.quick-people {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sone-space-2);
+  margin: var(--sone-space-2) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Wie ein Merkmal darunter: dieselbe Form für „gehört zu dieser Zeile". */
+.quick-person {
+  border: 1px solid var(--line);
+  border-radius: var(--sote-radius-sm);
+  padding: var(--sone-space-1) var(--sone-space-3);
+  background: var(--surface);
+  color: var(--text-default);
+  font: inherit;
+  font-size: var(--sone-text-xs);
+  cursor: pointer;
+}
+
+/* Der gewählte — mit Pfeilen erreichbar, darum sichtbar und nicht nur beim
+   Zeigen. */
+.quick-person[data-on="yes"] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+
 /* Ein Gespräch: Antworten stehen eingerückt bei ihrem Kommentar.
  *
  * Eine Ebene, und die Einrückung ist genau so gross wie die Spur einer

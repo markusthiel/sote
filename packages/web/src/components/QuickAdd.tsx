@@ -15,7 +15,7 @@
 import { formatDuration, parseQuickAdd, describe as describeRecurrence } from '@sote/core';
 
 import { browserZone } from '../api.js';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 
 import { whenLabel } from '../dates.js';
 
@@ -27,6 +27,7 @@ export function QuickAdd({
   busy,
   unknownProject,
   hint,
+  people,
 }: {
   now: Date;
   onSubmit: (line: string) => void;
@@ -34,8 +35,24 @@ export function QuickAdd({
   unknownProject: string | null;
   /** Ein anderer Platzhalter, wo ein anderes Versprechen gilt. */
   hint?: string;
+  /**
+   * Wer hier mitarbeitet — für die Auswahl hinter `@`.
+   *
+   * GEWÜNSCHT: „Beim Zuweisen eines Users über @ sollte es ein Dropdown geben,
+   * um den User auszuwählen. Das ist intuitiver — so schreibt man was rein und
+   * weiss gar nicht, ob es korrekt war."
+   *
+   * Fehlt die Liste (in einer Freigabe gibt es keine), tippt man wie bisher.
+   * Ein Feld, das ohne Vorschläge NICHT mehr funktioniert, wäre eine
+   * Verschlechterung mit Beiwerk.
+   */
+  people?: readonly { id: string; name: string }[];
 }) {
   const [line, setLine] = useState('');
+  /** Wo der Cursor steht — `null` heisst: die Auswahl ist zu. */
+  const [cursor, setCursor] = useState<number | null>(null);
+  const [gewaehlt, setGewaehlt] = useState(0);
+  const feld = useRef<HTMLInputElement | null>(null);
 
   /*
    * Rein und ohne Server: das Parsen ist eine Funktion, kein Aufruf.
@@ -96,6 +113,57 @@ export function QuickAdd({
     }
   }
 
+  /*
+   * WELCHER NAME GERADE GETIPPT WIRD.
+   *
+   * Gelesen wird der Text VOR dem Cursor: wer mitten in einer Zeile ein `@`
+   * ergänzt, meint diese Stelle und nicht das Ende. Darum die Cursorposition
+   * und nicht der ganze Wert.
+   *
+   * `undefined` heisst „kein Name im Gange" — und dann ist die Liste zu. Ein
+   * Vorschlagsfeld, das offen bleibt, während man längst weiterschreibt, ist
+   * ein Fenster vor der eigenen Zeile.
+   */
+  const angefangen = ((): { von: number; wort: string } | undefined => {
+    if (people === undefined || people.length === 0) return undefined;
+    const bis = cursor ?? line.length;
+    const m = /(^|\s)@([^\s@#+!~]*)$/.exec(line.slice(0, bis));
+    if (m === null) return undefined;
+    return { von: bis - m[2]!.length - 1, wort: m[2]!.toLowerCase() };
+  })();
+
+  const treffer =
+    angefangen === undefined
+      ? []
+      : people!
+          .filter((p) => p.name.toLowerCase().includes(angefangen.wort))
+          /* Höchstens sechs: eine Liste, die den halben Bildschirm füllt,
+             liest niemand — sie wird überflogen und dann weggetippt. */
+          .slice(0, 6);
+
+  /** Den angefangenen Namen durch den gewählten ersetzen. */
+  function waehle(name: string) {
+    if (angefangen === undefined) return;
+    const bis = cursor ?? line.length;
+    /*
+     * Ein Leerzeichen dahinter, und der Cursor davor: nach einer Auswahl
+     * schreibt man weiter, nicht mitten im Namen. Namen mit Leerzeichen
+     * bekommen keine Anführungszeichen — der Server nimmt den Vornamen, und
+     * genau dafür gibt es die Meldung „bei zwei Treffern wird nicht geraten".
+     */
+    const kurz = name.split(/\s+/)[0]!;
+    const neu = `${line.slice(0, angefangen.von)}@${kurz} ${line.slice(bis)}`;
+    setLine(neu);
+    setGewaehlt(0);
+    const stelle = angefangen.von + kurz.length + 2;
+    // Nach dem Zeichnen: vorher steht der alte Wert im Feld.
+    requestAnimationFrame(() => {
+      feld.current?.focus();
+      feld.current?.setSelectionRange(stelle, stelle);
+      setCursor(stelle);
+    });
+  }
+
   function submit() {
     const value = line.trim();
     if (value === '' || busy) return;
@@ -140,8 +208,20 @@ export function QuickAdd({
           +
         </span>
         <input
+          ref={feld}
           value={line}
-          onChange={(e) => setLine(e.target.value)}
+          onChange={(e) => {
+            setLine(e.target.value);
+            setCursor(e.target.selectionStart);
+            setGewaehlt(0);
+          }}
+          onKeyUp={(e) => setCursor(e.currentTarget.selectionStart)}
+          onClick={(e) => setCursor(e.currentTarget.selectionStart)}
+          onBlur={() => {
+            /* Beim Verlassen zu — aber erst nach dem Klick, sonst ist die
+               Liste weg, bevor die Wahl ankommt. */
+            setTimeout(() => setCursor(null), 120);
+          }}
           onPaste={(e) => {
             // Nur eingreifen, wenn wirklich mehrere Zeilen kommen — bei einer
             // einzelnen soll Einfügen ganz normal einfügen.
@@ -149,6 +229,38 @@ export function QuickAdd({
             if (pasteLines(e.clipboardData.getData('text'))) e.preventDefault();
           }}
           onKeyDown={(e) => {
+            /*
+             * SOLANGE DIE LISTE OFFEN IST, GEHÖREN IHR DIE TASTEN.
+             *
+             * Enter wählt dann aus, statt die Aufgabe anzulegen — sonst legt
+             * ein Druck auf Enter eine Aufgabe mit halbem Namen an, und genau
+             * das war die Meldung: „man weiss gar nicht, ob es korrekt war".
+             *
+             * Escape schliesst nur die Liste und leert nicht die Zeile: zwei
+             * Wirkungen auf einer Taste, und die kleinere zuerst.
+             */
+            if (treffer.length > 0) {
+              if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                setGewaehlt((i) => (i + 1) % treffer.length);
+                return;
+              }
+              if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                setGewaehlt((i) => (i - 1 + treffer.length) % treffer.length);
+                return;
+              }
+              if (e.key === 'Enter' || e.key === 'Tab') {
+                e.preventDefault();
+                waehle(treffer[gewaehlt]?.name ?? treffer[0]!.name);
+                return;
+              }
+              if (e.key === 'Escape') {
+                e.preventDefault();
+                setCursor(null);
+                return;
+              }
+            }
             if (e.key === 'Enter') {
               e.preventDefault();
               submit();
@@ -171,6 +283,31 @@ export function QuickAdd({
           enterKeyHint="done"
         />
       </div>
+
+      {/*
+        Die Auswahl steht UNTER dem Feld und über den Merkmalen: sie gehört zu
+        dem, was gerade getippt wird, und die Merkmale beschreiben, was schon
+        dasteht.
+      */}
+      {treffer.length > 0 ? (
+        <ul className="quick-people" role="listbox" aria-label="Wer ist gemeint">
+          {treffer.map((p, i) => (
+            <li key={p.id}>
+              <button
+                type="button"
+                role="option"
+                aria-selected={i === gewaehlt}
+                className="quick-person"
+                data-on={i === gewaehlt ? 'yes' : undefined}
+                onMouseEnter={() => setGewaehlt(i)}
+                onClick={() => waehle(p.name)}
+              >
+                {p.name}
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : null}
 
       {chips.length > 0 ? (
         <div className="chips">
