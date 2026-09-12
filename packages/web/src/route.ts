@@ -230,27 +230,22 @@ export function modeOfRoute(route: Route): string {
 }
 
 /**
- * Ob an diesem Ort Aufgaben stehen — und damit eine Detailspalte Sinn hat.
+ * Der ORT einer Route — das, was gleich bleiben muss, damit eine offene
+ * Detailspalte noch zu dem gehört, was man sieht.
  *
- * Gemeldet: „Wenn man den Workspace wechselt und die Seitenleiste noch offen
- * ist, kommt da ein Fehler … auch wenn man zu Benachrichtigungen oder sonst
- * wohin wechselt: die Leiste bleibt offen, macht da aber keinen Sinn mehr."
- *
- * Die Spalte gehört zu einer Aufgabe in einer Liste. Wo keine Liste ist,
- * gehört sie zu — nichts, und zeigt dann entweder einen fremden Bereich oder
- * einen Fehler. Also: eine Antwort darauf, welche Orte Aufgaben zeigen, an
- * einer Stelle, und `App` schließt die Spalte, wenn der Ort sie verlässt.
- * Als Aufzählung der Orte MIT Liste, nicht ohne: ein neuer Ort kommt so ohne
- * Spalte zur Welt, bis jemand sagt, dass er eine braucht.
+ * Gemeldet, zweimal: die Spalte blieb offen beim Wechsel zu Benachrichtigungen
+ * und beim Wechsel des Arbeitsbereichs — und dann, nach dem ersten Fix: „wenn
+ * ich auf die Suche wechsle, bleibt die Seitenleiste offen." Der erste Fix
+ * fragte „zeigt der Ort Aufgaben"; die Suche tut das, also blieb sie. Aber
+ * eine Aufgabe aus „Heute" hat in der Suche nichts zu suchen. Die richtige
+ * Frage ist „ist es noch DERSELBE Ort". Zwei Projekte sind zwei Orte; zwei
+ * Suchabfragen sind einer (wer aus einem Treffer eine Aufgabe öffnet und dann
+ * weitertippt, soll sie behalten).
  */
-const MIT_AUFGABEN: ReadonlySet<Route['kind']> = new Set<Route['kind']>([
-  'today',
-  'upcoming',
-  'someday',
-  'inbox',
-  'project',
-  'search',
-  'task',
-]);
-
-export const showsTasks = (route: Route): boolean => MIT_AUFGABEN.has(route.kind);
+export function placeOf(route: Route): string {
+  // Kein switch: `route.test.ts` erlaubt jeden Fall höchstens zweimal in
+  // dieser Datei (lesen und schreiben), und das ist hier der dritte.
+  if (route.kind === 'project') return `project:${route.projectId}`;
+  if (route.kind === 'task') return `task:${route.taskId}`;
+  return route.kind;
+}

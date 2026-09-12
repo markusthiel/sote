@@ -10,7 +10,7 @@
  * die sich beim nächsten Feature anders zusammensetzt.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import type { Board, Landing, ListView, Look } from '@sote/core';
 
@@ -24,7 +24,7 @@ import { ProjectTree } from './components/ProjectTree.js';
 import { TopBar } from './components/TopBar.js';
 import { WorkspaceMenu } from './components/WorkspaceMenu.js';
 import { modeOf, type ModeId } from './modes.js';
-import { modeOfRoute, parseRoute, pathOf, viewOf, type Route, showsTasks } from './route.js';
+import { modeOfRoute, parseRoute, pathOf, placeOf, viewOf, type Route } from './route.js';
 import { Setup } from './screens/Setup.js';
 import { SignIn } from './screens/SignIn.js';
 import { TaskList } from './screens/TaskList.js';
@@ -300,8 +300,19 @@ export function App() {
    * Route und nicht in `go()`: der Zurück-Knopf des Browsers geht nicht durch
    * `go()`, und die Spalte soll auch dann zugehen.
    */
+  const letzterOrt = useRef(placeOf(route));
+  /**
+   * Gesetzt, wenn eine Navigation eine Aufgabe MITBRINGT (aus der Glocke, aus
+   * „Überall"): dann gehört die Spalte zum neuen Ort und bleibt.
+   */
+  const bringtAufgabe = useRef(false);
   useEffect(() => {
-    if (!showsTasks(route)) setOpenTaskState(null);
+    const ort = placeOf(route);
+    if (ort !== letzterOrt.current) {
+      letzterOrt.current = ort;
+      if (!bringtAufgabe.current) setOpenTaskState(null);
+    }
+    bringtAufgabe.current = false;
   }, [route]);
   const setOpenTask = useCallback(
     (id: string | null) => {
@@ -316,6 +327,37 @@ export function App() {
       setOpenTaskState(id);
     },
     [route, go],
+  );
+
+  /**
+   * Eine Aufgabe von ausserhalb ihrer Liste öffnen — aus der Glocke, aus
+   * „Überall": in IHREM Arbeitsbereich, an IHREM Ort, in der Spalte.
+   *
+   * Gemeldet: „im Baum sollte auch der richtige Projektordner geöffnet werden
+   * … momentan lande ich bei Heute." Der Ort einer Aufgabe ist ihr Projekt;
+   * ohne Projekt der Posteingang (so definiert `views.ts` ihn: `project_id
+   * IS NULL`). „Heute" und „Irgendwann" sind Sichten darüber, keine Orte.
+   *
+   * Erst die Aufgabe holen, dann gehen: der Ort steht in der Aufgabe. Ist
+   * sie nicht mehr da, bleibt es beim Posteingang, und die Spalte sagt, was
+   * fehlt.
+   */
+  const openTaskAt = useCallback(
+    async (ws: string, taskId: string) => {
+      setWorkspace(ws);
+      localStorage.setItem(LAST_WORKSPACE, ws);
+      let ziel: Route = { kind: 'inbox' };
+      try {
+        const d = await api.detail(taskId, ws);
+        if (d.task.projectId !== null) ziel = { kind: 'project', projectId: d.task.projectId };
+      } catch {
+        /* dann der Posteingang */
+      }
+      bringtAufgabe.current = true;
+      setOpenTaskState(taskId);
+      go(ziel);
+    },
+    [go],
   );
 
   useEffect(() => {
@@ -1022,13 +1064,7 @@ export function App() {
               // Die Zahl an der Glocke kommt aus `/api/me`.
               void loadMe();
             }}
-            onOpenTask={(taskId, ws) => {
-              // Wie bei „Überall": den Bereich wechseln und dort öffnen.
-              setWorkspace(ws);
-              localStorage.setItem(LAST_WORKSPACE, ws);
-              setOpenTask(taskId);
-              go({ kind: 'today' });
-            }}
+            onOpenTask={(taskId, ws) => void openTaskAt(ws, taskId)}
           />
         ) : route.kind === 'settings' && route.section === 'kalender' ? (
           <CalendarFeed workspace={workspace} workspaceName={wsName} />
@@ -1041,11 +1077,7 @@ export function App() {
              * Bereich mitführen, den der Rest der Anwendung aus dem Zustand
              * nimmt. Zwei Antworten auf „wo bin ich".
              */
-            onOpen={(ws, taskId) => {
-              setWorkspace(ws);
-              setOpenTask(taskId);
-              go({ kind: 'today' });
-            }}
+            onOpen={(ws, taskId) => void openTaskAt(ws, taskId)}
             onChanged={() => void loadPanel()}
           />
         ) : route.kind === 'workspaces' && route.section === 'alle' ? (

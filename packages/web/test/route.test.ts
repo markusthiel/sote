@@ -5,7 +5,7 @@ import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 import { neighboursFor, neighboursForStep, reordered } from '../src/reorder.js';
-import { modeOfRoute, parseRoute, pathOf, showsTasks, viewOf, type Route } from '../src/route.js';
+import { modeOfRoute, parseRoute, pathOf, placeOf, viewOf, type Route } from '../src/route.js';
 
 /* ── Die Ansicht ist ein Ort ───────────────────────────────────────────── */
 
@@ -223,25 +223,20 @@ test('kein Fall steht zweimal im switch', () => {
   }
 });
 
-test('die Detailspalte gehört zu Orten mit Aufgaben — und zu keinem anderen', () => {
-  // Gemeldet: offen geblieben bei Benachrichtigungen, Freigaben, Bereichswechsel.
-  const mit: Route[] = [
-    { kind: 'today' },
-    { kind: 'upcoming' },
-    { kind: 'someday' },
-    { kind: 'inbox' },
-    { kind: 'project', projectId: 'p' },
-    { kind: 'search', q: 'x' },
-    { kind: 'task', taskId: 't' },
-  ];
-  const ohne: Route[] = [
-    { kind: 'notifications' },
-    { kind: 'shares' },
-    { kind: 'settings', section: 'rollen' },
-    { kind: 'workspaces', section: 'alle' },
-    { kind: 'admin', section: 'konten' },
-    { kind: 'mode', mode: 'trash' },
-  ];
-  for (const r of mit) assert.equal(showsTasks(r), true, r.kind);
-  for (const r of ohne) assert.equal(showsTasks(r), false, r.kind);
+test('der Ort einer Route: Projekte sind je einer, Suchabfragen sind einer', () => {
+  // Gemeldet: die Spalte blieb bei der Suche offen, beim Wechsel des Bereichs,
+  // bei Benachrichtigungen. Die Spalte schließt, wenn sich der ORT ändert.
+  assert.equal(placeOf({ kind: 'today' }), 'today');
+  assert.notEqual(placeOf({ kind: 'today' }), placeOf({ kind: 'search', q: 'x' }));
+  assert.notEqual(placeOf({ kind: 'today' }), placeOf({ kind: 'notifications' }));
+  assert.notEqual(
+    placeOf({ kind: 'project', projectId: 'a' }),
+    placeOf({ kind: 'project', projectId: 'b' }),
+    'zwei Projekte sind zwei Orte',
+  );
+  assert.equal(
+    placeOf({ kind: 'search', q: 'a' }),
+    placeOf({ kind: 'search', q: 'ab' }),
+    'Weitertippen ist kein Ortswechsel',
+  );
 });
