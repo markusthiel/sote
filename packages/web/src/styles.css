@@ -2112,6 +2112,38 @@ body {
   overscroll-behavior: none;
 }
 
+/* Ein Gespräch: Antworten stehen eingerückt bei ihrem Kommentar.
+ *
+ * Eine Ebene, und die Einrückung ist genau so gross wie die Spur einer
+ * Unteraufgabe — dieselbe Sache in einer anderen Form, also dasselbe Mass.
+ */
+.cmt-thread {
+  margin-block-end: var(--sone-space-4);
+}
+
+.cmt-child {
+  margin-inline-start: var(--sote-lane);
+  border-inline-start: 1px solid var(--line);
+  padding-inline-start: var(--sone-space-3);
+}
+
+/* „Antworten" ist ein Wort und kein Knopf: es steht unter einem Beitrag und
+   soll ihn nicht überstimmen. Erst beim Zeigen tritt es hervor. */
+.cmt-reply {
+  border: 0;
+  padding: 0;
+  background: none;
+  color: var(--text-faint);
+  font: inherit;
+  font-size: var(--sone-text-xs);
+  cursor: pointer;
+}
+
+.cmt-reply:hover {
+  color: var(--accent-text);
+  text-decoration: underline;
+}
+
 /* ── Wohin Meldungen gehen ─────────────────────────────────────────────────
  *
  * Drei Spalten, von denen die erste sagt, WORUM es geht, und die anderen

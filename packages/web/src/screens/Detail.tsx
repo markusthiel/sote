@@ -85,7 +85,8 @@ export interface DetailIO {
   addFile?: (file: File, onProgress?: (anteil: number) => void) => Promise<unknown>;
   removeFile?: (fileId: string) => Promise<unknown>;
   fileHref?: (fileId: string, size?: 'web') => string;
-  addComment: (body: string) => Promise<unknown>;
+  /** `parentId` ist die Antwort — der Server löst auf eine Ebene auf. */
+  addComment: (body: string, parentId?: string | null) => Promise<unknown>;
   /**
    * Eine Teilaufgabe abhaken — über DIESE Anbindung.
    *
@@ -138,7 +139,7 @@ export const memberIO = (taskId: string, workspace: string | undefined): DetailI
   fileHref: (fid, size) => api.fileHref(taskId, fid, workspace, size),
   patch: (fields) => api.patch(taskId, fields as never, workspace),
   addChild: (title) => api.addChild(taskId, title, workspace),
-  addComment: (body) => api.addComment(taskId, body, workspace),
+  addComment: (body, parentId) => api.addComment(taskId, body, workspace, parentId),
   toggleChild: (kind) => toggleDone(kind, workspace),
   stream: streamUrl(workspace),
 });
@@ -155,7 +156,7 @@ export const guestIO = (token: string, taskId: string): DetailIO => ({
   load: () => api.shareDetail(token, taskId),
   patch: (fields) => api.sharePatch(token, taskId, fields),
   addChild: (title) => api.shareAddChild(token, taskId, title),
-  addComment: (body) => api.shareAddComment(token, taskId, body),
+  addComment: (body, parentId) => api.shareAddComment(token, taskId, body, parentId),
   /* Über den Freigabe-Schlüssel, nicht über die Sitzung: ein Gast hat keine. */
   toggleChild: (kind) =>
     kind.completed === null
@@ -326,6 +327,9 @@ export function Detail({
   const [ansehen, setAnsehen] = useState<string | null>(null);
   /** Welches Dateimenü offen ist — eines nach dem anderen. */
   const [fileMenu, setFileMenu] = useState<string | null>(null);
+  /** Auf welchen Kommentar gerade geantwortet wird — einer nach dem anderen. */
+  const [antwortAuf, setAntwortAuf] = useState<string | null>(null);
+  const [antwortLine, setAntwortLine] = useState('');
   /**
    * Wie weit ein Upload ist — `null`, wenn gerade keiner läuft.
    *
@@ -1759,15 +1763,87 @@ export function Detail({
         {tab === 'gespraech' ? (
             <div className="detail-section">
               <div className="group-label">Gespräch</div>
-              {data.comments.map((c) => (
-                <div className="cmt" key={c.id}>
-                  <div className="mt">
-                    {c.authorName ?? `${c.authorGuest?.replace(/^guest:/, '') ?? '?'} (Gast)`} —{' '}
-                    {whenLabel(new Date(c.createdAt), false, now)}
+              {/*
+                ANTWORTEN STEHEN BEI IHREM KOMMENTAR.
+
+                GEWÜNSCHT: „Bei SONE haben wir auch Antworten in Kommentaren."
+
+                Eine Ebene, eingerückt. Die REIHENFOLGE kommt vom Server (erst
+                nach Ursprung, dann nach Zeit) — sie ist eine Eigenschaft des
+                Gesprächs und keine der Darstellung, und eine zweite Sortierung
+                hier wäre die Gelegenheit, dass Gast und Mitglied dasselbe
+                Gespräch verschieden lesen.
+
+                Gezeichnet wird trotzdem in zwei Schleifen: die Reihenfolge
+                sagt, WAS zusammengehört, aber nicht, wie tief es steht.
+              */}
+              {data.comments
+                .filter((c) => c.parentId === null)
+                .map((c) => (
+                  <div className="cmt-thread" key={c.id}>
+                    <div className="cmt">
+                      <div className="mt">
+                        {c.authorName ?? `${c.authorGuest?.replace(/^guest:/, '') ?? '?'} (Gast)`} —{' '}
+                        {whenLabel(new Date(c.createdAt), false, now)}
+                      </div>
+                      <div className="bd">{c.body}</div>
+                      {!darfSchreiben ? null : (
+                        <button
+                          type="button"
+                          className="cmt-reply"
+                          disabled={busy}
+                          onClick={() => setAntwortAuf(antwortAuf === c.id ? null : c.id)}
+                        >
+                          {antwortAuf === c.id ? 'Doch nicht' : 'Antworten'}
+                        </button>
+                      )}
+                    </div>
+
+                    {data.comments
+                      .filter((k) => k.parentId === c.id)
+                      .map((k) => (
+                        <div className="cmt cmt-child" key={k.id}>
+                          <div className="mt">
+                            {k.authorName ??
+                              `${k.authorGuest?.replace(/^guest:/, '') ?? '?'} (Gast)`}{' '}
+                            — {whenLabel(new Date(k.createdAt), false, now)}
+                          </div>
+                          <div className="bd">{k.body}</div>
+                        </div>
+                      ))}
+
+                    {/*
+                      Das Antwortfeld steht IM Gespräch und nicht unten bei dem
+                      für neue Beiträge: wer antwortet, sieht dabei, worauf.
+                    */}
+                    {antwortAuf !== c.id || !darfSchreiben ? null : (
+                      <textarea
+                        className="note cmt-child"
+                        rows={2}
+                        autoFocus
+                        value={antwortLine}
+                        aria-label={`Antwort schreiben`}
+                        placeholder="Antworten — Enter schickt"
+                        disabled={busy}
+                        onChange={(e) => setAntwortLine(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Escape') {
+                            setAntwortAuf(null);
+                            setAntwortLine('');
+                            return;
+                          }
+                          if (e.key !== 'Enter' || e.shiftKey) return;
+                          e.preventDefault();
+                          const value = antwortLine.trim();
+                          if (value === '') return;
+                          setAntwortLine('');
+                          setAntwortAuf(null);
+                          void save(() => anbindung.addComment(value, c.id));
+                        }}
+                      />
+                    )}
                   </div>
-                  <div className="bd">{c.body}</div>
-                </div>
-              ))}
+                ))}
               {!darfSchreiben ? null : (
               <textarea
                 className="note"

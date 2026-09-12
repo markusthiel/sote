@@ -268,6 +268,8 @@ export interface Comment {
   createdAt: string;
   authorName: string | null;
   authorGuest: string | null;
+  /** Worauf geantwortet wird — `null` ist ein eigener Beitrag. */
+  parentId: string | null;
 }
 
 export interface Detail {
@@ -1037,10 +1039,10 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ title }),
     }),
-  shareAddComment: (token: string, id: string, body: string) =>
+  shareAddComment: (token: string, id: string, body: string, parentId?: string | null) =>
     call<unknown>(`/api/share/${token}/tasks/${id}/comments`, {
       method: 'POST',
-      body: JSON.stringify({ body }),
+      body: JSON.stringify({ body, parentId: parentId ?? null }),
     }),
 
   /*

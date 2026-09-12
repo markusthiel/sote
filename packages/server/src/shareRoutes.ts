@@ -535,7 +535,7 @@ export async function shareRoutes(
 
     if (taskPath[2] === '/comments' && method === 'POST') {
       if (!darfSchreiben()) return nurLesen();
-      const body = (await readJson(req)) as { body?: unknown };
+      const body = (await readJson(req)) as { body?: unknown; parentId?: unknown };
       const text = String(body?.body ?? '').trim();
       if (text === '') {
         fail(res, 400, 'empty', 'ein leerer Kommentar ist keiner');
@@ -546,7 +546,21 @@ export async function shareRoutes(
        * Link". Ehrlicher als ein erfundener Name — und die Benachrichtigung
        * daran (Migration 0019) trägt `actor_id = NULL` genau dafür.
        */
-      json(res, 201, await addComment(ctx.pool, taskIdVor, access.workspaceId, null, text));
+      json(
+        res,
+        201,
+        await addComment(
+          ctx.pool,
+          taskIdVor,
+          access.workspaceId,
+          null,
+          text,
+          undefined,
+          /* Auch ein Gast darf antworten: das Gespräch gehört der Aufgabe, und
+             die ist freigegeben. Der Server löst auf eine Ebene auf. */
+          typeof body?.parentId === 'string' ? body.parentId : null,
+        ),
+      );
       return;
     }
 

@@ -24,6 +24,8 @@ export interface Comment {
   /** Genau eines von beiden. Ein Gast ist keine uuid (ADR-0091). */
   readonly authorName: string | null;
   readonly authorGuest: string | null;
+  /** Worauf geantwortet wird — `null` ist ein eigener Beitrag. */
+  readonly parentId: string | null;
 }
 
 export interface Assignee {
@@ -106,11 +108,23 @@ export async function detail(
       created_at: Date;
       author_guest: string | null;
       author_name: string | null;
+      parent_id: string | null;
     }>(
       client,
-      `SELECT c.id, c.body, c.created_at, c.author_guest, u.display_name AS author_name
+      /*
+       * MIT dem Ursprung, und sortiert so, dass Antworten bei ihrem Kommentar
+       * stehen: erst nach dem Anker (Ursprung oder eigene Id), dann nach Zeit.
+       *
+       * Die Reihenfolge hier und nicht in der Oberfläche: sie ist eine
+       * Eigenschaft des Gesprächs und keine der Darstellung, und eine zweite
+       * Sortierung dort wäre die Gelegenheit, dass Gast und Mitglied dasselbe
+       * Gespräch verschieden lesen.
+       */
+      `SELECT c.id, c.body, c.created_at, c.author_guest, c.parent_id,
+              u.display_name AS author_name
          FROM task_comments c LEFT JOIN users u ON u.id = c.author_id
-        WHERE c.task_id = $1 ORDER BY c.created_at`,
+        WHERE c.task_id = $1
+        ORDER BY COALESCE(c.parent_id, c.id), c.created_at`,
       [taskId],
     );
 
@@ -148,6 +162,7 @@ export async function detail(
         createdAt: c.created_at,
         authorName: c.author_name,
         authorGuest: c.author_guest,
+        parentId: c.parent_id,
       })),
       assignees: assignees.map((a) => ({
         userId: a.user_id,
@@ -399,6 +414,7 @@ export async function addComment(
       body: clean,
       createdAt: row.created_at,
       authorName: me?.display_name ?? null,
+      parentId: anker,
       // Zurückgegeben, wie es in der Zeile steht — sonst zeigt die Oberfläche
       // direkt nach dem Schreiben einen Kommentar ohne Urheber und nach dem
       // Neuladen einen mit.
