@@ -25,6 +25,7 @@ import {
   complete,
   createFromLine,
   NotFound,
+  OutOfOrder,
   move,
   patch,
   recurrenceOf,
@@ -100,6 +101,53 @@ test('eine Zeile wird eine Aufgabe, und +haus findet das Projekt', async () => {
   // hängt, ob es eine Erinnerung gibt.
   assert.equal(out.task.planned_all_day, false);
   assert.equal(out.unknownProject, undefined);
+});
+
+test('ein Projekt aus der Anfrage muss in DIESEM Arbeitsbereich liegen', async () => {
+  /*
+   * `projectId` kommt vom Browser — die Herkunft des Bildschirms oder die
+   * Auswahl hinter `+`. Eine fremde Id legte die Aufgabe im Arbeitsbereich A
+   * ab, mit einem Projekt aus B; der Trigger prüfte nur, dass es eine Liste
+   * ist. Und ein Ordner trägt keine Aufgaben, auch nicht per Id.
+   */
+  const a = await scratch('ws-proj-a');
+  const b = await scratch('ws-proj-b');
+  await assert.rejects(
+    () =>
+      createFromLine(pool, {
+        workspaceId: a.workspaceId,
+        userId,
+        line: 'Heimlich',
+        now: NOW,
+        projectId: b.projectId,
+      }),
+    (e: unknown) => e instanceof OutOfOrder && /gibt es hier nicht/.test((e as Error).message),
+  );
+  const ordner = await queryOne<{ id: string }>(
+    pool,
+    `SELECT parent_id AS id FROM projects WHERE id = $1`,
+    [a.projectId],
+  );
+  await assert.rejects(
+    () =>
+      createFromLine(pool, {
+        workspaceId: a.workspaceId,
+        userId,
+        line: 'In den Ordner',
+        now: NOW,
+        projectId: ordner!.id,
+      }),
+    (e: unknown) => e instanceof OutOfOrder && /Ordner/.test((e as Error).message),
+  );
+  // Die eigene Liste per Id: geht, wie vorher.
+  const ok = await createFromLine(pool, {
+    workspaceId: a.workspaceId,
+    userId,
+    line: 'Gewählt',
+    now: NOW,
+    projectId: a.projectId,
+  });
+  assert.equal(ok.task.project_id, a.projectId);
 });
 
 test('„morgen" ohne Uhrzeit bleibt ein Ganztagstermin', async () => {

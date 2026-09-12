@@ -2706,6 +2706,14 @@ body {
   opacity: 0.6;
 }
 
+/* Der Ordner hinter dem Listennamen in der Auswahl: leiser, damit der Name
+   trägt und der Ordner nur unterscheidet. */
+.quick-where {
+  margin-inline-start: var(--sone-space-3);
+  color: var(--text-muted);
+  font-size: var(--sone-text-xs);
+}
+
 .quick-pill-x {
   border: 0;
   background: none;

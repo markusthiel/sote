@@ -69,6 +69,14 @@ after(async () => {
 
 /** Etwas tun und hören, was klingelt. Die Zustellung ist nicht sofort. */
 async function horch(tun: () => Promise<unknown>): Promise<string[]> {
+  /*
+   * Erst ausklingen lassen, dann leeren, dann tun: eine Klingel aus dem
+   * vorigen Schritt, die erst jetzt ankommt, sähe sonst aus wie eine aus
+   * diesem. Unter Last (die ganze Suite hintereinander) ist genau das
+   * passiert — „zuletzt benutzt klingelt nicht" hörte die Zuweisung von
+   * davor.
+   */
+  await new Promise((r) => setTimeout(r, 150));
   gehoert = [];
   await tun();
   await new Promise((r) => setTimeout(r, 250));

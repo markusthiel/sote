@@ -114,6 +114,20 @@ export function TaskList({
   const view = viewOf(route);
   const projectId = route.kind === 'project' ? route.projectId : undefined;
   const project = projects.find((p) => p.id === projectId);
+  /**
+   * Die Listen dieses Arbeitsbereichs für die Auswahl hinter `+` — mit dem
+   * Ordner darüber, damit zwei gleichnamige Listen unterscheidbar sind.
+   */
+  const projektWahl = useMemo(
+    () =>
+      projects
+        .filter((p) => p.kind === 'list')
+        .map((p) => {
+          const ordner = p.parentId === null ? undefined : projects.find((o) => o.id === p.parentId);
+          return { id: p.id, name: p.name, ...(ordner === undefined ? {} : { where: ordner.name }) };
+        }),
+    [projects],
+  );
   /*
    * Ein Ordner ordnet, ein Projekt hält (Konzept 10d).
    *
@@ -427,7 +441,11 @@ export function TaskList({
     }
   }
 
-  async function add(line: string, assigneeIds: readonly string[] = []) {
+  async function add(
+    line: string,
+    assigneeIds: readonly string[] = [],
+    gewaehltesProjekt: string | null = null,
+  ) {
     setBusy(true);
     setNotice(undefined);
     setUnknownProject(null);
@@ -435,8 +453,14 @@ export function TaskList({
       // Der Bildschirm gibt seine Herkunft mit: wer in einem Projekt tippt,
       // meint dieses Projekt. Vorher ging die Zeile ohne Projekt hinaus und
       // die Aufgabe landete in Heute oder Irgendwann — angelegt, aber nicht
-      // dort, wo man stand.
-      const out = await api.createTask(line, workspace, projectId, assigneeIds);
+      // dort, wo man stand. Eine PILLE aus der Auswahl hinter `+` schlägt
+      // die Herkunft: sie ist eine Entscheidung, die Herkunft eine Vorgabe.
+      const out = await api.createTask(
+        line,
+        workspace,
+        gewaehltesProjekt ?? projectId,
+        assigneeIds,
+      );
       // Vier verschiedene Nachrichten, und keine davon ist „ging nicht":
       // unbekannt und mehrdeutig sind zwei Fälle, und für Projekt und Person
       // je einer.
@@ -1065,10 +1089,11 @@ export function TaskList({
         {istOrdner || (form === 'board' && route.kind === 'project') ? null : (
           <QuickAdd
             now={now}
-            onSubmit={(line, assigneeIds) => void add(line, assigneeIds)}
+            onSubmit={(line, assigneeIds, projekt) => void add(line, assigneeIds, projekt)}
             busy={busy}
             unknownProject={unknownProject}
             people={leute}
+            projects={projektWahl}
           />
         )}
         {notice !== undefined ? <p className="note-error">{notice}</p> : null}

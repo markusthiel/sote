@@ -320,6 +320,26 @@ export async function createFromLine(pool: Pool, input: CreateFromLine): Promise
       } else ambiguousProject = q.project;
     }
 
+    /*
+     * EIN PROJEKT AUS DER ANFRAGE WIRD GEPRÜFT, NICHT GEGLAUBT.
+     *
+     * `input.projectId` kommt vom Aufrufer — die Herkunft des Bildschirms
+     * oder seit der Auswahl hinter `+` eine gewählte Id. Beides ist eine
+     * Angabe des Browsers, und eine Id aus einem fremden Arbeitsbereich hätte
+     * eine Aufgabe dort abgelegt: `workspace_id` von hier, `project_id` von
+     * dort, und der Trigger prüft nur, dass es eine Liste ist. Der Fall lag
+     * schon vor der Auswahl offen; die Auswahl macht die Id nur sichtbarer.
+     */
+    if (projectId !== null && projectId === (input.projectId ?? null)) {
+      const hier = await queryOne<{ kind: string }>(
+        client,
+        `SELECT kind FROM projects WHERE id = $1 AND workspace_id = $2 AND trashed_at IS NULL`,
+        [projectId, input.workspaceId],
+      );
+      if (hier === undefined) throw new OutOfOrder('dieses Projekt gibt es hier nicht');
+      if (hier.kind !== 'list') throw new OutOfOrder('ein Ordner hält keine Aufgaben');
+    }
+
     const rec = q.recurrence;
     const sortKey = await keyAtEnd(client, input.workspaceId, projectId);
 

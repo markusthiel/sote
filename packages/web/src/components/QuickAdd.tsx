@@ -28,6 +28,7 @@ export function QuickAdd({
   unknownProject,
   hint,
   people,
+  projects,
 }: {
   now: Date;
   /**
@@ -37,7 +38,7 @@ export function QuickAdd({
    * Ids und rät nicht. Ein getipptes `@name` OHNE Auswahl bleibt in der Zeile
    * und wird wie bisher über den Namen aufgelöst.
    */
-  onSubmit: (line: string, assigneeIds: readonly string[]) => void;
+  onSubmit: (line: string, assigneeIds: readonly string[], projectId: string | null) => void;
   busy: boolean;
   unknownProject: string | null;
   /** Ein anderer Platzhalter, wo ein anderes Versprechen gilt. */
@@ -54,6 +55,20 @@ export function QuickAdd({
    * Verschlechterung mit Beiwerk.
    */
   people?: readonly { id: string; name: string }[];
+  /**
+   * Die Projekte dieses Arbeitsbereichs — für die Auswahl hinter `+`.
+   *
+   * GEMELDET: „Beim + für ein Projekt haben wir dasselbe Problem wie beim
+   * User. Ich kann einfach einen Text eingeben, und wenn ich Glück habe,
+   * gibt es das Projekt." Dieselbe Antwort wie bei `@`: eine Liste unter dem
+   * Feld, eine Wahl daraus ist eine Pille mit Id, kein Wort, das der Server
+   * wieder sucht. `where` ist der Ordner darüber — zwei Listen können gleich
+   * heissen (Konzept 10d), und der Ordner sagt, welche gemeint ist.
+   *
+   * Nur Listen, keine Ordner: ein Ordner trägt keine Aufgaben. Fehlt die
+   * Liste (Freigabe), gilt `+` wie bisher als Wort.
+   */
+  projects?: readonly { id: string; name: string; where?: string }[];
 }) {
   const [line, setLine] = useState('');
   /** Wo der Cursor steht — `null` heisst: die Auswahl ist zu. */
@@ -78,6 +93,12 @@ export function QuickAdd({
    * einem Klick oder Rückschritt ganz — nicht buchstabenweise.
    */
   const [pillen, setPillen] = useState<{ id: string; name: string }[]>([]);
+  /**
+   * DAS PROJEKT ALS PILLE — höchstens eines: eine Aufgabe hat ein Projekt.
+   * Eine zweite Wahl ersetzt die erste, so wie das erste `+wort` in der Zeile
+   * das Projekt ist und ein zweites Schlagwort wird.
+   */
+  const [projektPille, setProjektPille] = useState<{ id: string; name: string } | null>(null);
   const feld = useRef<HTMLInputElement | null>(null);
 
   /*
@@ -128,6 +149,11 @@ export function QuickAdd({
         value: parsed.project,
         unknown: unknownProject === parsed.project,
       });
+    } else if (projektPille !== null) {
+      // Die Pille steht schon im Feld; hier noch einmal, damit die Merkmale
+      // vollständig sagen, was angelegt wird. Ein `+wort` in der Zeile
+      // schlägt sie — so liest es auch der Server.
+      chips.push({ label: 'projekt', value: projektPille.name });
     }
     for (const label of parsed.labels) chips.push({ label: 'schlagwort', value: label });
     for (const who of parsed.assignees) chips.push({ label: 'zugewiesen', value: who });
@@ -150,27 +176,41 @@ export function QuickAdd({
    * Vorschlagsfeld, das offen bleibt, während man längst weiterschreibt, ist
    * ein Fenster vor der eigenen Zeile.
    */
-  const angefangen = ((): { von: number; wort: string } | undefined => {
-    if (people === undefined || people.length === 0) return undefined;
+  const angefangen = ((): { art: 'person' | 'projekt'; von: number; wort: string } | undefined => {
     const bis = cursor ?? line.length;
-    const m = /(^|\s)@([^\s@#+!~]*)$/.exec(line.slice(0, bis));
+    // `@` eine Person, `+` ein Projekt — dieselben Zeichen wie im Kern.
+    const m = /(^|\s)([@+])([^\s@#+!~]*)$/.exec(line.slice(0, bis));
     if (m === null) return undefined;
-    return { von: bis - m[2]!.length - 1, wort: m[2]!.toLowerCase() };
+    const art = m[2] === '@' ? 'person' : 'projekt';
+    // Ohne Liste keine Auswahl: dann ist das Zeichen ein Wort wie bisher.
+    if (art === 'person' && (people === undefined || people.length === 0)) return undefined;
+    if (art === 'projekt' && (projects === undefined || projects.length === 0)) return undefined;
+    return { art, von: bis - m[3]!.length - 1, wort: m[3]!.toLowerCase() };
   })();
 
-  const treffer =
+  type Wahl = { id: string; name: string; where?: string };
+  const treffer: Wahl[] =
     angefangen === undefined
       ? []
-      : people!
-          .filter((p) => p.name.toLowerCase().includes(angefangen.wort))
-          // Wer schon als Pille steht, wird nicht nochmal angeboten.
-          .filter((p) => !pillen.some((q) => q.id === p.id))
-          /* Höchstens sechs: eine Liste, die den halben Bildschirm füllt,
-             liest niemand — sie wird überflogen und dann weggetippt. */
-          .slice(0, 6);
+      : angefangen.art === 'person'
+        ? people!
+            .filter((p) => p.name.toLowerCase().includes(angefangen.wort))
+            // Wer schon als Pille steht, wird nicht nochmal angeboten.
+            .filter((p) => !pillen.some((q) => q.id === p.id))
+            /* Höchstens sechs: eine Liste, die den halben Bildschirm füllt,
+               liest niemand — sie wird überflogen und dann weggetippt. */
+            .slice(0, 6)
+        : projects!
+            .filter(
+              (p) =>
+                p.name.toLowerCase().includes(angefangen.wort) ||
+                (p.where ?? '').toLowerCase().includes(angefangen.wort),
+            )
+            .filter((p) => p.id !== projektPille?.id)
+            .slice(0, 6);
 
-  /** Das angefangene `@wort` aus der Zeile nehmen und die Person als Pille setzen. */
-  function waehle(person: { id: string; name: string }) {
+  /** Das angefangene `@wort`/`+wort` aus der Zeile nehmen und die Wahl als Pille setzen. */
+  function waehle(wahl: Wahl) {
     if (angefangen === undefined) return;
     const bis = cursor ?? line.length;
     /*
@@ -183,8 +223,12 @@ export function QuickAdd({
     const danach = line.slice(bis).replace(/^\s+/, '');
     const neu = davor === '' ? danach : danach === '' ? davor : `${davor} ${danach}`;
     setLine(neu);
-    // Dieselbe Person zweimal ist eine Person.
-    setPillen((alt) => (alt.some((p) => p.id === person.id) ? alt : [...alt, person]));
+    if (angefangen.art === 'person') {
+      // Dieselbe Person zweimal ist eine Person.
+      setPillen((alt) => (alt.some((p) => p.id === wahl.id) ? alt : [...alt, { id: wahl.id, name: wahl.name }]));
+    } else {
+      setProjektPille({ id: wahl.id, name: wahl.name });
+    }
     setGewaehlt(0);
     const stelle = davor === '' ? 0 : davor.length + 1;
     // Nach dem Zeichnen: vorher steht der alte Wert im Feld.
@@ -202,14 +246,21 @@ export function QuickAdd({
     onSubmit(
       value,
       pillen.map((p) => p.id),
+      projektPille?.id ?? null,
     );
     // Offen bleiben. Wer eine Aufgabe notiert, notiert oft die nächste.
     setLine('');
     setPillen([]);
+    setProjektPille(null);
   }
 
   function pilleWeg(id: string) {
     setPillen((alt) => alt.filter((p) => p.id !== id));
+    feld.current?.focus();
+  }
+
+  function projektWeg() {
+    setProjektPille(null);
     feld.current?.focus();
   }
 
@@ -238,7 +289,7 @@ export function QuickAdd({
       // Aufgabe ist keine.
       .filter((z) => z !== '');
     if (zeilen.length < 2) return false;
-    for (const z of zeilen) onSubmit(z, []);
+    for (const z of zeilen) onSubmit(z, [], null);
     return true;
   }
 
@@ -248,6 +299,21 @@ export function QuickAdd({
         <span aria-hidden="true" style={{ color: 'var(--text-faint)' }}>
           +
         </span>
+        {projektPille !== null ? (
+          <span className="quick-pill" data-kind="projekt">
+            <span aria-hidden="true">+</span>
+            {projektPille.name}
+            <button
+              type="button"
+              className="quick-pill-x"
+              aria-label={`Projekt ${projektPille.name} entfernen`}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={projektWeg}
+            >
+              ×
+            </button>
+          </span>
+        ) : null}
         {pillen.map((p) => (
           <span key={p.id} className="quick-pill">
             <span aria-hidden="true">@</span>
@@ -327,12 +393,14 @@ export function QuickAdd({
              */
             if (
               e.key === 'Backspace' &&
-              pillen.length > 0 &&
+              (pillen.length > 0 || projektPille !== null) &&
               e.currentTarget.selectionStart === 0 &&
               e.currentTarget.selectionEnd === 0
             ) {
               e.preventDefault();
-              pilleWeg(pillen[pillen.length - 1]!.id);
+              // Die letzte Pille zuerst — die Leute stehen hinter dem Projekt.
+              if (pillen.length > 0) pilleWeg(pillen[pillen.length - 1]!.id);
+              else projektWeg();
               return;
             }
             if (e.key === 'Enter') {
@@ -341,6 +409,7 @@ export function QuickAdd({
             } else if (e.key === 'Escape') {
               setLine('');
               setPillen([]);
+              setProjektPille(null);
             }
           }}
           /*
@@ -365,7 +434,11 @@ export function QuickAdd({
         dasteht.
       */}
       {treffer.length > 0 ? (
-        <ul className="quick-people" role="listbox" aria-label="Wer ist gemeint">
+        <ul
+          className="quick-people"
+          role="listbox"
+          aria-label={angefangen?.art === 'projekt' ? 'Welches Projekt ist gemeint' : 'Wer ist gemeint'}
+        >
           {treffer.map((p, i) => (
             <li key={p.id}>
               <button
@@ -378,6 +451,7 @@ export function QuickAdd({
                 onClick={() => waehle(p)}
               >
                 {p.name}
+                {p.where !== undefined ? <span className="quick-where">{p.where}</span> : null}
               </button>
             </li>
           ))}
