@@ -250,11 +250,27 @@ export async function sweepFiles(
   const now = input.now ?? new Date();
   const minAge = input.minAgeMs ?? 60 * 60 * 1000;
 
-  const bekannt = new Set(
-    (await queryRows<{ storage_key: string }>(pool, 'SELECT storage_key FROM task_files')).map(
-      (r) => r.storage_key,
-    ),
-  );
+  /*
+   * BEIDE Schlüssel, nicht nur der des Originals.
+   *
+   * Die kleine Fassung (`web_key`, aus `attachWeb`) liegt im selben Baum wie
+   * das Original. Die erste Fassung dieser Menge kannte nur `storage_key` —
+   * und hielt damit jede Bildvariante, die älter als eine Stunde war, für
+   * verwaist. Einmal am Tag wurden also gültige Vorschauen gelöscht, und ihre
+   * Zeile zeigte weiter auf sie. Gefunden im Audit vom 12.09.2026 (F06).
+   *
+   * Die Regel: **jeder Schlüssel, den eine Zeile nennt, ist bekannt.** Kommt
+   * eine dritte Fassung dazu, gehört sie in diese Abfrage — nicht in einen
+   * zweiten Aufräumer.
+   */
+  const bekannt = new Set<string>();
+  for (const r of await queryRows<{ storage_key: string; web_key: string | null }>(
+    pool,
+    'SELECT storage_key, web_key FROM task_files',
+  )) {
+    bekannt.add(r.storage_key);
+    if (r.web_key !== null) bekannt.add(r.web_key);
+  }
 
   let geprüft = 0;
   let entfernt = 0;
@@ -385,17 +401,32 @@ export async function readFileOf(
     [input.id, input.taskId, input.workspaceId],
   );
   if (row === undefined) return undefined;
-  const key = input.size === 'web' && (row.web_key ?? null) !== null ? row.web_key! : row.storage_key;
+  const webKey = input.size === 'web' && (row.web_key ?? null) !== null ? row.web_key! : null;
   /*
+   * Die kleine Fassung zuerst, wenn sie gewünscht und eingetragen ist — und
+   * fehlt ihre Datei, das Original. Eine Variante ist abgeleitet: sie kann
+   * neu entstehen, das Original nicht. Der Aufräumer hat eine Zeit lang genau
+   * diese Dateien gelöscht (siehe `sweepFiles`); wer davon eine Zeile geerbt
+   * hat, soll ein Bild sehen und keinen Fehler.
+   *
    * Die kleine Fassung ist immer ein JPEG — sie wird als eines gezeichnet. Der
    * gespeicherte Typ gehört dem Original, und ihn hier mitzuschicken hiesse,
    * ein JPEG als PNG auszugeben.
    */
-  const typ = key === row.storage_key ? row.mime_type : 'image/jpeg';
+  if (webKey !== null) {
+    try {
+      return {
+        file: { ...view(row), mimeType: 'image/jpeg' },
+        bytes: await readFile(pathFor(dir, webKey)),
+      };
+    } catch {
+      /* weiter zum Original */
+    }
+  }
   try {
     return {
-      file: { ...view(row), mimeType: typ },
-      bytes: await readFile(pathFor(dir, key)),
+      file: view(row),
+      bytes: await readFile(pathFor(dir, row.storage_key)),
     };
   } catch {
     /*

@@ -210,6 +210,63 @@ test('der Aufräumer nimmt Waisen — aber nicht die frischen', async () => {
   assert.ok(noch !== undefined, 'was eine Zeile hat, bleibt — egal wie alt');
 });
 
+test('der Aufräumer verschont die kleine Fassung — sie hat eine Zeile', async () => {
+  /*
+   * Audit 12.09.2026, F06: die Menge der bekannten Schlüssel kannte nur
+   * `storage_key`. Jede kleine Fassung, die älter als eine Stunde war, galt
+   * als Waise und wurde beim nächsten Tageslauf gelöscht — mit einer Zeile,
+   * die weiter auf sie zeigte. Ohne den Fix scheitert dieser Test bei
+   * `entfernt`.
+   */
+  const t = await neu('Vorschau bleibt');
+  const f = await addFile(pool, {
+    taskId: t,
+    workspaceId: ws,
+    userId: ich,
+    filename: 'foto.jpg',
+    mimeType: 'image/jpeg',
+    bytes: Buffer.from('x'.repeat(3000)),
+  });
+  await attachWeb(pool, { id: f.id, taskId: t, workspaceId: ws, bytes: Buffer.from('klein') });
+
+  const spaeter = await sweepFiles(pool, {
+    now: new Date(Date.now() + 2 * 60 * 60 * 1000),
+  });
+  assert.equal(spaeter.entfernt, 0, 'weder Original noch Variante sind Waisen');
+
+  const web = await readFileOf(pool, { id: f.id, taskId: t, workspaceId: ws, size: 'web' });
+  assert.equal(web?.bytes.toString(), 'klein', 'die Variante ist noch da');
+});
+
+test('fehlt die Datei der kleinen Fassung, kommt das Original — kein Fehler', async () => {
+  /*
+   * Die andere Hälfte von F06: wer aus der Zeit vor dem Fix eine Zeile mit
+   * `web_key` und ohne Datei geerbt hat, soll ein Bild sehen. Eine Variante ist
+   * abgeleitet und kann neu entstehen; ein 500 an dieser Stelle hätte die
+   * ganze Aufgabenansicht mitgenommen.
+   */
+  const t = await neu('Vorschau verloren');
+  const f = await addFile(pool, {
+    taskId: t,
+    workspaceId: ws,
+    userId: ich,
+    filename: 'foto.png',
+    mimeType: 'image/png',
+    bytes: Buffer.from('original'),
+  });
+  await attachWeb(pool, { id: f.id, taskId: t, workspaceId: ws, bytes: Buffer.from('weg') });
+  const row = await queryOne<{ web_key: string }>(pool, 'SELECT web_key FROM task_files WHERE id = $1', [
+    f.id,
+  ]);
+  await rm(join(dir, row!.web_key.slice(0, 2), row!.web_key.slice(2, 4), row!.web_key), {
+    force: true,
+  });
+
+  const web = await readFileOf(pool, { id: f.id, taskId: t, workspaceId: ws, size: 'web' });
+  assert.equal(web?.bytes.toString(), 'original');
+  assert.equal(web?.file.mimeType, 'image/png', 'das Original trägt seinen eigenen Typ');
+});
+
 test('mit der Aufgabe geht die Zeile — die Datei bleibt liegen, und das steht so da', async () => {
   const t = await neu('Kaskade');
   await addFile(pool, {
