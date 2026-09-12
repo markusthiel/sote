@@ -52,6 +52,10 @@ services:
       # Single-Sign-on (beides braucht einen Rückweg, den nur der Betreiber
       # kennt — aus der `Host`-Kopfzeile wäre er eine Angabe des Aufrufers).
       SOTE_BASE_URL: ${SOTE_BASE_URL:-}
+      # Ob `X-Forwarded-For` geglaubt wird — nur mit einem Reverse Proxy
+      # davor, der den Kopf setzt (dann `1`). Ohne Proxy kann der Aufrufer
+      # ihn selbst schreiben und damit die Anmeldedrossel umgehen.
+      SOTE_TRUST_PROXY: ${SOTE_TRUST_PROXY:-}
 
       # Der Schlüssel für Freigabe- und Einladungslinks. Ohne ihn gibt es
       # beides nicht, und die Bildschirme sagen das.

@@ -107,8 +107,63 @@ export async function subscribePush(
   );
 }
 
-export async function unsubscribePush(pool: Pool, endpoint: string): Promise<void> {
-  await pool.query('DELETE FROM push_subscriptions WHERE endpoint = $1', [endpoint]);
+/**
+ * Ein Gerät abmelden — das EIGENE.
+ *
+ * `(user_id, endpoint)` und nicht der Endpunkt allein: wer den Endpunkt eines
+ * anderen kennt (er steht im Browser dessen Geräts, nicht in einer Liste, die
+ * jemand abrufen kann — aber „kennt" reicht), konnte dessen Gerät abmelden
+ * (Audit 12.09.2026, F14). Ein Abonnement gehört einem Konto, und nur das
+ * Konto nimmt es weg.
+ */
+export async function unsubscribePush(pool: Pool, userId: string, endpoint: string): Promise<void> {
+  await pool.query('DELETE FROM push_subscriptions WHERE user_id = $1 AND endpoint = $2', [
+    userId,
+    endpoint,
+  ]);
+}
+
+/** Wie viele Geräte ein Konto haben kann. Mehr als das ist ein Fehler oder ein Angriff. */
+export const MAX_SUBSCRIPTIONS = 20;
+
+/**
+ * Ob eine Adresse als Push-Endpunkt taugt.
+ *
+ * `https:` und ein Hostname, der kein lokaler oder privater ist. KEINE Liste
+ * zugelassener Dienste: Firefox mit eigenem Autopush und UnifiedPush-Nutzer
+ * bringen Endpunkte mit, die auf keiner Liste stehen, und ein Produkt zum
+ * Selbstbetreiben sperrt die nicht aus. Was hier fern gehalten wird, ist der
+ * Server selbst und sein Netz: ein Endpunkt `https://10.0.0.5/…` liesse den
+ * Server auf Zuruf HTTPS-Anfragen nach innen schicken (Audit 12.09.2026,
+ * F14). Die Nutzlast ist verschlüsselt und die Antwort wird nie gelesen — der
+ * Schaden ist klein, aber ein Server, der auf Zuruf irgendwohin ruft, ist
+ * trotzdem ein Server, der das nicht sollte.
+ */
+export function isPushEndpoint(raw: string): boolean {
+  let url: URL;
+  try {
+    url = new URL(raw);
+  } catch {
+    return false;
+  }
+  if (url.protocol !== 'https:') return false;
+  const host = url.hostname.toLowerCase();
+  if (host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.local')) return false;
+  // Nackte IPv4-Adressen aus privaten und lokalen Bereichen.
+  const v4 = /^(\d+)\.(\d+)\.(\d+)\.(\d+)$/.exec(host);
+  if (v4 !== null) {
+    const [a, b] = [Number(v4[1]), Number(v4[2])];
+    if (a === 10 || a === 127 || a === 0) return false;
+    if (a === 169 && b === 254) return false;
+    if (a === 172 && b >= 16 && b <= 31) return false;
+    if (a === 192 && b === 168) return false;
+  }
+  // IPv6: loopback, link-local, unique-local.
+  if (host.startsWith('[') || host.includes(':')) {
+    const h = host.replace(/^\[|\]$/g, '');
+    if (h === '::1' || h === '::' || /^f[cd]/.test(h) || /^fe[89ab]/.test(h)) return false;
+  }
+  return true;
 }
 
 /** Was in einer Meldung steht. */
@@ -166,7 +221,9 @@ export async function pushTo(pool: Pool, userId: string, note: PushNote): Promis
       await webpush.sendNotification(
         { endpoint: abo.endpoint, keys: { p256dh: abo.p256dh, auth: abo.auth } },
         JSON.stringify(note),
-        { TTL: 60 * 60 * 24 },
+        // Ein Dienst, der nicht antwortet, hält sonst den ganzen Versand auf
+        // (Audit 12.09.2026, F14): zehn Sekunden, dann zählt es als Fehler.
+        { TTL: 60 * 60 * 24, timeout: 10_000 },
       );
       zugestellt += 1;
       await pool.query(

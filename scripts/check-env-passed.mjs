@@ -35,8 +35,11 @@
 import { readFileSync } from 'node:fs';
 import { readdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const root = new URL('..', import.meta.url).pathname;
+// `fileURLToPath`, nicht `.pathname`: unter Windows wird aus `file:///C:/…`
+// sonst `/C:/…`, und `join` macht daraus `C:\\C:\\…` (Audit 12.09.2026, F16).
+const root = fileURLToPath(new URL('..', import.meta.url));
 
 const ohneKommentare = (text, art) =>
   art === 'yml'

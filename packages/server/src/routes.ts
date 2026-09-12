@@ -60,7 +60,7 @@ import { knownKinds } from './jobs.js';
 import { list as listNotifications, markRead, unreadCount } from './notifications.js';
 import { setChannels } from './deliver.js';
 import { stream } from './nudge.js';
-import { pushKeys, subscribePush, unsubscribePush } from './push.js';
+import { isPushEndpoint, MAX_SUBSCRIPTIONS, pushKeys, subscribePush, unsubscribePush } from './push.js';
 import { deleteWorkspace, exportWorkspace } from './workspace.js';
 import {
   add as addToGroup,
@@ -1103,6 +1103,19 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
       fail(res, 400, 'bad_subscription', 'dieses Abonnement ist unvollständig');
       return;
     }
+    if (!isPushEndpoint(endpoint)) {
+      fail(res, 400, 'bad_endpoint', 'das ist keine Adresse eines Push-Dienstes');
+      return;
+    }
+    const geraete = await queryOne<{ n: string }>(
+      ctx.pool,
+      'SELECT count(*)::text AS n FROM push_subscriptions WHERE user_id = $1 AND endpoint <> $2',
+      [userId, endpoint],
+    );
+    if (Number(geraete?.n ?? 0) >= MAX_SUBSCRIPTIONS) {
+      fail(res, 409, 'too_many_devices', `mehr als ${MAX_SUBSCRIPTIONS} Geräte gibt es nicht — melde eines ab`);
+      return;
+    }
     await subscribePush(ctx.pool, {
       userId,
       endpoint,
@@ -1116,7 +1129,7 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
 
   if (path === '/api/push' && method === 'DELETE') {
     const body = (await readJson(req)) as { endpoint?: unknown };
-    if (typeof body?.endpoint === 'string') await unsubscribePush(ctx.pool, body.endpoint);
+    if (typeof body?.endpoint === 'string') await unsubscribePush(ctx.pool, userId, body.endpoint);
     json(res, 200, { ok: true });
     return;
   }

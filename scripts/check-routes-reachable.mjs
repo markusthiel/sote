@@ -24,6 +24,21 @@
  * Das ist keine vollständige Analyse — es ist die Prüfung für den Fehler, der
  * wirklich passiert ist. Ein Wächter, der alles könnte, wäre einer, den ich
  * nicht fertig geschrieben hätte.
+ *
+ * ## Und der Fehler, den er NICHT sah (Audit 12.09.2026, F07 und F16)
+ *
+ * `/kalender/:token.ics` stand hinter dem Zweig `if (!path.startsWith('/api/'))
+ * … return`, der alles ausserhalb `/api/` als Datei der Oberfläche ausliefert.
+ * Dieser Wächter meldete „alle erreichbar", weil er nur `/^\/api…/`-Muster als
+ * Zweige kannte und nur `path === '…'`-Literale als Wege. Der Kalender war
+ * ein Regex ausserhalb `/api/`, und der Zweig war ein `startsWith` — beides
+ * ausserhalb seines Blicks. Ein Wächter, der grün ist, weil er die Frage nicht
+ * stellt.
+ *
+ * Jetzt: jeder `/^\/…/.exec(path)`-Zweig ist ein Muster, egal ob unter `/api/`;
+ * `!path.startsWith('/api/')` ist ein Zweig, der alles fängt, was nicht so
+ * anfängt; und jedes Muster ist zugleich ein Weg — geprüft an seinem wörtlichen
+ * Anfang (`/kalender/`), denn den fängt ein früherer Zweig oder nicht.
  */
 
 import { readFileSync } from 'node:fs';
@@ -40,16 +55,33 @@ const gates = [];
 const literals = [];
 
 lines.forEach((line, i) => {
-  const re = /=\s*\/\^\\\/api(.+?)\/\.exec\(path\)/.exec(line);
+  // Der Zweig, der alles ausserhalb eines Präfixes fängt.
+  const neg = /!path\.startsWith\('(\/[^']+)'\)/.exec(line);
+  if (neg !== null) {
+    const prefix = neg[1];
+    gates.push({
+      line: i + 1,
+      re: { test: (p) => !p.startsWith(prefix) },
+      src: `alles ausser ${prefix}…`,
+    });
+    return;
+  }
+  const re = /=\s*\/\^\\\/(.+?)\/\.exec\(path\)/.exec(line);
   if (re !== null) {
     // Aus dem Quelltext-Regex ein echtes machen: die Datei escapt Schrägstriche.
-    const body = ('^\\/api' + re[1]).replace(/\\\\/g, '\\');
+    const body = ('^\\/' + re[1]).replace(/\\\\/g, '\\');
+    let built = null;
     try {
-      gates.push({ line: i + 1, re: new RegExp(body), src: body });
+      built = new RegExp(body);
     } catch {
       // Ein Muster, das sich hier nicht bauen lässt, wird nicht geprüft — und
       // das steht im Bericht, statt still übergangen zu werden.
-      gates.push({ line: i + 1, re: null, src: body });
+    }
+    gates.push({ line: i + 1, re: built, src: body });
+    // Und das Muster ist selbst ein Weg: sein wörtlicher Anfang muss ankommen.
+    const anfang = /^\^((?:\\\/|[A-Za-z0-9_.-])+)/.exec(body);
+    if (anfang !== null) {
+      literals.push({ line: i + 1, path: anfang[1].replace(/\\\//g, '/') + 'x' });
     }
     return;
   }

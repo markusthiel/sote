@@ -13,7 +13,7 @@ import type { Pool } from 'pg';
 import { makePool, queryOne, queryRows } from '../src/db.js';
 import { migrate } from '../src/migrate.js';
 import { enqueue, knownKinds, runOne } from '../src/jobs.js';
-import { pushKeys, subscribePush, unsubscribePush } from '../src/push.js';
+import { isPushEndpoint, pushKeys, subscribePush, unsubscribePush } from '../src/push.js';
 
 let pool: Pool;
 let userId: string;
@@ -74,7 +74,7 @@ test('abmelden nimmt genau dieses Geraet', async () => {
   const b = `https://push.example/${process.pid}/c`;
   await subscribePush(pool, { userId, endpoint: a, p256dh: 'p', auth: 'a' });
   await subscribePush(pool, { userId, endpoint: b, p256dh: 'p', auth: 'a' });
-  await unsubscribePush(pool, a);
+  await unsubscribePush(pool, userId, a);
 
   const uebrig = await queryRows<{ endpoint: string }>(
     pool,
@@ -148,4 +148,45 @@ test('ein push.send ohne Konto oder Titel ist ein Fehler im Auftrag, keine leere
   assert.match(row!.last_error ?? '', /ohne Konto/);
   assert.equal(row!.attempts, 1);
   await pool.query("DELETE FROM jobs WHERE kind = 'push.send'");
+});
+
+test('abmelden nimmt nur das EIGENE Geraet', async () => {
+  // Audit 12.09.2026, F14: DELETE ging ueber den Endpunkt allein.
+  const fremd = await queryOne<{ id: string }>(
+    pool,
+    `INSERT INTO users (email, display_name) VALUES ($1,'Fremd') RETURNING id`,
+    [`push-fremd-${process.pid}@example.org`],
+  );
+  const endpoint = `https://push.example/${process.pid}/fremd`;
+  await subscribePush(pool, { userId: fremd!.id, endpoint, p256dh: 'p', auth: 'a' });
+  await unsubscribePush(pool, userId, endpoint);
+  const noch = await queryRows(pool, 'SELECT 1 FROM push_subscriptions WHERE endpoint = $1', [endpoint]);
+  assert.equal(noch.length, 1, 'das Geraet des anderen bleibt');
+  await unsubscribePush(pool, fremd!.id, endpoint);
+  assert.equal((await queryRows(pool, 'SELECT 1 FROM push_subscriptions WHERE endpoint = $1', [endpoint])).length, 0);
+});
+
+test('ein Push-Endpunkt ist https und zeigt nicht nach innen', () => {
+  for (const gut of [
+    'https://fcm.googleapis.com/fcm/send/abc',
+    'https://updates.push.services.mozilla.com/wpush/v2/x',
+    'https://ntfy.example.org/up/abc', // UnifiedPush -- keine Liste, absichtlich
+  ]) {
+    assert.equal(isPushEndpoint(gut), true, gut);
+  }
+  for (const schlecht of [
+    'http://push.example/x',
+    'https://localhost/x',
+    'https://127.0.0.1/x',
+    'https://10.0.0.5/x',
+    'https://192.168.1.1/x',
+    'https://172.16.0.1/x',
+    'https://169.254.169.254/latest',
+    'https://[::1]/x',
+    'https://[fd00::1]/x',
+    'https://drucker.local/x',
+    'kein url',
+  ]) {
+    assert.equal(isPushEndpoint(schlecht), false, schlecht);
+  }
 });
