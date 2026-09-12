@@ -139,28 +139,16 @@ test('der richtige Schlüssel legt Konto, Arbeitsbereich und vier Rollen an', as
   );
   assert.equal(member?.is_owner, true);
 
-  // Und das Kennwort gilt: sonst hätte jemand ein Konto, in das er nicht kommt.
-  const session = await signIn(pool, account.email, account.password, 30, NOW);
-  assert.ok(session !== null, 'anmelden muss gehen');
-});
-
-test('wer einrichtet, verwaltet die Instanz', async () => {
-  if (!usable) return;
-  const gate = new SetupKey();
-  const key = await gate.openIfEmpty(pool);
-  const id = await setupFirstAccount(pool, gate, key!, account);
-
   /*
-   * Der Fall, der im Betrieb auftrat und den vorher nichts geprüft hat.
+   * Wer einrichtet, verwaltet die Instanz.
    *
-   * Migration 0012 macht das älteste Konto zum Administrator — aber sie
-   * läuft auf einer frischen Datenbank, BEVOR es eines gibt. Das UPDATE
-   * trifft dann nichts, und `is_admin` bleibt auf seinem DEFAULT false.
-   * Ergebnis: eine eingerichtete Instanz, die niemand verwalten kann,
-   * ohne dass eine Fehlermeldung darauf hinweist.
+   * Der Fall aus dem Betrieb: Migration 0012 macht das älteste Konto zum
+   * Administrator, läuft auf einer frischen Datenbank aber, BEVOR es
+   * eines gibt. Das UPDATE trifft nichts, `is_admin` bleibt auf seinem
+   * DEFAULT false — eine eingerichtete Instanz, die niemand verwalten
+   * kann, ohne dass eine Meldung darauf hinweist.
    *
-   * Genau deshalb prüft dieser Test die SPALTE und nicht, ob irgendein
-   * Bildschirm sichtbar ist: die Ursache lag in der Datenbank.
+   * Geprüft wird die SPALTE und nicht ein Bildschirm: dort lag es.
    */
   const wer = await queryOne<{ is_admin: boolean }>(
     pool,
@@ -169,31 +157,9 @@ test('wer einrichtet, verwaltet die Instanz', async () => {
   );
   assert.equal(wer?.is_admin, true, 'das erste Konto verwaltet die Instanz');
 
-  const admins = await queryOne<{ n: string }>(
-    pool,
-    'SELECT count(*) AS n FROM users WHERE is_admin',
-  );
-  assert.equal(admins?.n, '1', 'genau einer, nicht mehr');
-
-  /*
-   * Die Gegenprobe, und sie traegt die Bedingung.
-   *
-   * Das Recht haengt an „es gab noch niemanden“ und nicht am Weg. Ohne
-   * diese Zeile waere eine Fassung, die JEDEM Konto `is_admin` gibt,
-   * genauso gruen — und eine Einladung machte den Eingeladenen zum
-   * Instanzadministrator.
-   */
-  const zweiter = await createAccount(pool, {
-    email: 'zweite@example.org',
-    displayName: 'Zweite Person',
-    password: 'kennwort-zwei',
-  });
-  const auch = await queryOne<{ is_admin: boolean }>(
-    pool,
-    'SELECT is_admin FROM users WHERE id = $1',
-    [zweiter],
-  );
-  assert.equal(auch?.is_admin, false, 'ein spaeteres Konto verwaltet nichts');
+  // Und das Kennwort gilt: sonst hätte jemand ein Konto, in das er nicht kommt.
+  const session = await signIn(pool, account.email, account.password, 30, NOW);
+  assert.ok(session !== null, 'anmelden muss gehen');
 });
 
 /* ── Der eigentliche Punkt: ein zweites Mal geht nicht ─────────────────── */
@@ -278,6 +244,20 @@ test('ein zweites Konto ohne Arbeitsbereichsnamen bekommt den Vorgabenamen', asy
     `SELECT name FROM workspaces WHERE name = 'Mein Arbeitsbereich'`,
   );
   assert.equal(ws?.name, 'Mein Arbeitsbereich');
+
+  /*
+   * Die Gegenprobe, und sie trägt die Bedingung.
+   *
+   * Das Recht hängt an „es gab noch niemanden“ und nicht am Weg hierher.
+   * Ohne diese Zeile wäre eine Fassung, die JEDEM Konto `is_admin` gibt,
+   * genauso grün — und eine Einladung machte den Eingeladenen zum
+   * Instanzadministrator.
+   */
+  const auch = await queryOne<{ is_admin: boolean }>(
+    pool,
+    `SELECT is_admin FROM users WHERE email = 'zweite@example.org'`,
+  );
+  assert.equal(auch?.is_admin, false, 'ein späteres Konto verwaltet nichts');
 });
 
 test('zwei gleichzeitige Einrichtungen ergeben ein Konto, nicht zwei', async () => {
