@@ -1110,3 +1110,30 @@ test('die kleine Fassung eines Gast-Anhangs hat eine Grenze', async () => {
     else process.env['SOTE_FILES_DIR'] = vorher.dir;
   }
 });
+
+test('Kennwortraten wird gedrosselt — vor scrypt, mit Retry-After', async () => {
+  // Audit 12.09.2026, F12. Zehn Fehlversuche je Konto, dann 429.
+  const konto = `raten-${process.pid}-${Math.random().toString(36).slice(2, 8)}@example.org`;
+  for (let i = 0; i < 10; i += 1) {
+    const res = await call('/api/session', {
+      method: 'POST',
+      body: JSON.stringify({ email: konto, password: `falsch-${i}` }),
+    });
+    assert.equal(res.status, 401, `Versuch ${i + 1}`);
+  }
+  const zuViel = await call('/api/session', {
+    method: 'POST',
+    body: JSON.stringify({ email: konto, password: 'falsch-11' }),
+  });
+  assert.equal(zuViel.status, 429);
+  assert.ok(Number(zuViel.headers.get('retry-after')) > 0);
+  const grund = (await zuViel.json()) as { error: { code: string } };
+  assert.equal(grund.error.code, 'too_many_attempts');
+
+  // Ein anderes Konto ist davon nicht betroffen — die Sperre hängt am Konto.
+  const andere = await call('/api/session', {
+    method: 'POST',
+    body: JSON.stringify({ email, password: 'ein gutes Kennwort' }),
+  });
+  assert.equal(andere.status, 200);
+});

@@ -28,9 +28,20 @@
  *
  * `state` gegen eine untergeschobene Antwort: ohne ihn kann jemand ein
  * Anmeldeergebnis in einen fremden Browser schieben. PKCE (`code_verifier`)
- * beweist, dass **dieselbe Sitzung** den Code einlöst, die ihn angefordert
- * hat. Beide liegen auf dem **Server** — ein `state`, den der Browser selbst
- * mitbringt, schützt gegen nichts.
+ * beweist, dass **derselbe Server** den Code einlöst, der ihn angefordert
+ * hat. Beide liegen auf dem **Server**.
+ *
+ * Und das war eine Zeit lang die halbe Wahrheit. Hier stand: „ein `state`,
+ * den der Browser selbst mitbringt, schützt gegen nichts." Gegen eine
+ * gefälschte Antwort stimmt das. Aber nichts band den Vorgang an den
+ * BROWSER, der ihn begonnen hat — wer `/api/sso/start` aufrief und die
+ * Rückkehradresse des Anbieters in einen fremden Browser schob, meldete den
+ * Fremden als sich selbst an (Login-CSRF, Audit 12.09.2026, F11). PKCE kann
+ * das nicht sehen: es beweist, wer den Code einlöst, nicht, wer die Antwort
+ * hält. Darum jetzt ein drittes Geheimnis, das NUR im Browser liegt
+ * (`sote_sso`-Keks, zehn Minuten, nur für `/api/sso/`), und sein Hash am
+ * Vorgang. Der Callback braucht `state` aus der Adresse UND das Geheimnis
+ * aus dem Keks.
  */
 
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
@@ -123,21 +134,21 @@ export async function begin(
   cfg: SsoConfig,
   redirectUri: string,
   input: { nextPath?: string; invitationId?: string } = {},
-): Promise<string> {
+): Promise<{ url: string; browser: string }> {
   const doc = await discovery(cfg);
   const state = base64url(randomBytes(32));
   const verifier = base64url(randomBytes(32));
   const challenge = base64url(createHash('sha256').update(verifier).digest());
+  // Das Geheimnis für den Browser — gespeichert wird nur sein Hash, wie beim
+  // Sitzungstoken: wer die Tabelle liest, kann damit keinen Vorgang übernehmen.
+  const browser = base64url(randomBytes(32));
 
-  const pfad =
-    input.nextPath !== undefined && /^\/[A-Za-z0-9/_-]{0,100}$/.test(input.nextPath)
-      ? input.nextPath
-      : null;
+  const pfad = safeNextPath(input.nextPath);
 
   await pool.query(
-    `INSERT INTO sso_flows (state, code_verifier, next_path, invitation_id, expires_at)
-     VALUES ($1,$2,$3,$4, now() + interval '10 minutes')`,
-    [state, verifier, pfad, input.invitationId ?? null],
+    `INSERT INTO sso_flows (state, code_verifier, next_path, invitation_id, browser_hash, expires_at)
+     VALUES ($1,$2,$3,$4,$5, now() + interval '10 minutes')`,
+    [state, verifier, pfad, input.invitationId ?? null, hashOf(browser)],
   );
 
   const q = new URLSearchParams({
@@ -149,7 +160,27 @@ export async function begin(
     code_challenge: challenge,
     code_challenge_method: 'S256',
   });
-  return `${doc.authorization_endpoint}?${q.toString()}`;
+  return { url: `${doc.authorization_endpoint}?${q.toString()}`, browser };
+}
+
+const hashOf = (secret: string): string => createHash('sha256').update(secret).digest('hex');
+
+/**
+ * Wohin nach dem Anmelden — NUR ein Pfad auf diesem Server, oder nichts.
+ *
+ * Die alte Regel war ein Zeichenvorrat: `/` und dann Buchstaben, Ziffern,
+ * `/`, `_`, `-`. Sie hielt `https://boese.example` und `//boese.example`
+ * fern — am Punkt, nicht am Prinzip. `//attacker` hat keinen Punkt und kam
+ * durch, und ein Browser liest `Location: //attacker` als Adresse eines
+ * anderen Hosts (Audit 12.09.2026, F11). Jetzt zwei Regeln statt einer: der
+ * Zeichenvorrat, UND kein zweiter Schrägstrich am Anfang. Als Funktion, damit
+ * der Test die Regel prüft und nicht eine Kopie von ihr.
+ */
+export function safeNextPath(wanted: string | undefined): string | null {
+  if (wanted === undefined) return null;
+  if (!/^\/[A-Za-z0-9/_-]{0,100}$/.test(wanted)) return null;
+  if (wanted.startsWith('//')) return null;
+  return wanted;
 }
 
 /**
@@ -162,20 +193,39 @@ export async function takeFlow(
   pool: Pool,
   state: string,
   now: Date,
+  /**
+   * Das Geheimnis aus dem Browser-Keks — oder `undefined`, wenn der Browser
+   * keinen mitbringt. Ein Vorgang MIT Bindung verlangt es; einer ohne (aus der
+   * Minute vor Migration 0040) kommt einmal ohne durch und ist dann weg.
+   */
+  browser?: string,
 ): Promise<{ verifier: string; nextPath: string | null; invitationId: string | null } | null> {
   if (state.length < 20 || state.length > 200) return null;
   const row = await queryOne<{
     code_verifier: string;
     next_path: string | null;
     invitation_id: string | null;
+    browser_hash: string | null;
   }>(
     pool,
     `DELETE FROM sso_flows
       WHERE state = $1 AND expires_at > $2
-      RETURNING code_verifier, next_path, invitation_id`,
+      RETURNING code_verifier, next_path, invitation_id, browser_hash`,
     [state, now],
   );
   if (row === undefined) return null;
+  /*
+   * Erst gelöscht, dann verglichen — absichtlich. Ein Vorgang, dessen Antwort
+   * im falschen Browser landet, ist verbrannt: ihn stehen zu lassen hiesse,
+   * der richtige Browser könnte ihn noch einlösen, während ein Fremder die
+   * Antwort schon gesehen hat.
+   */
+  if (row.browser_hash !== null) {
+    if (browser === undefined) return null;
+    const a = Buffer.from(row.browser_hash, 'hex');
+    const b = Buffer.from(hashOf(browser), 'hex');
+    if (a.length !== b.length || !timingSafeEqual(a, b)) return null;
+  }
   return {
     verifier: row.code_verifier,
     nextPath: row.next_path,
@@ -225,8 +275,31 @@ export async function whoami(
   });
   if (!info.ok) throw new OutOfOrder('der Anbieter sagt nicht, wer du bist');
   const who = (await info.json()) as Record<string, unknown>;
+  return readWhoami(who);
+}
+
+/**
+ * Aus der Antwort des Anbieters: wer das ist — oder eine Ablehnung.
+ *
+ * Getrennt von `whoami`, damit sich die Regel ohne Anbieter prüfen lässt.
+ *
+ * **`email_verified` muss `true` sein.** Die Adresse ist der Schlüssel, mit
+ * dem `findAccount` beim ersten Mal ein bestehendes Konto findet und das
+ * Subjekt daran bindet. Ein Anbieter, der Adressen ausgibt, die die Person
+ * selbst eingetragen und niemand bestätigt hat, liesse damit jeden ein
+ * fremdes Konto beanspruchen (Audit 12.09.2026, F10). OpenID Connect Core
+ * §5.1 definiert den Claim genau dafür. Fehlt er, ist das keine Bestätigung —
+ * also ebenfalls nein. Wer einen Anbieter hat, der ihn nie liefert, muss den
+ * Anbieter erziehen, nicht den Server.
+ */
+export function readWhoami(who: Record<string, unknown>): Whoami {
   const subject = typeof who['sub'] === 'string' ? who['sub'] : '';
   const email = typeof who['email'] === 'string' ? who['email'].toLowerCase() : '';
+  if (who['email_verified'] !== true) {
+    throw new OutOfOrder(
+      'der Anbieter hat diese Adresse nicht bestätigt — ohne bestätigte Adresse keine Anmeldung',
+    );
+  }
   if (subject === '' || email === '') {
     /*
      * Ohne Adresse geht es nicht, und das ist kein Mangel dieser Umsetzung: ohne

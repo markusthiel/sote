@@ -37,6 +37,7 @@ import { queryOne, queryRows } from './db.js';
 import { create as createProject, NameTaken, update as updateProject } from './projects.js';
 import type { Config } from './env.js';
 import { cookie, fail, json, readJson } from './http/respond.js';
+import { Throttle } from './http/throttle.js';
 import { accounts, deleteAccount, setAdmin } from './accounts.js';
 import { TRASH_DAYS } from './handlers.js';
 import {
@@ -141,6 +142,18 @@ const COOKIE = 'sote_session';
 function sessionCookie(token: string, days: number): string {
   const secure = baseUrl()?.startsWith('https://') === true ? '; Secure' : '';
   return `${COOKIE}=${token}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${days * 86_400}${secure}`;
+}
+
+const SSO_COOKIE = 'sote_sso';
+
+/**
+ * Der Keks, der einen SSO-Vorgang an den Browser bindet, der ihn begonnen hat
+ * (Audit 12.09.2026, F11). `Path=/api/sso` — er hat sonst nirgends etwas zu
+ * suchen. `maxAge = 0` löscht ihn.
+ */
+function ssoCookie(secret: string, maxAge: number): string {
+  const secure = baseUrl()?.startsWith('https://') === true ? '; Secure' : '';
+  return `${SSO_COOKIE}=${secret}; HttpOnly; SameSite=Lax; Path=/api/sso; Max-Age=${maxAge}${secure}`;
 }
 
 /** Das Gegenstück: ein Keks, der sofort abläuft. Dieselben Attribute, sonst löscht er nichts. */
@@ -431,6 +444,36 @@ export function listAccessNeeded(path: string, method: string): 'none' | 'read' 
   return 'write';
 }
 
+/**
+ * Die Drossel für `/api/session` — ein Zähler je Prozess (siehe `throttle.ts`).
+ *
+ * Zehn Fehlversuche je Konto und hundert je Herkunft in fünfzehn Minuten.
+ * Die Herkunft ist grosszügiger, weil hinter einem Reverse Proxy ohne
+ * `SOTE_TRUST_PROXY` alle dieselbe Adresse haben — dann ist sie eine Grenze
+ * gegen das Durchprobieren vieler Konten, keine gegen ein Büro.
+ */
+const loginThrottle = new Throttle({ max: 10, windowMs: 15 * 60_000 });
+const originThrottle = new Throttle({ max: 100, windowMs: 15 * 60_000 });
+
+/**
+ * Woher eine Anfrage kommt.
+ *
+ * `X-Forwarded-For` wird NUR geglaubt, wenn der Betreiber es sagt
+ * (`SOTE_TRUST_PROXY=1`): der Kopf ist vom Aufrufer beschreibbar, und wer
+ * ihn ohne Proxy davor auswertet, lässt jeden seine eigene Herkunft wählen —
+ * und damit die Drossel umgehen. Mit Proxy zählt der LETZTE Eintrag: den hat
+ * der Proxy angehängt, alles davor kann vom Aufrufer stammen.
+ */
+function clientAddress(req: IncomingMessage): string {
+  if (process.env['SOTE_TRUST_PROXY'] === '1') {
+    const xff = req.headers['x-forwarded-for'];
+    const raw = Array.isArray(xff) ? xff.join(',') : (xff ?? '');
+    const letzte = raw.split(',').map((s) => s.trim()).filter((s) => s !== '').pop();
+    if (letzte !== undefined) return letzte;
+  }
+  return req.socket.remoteAddress ?? 'unbekannt';
+}
+
 /** Der Auslieferer wird pro Wurzel einmal gebaut, nicht pro Anfrage. */
 const servers = new Map<string, ReturnType<typeof makeStatic>>();
 function serveFrom(root: string) {
@@ -625,12 +668,34 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
       fail(res, 400, 'missing_fields', 'E-Mail und Kennwort sind nötig');
       return;
     }
+    /*
+     * Die Drossel — VOR scrypt, sonst kostet jeder abgewiesene Versuch
+     * trotzdem die Hash-Arbeit, die er sparen soll (Audit 12.09.2026, F12).
+     * Zwei Schlüssel: das Konto und die Herkunft. 429 mit `Retry-After`, und
+     * ein anderer Grund als 401 — wer gedrosselt ist, soll das wissen und
+     * nicht sein Kennwort für falsch halten.
+     */
+    const kontoKey = `konto:${email.trim().toLowerCase()}`;
+    const herkunftKey = `ip:${clientAddress(req)}`;
+    loginThrottle.sweep(now.getTime());
+    const warte = Math.max(
+      loginThrottle.blockedFor(kontoKey, now.getTime()),
+      originThrottle.blockedFor(herkunftKey, now.getTime()),
+    );
+    if (warte > 0) {
+      res.setHeader('retry-after', String(warte));
+      fail(res, 429, 'too_many_attempts', `zu viele Versuche — in ${Math.ceil(warte / 60)} Minuten wieder`);
+      return;
+    }
     const session = await signIn(ctx.pool, email, password, ctx.config.sessionDays, now);
     if (session === null) {
+      loginThrottle.fail(kontoKey, now.getTime());
+      originThrottle.fail(herkunftKey, now.getTime());
       // Dieselbe Antwort für „gibt es nicht" und „falsches Kennwort".
       fail(res, 401, 'bad_credentials', 'E-Mail oder Kennwort stimmt nicht');
       return;
     }
+    loginThrottle.succeed(kontoKey);
     res.setHeader('set-cookie', sessionCookie(session.token, ctx.config.sessionDays));
     json(res, 200, { ok: true });
     return;
@@ -677,7 +742,7 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
     }
     await sweepFlows(ctx.pool, now);
     const einladung = url.searchParams.get('invitation');
-    let wohin: string;
+    let wohin: { url: string; browser: string };
     try {
       wohin = await begin(ctx.pool, cfg, `${base}/api/sso/callback`, {
         ...(url.searchParams.get('next') === null
@@ -711,7 +776,13 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
     }
     // 302 und keine JSON-Antwort: der Browser soll gehen, nicht etwas anzeigen.
     res.statusCode = 302;
-    res.setHeader('location', wohin);
+    /*
+     * Das Geheimnis, das den Vorgang an DIESEN Browser bindet (F11). Nur für
+     * `/api/sso/`, zehn Minuten wie der Vorgang, `SameSite=Lax` — der
+     * Rücksprung vom Anbieter ist eine Top-Level-Navigation und trägt ihn.
+     */
+    res.setHeader('set-cookie', ssoCookie(wohin.browser, 600));
+    res.setHeader('location', wohin.url);
     res.end();
     return;
   }
@@ -730,7 +801,14 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
       res.setHeader('location', `/?sso=${encodeURIComponent(grund)}`);
       res.end();
     };
-    const flow = await takeFlow(ctx.pool, url.searchParams.get('state') ?? '', now);
+    const flow = await takeFlow(
+      ctx.pool,
+      url.searchParams.get('state') ?? '',
+      now,
+      cookie(req.headers.cookie, SSO_COOKIE),
+    );
+    // Der Vorgang ist eingelöst oder verbrannt — der Keks hat ausgedient.
+    res.setHeader('set-cookie', ssoCookie('', 0));
     const code = url.searchParams.get('code');
     if (flow === null || code === null) {
       // Ein Satz für beides: „kein state" und „schon benutzt" sind für den
@@ -785,7 +863,8 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
     }
     const session = await openSession(ctx.pool, userId, now, ctx.config.sessionDays);
     res.statusCode = 302;
-    res.setHeader('set-cookie', sessionCookie(session.token, ctx.config.sessionDays));
+    // Zwei Kekse in einer Antwort: der Sitzungskeks kommt, der SSO-Keks geht.
+    res.setHeader('set-cookie', [sessionCookie(session.token, ctx.config.sessionDays), ssoCookie('', 0)]);
     res.setHeader('location', flow.nextPath ?? '/');
     res.end();
     return;

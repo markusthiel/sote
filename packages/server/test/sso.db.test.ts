@@ -15,7 +15,7 @@ import type { Pool } from 'pg';
 
 import { makePool, queryOne } from '../src/db.js';
 import { migrate } from '../src/migrate.js';
-import { findAccount, resetDiscovery, ssoConfig, sweepFlows, takeFlow } from '../src/sso.js';
+import { findAccount, readWhoami, resetDiscovery, safeNextPath, ssoConfig, sweepFlows, takeFlow } from '../src/sso.js';
 import { OutOfOrder } from '../src/tasks.js';
 
 const URL_ =
@@ -147,10 +147,70 @@ test('nur ein Pfad wird gemerkt, keine URL', async () => {
    * hier steht, was durchkommt.
    */
   const gut = ['/posteingang', '/p/abc-123', '/'];
-  const schlecht = ['https://boese.example', '//boese.example', 'javascript:alert(1)'];
-  const erlaubt = (p: string): boolean => /^\/[A-Za-z0-9/_-]{0,100}$/.test(p);
-  for (const p of gut) assert.equal(erlaubt(p), true, p);
-  for (const p of schlecht) assert.equal(erlaubt(p), false, p);
+  /*
+   * `//attacker` steht hier, seit der Audit vom 12.09.2026 (F11) ihn fand:
+   * die alte Prüfung hier war eine KOPIE der Regel, und beide liessen ihn
+   * durch — `//boese.example` scheiterte am Punkt, nicht am Prinzip. Ein
+   * Test, der eine Kopie prüft, kann nur beweisen, dass die Kopie stimmt.
+   * Jetzt fragt er die Funktion.
+   */
+  const schlecht = ['https://boese.example', '//boese.example', '//attacker', 'javascript:alert(1)', '/a b'];
+  for (const p of gut) assert.equal(safeNextPath(p), p, p);
+  for (const p of schlecht) assert.equal(safeNextPath(p), null, p);
+  assert.equal(safeNextPath(undefined), null);
+});
+
+test('ein Vorgang gehört zu dem Browser, der ihn begonnen hat', async () => {
+  /*
+   * Audit 12.09.2026, F11 (Login-CSRF). Der Vorgang trägt den Hash eines
+   * Geheimnisses, das nur als Keks im Browser liegt. Ein fremder Browser
+   * bringt ihn nicht mit — und verbrennt den Vorgang dabei.
+   */
+  const s = 'B'.repeat(43);
+  const geheim = 'browser-geheimnis-' + RUN;
+  await pool.query(
+    `INSERT INTO sso_flows (state, code_verifier, browser_hash, expires_at)
+     VALUES ($1,'verifier', encode(sha256($2::bytea), 'hex'), now() + interval '10 minutes')`,
+    [s, geheim],
+  );
+  assert.equal(await takeFlow(pool, s, new Date()), null, 'ohne Keks nicht');
+  assert.equal(await takeFlow(pool, s, new Date(), geheim), null, 'und danach auch nicht mehr — verbrannt');
+
+  const t = 'C'.repeat(43);
+  await pool.query(
+    `INSERT INTO sso_flows (state, code_verifier, browser_hash, expires_at)
+     VALUES ($1,'verifier', encode(sha256($2::bytea), 'hex'), now() + interval '10 minutes')`,
+    [t, geheim],
+  );
+  assert.equal(await takeFlow(pool, t, new Date(), 'falsch'), null, 'mit dem falschen Keks nicht');
+
+  const u = 'D'.repeat(43);
+  await pool.query(
+    `INSERT INTO sso_flows (state, code_verifier, browser_hash, expires_at)
+     VALUES ($1,'verifier', encode(sha256($2::bytea), 'hex'), now() + interval '10 minutes')`,
+    [u, geheim],
+  );
+  assert.notEqual(await takeFlow(pool, u, new Date(), geheim), null, 'mit dem richtigen ja');
+
+  // Ein Vorgang aus der Minute vor Migration 0040 hat keinen Hash — er kommt einmal durch.
+  await flow('E'.repeat(43));
+  assert.notEqual(await takeFlow(pool, 'E'.repeat(43), new Date()), null);
+});
+
+test('eine unbestätigte Adresse meldet niemanden an', async () => {
+  /*
+   * Audit 12.09.2026, F10. Die Adresse ist der Schlüssel, mit dem das erste
+   * Anmelden ein bestehendes Konto findet. Ein Anbieter, der unbestätigte,
+   * selbst gewählte Adressen ausgibt, liesse damit jeden ein fremdes Konto
+   * beanspruchen. `email_verified` fehlt → nein; `false` → nein; `true` → ja.
+   */
+  const basis = { sub: SUB('v'), email: 'Wer@Example.org', name: 'Wer' };
+  assert.throws(() => readWhoami(basis), /nicht bestätigt/);
+  assert.throws(() => readWhoami({ ...basis, email_verified: false }), /nicht bestätigt/);
+  assert.throws(() => readWhoami({ ...basis, email_verified: 'true' }), /nicht bestätigt/);
+  const ok = readWhoami({ ...basis, email_verified: true });
+  assert.equal(ok.email, 'wer@example.org');
+  assert.equal(ok.subject, SUB('v'));
 });
 
 test('alte Zwischenzustände werden weggeräumt', async () => {

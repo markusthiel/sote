@@ -1,0 +1,15 @@
+-- SOTE 0040 — Ein SSO-Vorgang gehört zu EINEM Browser.
+--
+-- `state` und PKCE lagen beide auf dem Server, und der Kopfkommentar in
+-- sso.ts erklärte das als Stärke: ein state, den der Browser mitbringt,
+-- schütze gegen nichts. Halb richtig. Was fehlte, ist die andere Richtung:
+-- nichts band den Vorgang an den Browser, der ihn begonnen hat. Wer
+-- `/api/sso/start` aufrief und die zurückkommende Anbieter-Antwort in
+-- einen fremden Browser schob, meldete den Fremden als sich selbst an
+-- (Login-CSRF; Audit 12.09.2026, F11).
+--
+-- Jetzt trägt jeder Vorgang den Hash eines Geheimnisses, das nur als Keks
+-- im Browser liegt, der begonnen hat. Der Callback muss beides bringen.
+-- Nullable, weil ein Vorgang aus der Minute vor dem Deploy keinen hat --
+-- er läuft in zehn Minuten ab, und `takeFlow` nimmt ihn ohne Bindung an.
+ALTER TABLE sso_flows ADD COLUMN IF NOT EXISTS browser_hash text;
