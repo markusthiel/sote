@@ -187,17 +187,17 @@ test('nach Projekt, auch über die Kurzform', async () => {
 
 test('zwei Schlagwörter verengen — beide müssen dran sein', async () => {
   const ws = await space('s-labels');
-  await add(ws, 'A @eilig @unterwegs');
-  await add(ws, 'B @eilig');
-  assert.deepEqual(await found(ws, '@eilig'), ['A', 'B']);
-  assert.deepEqual(await found(ws, '@eilig @unterwegs'), ['A']);
+  await add(ws, 'A +eilig +unterwegs');
+  await add(ws, 'B +eilig');
+  assert.deepEqual(await found(ws, '+eilig'), ['A', 'B']);
+  assert.deepEqual(await found(ws, '+eilig +unterwegs'), ['A']);
 });
 
 test('nach Zuständigen, mit Vornamen wie in der Erfassung', async () => {
   const ws = await space('s-assignee');
-  await add(ws, 'Rückruf +Markus');
+  await add(ws, 'Rückruf @Markus');
   await add(ws, 'Ohne Zuständigen');
-  assert.deepEqual(await found(ws, '+markus'), ['Rückruf']);
+  assert.deepEqual(await found(ws, '@markus'), ['Rückruf']);
   assert.deepEqual(await found(ws, 'zugewiesen:markus'), ['Rückruf']);
 });
 
@@ -209,7 +209,7 @@ test('ein Gast ist als Zuständiger findbar', async () => {
     'INSERT INTO task_assignees (task_id, guest_key) VALUES ($1,$2)',
     [t.task.id, 'guest:Lars'],
   );
-  assert.deepEqual(await found(ws, '+guest:lars'), ['Dosen zählen']);
+  assert.deepEqual(await found(ws, '@guest:lars'), ['Dosen zählen']);
 });
 
 test('nach Priorität, in beiden Schreibweisen', async () => {

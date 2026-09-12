@@ -87,7 +87,7 @@ export function isTaskLook(value: unknown): boolean {
  *
  * ## Mehrere Schlagwörter: das ERSTE, das etwas sagt
  *
- * Eine Aufgabe kann „@haus" und „@dringend" tragen, und beide könnten eine
+ * Eine Aufgabe kann „+haus" und „+dringend" tragen, und beide könnten eine
  * Farbe haben. Zu mischen wäre Unsinn (aus rot und blau wird kein drittes
  * Schlagwort), und alle anzuzeigen ginge nicht — es ist eine Farbe.
  *

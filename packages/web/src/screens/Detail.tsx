@@ -994,7 +994,7 @@ export function Detail({
               Schlagwörter — jetzt ECHTE.
 
               Die Tabellen stehen seit Migration 0001, der Schnellerfasser schrieb
-              `@wort` seit damals, die Suche filterte darauf. Zu sehen waren sie
+              `+wort` seit damals, die Suche filterte darauf. Zu sehen waren sie
               nirgends und zu ändern gar nicht: wieder die Sorte Lücke, die auch
               Wiederholung und Zuständige hatten — es fehlte der Weg von der
               Oberfläche dorthin.
@@ -1850,7 +1850,7 @@ export function Detail({
                 rows={2}
                 value={commentLine}
                 aria-label="Kommentar schreiben"
-                placeholder="Schreiben — +name nennt jemanden, Enter schickt"
+                placeholder="Schreiben — @name nennt jemanden, Enter schickt"
                 disabled={busy}
                 onChange={(e) => setCommentLine(e.target.value)}
                 onKeyDown={(e) => {
@@ -1876,7 +1876,7 @@ export function Detail({
         
               Es stand als Text da, während die Tabelle, das Recht, die
               Benachrichtigung und die Anzeige fertig waren: geschrieben wurde nur
-              beim Anlegen über `+name` im Schnellerfasser. Ein Feld, das die
+              beim Anlegen über `@name` im Schnellerfasser. Ein Feld, das die
               Oberfläche zeigt und nicht bedienen lässt, ist ein halbes Versprechen.
 
               Gäste stehen in der Liste, sind aber nicht wählbar: sie haben kein

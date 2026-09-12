@@ -52,8 +52,8 @@ test('die Übersicht zählt nur Aufgaben, die nicht im Papierkorb liegen', async
    * falsche steht an der Stelle, an der jemand entscheidet, ob er es wegräumt.
    */
   const ws = await scratch('ws-label-zahl');
-  const a = await createFromLine(pool, { workspaceId: ws, userId, line: 'Eins @haus', now: NOW });
-  await createFromLine(pool, { workspaceId: ws, userId, line: 'Zwei @haus', now: NOW });
+  const a = await createFromLine(pool, { workspaceId: ws, userId, line: 'Eins +haus', now: NOW });
+  await createFromLine(pool, { workspaceId: ws, userId, line: 'Zwei +haus', now: NOW });
 
   let liste = await labelsOfWorkspace(pool, ws);
   assert.equal(liste.length, 1);
@@ -69,7 +69,7 @@ test('umbenennen ändert den Namen an allen Aufgaben auf einmal', async () => {
   const t = await createFromLine(pool, {
     workspaceId: ws,
     userId,
-    line: 'Etwas @unterweg',
+    line: 'Etwas +unterweg',
     now: NOW,
   });
   const liste = await labelsOfWorkspace(pool, ws);
@@ -96,13 +96,13 @@ test('umbenennen auf einen vorhandenen Namen VERSCHMILZT die beiden', async () =
   const alt = await createFromLine(pool, {
     workspaceId: ws,
     userId,
-    line: 'Alt @unterweg',
+    line: 'Alt +unterweg',
     now: NOW,
   });
   const neu = await createFromLine(pool, {
     workspaceId: ws,
     userId,
-    line: 'Neu @unterwegs',
+    line: 'Neu +unterwegs',
     now: NOW,
   });
 
@@ -133,7 +133,7 @@ test('eine Aufgabe, die BEIDE trug, hat danach eines und keinen Fehler', async (
   const t = await createFromLine(pool, {
     workspaceId: ws,
     userId,
-    line: 'Beides @unterweg @unterwegs',
+    line: 'Beides +unterweg +unterwegs',
     now: NOW,
   });
   const liste = await labelsOfWorkspace(pool, ws);
@@ -152,8 +152,8 @@ test('auch eine andere Schreibweise ist ein Zusammenstoß', async () => {
   // `Haus` und `haus` sind dasselbe (Migration 0025). Ohne diesen Fall liefe
   // das Umbenennen in den eindeutigen Index und käme als 500 zurück.
   const ws = await scratch('ws-label-gross');
-  await createFromLine(pool, { workspaceId: ws, userId, line: 'Eins @Haus', now: NOW });
-  await createFromLine(pool, { workspaceId: ws, userId, line: 'Zwei @büro', now: NOW });
+  await createFromLine(pool, { workspaceId: ws, userId, line: 'Eins +Haus', now: NOW });
+  await createFromLine(pool, { workspaceId: ws, userId, line: 'Zwei +büro', now: NOW });
   const liste = await labelsOfWorkspace(pool, ws);
   const buero = liste.find((l) => l.name === 'büro')!;
   const out = await renameLabel(pool, ws, buero.id, 'haus');
@@ -166,9 +166,9 @@ test('auch eine andere Schreibweise ist ein Zusammenstoß', async () => {
 
 test('ein unbrauchbarer Name wird abgelehnt, mit Grund', async () => {
   const ws = await scratch('ws-label-schlecht');
-  await createFromLine(pool, { workspaceId: ws, userId, line: 'Etwas @haus', now: NOW });
+  await createFromLine(pool, { workspaceId: ws, userId, line: 'Etwas +haus', now: NOW });
   const liste = await labelsOfWorkspace(pool, ws);
-  for (const name of ['zu hause', '', '@haus']) {
+  for (const name of ['zu hause', '', '+haus']) {
     await assert.rejects(
       () => renameLabel(pool, ws, liste[0]!.id, name),
       (e: Error) => e instanceof LabelTrouble,
@@ -182,7 +182,7 @@ test('wegräumen nimmt es von allen Aufgaben', async () => {
   const t = await createFromLine(pool, {
     workspaceId: ws,
     userId,
-    line: 'Etwas @weg @bleibt',
+    line: 'Etwas +weg +bleibt',
     now: NOW,
   });
   const liste = await labelsOfWorkspace(pool, ws);
@@ -203,7 +203,7 @@ test('ein fremdes Schlagwort lässt sich weder umbenennen noch wegräumen', asyn
    */
   const meins = await scratch('ws-label-meins');
   const fremd = await scratch('ws-label-fremd');
-  await createFromLine(pool, { workspaceId: fremd, userId, line: 'Dort @geheim', now: NOW });
+  await createFromLine(pool, { workspaceId: fremd, userId, line: 'Dort +geheim', now: NOW });
   const dort = await labelsOfWorkspace(pool, fremd);
 
   await assert.rejects(

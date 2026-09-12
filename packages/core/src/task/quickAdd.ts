@@ -20,8 +20,8 @@
  *
  * Zeichen:
  *   `#projekt`   Projekt
- *   `@schlagwort` Schlagwort, mehrfach
- *   `+person`    Zuweisung, mehrfach
+ *   `@person`     Zuweisung, mehrfach
+ *   `+schlagwort` Schlagwort, mehrfach
  *   `!` `!!` `!!!` bzw. `p1`–`p4`  Priorität
  *   `~90` `~2h` `~1:30`  Dauer
  *
@@ -282,17 +282,33 @@ function parseInUtc(input: string, options: QuickAddOptions): QuickAdd {
       r.take('label', at, end);
     }
   }
+  /*
+   * `@` IST EINE PERSON, `+` EIN SCHLAGWORT — und das war einmal umgekehrt.
+   *
+   * GEMELDET: „Dann lass uns das bitte umdrehen, + für Schlagwörter und @ für
+   * Personen, das ist gängiger."
+   *
+   * Stimmt, und der Beleg dafür steht in der Meldung davor: ich hatte beim
+   * Bauen der Nennungen von selbst `@` für eine Person geschrieben — ohne
+   * nachzusehen, weil es überall sonst so ist. Wer eine Schreibweise aus
+   * Gewohnheit falsch errät, errät sie auch im Gebrauch falsch.
+   *
+   * Die Zeichen stehen nirgends gespeichert: sie werden beim Lesen einer Zeile
+   * erkannt und danach als Schlagwort oder Zuständigkeit abgelegt. Ein
+   * Vertauschen kostet darum keine Wanderung über alte Daten — nur diese
+   * Datei, die Tests und die Sätze, die es erklären.
+   */
   for (const m of input.matchAll(/(^|\s)@([^\s#@+!]+)/g)) {
-    const at = m.index + m[1]!.length;
-    if (!r.free(at, at + 1 + m[2]!.length)) continue;
-    labels.push(m[2]!);
-    r.take('label', at, at + 1 + m[2]!.length);
-  }
-  for (const m of input.matchAll(/(^|\s)\+([^\s#@+!]+)/g)) {
     const at = m.index + m[1]!.length;
     if (!r.free(at, at + 1 + m[2]!.length)) continue;
     assignees.push(m[2]!);
     r.take('assignee', at, at + 1 + m[2]!.length);
+  }
+  for (const m of input.matchAll(/(^|\s)\+([^\s#@+!]+)/g)) {
+    const at = m.index + m[1]!.length;
+    if (!r.free(at, at + 1 + m[2]!.length)) continue;
+    labels.push(m[2]!);
+    r.take('label', at, at + 1 + m[2]!.length);
   }
   /*
    * Die Dauer trägt eine Tilde: `~90`, `~2h`, `~1:30`.

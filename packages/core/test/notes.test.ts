@@ -7,39 +7,39 @@ import { test } from 'node:test';
 
 import { channelDefaults, mentionsIn, NOTE_KINDS } from '../src/task/notes.js';
 
-test('eine Nennung ist `+name`, wie beim Zuweisen', () => {
+test('eine Nennung ist `@name`, wie beim Zuweisen', () => {
   /*
-   * GEMELDET: „Wenn ich @Name eingebe, gibt er ein Schlagwort ein anstatt
-   * einen User."
+   * GEMELDET, zweimal: „Wenn ich @Name eingebe, gibt er ein Schlagwort ein
+   * anstatt einen User." -- und danach: „Dann lass uns das bitte umdrehen, +
+   * fuer Schlagwoerter und @ fuer Personen, das ist gaengiger."
    *
-   * Weil `@` in SOTE ein SCHLAGWORT ist. Der Schnellerfasser hat drei Zeichen:
-   * `#` Projekt, `@` Schlagwort, `+` Person. Ich hatte `+` mit `@`
-   * verwechselt und dabei behauptet, es sei „dieselbe Schreibweise wie im
-   * Schnellerfasser" -- das Vokabular stand einen Ordner weiter.
+   * Also `@` fuer eine Person, ueberall. Dass ich sie beim ersten Bauen von
+   * selbst so geschrieben hatte, ist der beste Beleg dafuer, dass es die
+   * erwartete Schreibweise ist.
    */
-  assert.deepEqual(mentionsIn('kannst du das +markus uebernehmen?'), ['markus']);
-  assert.deepEqual(mentionsIn('+anna +bernd — bitte'), ['anna', 'bernd']);
+  assert.deepEqual(mentionsIn('kannst du das @markus uebernehmen?'), ['markus']);
+  assert.deepEqual(mentionsIn('@anna @bernd — bitte'), ['anna', 'bernd']);
 });
 
 test('ein Schlagwort ist KEINE Nennung', () => {
-  // Sonst haette jedes `@unterwegs` in einem Kommentar jemanden gesucht.
-  assert.deepEqual(mentionsIn('das ist @unterwegs und @wichtig'), []);
-  assert.deepEqual(mentionsIn('schreib an markus@example.org'), []);
+  // Schlagwoerter tragen jetzt `+`, also sucht ein `+unterwegs` niemanden.
+  assert.deepEqual(mentionsIn('das ist +unterwegs und +wichtig'), []);
 });
 
-test('eine Rechnung ist keine Nennung', () => {
-  // „1+2" waere sonst eine Nennung von „2". Vor dem Zeichen muss ein
+test('eine Mailadresse ist keine Nennung', () => {
+  // `a@b.de` waere sonst eine Nennung von „b.de". Vor dem Zeichen muss ein
   // Zeilenanfang oder ein Leerraum stehen.
-  assert.deepEqual(mentionsIn('das kostet 1+2 Stunden'), []);
+  assert.deepEqual(mentionsIn('schreib an markus@example.org'), []);
+  assert.deepEqual(mentionsIn('a@b.de und @echt'), ['echt']);
 });
 
 test('derselbe Name zaehlt einmal', () => {
   // Sonst bekaeme jemand zwei Meldungen fuer einen Satz.
-  assert.deepEqual(mentionsIn('+markus, +Markus, +MARKUS'), ['markus']);
+  assert.deepEqual(mentionsIn('@markus, @Markus, @MARKUS'), ['markus']);
 });
 
 test('ein Punkt am Ende gehoert zum Satz, nicht zum Namen', () => {
-  assert.deepEqual(mentionsIn('frag +markus.'), ['markus']);
+  assert.deepEqual(mentionsIn('frag @markus.'), ['markus']);
 });
 
 test('je persoenlicher, desto lauter', () => {

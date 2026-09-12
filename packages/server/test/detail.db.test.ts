@@ -240,7 +240,7 @@ test('eine fremde Aufgabe nimmt keinen Kommentar an', async () => {
 
 test('die Detailspalte nennt die Zuständigen mit Namen', async () => {
   const { workspaceId } = await scratch('d-assign');
-  const t = await add(workspaceId, 'Rückruf +Markus');
+  const t = await add(workspaceId, 'Rückruf @Markus');
   const d = await detail(pool, t.task.id, workspaceId);
   assert.equal(d.assignees.length, 1);
   assert.equal(d.assignees[0]!.name, 'Markus Thiel');
@@ -277,12 +277,12 @@ test('die Detailspalte nennt den Projektnamen, damit die Spalte allein lesbar is
   assert.equal(d.projectName, 'Haus');
 });
 
-test('+vorname genügt, und bei zwei Treffern wird nicht geraten', async () => {
+test('@vorname genügt, und bei zwei Treffern wird nicht geraten', async () => {
   // „+Markus Thiel" gibt es nicht: ein Leerzeichen beendet das Zeichen. Also
   // muss der Vorname reichen — und wenn zwei Leute so heißen, ist das eine
   // andere Nachricht als „gibt es hier nicht".
   const { workspaceId } = await scratch('d-firstname');
-  const one = await add(workspaceId, 'Rückruf +Markus');
+  const one = await add(workspaceId, 'Rückruf @Markus');
   assert.deepEqual(one.unknownAssignees, []);
   assert.deepEqual(one.ambiguousAssignees, []);
   assert.equal((await detail(pool, one.task.id, workspaceId)).assignees.length, 1);
@@ -303,7 +303,7 @@ test('+vorname genügt, und bei zwei Treffern wird nicht geraten', async () => {
     [workspaceId, other!.id, role!.id],
   );
 
-  const two = await add(workspaceId, 'Rückruf zwei +Markus');
+  const two = await add(workspaceId, 'Rückruf zwei @Markus');
   assert.deepEqual(two.ambiguousAssignees, ['Markus']);
   assert.deepEqual(two.unknownAssignees, []);
   assert.equal(
@@ -313,7 +313,7 @@ test('+vorname genügt, und bei zwei Treffern wird nicht geraten', async () => {
   );
 
   // Der volle Name trifft weiterhin eindeutig.
-  const exact = await add(workspaceId, 'Rückruf drei +markus.berg');
+  const exact = await add(workspaceId, 'Rückruf drei @markus.berg');
   assert.deepEqual(exact.unknownAssignees, ['markus.berg']);
 });
 
@@ -342,7 +342,7 @@ test('eine Nennung meldet gerichtet — und nicht doppelt', async () => {
   );
 
   const t = await add(workspaceId, 'Etwas mit Nennung');
-  await addComment(pool, t.task.id, workspaceId, userId, 'bitte +anna ansehen');
+  await addComment(pool, t.task.id, workspaceId, userId, 'bitte @anna ansehen');
 
   const meldungen = await queryRows<{ kind: string }>(
     pool,

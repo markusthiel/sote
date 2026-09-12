@@ -389,7 +389,7 @@ export async function createFromLine(pool: Pool, input: CreateFromLine): Promise
      *
      * `labels` ist keine Spalte, sondern `labels_of(id)` — das `RETURNING` des
      * INSERT wertet sie aus, BEVOR die Zuordnungen geschrieben sind, und liefert
-     * darum immer `[]`. Der Test „@wort beim Anlegen steht an der Zeile" hat
+     * darum immer `[]`. Der Test „+wort beim Anlegen steht an der Zeile" hat
      * genau das gefunden; im Browser wäre es „die Etiketten erscheinen erst
      * beim Neuladen" gewesen, also die Sorte Fehler, die man dem Netz
      * zuschreibt.
@@ -830,7 +830,7 @@ export class OutOfOrder extends Error {
 /**
  * Schlagwörter an eine Aufgabe hängen — die EINE Stelle, die das tut.
  *
- * Zwei Aufrufer: das Anlegen aus einer Zeile (`@wort` im Schnellerfasser) und
+ * Zwei Aufrufer: das Anlegen aus einer Zeile (`+wort` im Schnellerfasser) und
  * das nachträgliche Setzen aus der Oberfläche. Die erste Fassung hatte die
  * Einfügung nur im Anlegen, und sie verglich `ON CONFLICT (workspace_id, name)`
  * — also Zeichen für Zeichen. Ein zweiter Aufrufer mit derselben Zeile wäre ein
@@ -845,7 +845,7 @@ export class OutOfOrder extends Error {
  *   Liste, die man nur ergänzen kann, hat keinen Weg zurück.
  *
  * GEFUNDEN WIRD OHNE RÜCKSICHT AUF GROSS UND KLEIN, angelegt wird in der
- * getippten Schreibweise. Wer `@Haus` schreibt, wo `@haus` schon steht, bekommt
+ * getippten Schreibweise. Wer `+Haus` schreibt, wo `+haus` schon steht, bekommt
  * `haus` — die erste Schreibweise ist die, die jemand bewusst gewählt hat, und
  * der eindeutige Index aus 0025 lässt die zweite ohnehin nicht daneben.
  */

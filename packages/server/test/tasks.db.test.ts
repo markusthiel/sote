@@ -141,7 +141,7 @@ test('eine unbekannte Person wird gemeldet, eine bekannte zugewiesen', async () 
   const out = await createFromLine(pool, {
     workspaceId,
     userId,
-    line: 'Rückruf +Markus +niemand',
+    line: 'Rückruf @Markus @niemand',
     now: NOW,
   });
   assert.deepEqual(out.unknownAssignees, ['niemand']);
@@ -155,8 +155,8 @@ test('eine unbekannte Person wird gemeldet, eine bekannte zugewiesen', async () 
 
 test('Schlagwörter entstehen einmal und werden wiederverwendet', async () => {
   const { workspaceId } = await scratch('ws-labels');
-  await createFromLine(pool, { workspaceId, userId, line: 'A @unterwegs', now: NOW });
-  await createFromLine(pool, { workspaceId, userId, line: 'B @unterwegs', now: NOW });
+  await createFromLine(pool, { workspaceId, userId, line: 'A +unterwegs', now: NOW });
+  await createFromLine(pool, { workspaceId, userId, line: 'B +unterwegs', now: NOW });
   const n = await queryOne<{ n: string }>(
     pool,
     'SELECT count(*) AS n FROM labels WHERE workspace_id = $1',
@@ -581,12 +581,12 @@ test('jede Ansicht liefert die Dauer mit', async () => {
 
 /* ── Schlagwörter ──────────────────────────────────────────────────────── */
 
-test('@wort beim Anlegen wird ein Schlagwort und steht an der Zeile', async () => {
+test('+wort beim Anlegen wird ein Schlagwort und steht an der Zeile', async () => {
   const { workspaceId } = await scratch('ws-tag');
   const out = await createFromLine(pool, {
     workspaceId,
     userId,
-    line: 'Schrauben kaufen @baumarkt @unterwegs',
+    line: 'Schrauben kaufen +baumarkt +unterwegs',
     now: NOW,
   });
   assert.equal(out.task.title, 'Schrauben kaufen');
@@ -602,7 +602,7 @@ test('ohne Schlagwörter steht ein leeres Array und nicht NULL', async () => {
   assert.deepEqual(out.task.labels, []);
 });
 
-test('@Haus und @haus sind EIN Schlagwort, die erste Schreibweise gilt', async () => {
+test('+Haus und +haus sind EIN Schlagwort, die erste Schreibweise gilt', async () => {
   /*
    * Der Fehler, den Migration 0025 abstellt: `ON CONFLICT (workspace_id,
    * name)` verglich Zeichen für Zeichen, die Suche verglich `lower(name)`.
@@ -613,13 +613,13 @@ test('@Haus und @haus sind EIN Schlagwort, die erste Schreibweise gilt', async (
   const erst = await createFromLine(pool, {
     workspaceId,
     userId,
-    line: 'Eins @Haus',
+    line: 'Eins +Haus',
     now: NOW,
   });
   const dann = await createFromLine(pool, {
     workspaceId,
     userId,
-    line: 'Zwei @haus',
+    line: 'Zwei +haus',
     now: NOW,
   });
   assert.deepEqual(erst.task.labels, ['Haus']);
@@ -672,14 +672,14 @@ test('die Antwort auf einen Patch trägt den NEUEN Stand', async () => {
    * nicht gespeichert“.
    */
   const { workspaceId } = await scratch('ws-tag-antwort');
-  const out = await createFromLine(pool, { workspaceId, userId, line: 'Etwas @alt', now: NOW });
+  const out = await createFromLine(pool, { workspaceId, userId, line: 'Etwas +alt', now: NOW });
   const nachher = await patch(pool, out.task.id, workspaceId, { labels: ['neu'] });
   assert.deepEqual(nachher.labels, ['neu']);
 });
 
 test('ein Patch ohne Schlagwörter lässt sie stehen', async () => {
   const { workspaceId } = await scratch('ws-tag-unberuehrt');
-  const out = await createFromLine(pool, { workspaceId, userId, line: 'Etwas @haus', now: NOW });
+  const out = await createFromLine(pool, { workspaceId, userId, line: 'Etwas +haus', now: NOW });
   const nachher = await patch(pool, out.task.id, workspaceId, { priority: 1 });
   assert.deepEqual(nachher.labels, ['haus']);
 });
@@ -713,13 +713,13 @@ test('Schlagwörter gelten je Arbeitsbereich', async () => {
   const eins = await createFromLine(pool, {
     workspaceId: a.workspaceId,
     userId,
-    line: 'Hier @gemeinsam',
+    line: 'Hier +gemeinsam',
     now: NOW,
   });
   const zwei = await createFromLine(pool, {
     workspaceId: b.workspaceId,
     userId,
-    line: 'Dort @gemeinsam',
+    line: 'Dort +gemeinsam',
     now: NOW,
   });
   assert.deepEqual(eins.task.labels, ['gemeinsam']);
@@ -744,7 +744,7 @@ test('jede Ansicht liefert die Schlagwörter mit', async () => {
   const out = await createFromLine(pool, {
     workspaceId,
     userId,
-    line: 'Ablage sortieren heute @büro',
+    line: 'Ablage sortieren heute +büro',
     now: NOW,
   });
   const rows = await list(pool, 'today', workspaceId, NOW);
@@ -755,7 +755,7 @@ test('jede Ansicht liefert die Schlagwörter mit', async () => {
   // Und der Vorrat für das Feld: was es hier schon gibt.
   assert.deepEqual(d.known, ['büro']);
 
-  const gefunden = await search(pool, workspaceId, '@büro', NOW);
+  const gefunden = await search(pool, workspaceId, '+büro', NOW);
   assert.deepEqual(gefunden.tasks.find((r) => r.id === out.task.id)?.labels, ['büro']);
 });
 
@@ -764,10 +764,10 @@ test('die Suche findet ein Schlagwort in jeder Schreibweise', async () => {
   const out = await createFromLine(pool, {
     workspaceId,
     userId,
-    line: 'Termin @Arzt',
+    line: 'Termin +Arzt',
     now: NOW,
   });
-  for (const q of ['@Arzt', '@arzt', '@ARZT']) {
+  for (const q of ['+Arzt', '+arzt', '+ARZT']) {
     const gefunden = await search(pool, workspaceId, q, NOW);
     assert.equal(gefunden.tasks.some((r) => r.id === out.task.id), true, q);
   }

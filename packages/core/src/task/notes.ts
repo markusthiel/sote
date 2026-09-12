@@ -61,7 +61,7 @@ export const NOTE_SAYS: Record<NoteKind, { says: string; hint: string }> = {
   },
   mentioned: {
     says: 'Mein Name genannt',
-    hint: 'Jemand schreibt +mich in einen Kommentar',
+    hint: 'Jemand schreibt @mich in einen Kommentar',
   },
   replied: {
     says: 'Antwort auf mich',
@@ -95,19 +95,19 @@ export const isNoteKind = (value: unknown): value is NoteKind =>
   typeof value === 'string' && (NOTE_KINDS as readonly string[]).includes(value);
 
 /**
- * Wer in einem Text genannt wird — mit `+name`.
+ * Wer in einem Text genannt wird — mit `@name`.
  *
- * GEMELDET: „Wenn ich @Name eingebe, gibt er ein Schlagwort ein anstatt einen
- * User."
+ * GEMELDET, zweimal: „Wenn ich @Name eingebe, gibt er ein Schlagwort ein
+ * anstatt einen User." — und danach: „Dann lass uns das bitte umdrehen, + für
+ * Schlagwörter und @ für Personen, das ist gängiger."
  *
- * Weil `@` in SOTE ein SCHLAGWORT ist. Der Schnellerfasser hat drei Zeichen:
- * `#` für das Projekt, `@` für ein Schlagwort, `+` für eine Person. Ich hatte
- * beim Bauen der Nennungen `@` genommen — aus Gewohnheit von anderswo, und mit
- * der Begründung, es sei „dieselbe Schreibweise wie im Schnellerfasser". Das
- * war schlicht falsch, und das Vokabular stand einen Ordner weiter.
+ * Ich hatte hier zuerst `@` geschrieben, weil es überall sonst eine Person
+ * meint; SOTE las es damals als Schlagwort. Statt meine Nennung anzupassen,
+ * ist jetzt die SPRACHE umgedreht — und das ist die bessere Richtung: wer eine
+ * Schreibweise aus Gewohnheit falsch errät, errät sie auch im Gebrauch falsch.
  *
- * Jetzt `+markus`, wie beim Zuweisen. Ein Zeichen, eine Bedeutung: `+` heisst
- * überall „diese Person".
+ * `@markus` nennt also eine Person, hier wie beim Zuweisen. Ein Zeichen, eine
+ * Bedeutung.
  *
  * Gibt die NAMEN zurück, nicht die Konten: wer wirklich gemeint ist, weiss nur
  * der Server, und zwar anhand der Mitglieder dieses Arbeitsbereichs. Ein Name,
@@ -115,11 +115,11 @@ export const isNoteKind = (value: unknown): value is NoteKind =>
  * es nicht gibt.
  *
  * Vor dem Zeichen muss ein Zeilenanfang oder ein Leerraum stehen: sonst würde
- * „1+2" zu einer Nennung von „2".
+ * eine Mailadresse wie `a@b.de` zu einer Nennung von „b.de".
  */
 export function mentionsIn(text: string): string[] {
   const namen = new Set<string>();
-  for (const m of text.matchAll(/(^|\s)\+([\p{L}\p{N}_.-]{2,60})/gu)) {
+  for (const m of text.matchAll(/(^|\s)@([\p{L}\p{N}_.-]{2,60})/gu)) {
     namen.add(m[2]!.replace(/[.]+$/, '').toLowerCase());
   }
   return [...namen];

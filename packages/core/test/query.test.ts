@@ -27,7 +27,9 @@ test('Freitext bleibt Freitext', () => {
 
 test('die Zeichen aus der Schnellerfassung gelten auch hier', () => {
   // Wer #haus tippt, um etwas anzulegen, tippt #haus, um es zu finden.
-  const q = parseTaskQuery('messen #haus @unterwegs +anna !!');
+  // `@` ist eine Person, `+` ein Schlagwort — die Suche spricht dieselbe
+  // Sprache wie die Erfassung.
+  const q = parseTaskQuery('messen #haus +unterwegs @anna !!');
   assert.equal(q.text, 'messen');
   assert.deepEqual(q.projects, ['haus']);
   assert.deepEqual(q.labels, ['unterwegs']);
@@ -56,7 +58,7 @@ test('ein Wert in Anführungszeichen darf Leerzeichen haben', () => {
 });
 
 test('mehrere Werte derselben Facette stehen nebeneinander', () => {
-  const q = parseTaskQuery('@eilig @unterwegs prio:1 prio:2');
+  const q = parseTaskQuery('+eilig +unterwegs prio:1 prio:2');
   assert.deepEqual(q.labels, ['eilig', 'unterwegs']);
   assert.deepEqual(q.priorities, [1, 2]);
 });
@@ -65,7 +67,7 @@ test('ein Zeichen mit Doppelpunkt bleibt ein Zeichen', () => {
   // `+guest:lars` ist eine Zuweisung an einen Gast und keine unbekannte
   // Facette namens `+guest`. Die erste Fassung prüfte den Doppelpunkt vorher,
   // und die Suche nach einem Gast fand nichts.
-  const q = parseTaskQuery('+guest:lars dosen');
+  const q = parseTaskQuery('@guest:lars dosen');
   assert.deepEqual(q.assignees, ['guest:lars']);
   assert.equal(q.text, 'dosen');
 });
@@ -89,7 +91,7 @@ test('ein unbekannter Wert einer bekannten Facette bleibt Text', () => {
 });
 
 test('read nennt jede gelesene Facette für die Chips', () => {
-  const q = parseTaskQuery('#haus @eilig +anna !!! ist:erledigt frist:heute');
+  const q = parseTaskQuery('#haus +eilig @anna !!! ist:erledigt frist:heute');
   assert.deepEqual(q.read, [
     { facet: 'projekt', value: 'haus' },
     { facet: 'schlagwort', value: 'eilig' },

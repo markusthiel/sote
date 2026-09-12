@@ -126,11 +126,14 @@ export function parseTaskQuery(input: string): TaskQuery {
         projects.push(value);
         read.push({ facet: 'projekt', value });
       } else if (first === '@') {
-        labels.push(value);
-        read.push({ facet: 'schlagwort', value });
-      } else {
+        /* `@` ist eine PERSON — seit dem Umdrehen der Zeichen, und die Suche
+           spricht dieselbe Sprache wie die Erfassung. Alles andere waere ein
+           Feld, in dem dasselbe Zeichen etwas anderes bedeutet. */
         assignees.push(value);
         read.push({ facet: 'zugewiesen', value });
+      } else {
+        labels.push(value);
+        read.push({ facet: 'schlagwort', value });
       }
       continue;
     }

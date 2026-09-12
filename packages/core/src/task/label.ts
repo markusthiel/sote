@@ -11,8 +11,8 @@
  *
  * Ein Schlagwort ist EIN Wort ohne Leerzeichen, und das ist keine
  * Bequemlichkeit des Parsers, sondern die Bedingung dafür, dass es auffindbar
- * bleibt: geschrieben wird es als `@unterwegs`, gesucht wird es als
- * `@unterwegs`, und ein Leerzeichen beendet beide. Ein Schlagwort „zu hause"
+ * bleibt: geschrieben wird es als `+unterwegs`, gesucht wird es als
+ * `+unterwegs`, und ein Leerzeichen beendet beide. Ein Schlagwort „zu hause"
  * wäre eines, das man mit derselben Sprache nicht wiederfindet, in der man es
  * angelegt hat — und die Suche würde stattdessen nach `@zu` fragen und `hause`
  * als Wort im Titel lesen.
@@ -26,8 +26,8 @@
  *
  * `sameLabel` ist der Vergleich, den ALLE Stellen benutzen: die Suche tat es
  * schon (`lower(l.name)`), das Anlegen nicht — `ON CONFLICT (workspace_id,
- * name)` ist ein Vergleich Zeichen für Zeichen. Wer `@Haus` tippte, bekam ein
- * zweites Schlagwort neben `@haus`, und beide sahen in einer Liste gleich aus.
+ * name)` ist ein Vergleich Zeichen für Zeichen. Wer `+Haus` tippte, bekam ein
+ * zweites Schlagwort neben `+haus`, und beide sahen in einer Liste gleich aus.
  * Die Schreibweise, die zuerst da war, bleibt stehen; jede spätere Nennung
  * findet sie wieder.
  */
@@ -47,7 +47,7 @@ export const MAX_LABEL = 40;
  *
  * - Leeres.
  * - Etwas mit Leerzeichen darin — siehe oben.
- * - Etwas, das mit einem der Zeichen der Erfassung beginnt (`#@+!~`): `@@haus`
+ * - Etwas, das mit einem der Zeichen der Erfassung beginnt (`#@+!~`): `++haus`
  *   entstünde aus einem verrutschten Finger, und `@#haus` sähe in der Zeile aus
  *   wie ein Projekt.
  * - Länger als `MAX_LABEL`.

@@ -36,8 +36,8 @@ test('„Filter reinigen jeden zweiten Dienstag 8 Uhr #haus !!"', () => {
   assert.equal(iso(q.planned), iso(utc(2026, 9, 8, 8, 0)));
 });
 
-test('„Rückruf Steuerberater Donnerstag bis Freitag +anna"', () => {
-  const q = parse('Rückruf Steuerberater Donnerstag bis Freitag +anna');
+test('„Rückruf Steuerberater Donnerstag bis Freitag @anna"', () => {
+  const q = parse('Rückruf Steuerberater Donnerstag bis Freitag @anna');
   assert.equal(q.title, 'Rückruf Steuerberater');
   assert.equal(iso(q.planned), iso(utc(2026, 9, 10)));
   assert.equal(iso(q.due), iso(utc(2026, 9, 11)));
@@ -93,7 +93,15 @@ test('25 Uhr ist keine Uhrzeit und bleibt im Titel', () => {
 /* ── Zeichen ───────────────────────────────────────────────────────────── */
 
 test('Schlagwörter und Zuweisungen sind Mengen, das Projekt ist eines', () => {
-  const q = parse('Kabel kaufen @unterwegs @baumarkt +anna +lars #haus');
+  /*
+   * GEMELDET: „Lass uns das bitte umdrehen, + fuer Schlagwoerter und @ fuer
+   * Personen, das ist gaengiger."
+   *
+   * Seitdem: `@` eine Person, `+` ein Schlagwort. Die Zeichen stehen nirgends
+   * gespeichert -- sie werden beim Lesen erkannt --, also kostete das
+   * Umdrehen keine Wanderung ueber alte Daten.
+   */
+  const q = parse('Kabel kaufen +unterwegs +baumarkt @anna @lars #haus');
   assert.equal(q.title, 'Kabel kaufen');
   assert.deepEqual(q.labels, ['unterwegs', 'baumarkt']);
   assert.deepEqual(q.assignees, ['anna', 'lars']);
