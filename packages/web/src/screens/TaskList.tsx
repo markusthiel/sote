@@ -465,7 +465,7 @@ export function TaskList({
         );
       } else if (out.ambiguousAssignees.length > 0) {
         setNotice(
-          `${out.ambiguousAssignees.join(', ')} passt auf mehrere Leute — die Aufgabe ist niemandem zugewiesen.`,
+          `${out.ambiguousAssignees.join(', ')} passt auf mehrere Leute — die Aufgabe ist niemandem zugewiesen. Tipp den ganzen Namen oder die Adresse, oder weis sie im Detail zu.`,
         );
       } else if (out.unknownAssignees.length > 0) {
         setNotice(

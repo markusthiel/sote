@@ -332,17 +332,30 @@ export async function createFromLine(pool: Pool, input: CreateFromLine): Promise
       // Vier Schreibweisen, weil niemand „+Markus Thiel" tippt: ein
       // Leerzeichen beendet das Zeichen, also muss der Vorname reichen. Und
       // der Teil vor dem @, weil Adressen kürzer sind als Namen.
-      const people = await queryRows<{ id: string }>(
+      //
+      // In ZWEI STUFEN. Der ganze Name oder die ganze Adresse ist ein Treffer,
+      // der Vorname oder der Teil vor dem @ nur ein Anhalt. Vorher standen
+      // alle vier in einem OR: wer „Markus" hieß, war nicht mehr zu treffen,
+      // sobald ein zweiter Markus dazukam — auch mit seinem vollen Namen,
+      // denn der zweite passte auf den Vornamen. Genau eine Person, die
+      // GENAU heißt, was getippt wurde, gewinnt jetzt vor allen, die nur so
+      // anfangen. Erst wenn niemand genau passt, zählt der Anhalt.
+      const treffer = await queryRows<{ id: string; genau: boolean }>(
         client,
-        `SELECT u.id FROM users u
+        `SELECT u.id,
+                (lower(u.display_name) = lower($2) OR lower(u.email) = lower($2)) AS genau
+           FROM users u
            JOIN workspace_members m ON m.user_id = u.id AND m.workspace_id = $1
           WHERE lower(u.display_name) = lower($2)
              OR lower(u.email) = lower($2)
              OR lower(split_part(u.display_name, ' ', 1)) = lower($2)
              OR lower(split_part(u.email, '@', 1)) = lower($2)
-          LIMIT 2`,
+          ORDER BY genau DESC
+          LIMIT 10`,
         [input.workspaceId, name],
       );
+      const genau = treffer.filter((t) => t.genau);
+      const people = genau.length > 0 ? genau : treffer;
       if (people.length === 1) {
         await client.query(
           'INSERT INTO task_assignees (task_id, user_id) VALUES ($1,$2) ON CONFLICT DO NOTHING',
@@ -983,11 +996,17 @@ export interface Patch {
   readonly labels?: readonly string[];
 }
 
+/**
+ * @param actorId Wer die Änderung macht — damit ein neu Zuständiger davon
+ *   erfährt und der, der sich selbst einträgt, nicht. `null` ist ein Gast
+ *   oder ein Aufrufer ohne Person; der darf hier ohnehin niemanden zuweisen.
+ */
 export async function patch(
   pool: Pool,
   taskId: string,
   workspaceId: string,
   fields: Patch,
+  actorId: string | null = null,
 ): Promise<TaskRow> {
   const sets: string[] = [];
   const params: unknown[] = [taskId, workspaceId];
@@ -1145,12 +1164,48 @@ export async function patch(
           throw new OutOfOrder('nur Mitglieder dieses Arbeitsbereichs können zuständig sein');
         }
       }
+      /*
+       * Wer VORHER schon zuständig war, bekommt keine Meldung.
+       *
+       * Die Liste kommt ganz (siehe `Patch.assignees`), also steht in ihr auch,
+       * wer bleibt. Ohne den Vergleich hieße jedes Umsortieren der Zuständigen
+       * für alle „Dir zugewiesen" — und eine Meldung, die bei jedem Speichern
+       * kommt, ist eine, die niemand mehr liest.
+       */
+      const vorher = new Set(
+        (
+          await client.query<{ user_id: string }>(
+            'SELECT user_id FROM task_assignees WHERE task_id = $1',
+            [taskId],
+          )
+        ).rows.map((r) => r.user_id),
+      );
       await client.query('DELETE FROM task_assignees WHERE task_id = $1', [taskId]);
       for (const userId of wanted) {
         await client.query(
           'INSERT INTO task_assignees (task_id, user_id) VALUES ($1,$2) ON CONFLICT DO NOTHING',
           [taskId, userId],
         );
+      }
+      /*
+       * Derselbe Weg wie beim Anlegen (`createFromLine`): in DERSELBEN
+       * Transaktion, über `deliver`, damit Posteingang, Mail und Gerät
+       * dieselbe Zuweisung meldet. Vorher fehlte das hier ganz — wer aus dem
+       * Detail zugewiesen wurde, erfuhr es nur, wenn er die Aufgabe fand.
+       * `deliver` schweigt von selbst, wenn jemand sich selbst einträgt.
+       */
+      for (const userId of wanted) {
+        if (vorher.has(userId)) continue;
+        await deliver(client, {
+          userId,
+          actorId,
+          workspaceId,
+          kind: 'assigned',
+          taskId,
+          title: row.title,
+          body: 'Dir zugewiesen',
+          url: `${baseUrl() ?? ''}/a/${taskId}`,
+        });
       }
     }
 

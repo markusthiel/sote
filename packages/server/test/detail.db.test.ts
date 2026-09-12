@@ -315,6 +315,36 @@ test('@vorname genügt, und bei zwei Treffern wird nicht geraten', async () => {
   // Der volle Name trifft weiterhin eindeutig.
   const exact = await add(workspaceId, 'Rückruf drei @markus.berg');
   assert.deepEqual(exact.unknownAssignees, ['markus.berg']);
+
+  /*
+   * Wer GENAU so heißt, wie getippt wurde, gewinnt vor denen, die nur so
+   * anfangen. Vorher: ein dritter, der schlicht „Markus" heißt, war mit
+   * seinem ganzen Namen nicht mehr zu treffen — „Markus" passte ja auch auf
+   * den Vornamen der anderen beiden. Das war die Meldung „passt auf mehrere
+   * Leute" über jemanden, dessen voller Name dastand.
+   */
+  const dritter = await queryOne<{ id: string }>(
+    pool,
+    `INSERT INTO users (email, display_name) VALUES ($1,$2) RETURNING id`,
+    [`markus3-${process.pid}@example.org`, 'Markus'],
+  );
+  await pool.query(
+    `INSERT INTO workspace_members (workspace_id, user_id, role_id) VALUES ($1,$2,$3)`,
+    [workspaceId, dritter!.id, role!.id],
+  );
+  const three = await add(workspaceId, 'Rückruf vier @Markus');
+  assert.deepEqual(three.ambiguousAssignees, [], 'ein genauer Treffer ist keine Mehrdeutigkeit');
+  const wer = await detail(pool, three.task.id, workspaceId);
+  assert.deepEqual(
+    wer.assignees.map((a) => a.userId),
+    [dritter!.id],
+    'und zwar der, der genau so heißt',
+  );
+
+  // Zwei, die genau so heißen, sind weiterhin nicht zu raten.
+  await pool.query(`UPDATE users SET display_name = 'Markus' WHERE id = $1`, [other!.id]);
+  const four = await add(workspaceId, 'Rückruf fünf @Markus');
+  assert.deepEqual(four.ambiguousAssignees, ['Markus']);
 });
 
 test('eine Nennung meldet gerichtet — und nicht doppelt', async () => {

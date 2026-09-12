@@ -20,6 +20,7 @@ import { createWorkspace } from '../src/bootstrap.js';
 import { makePool, queryOne } from '../src/db.js';
 import { detail } from '../src/detail.js';
 import { migrate } from '../src/migrate.js';
+import { list } from '../src/notifications.js';
 import { complete, createFromLine, patch } from '../src/tasks.js';
 
 const URL_ =
@@ -128,6 +129,40 @@ test('Zuständige werden ganz gesetzt — derselbe Weg nimmt zurück', async () 
   await patch(pool, t.id, ws, { assignees: [] });
   d = await detail(pool, t.id, ws);
   assert.equal(d.assignees.length, 0, 'niemand');
+});
+
+test('wer nachträglich zuständig wird, erfährt es — einmal, und nicht von sich selbst', async () => {
+  /*
+   * Markus, mit einem eingeladenen Konto: „Ich habe gerade mit einem
+   * eingeladenen User eine Aufgabe zugewiesen an meinen Hauptuser. Jetzt
+   * sollte ich ja eine Benachrichtigung bekommen. Da kam gar nichts an."
+   *
+   * Beim Anlegen über `@name` gab es die Meldung; im Detail über `patch`
+   * fehlte sie ganz. Derselbe Vorgang, zwei Wege, eine Meldung.
+   */
+  const t = await neu('Rückruf');
+  await pool.query('DELETE FROM notifications WHERE user_id IN ($1,$2)', [ich, du]);
+
+  await patch(pool, t.id, ws, { assignees: [du] }, ich);
+  let meine = await list(pool, du);
+  assert.equal(meine.length, 1, '„du" hat eine Meldung');
+  assert.equal(meine[0]!.kind, 'assigned');
+  assert.equal(meine[0]!.taskId, t.id);
+  assert.equal((await list(pool, ich)).length, 0, 'der Zuweisende bekommt keine');
+
+  // Nochmal dieselbe Liste, plus ich selbst: keine zweite Meldung für „du",
+  // und keine für mich über mich.
+  await patch(pool, t.id, ws, { assignees: [du, ich] }, ich);
+  meine = await list(pool, du);
+  assert.equal(meine.length, 1, 'wer schon zuständig war, wird nicht erneut gemeldet');
+  assert.equal((await list(pool, ich)).length, 0, 'über sich selbst meldet niemand');
+
+  // Und der Auftrag für Mail und Gerät liegt — die Zuweisung ist die laute Art.
+  const jobs = await pool.query(
+    `SELECT kind FROM jobs WHERE payload::text LIKE '%' || $1::text || '%'`,
+    [t.id],
+  );
+  assert.ok(jobs.rows.length > 0, 'ein Zustellauftrag wurde gelegt');
 });
 
 test('wer nicht Mitglied ist, kann nicht zuständig werden', async () => {

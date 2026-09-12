@@ -2629,7 +2629,7 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
 
   if (one && method === 'PATCH') {
     const body = (await readJson(req)) as Record<string, unknown>;
-    const row = await patch(ctx.pool, one[1]!, workspaceId, readPatch(body));
+    const row = await patch(ctx.pool, one[1]!, workspaceId, readPatch(body), userId);
     json(res, 200, { task: taskView(row) });
     return;
   }
