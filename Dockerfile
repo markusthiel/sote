@@ -45,6 +45,18 @@ COPY packages/server/migrations packages/server/migrations
 # außer in einer Zeile „Cannot find module".
 COPY docker/healthcheck.mjs docker/healthcheck.mjs
 
+# Das Verzeichnis für Anhänge, und zwar VOR dem Wechsel auf `node`.
+#
+# Docker legt ein leeres benanntes Volume mit den Rechten des Pfades an, den es
+# im Image überdeckt. Gibt es den Pfad nicht, gehört der Einhängepunkt root —
+# und der Server, der als `node` läuft, bekommt beim ersten Anhang ein
+# `EACCES` aus `mkdir`. Die Oberfläche sagt dann nur „Hochladen ging nicht",
+# und im Protokoll steht eine Zeile, die niemand sucht.
+#
+# Die Zeile hier ist damit keine Kosmetik: sie entscheidet, ob Anhänge
+# überhaupt funktionieren. `SOTE_FILES_DIR` zeigt in der Vorgabe hierher.
+RUN mkdir -p /data/files && chown -R node:node /data
+
 # Nicht als root. Der Workflow misst das nach dem Bauen, weil eine Zeile im
 # Dockerfile noch keine Messung ist.
 USER node
