@@ -140,7 +140,7 @@ export function Notifications({
    * schrieb `window.location.assign('/p/x?t=…')` — eine Adresse, die es nicht
    * gibt, und ein Neuladen obendrein.
    */
-  onOpenTask: (id: string) => void;
+  onOpenTask: (id: string, workspaceId: string) => void;
 }) {
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | undefined>(undefined);
@@ -206,7 +206,9 @@ export function Notifications({
               onClick={() =>
                 void tun(async () => {
                   if (n.readAt === null) await api.markRead(n.id);
-                  onOpenTask(n.taskId);
+                  // Mit dem Arbeitsbereich: die Glocke gilt über alle, die
+                  // Aufgabe liegt in einem — und die Hülle muss dorthin.
+                  onOpenTask(n.taskId, n.workspaceId);
                 })
               }
             >

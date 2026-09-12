@@ -237,6 +237,20 @@ export function App() {
      den sie zeigt. Siehe die ausführliche Notiz in `TaskList`. */
   useNudge(streamUrl(workspace), 'projects', () => void loadPanel());
   useNudge(streamUrl(workspace), 'tasks', () => void loadPanel());
+  /*
+   * Und die Glocke: eine Zuweisung ist eine Änderung an einer Aufgabe, ein
+   * Kommentar ein Kommentar — beides kann eine Meldung erzeugt haben. Die
+   * Liste UND die Zahl (`/api/me`) neu holen, sonst zeigt die Glocke eine
+   * Zahl von vorhin.
+   */
+  useNudge(streamUrl(workspace), 'tasks', () => {
+    reloadNotes();
+    void loadMe();
+  });
+  useNudge(streamUrl(workspace), 'comments', () => {
+    reloadNotes();
+    void loadMe();
+  });
 
   /**
    * Ein Ort wird betreten, nicht ein Zustand gesetzt.
@@ -989,6 +1003,32 @@ export function App() {
             preselect={route.projectId}
             view={shareView}
             onList={setShareList}
+          />
+        ) : route.kind === 'notifications' ? (
+          /*
+           * DER BILDSCHIRM. Er war seit d2c9d1f importiert, die Leiste zeigte
+           * seine Filter, die Glocke seine Zahl — und hier stand er nie:
+           * die Route fiel unten in die Aufgabenliste, also „Heute" neben
+           * einem Menü, das auf nichts wirkte. Gemeldet: „im Content tut sich
+           * nichts". Ein Durchgang, der nie gelaufen ist (SONE,
+           * `durchgang-nie-gelaufen.md`): jeder Teil war da, nur nicht der
+           * eine, der sie verbindet.
+           */
+          <Notifications
+            notes={notes}
+            view={noteView}
+            onChanged={() => {
+              reloadNotes();
+              // Die Zahl an der Glocke kommt aus `/api/me`.
+              void loadMe();
+            }}
+            onOpenTask={(taskId, ws) => {
+              // Wie bei „Überall": den Bereich wechseln und dort öffnen.
+              setWorkspace(ws);
+              localStorage.setItem(LAST_WORKSPACE, ws);
+              setOpenTask(taskId);
+              go({ kind: 'today' });
+            }}
           />
         ) : route.kind === 'settings' && route.section === 'kalender' ? (
           <CalendarFeed workspace={workspace} workspaceName={wsName} />
