@@ -2080,14 +2080,25 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
       // Ob es überhaupt geht, kommt mit: die Oberfläche soll den Grund nennen
       // können, statt eine leere Liste zu zeigen (ADR-0112).
       possible: shareKeyPresent(),
+      /*
+       * Ob diese Person Freigaben anlegen, widerrufen — und darum auch ihre
+       * Tokens sehen darf. Dieselbe Frage wie bei POST und DELETE.
+       */
+      mayManage: levelWrites(level),
       shares: (await listShares(ctx.pool, workspaceId)).map((s) => ({
         id: s.id,
         projectId: s.project_id,
         projectName: s.projectName,
         right: s.right_level,
-        // `null` heißt: mit diesem Schlüssel nicht anzeigbar. Die Freigabe
-        // bleibt sichtbar, damit man sie widerrufen kann.
-        token: s.token,
+        /*
+         * `null` heißt: mit diesem Schlüssel nicht anzeigbar — ODER nicht
+         * für diese Person. Ein Token IST das Recht des Links; wer ihn liest,
+         * kann anonym mit dessen Stufe schreiben. Ein viewer, der hier einen
+         * Bearbeitungslink ablesen konnte, hatte damit mehr als seine Rolle
+         * (Audit 12.09.2026, F02). Die Zeile bleibt sichtbar: dass es eine
+         * Freigabe gibt, darf jeder wissen, der die Liste sieht.
+         */
+        token: levelWrites(level) ? s.token : null,
         expiresAt: s.expires_at?.toISOString() ?? null,
         lastUsedAt: s.last_used_at?.toISOString() ?? null,
         createdAt: s.created_at.toISOString(),

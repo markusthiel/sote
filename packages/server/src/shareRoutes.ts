@@ -26,7 +26,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 
 import type { Pool } from 'pg';
 
-import { queryOne } from './db.js';
+import { queryOne, queryRows } from './db.js';
 import { addChild, addComment, detail } from './detail.js';
 import { stream } from './nudge.js';
 import { fail, json, readJson } from './http/respond.js';
@@ -507,11 +507,32 @@ export async function shareRoutes(
        * unangenehmste Sorte: nichts bricht, und die Auskunft ist trotzdem
        * falsch.
        */
+      const d = await detail(ctx.pool, taskIdVor, access.workspaceId);
+      /*
+       * ABER NICHT die Schlagwörter des ganzen Arbeitsbereichs.
+       *
+       * `detail()` füllt `known` mit jedem Namen aus `labels` — der Vorrat,
+       * aus dem das Schlagwortfeld vorschlägt. Für ein Mitglied richtig; für
+       * einen Gast war es die Liste der Schlagwörter aus Projekten, die er
+       * nie sieht (Audit 12.09.2026, F03). Der Gast sieht EIN Projekt
+       * (Konzept §7), also schlägt sein Feld vor, was in diesem Projekt
+       * schon vergeben ist — und nichts darüber hinaus.
+       */
+      const imProjekt = await queryRows<{ name: string }>(
+        ctx.pool,
+        `SELECT DISTINCT l.name
+           FROM labels l
+           JOIN task_labels tl ON tl.label_id = l.id
+           JOIN tasks t ON t.id = tl.task_id
+          WHERE t.project_id = $1 AND t.workspace_id = $2 AND t.trashed_at IS NULL
+          ORDER BY l.name`,
+        [access.projectId, access.workspaceId],
+      );
       json(
         res,
         200,
         detailView(
-          await detail(ctx.pool, taskIdVor, access.workspaceId),
+          { ...d, known: imProjekt.map((r) => r.name) },
           [],
           filesDir() === undefined ? [] : await filesOf(ctx.pool, taskIdVor),
         ),

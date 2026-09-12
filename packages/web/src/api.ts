@@ -884,12 +884,14 @@ export const api = {
   shares: (workspace?: string) =>
     call<{
       possible: boolean;
+      /** Ob ich hier Links anlegen, widerrufen und darum auch ablesen darf. */
+      mayManage: boolean;
       shares: {
         id: string;
         projectId: string;
         projectName: string;
         right: 'read' | 'edit';
-        /** `null` heißt: mit diesem Schlüssel nicht anzeigbar. */
+        /** `null` heißt: mit diesem Schlüssel nicht anzeigbar — oder nicht für mich. */
         token: string | null;
         expiresAt: string | null;
         lastUsedAt: string | null;

@@ -137,6 +137,9 @@ export function Shares({
     <div className="settings">
       {notice === undefined ? null : <p className="note-error">{notice}</p>}
 
+      {/* Wer nur mitliest, legt keine Links an — und bekommt den Abschnitt
+          nicht gezeigt, statt einen Knopf, der 403 sagt (SONE ADR-0095). */}
+      {data.mayManage ? (
       <section className="settings-card">
         <h2>Einen Link anlegen</h2>
         <p className="muted">
@@ -239,6 +242,7 @@ export function Shares({
           </div>
         )}
       </section>
+      ) : null}
 
       <section className="settings-card">
         <h2>Was hinausgegeben ist</h2>
@@ -260,9 +264,12 @@ export function Shares({
                       /* Ohne den Schlüssel von damals lässt sich der Link nicht
                          mehr zeigen. Die Freigabe bleibt sichtbar, damit man sie
                          widerrufen kann — das ist die Funktion, auf die es
-                         ankommt. */
+                         ankommt. Und wer nur mitliest, bekommt ihn nie: der
+                         Token IST das Recht des Links. */
                       <span className="admin-meta">
-                        Mit dem jetzigen Schlüssel nicht anzeigbar.
+                        {data.mayManage
+                          ? 'Mit dem jetzigen Schlüssel nicht anzeigbar.'
+                          : 'Den Link sehen nur, die hier schreiben dürfen.'}
                       </span>
                     ) : (
                       <code>{linkFor(s.token)}</code>
@@ -280,6 +287,7 @@ export function Shares({
                       : `bis ${new Date(s.expiresAt).toLocaleDateString('de-DE')}`}
                   </span>
                 </div>
+                {data.mayManage ? (
                 <div className="admin-row-actions">
                   <button
                     type="button"
@@ -293,6 +301,7 @@ export function Shares({
                     Widerrufen
                   </button>
                 </div>
+                ) : null}
               </div>
             ))}
           </div>

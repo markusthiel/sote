@@ -986,3 +986,42 @@ test('eine Gruppe hebt hinauf: der Gast in einer Editor-Gruppe schreibt', async 
   });
   assert.equal(patch.status, 200);
 });
+
+test('ein viewer sieht die Freigaben, aber keinen Token — der Token ist das Recht', async () => {
+  // Audit 12.09.2026, F02: `GET /api/shares` gab jedem Mitglied die
+  // entsiegelten Tokens. Ein viewer las einen Bearbeitungslink ab und
+  // schrieb damit anonym. Die Zeile bleibt, der Token geht.
+  await linkAuf('edit');
+  const { cookie } = await mitgliedMit('viewer');
+  const res = await als(cookie, '/api/shares');
+  assert.equal(res.status, 200);
+  const body = (await res.json()) as { mayManage: boolean; shares: { token: string | null }[] };
+  assert.equal(body.mayManage, false);
+  assert.ok(body.shares.length > 0, 'die Freigaben sind zu sehen');
+  assert.ok(body.shares.every((s) => s.token === null), 'kein Token für einen viewer');
+
+  // Der Eigentümer sieht sie weiterhin.
+  const chef = (await (await call('/api/shares')).json()) as { mayManage: boolean; shares: { token: string | null }[] };
+  assert.equal(chef.mayManage, true);
+  assert.ok(chef.shares.some((s) => s.token !== null));
+});
+
+test('ein Gast sieht nur die Schlagwörter seines Projekts, nicht die des Arbeitsbereichs', async () => {
+  // Audit 12.09.2026, F03: `known` in der Gast-Detailansicht kam aus
+  // `labels WHERE workspace_id` — jedes Schlagwort jedes Projekts.
+  const { token, taskId } = await linkAuf('read');
+  const geheim = `vertraulich-${Math.random().toString(36).slice(2, 8)}`;
+  // Ein Schlagwort, das nur an einer Aufgabe AUSSERHALB des freigegebenen Projekts hängt.
+  const fremd = await call('/api/tasks', {
+    method: 'POST',
+    body: JSON.stringify({ line: `Interne Sache +${geheim} #haus` }),
+  });
+  assert.equal(fremd.status, 201);
+  const res = await call(`/api/share/${token}/tasks/${taskId}`);
+  assert.equal(res.status, 200);
+  const body = (await res.json()) as { known: string[] };
+  assert.ok(!body.known.includes(geheim), `„${geheim}" darf hier nicht vorkommen`);
+  // Und der Eigentümer hat es in seinem Vorrat.
+  const mitglied = (await (await call(`/api/tasks/${taskId}`)).json()) as { known: string[] };
+  assert.ok(mitglied.known.includes(geheim));
+});
