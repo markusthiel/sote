@@ -14,7 +14,7 @@ import { useCallback, useEffect, useState } from 'react';
 
 import type { Board, Landing, ListView, Look } from '@sote/core';
 
-import { api, ApiError, type Me, type Project } from './api.js';
+import { streamUrl, api, ApiError, type Me, type Project } from './api.js';
 import { useBoard, useLook, useScheme } from './appearance.js';
 import { useSidebar } from './hooks/useSidebar.js';
 import { useSidebarWidth } from './hooks/useSidebarWidth.js';
@@ -233,8 +233,10 @@ export function App() {
    * Getrennt, weil ein Umbenennen im Baum nicht die Aufgabenliste neu holen
    * soll und ein Abhaken nicht den Baum — *die Spaltenliste ist das Design.*
    */
-  useNudge('/api/stream', 'projects', () => void loadPanel());
-  useNudge('/api/stream', 'tasks', () => void loadPanel());
+  /* Mit dem Arbeitsbereich — sonst hört die Seite dem ersten zu und nicht dem,
+     den sie zeigt. Siehe die ausführliche Notiz in `TaskList`. */
+  useNudge(streamUrl(workspace), 'projects', () => void loadPanel());
+  useNudge(streamUrl(workspace), 'tasks', () => void loadPanel());
 
   /**
    * Ein Ort wird betreten, nicht ein Zustand gesetzt.

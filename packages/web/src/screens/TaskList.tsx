@@ -34,7 +34,7 @@ import { useRowDrag } from '../hooks/useRowDrag.js';
 import { useNudge } from '../hooks/useNudge.js';
 import { useOpenTasks } from '../hooks/useOpenTasks.js';
 import { webVariant } from '../lib/webVariant.js';
-import { api, ApiError, type Project, type Task, type TaskPatch } from '../api.js';
+import { streamUrl, api, ApiError, type Project, type Task, type TaskPatch } from '../api.js';
 import { HandleMenu } from '../components/HandleMenu.js';
 import { QuickAdd } from '../components/QuickAdd.js';
 import { CheckSquareIcon, ColumnsIcon, ListIcon } from '../components/icons.js';
@@ -252,7 +252,23 @@ export function TaskList({
    * Gemeldet war der Fall, der das nötig machte: „wenn ich per Link teile und
    * dort arbeite, wird das beim Hauptuser nicht live aktualisiert."
    */
-  useNudge('/api/stream', 'tasks', () => {
+  /*
+   * DER STROM BRAUCHT DEN ARBEITSBEREICH.
+   *
+   * GEMELDET: „Wenn ich bei einer vorhandenen Aufgabe den Titel ändere, ändert
+   * sich der Text nicht in der Aufgabenliste. Das muss auch live passieren.
+   * Eigentlich alles muss live passieren."
+   *
+   * Und es lag nicht am Titel: die Verbindung wurde ohne `?workspace=`
+   * geöffnet. Der Server filtert den Strom auf einen Bereich, und ohne Angabe
+   * nimmt er den ERSTEN, in dem jemand Mitglied ist — bei mehreren Bereichen
+   * hört die Seite also einem anderen zu als dem, den sie zeigt. Wer nur einen
+   * hat, merkt nichts; wer zwei hat, bekommt gar nichts mehr.
+   *
+   * Dass ausgerechnet der Titel auffiel, ist Zufall: er ist die Änderung, die
+   * man sofort sieht. Abhaken, Datum, Farbe — nichts davon kam an.
+   */
+  useNudge(streamUrl(workspace), 'tasks', () => {
     // Ohne `setLoaded(false)`: ein Anstoß soll die Liste austauschen, nicht
     // durch einen leeren Zustand blinken. Sie steht schon da und ist bloß
     // veraltet.

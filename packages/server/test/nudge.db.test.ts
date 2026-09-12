@@ -280,3 +280,43 @@ test('die Liste im Trigger kennt JEDE Spalte der Tabelle', async () => {
       'Aenderung) oder oben als schweigend eintragen — mit Grund.',
   );
 });
+
+test('der Strom ist auf SEINEN Arbeitsbereich gefiltert', async () => {
+  /*
+   * GEMELDET: „Wenn ich bei einer vorhandenen Aufgabe den Titel aendere,
+   * aendert sich der Text nicht in der Aufgabenliste. Das muss auch live
+   * passieren. Eigentlich alles muss live passieren."
+   *
+   * Es lag nicht am Titel. Die Oberflaeche oeffnete den Strom OHNE
+   * `?workspace=`, und der Server nimmt ohne Angabe den ersten Bereich, in dem
+   * jemand Mitglied ist -- die Seite hoerte also einem anderen zu als dem, den
+   * sie zeigt. Wer nur einen Bereich hat, merkt nichts; wer zwei hat, bekommt
+   * gar nichts mehr.
+   *
+   * Dieser Test haelt die Filterung fest, auf der das beruht: die Klingel nennt
+   * IHREN Bereich, und ein Zuhoerer eines anderen hat nichts davon.
+   */
+  const fremd = await queryOne<{ id: string }>(
+    pool,
+    'INSERT INTO workspaces (name) VALUES ($1) RETURNING id',
+    [`strom-fremd-${process.pid}`],
+  );
+
+  const alle: string[] = [];
+  const zweiter = new Client({ connectionString: URL_ });
+  await zweiter.connect();
+  zweiter.on('notification', (m) => alle.push(m.payload ?? ''));
+  await zweiter.query('LISTEN sote_workspace_changed');
+
+  const laut = await horch(() =>
+    pool.query(`INSERT INTO tasks (workspace_id, title, sort_key) VALUES ($1,'Fremd','z')`, [
+      fremd!.id,
+    ]),
+  );
+  await zweiter.end();
+
+  // Der Zuhoerer dieses Bereichs hoert NICHTS …
+  assert.deepEqual(laut, []);
+  // … waehrend die Klingel sehr wohl gelaeutet hat, nur fuer einen anderen.
+  assert.ok(alle.some((p) => p.startsWith(`${fremd!.id}:`)));
+});

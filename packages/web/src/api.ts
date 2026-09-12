@@ -55,6 +55,25 @@ const TZ = zoneOfBrowser();
 export const browserZone = (): string => TZ;
 
 /**
+ * Die Adresse des Ereignisstroms für DIESEN Arbeitsbereich.
+ *
+ * GEMELDET: „Wenn ich bei einer vorhandenen Aufgabe den Titel ändere, ändert
+ * sich der Text nicht in der Aufgabenliste … Eigentlich alles muss live
+ * passieren."
+ *
+ * Der Strom wurde ohne `?workspace=` geöffnet, und der Server filtert ihn auf
+ * einen Bereich: ohne Angabe nimmt er den ERSTEN, in dem jemand Mitglied ist.
+ * Bei mehreren Bereichen hörte die Seite also einem anderen zu als dem, den
+ * sie zeigt.
+ *
+ * Hier und nicht an drei Aufrufstellen: dieselbe Adresse dreimal zu bauen ist
+ * dreimal die Gelegenheit, den Bereich zu vergessen — genau so ist es
+ * passiert.
+ */
+export const streamUrl = (workspace: string | undefined): string =>
+  workspace === undefined ? '/api/stream' : `/api/stream?workspace=${workspace}`;
+
+/**
  * Hängt `tz` an, ohne über ein vorhandenes `?` zu stolpern.
  *
  * Die Aufrufe unten bauen ihre Pfade teils mit und teils ohne Abfrageteil, und
