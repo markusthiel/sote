@@ -2114,40 +2114,53 @@ body {
 
 /* Die Auswahl hinter `@` — wer ist gemeint.
  *
- * GEWÜNSCHT: „Beim Zuweisen eines Users über @ sollte es ein Dropdown geben …
- * so schreibt man was rein und weiss gar nicht, ob es korrekt war."
+ * GEMELDET mit Bild: „Es ist halt sehr verschoben gerade. Gut wäre, wenn es
+ * direkt unter der Eingabe auftaucht, damit man es direkt verbindet und
+ * anklickt."
  *
- * KEIN schwebendes Fenster, sondern eine Liste unter dem Feld: sie schiebt die
- * Merkmale ein Stück nach unten und verdeckt dabei nichts. Ein Aufsatz müsste
- * sich um Ränder, Rollen und das Telefon kümmern — für eine Liste mit sechs
- * Namen ist das die aufwendigere Hälfte der Arbeit.
+ * Stimmt: die Namen standen als kleine Kästchen am linken Rand der Karte, mit
+ * Abstand zum Feld und über den Merkmalen — drei Dinge untereinander, von
+ * denen keines sichtbar zum Feld gehörte.
+ *
+ * Jetzt eine LISTE, die am Feld klebt: kein Abstand nach oben, eine Trennlinie
+ * dazwischen, volle Breite, ein Name je Zeile. Und der Text beginnt dort, wo
+ * der Text im Feld beginnt (Innenabstand + Zeichen + Lücke), damit die Namen
+ * unter dem Getippten stehen und nicht daneben.
+ *
+ * Kein schwebendes Fenster: eine Liste im Fluss verdeckt nichts und braucht
+ * keine Regeln für Ränder, Rollen und das Telefon.
  */
 .quick-people {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--sone-space-2);
-  margin: var(--sone-space-2) 0 0;
+  margin: 0;
   padding: 0;
+  border-top: 1px solid var(--line);
   list-style: none;
 }
 
-/* Wie ein Merkmal darunter: dieselbe Form für „gehört zu dieser Zeile". */
 .quick-person {
-  border: 1px solid var(--line);
-  border-radius: var(--sote-radius-sm);
-  padding: var(--sone-space-1) var(--sone-space-3);
-  background: var(--surface);
-  color: var(--text-default);
+  display: block;
+  inline-size: 100%;
+  border: 0;
+  padding: var(--sone-space-3) var(--sone-space-4);
+  padding-inline-start: calc(var(--sote-quick-pad) + 1ch + var(--sote-quick-gap));
+  background: none;
+  color: var(--text);
   font: inherit;
-  font-size: var(--sone-text-xs);
+  text-align: start;
   cursor: pointer;
 }
 
-/* Der gewählte — mit Pfeilen erreichbar, darum sichtbar und nicht nur beim
-   Zeigen. */
+/*
+ * Der gewählte — mit Pfeilen erreichbar, darum sichtbar und nicht nur beim
+ * Zeigen.
+ *
+ * `--accent-quiet` und nicht `--accent-soft`: den zweiten gibt es nicht. Ich
+ * hatte ihn erfunden, und eine Regel mit einem unbekannten Token tut EINFACH
+ * NICHTS — kein Fehler, keine Meldung, nur eine Hervorhebung, die man im Bild
+ * vermisst, ohne den Grund zu sehen. Dafür gibt es jetzt `check-css-tokens`.
+ */
 .quick-person[data-on="yes"] {
-  border-color: var(--accent);
-  background: var(--accent-soft);
+  background: var(--accent-quiet);
   color: var(--accent-text);
 }
 
@@ -2642,7 +2655,17 @@ body {
 /* ── Die Schnellerfassung. Ein Feld, Enter speichert, das Feld bleibt
    offen. ── */
 
+/*
+ * Die Masse des Feldes stehen EINMAL hier.
+ *
+ * Die Auswahl hinter `@` rückt ihre Namen genau so weit ein wie das Feld
+ * seinen Text — und dafür muss sie dieselben Zahlen benutzen. Abgeschrieben
+ * wären es zwei Stellen, die auseinanderlaufen, sobald jemand das Feld
+ * anfasst; `check-styles` hat meinen ersten Versuch genau deswegen abgelehnt.
+ */
 .quick {
+  --sote-quick-pad: 13px;
+  --sote-quick-gap: 10px;
   border: 1px solid var(--line-strong);
   border-radius: var(--sote-radius-lg);
   background: var(--raised);
@@ -2657,8 +2680,8 @@ body {
 .quick-field {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 11px 13px;
+  gap: var(--sote-quick-gap);
+  padding: 11px var(--sote-quick-pad);
 }
 
 .quick-field input {
