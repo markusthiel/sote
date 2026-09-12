@@ -238,8 +238,11 @@ export interface Project {
   name: string;
   /** Ein Palettenname oder ein `#rrggbb` — nie roh in ein `style`. */
   color: string | null;
-  /** Dieselbe Form wie SONEs `pages.icon`. `null`, wenn nichts gewählt ist. */
-  icon: { icon?: string; iconColor?: string } | null;
+  /**
+   * Dieselbe Form wie SONEs `pages.icon`. `null`, wenn nichts gewählt ist.
+   * `titleColor` färbt den NAMEN in der Leiste, getrennt vom Zeichen.
+   */
+  icon: { icon?: string; iconColor?: string; titleColor?: string } | null;
   /** Ordner ordnen, Projekte halten (Konzept 10d). */
   kind: 'folder' | 'list';
   /** Tiefe im Baum, vom Server gerechnet. */
@@ -1111,7 +1114,7 @@ export const api = {
       color?: string | null;
       parentId?: string | null;
       /** `null` leert das Zeichen, ein fehlender Schlüssel lässt es stehen. */
-      icon?: { icon?: string; iconColor?: string } | null;
+      icon?: { icon?: string; iconColor?: string; titleColor?: string } | null;
       /** Fertig gerechnet: nur die Oberfläche kennt die Nachbarn. */
       sortKey?: string;
     },

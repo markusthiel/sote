@@ -96,7 +96,10 @@ export function ProjectTree({
   onCreate: (name: string, parentId: string | null, kind: 'folder' | 'list') => void;
   onRename: (id: string, name: string) => void;
   onColor: (id: string, color: string | null) => void;
-  onIcon: (id: string, icon: { icon?: string; iconColor?: string } | null) => void;
+  onIcon: (
+    id: string,
+    icon: { icon?: string; iconColor?: string; titleColor?: string } | null,
+  ) => void;
   onTrash: (id: string) => void;
 }) {
   /*
@@ -114,7 +117,26 @@ export function ProjectTree({
    * Zwischenwert sprränge das Feld bei jeder Bewegung auf den gespeicherten
    * Wert zurück, weil es ein kontrolliertes Feld ist.
    */
-  const [eigen, setEigen] = useState<string | undefined>(undefined);
+  const [eigen, setEigen] = useState<{ zeichen?: string; name?: string }>({});
+  /**
+   * Eine der beiden Farben setzen und die andere stehen lassen.
+   *
+   * Alles in `icon`. Wird das Zeichen gefärbt, geht die alte Spalte `color`
+   * mit auf `null` — sonst gäbe es zwei Antworten auf „welche Farbe hat das
+   * Zeichen", und die Zeile läse die falsche, sobald jemand die neue löscht.
+   */
+  const farbe = (
+    p: Project,
+    feld: 'iconColor' | 'titleColor',
+    wert: string | null,
+  ) => {
+    const next: Record<string, string> = { ...(p.icon ?? {}) } as Record<string, string>;
+    if (wert === null) delete next[feld];
+    else next[feld] = wert;
+    onIcon(p.id, Object.keys(next).length === 0 ? null : next);
+    if (feld === 'iconColor' && p.color !== null) onColor(p.id, null);
+  };
+
   const [adding, setAdding] = useState<
     { parentId: string | null; kind: 'folder' | 'list' } | null
   >(null);
@@ -458,7 +480,19 @@ export function ProjectTree({
                 name={p.name}
                 color={colorValue(p.icon?.iconColor ?? p.color)}
               />
-              <span className="p-name">{p.name}</span>
+              <span
+                className="p-name"
+                // Die Farbe des NAMENS, getrennt vom Zeichen — wie beim
+                // Arbeitsbereich und wie bei SONE. `colorValue` und nicht
+                // `var(--sote-palette-…)`: ein eigener Hex-Wert ist kein Token.
+                style={
+                  p.icon?.titleColor === undefined
+                    ? undefined
+                    : { color: colorValue(p.icon.titleColor) }
+                }
+              >
+                {p.name}
+              </span>
               {/* Keine Null: eine Zahl über nichts ist Rauschen. */}
               {p.open === null ? null : (
                 <span className="n" aria-hidden="true">
@@ -717,57 +751,66 @@ export function ProjectTree({
                 {ready ? 'Kein Zeichen mit diesem Namen.' : 'Zeichen werden geladen…'}
               </p>
             )}
-            <div className="entry-menu-label">Farbe</div>
-            <div className="block-menu-swatches">
-              {COLORS.map((c) => (
-                <button
-                  key={c.name}
-                  className={c.value === null ? 'block-menu-swatch none' : 'block-menu-swatch'}
-                  aria-label={c.name}
-                  aria-current={p.color === c.value}
-                  disabled={busy}
-                  {...(c.value === null
-                    ? {}
-                    : {
-                        // SONEs Feld liest `--tag-color`; die Farbe kommt über
-                        // colorValue und nicht roh: ein Palettenname ist KEINE
-                        // CSS-Farbe, und ihn roh zu setzen tat in SONE für die
-                        // acht Namen stillschweigend nichts.
-                        style: { '--tag-color': colorValue(c.value) } as CSSProperties,
-                      })}
-                  onClick={() => {
-                    setMenu(null);
-                    onColor(p.id, c.value);
-                  }}
-                />
-              ))}
-              {/*
-                Und eine EIGENE Farbe — dieselbe Pipette wie am Arbeitsbereich.
+            {/*
+              ZWEI FARBEN, GETRENNT: das Zeichen und der Name.
 
-                GEMELDET: „Überall wo wir Farben auswählen können, sollte man
-                auch eine eigene Farbe hinzufügen können mit Picker. Also bei
-                Tafel, bei Name und Zeichen auch."
+              GEMELDET: „Beim Baumdesign hatten wir gesagt, dass man die Farben
+              von Icon und Text getrennt voneinander anpassen können soll wie
+              bei SONE für Ordner und Projekte. Und eine eigene Farbe wählen
+              auch. Momentan geht Text nicht."
 
-                Der Kern konnte es die ganze Zeit: `ChosenColor = PaletteName |
-                \`#${string}\``, und `colorValue` gibt für einen Hex-Wert den
-                Wert selbst zurück. Nur diese Stelle bot es nicht an.
-
-                Was der NAME besser kann, steht oben bei `COLORS`: er folgt der
-                Palette und ist damit in beiden Themen richtig, ein Hex-Wert ist
-                in beiden derselbe. Darum steht er neben der Palette und nicht
-                an ihrer Stelle.
-              */}
-              {/* Die Pipette wie überall sonst: ein Bauteil, fünf Stellen. */}
-              <OwnColor
-                value={eigen ?? (p.color ?? undefined)}
-                disabled={busy}
-                onShow={(farbe) => setEigen(farbe)}
-                onPick={(farbe) => {
-                  setMenu(null);
-                  onColor(p.id, farbe);
-                }}
-              />
-            </div>
+              Der Kern kannte `titleColor` längst (`readIcon`), der Server
+              speicherte es, der Arbeitsbereich benutzte es — nur diese eine
+              Farbzeile hier schrieb in `color` (die alte Spalte) und färbte
+              damit das Zeichen, und den Namen färbte niemand. Jetzt zwei
+              Zeilen mit denselben Bauteilen wie am Arbeitsbereich, beide in
+              `icon` (`iconColor`, `titleColor`); die alte Spalte `color`
+              bleibt als Rückfall für das Zeichen, wo sie noch gesetzt ist.
+            */}
+            {(
+              [
+                ['zeichen', 'Zeichen', 'iconColor', p.icon?.iconColor ?? p.color ?? null],
+                ['name', 'Name', 'titleColor', p.icon?.titleColor ?? null],
+              ] as const
+            ).map(([key, label, feld, aktuell]) => (
+              <div key={key}>
+                <div className="entry-menu-label">{label}</div>
+                <div className="block-menu-swatches">
+                  {COLORS.map((c) => (
+                    <button
+                      key={c.name}
+                      className={c.value === null ? 'block-menu-swatch none' : 'block-menu-swatch'}
+                      aria-label={`${label}: ${c.name}`}
+                      aria-current={aktuell === c.value}
+                      disabled={busy}
+                      {...(c.value === null
+                        ? {}
+                        : {
+                            // SONEs Feld liest `--tag-color`; die Farbe kommt über
+                            // colorValue und nicht roh: ein Palettenname ist KEINE
+                            // CSS-Farbe.
+                            style: { '--tag-color': colorValue(c.value) } as CSSProperties,
+                          })}
+                      onClick={() => {
+                        setMenu(null);
+                        farbe(p, feld, c.value);
+                      }}
+                    />
+                  ))}
+                  {/* Die Pipette wie überall sonst: ein Bauteil, fünf Stellen. */}
+                  <OwnColor
+                    value={eigen[key] ?? (aktuell ?? undefined)}
+                    disabled={busy}
+                    label={`${label}: eigene Farbe`}
+                    onShow={(f) => setEigen((v) => ({ ...v, [key]: f }))}
+                    onPick={(f) => {
+                      setMenu(null);
+                      farbe(p, feld, f);
+                    }}
+                  />
+                </div>
+              </div>
+            ))}
             <div className="entry-menu-label" />
             <button
               className="entry-menu-item destructive"

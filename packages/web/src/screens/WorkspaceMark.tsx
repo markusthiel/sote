@@ -19,7 +19,7 @@
  * hier nicht: das gehört zu „Leute", und den Bildschirm gibt es nicht.
  */
 
-import { PALETTE } from '@sote/core';
+import { colorValue, PALETTE } from '@sote/core';
 import { useEffect, useMemo, useState } from 'react';
 
 import { api, ApiError } from '../api.js';
@@ -217,17 +217,13 @@ export function WorkspaceMark({
               icon={icon?.icon}
               kind="folder"
               name={name}
-              color={
-                icon?.iconColor === undefined
-                  ? undefined
-                  : `var(--sote-palette-${icon.iconColor})`
-              }
+              // `colorValue`, nicht `var(--sote-palette-…)`: eine EIGENE Farbe ist
+              // ein Hex-Wert und kein Token — die Vorschau zeigte sie nicht.
+              color={colorValue(icon?.iconColor)}
             />
             <strong
               style={
-                icon?.titleColor === undefined
-                  ? undefined
-                  : { color: `var(--sote-palette-${icon.titleColor})` }
+                icon?.titleColor === undefined ? undefined : { color: colorValue(icon.titleColor) }
               }
             >
               {name}

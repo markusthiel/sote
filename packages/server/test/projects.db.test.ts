@@ -384,6 +384,30 @@ test('null leert das Zeichen, ein fehlender Schlüssel lässt es stehen', async 
   assert.equal(cleared.icon, null);
 });
 
+test('Zeichen und Name haben je eine Farbe — auch eine eigene', async () => {
+  /*
+   * Gemeldet: „Farben von Icon und Text getrennt anpassen wie bei SONE, und
+   * eine eigene Farbe wählen. Momentan geht Text nicht." Der Kern las
+   * `titleColor` längst; hier steht fest, dass der Server es auch speichert
+   * und dass ein Hex-Wert neben einem Palettennamen durchkommt.
+   */
+  const ws = await space('p-two-colors');
+  const p = await create(pool, ws, {
+    name: 'Zwei Farben',
+    icon: { icon: 'home', iconColor: 'green', titleColor: '#AB12CD' },
+  });
+  // Der Hex-Wert wird kleingeschrieben abgelegt — eine Schreibweise.
+  assert.deepEqual(p.icon, { icon: 'home', iconColor: 'green', titleColor: '#ab12cd' });
+  // Nur den Namen umfärben: das Zeichen bleibt.
+  const um = await update(pool, p.id, ws, {
+    icon: { icon: 'home', iconColor: 'green', titleColor: 'blue' },
+  });
+  assert.deepEqual(um.icon, { icon: 'home', iconColor: 'green', titleColor: 'blue' });
+  // Unsinn als Namensfarbe fällt still weg, der Rest bleibt.
+  const unsinn = await update(pool, p.id, ws, { icon: { icon: 'home', titleColor: 'nope' } });
+  assert.deepEqual(unsinn.icon, { icon: 'home' });
+});
+
 test('ein Unterprojekt darf denselben Namen wie ein anderes Kind eines anderen Elternteils tragen', async () => {
   const ws = await space('p-sibling-icon');
   // Die Regel von vorher, hier noch einmal mit Zeichen: eindeutig ist der Name

@@ -24,6 +24,8 @@
 
 import { useEffect, useRef, useState } from 'react';
 
+import { colorValue } from '@sote/core';
+
 import { api, ApiError } from '../api.js';
 import { ChevronRightIcon, PlusIcon } from './icons.js';
 import { ProjectMark } from './ProjectMark.js';
@@ -119,7 +121,7 @@ export function WorkspaceMenu({
         color={
           w.icon?.iconColor === undefined
             ? undefined
-            : `var(--sote-palette-${w.icon.iconColor})`
+            : colorValue(w.icon.iconColor)
         }
       />
       <span
@@ -127,7 +129,7 @@ export function WorkspaceMenu({
         style={
           w.icon?.titleColor === undefined
             ? undefined
-            : { color: `var(--sote-palette-${w.icon.titleColor})` }
+            : { color: colorValue(w.icon.titleColor) }
         }
       >
         {w.name}
