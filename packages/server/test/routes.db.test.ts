@@ -1025,3 +1025,88 @@ test('ein Gast sieht nur die Schlagwörter seines Projekts, nicht die des Arbeit
   const mitglied = (await (await call(`/api/tasks/${taskId}`)).json()) as { known: string[] };
   assert.ok(mitglied.known.includes(geheim));
 });
+
+/* ── Die Gastpfade (Audit 12.09.2026, F05, F17, F04) ─────────────────────── */
+
+test('ein Gast ändert einen Termin allein — und er wird gespeichert', async () => {
+  // F05: `planned`/`due` gingen roh an `patch()`, das `plannedAt`/`dueAt`
+  // kennt. Ein Termin allein hiess „nichts zu ändern"; mit Titel ging die
+  // Anfrage durch und der Termin blieb.
+  const { token, taskId } = await linkAuf('edit');
+  const res = await call(`/api/share/${token}/tasks/${taskId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ planned: '2026-09-20T09:00:00.000Z' }),
+  });
+  assert.equal(res.status, 200);
+  let row = await queryOne<{ planned_at: Date | null; due_at: Date | null }>(
+    pool,
+    'SELECT planned_at, due_at FROM tasks WHERE id = $1',
+    [taskId],
+  );
+  assert.equal(row!.planned_at?.toISOString(), '2026-09-20T09:00:00.000Z');
+
+  const mit = await call(`/api/share/${token}/tasks/${taskId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ title: 'Dach dichten, dringend', due: '2026-09-21T12:00:00.000Z' }),
+  });
+  assert.equal(mit.status, 200);
+  row = await queryOne(pool, 'SELECT planned_at, due_at FROM tasks WHERE id = $1', [taskId]);
+  assert.equal(row!.due_at?.toISOString(), '2026-09-21T12:00:00.000Z');
+
+  const weg = await call(`/api/share/${token}/tasks/${taskId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ due: null }),
+  });
+  assert.equal(weg.status, 200);
+  row = await queryOne(pool, 'SELECT planned_at, due_at FROM tasks WHERE id = $1', [taskId]);
+  assert.equal(row!.due_at, null, 'ein Datum lässt sich als Gast auch löschen');
+});
+
+test('die Gast-Schnellerfassung weist niemanden zu, bleibt im Projekt und rechnet in der Zone des Browsers', async () => {
+  // F17: `@name` wurde für Gäste aufgelöst, eingetragen und gemeldet — die
+  // direkte Bearbeitung verbot genau das. `#projekt` wurde erst nach dem
+  // Anlegen zurückgesetzt. Und die Zone fehlte: „morgen 9 Uhr" war 9 Uhr UTC.
+  const { token } = await linkAuf('edit');
+  const res = await fetch(`${base}/api/share/${token}/tasks?tz=Europe%2FBerlin`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ line: 'Fenster putzen @Markus #haus morgen 9 Uhr' }),
+  });
+  assert.equal(res.status, 201);
+  const body = (await res.json()) as { id: string; unknownAssignees: string[] };
+  assert.deepEqual(body.unknownAssignees, ['Markus'], 'der Name wird gemeldet, nicht zugewiesen');
+
+  const zust = await queryRows(pool, 'SELECT 1 FROM task_assignees WHERE task_id = $1', [body.id]);
+  assert.equal(zust.length, 0, 'keine Zuweisung durch einen Gast');
+  const meldungen = await queryRows(pool, 'SELECT 1 FROM notifications WHERE task_id = $1', [body.id]);
+  assert.equal(meldungen.length, 0, 'und darum auch keine Meldung');
+
+  const row = await queryOne<{ project_id: string; planned_at: Date }>(
+    pool,
+    'SELECT project_id, planned_at FROM tasks WHERE id = $1',
+    [body.id],
+  );
+  assert.equal(row!.project_id, gastProjekt, '#haus zieht nicht aus der Freigabe hinaus');
+  // NOW ist der 7.9.2026 10:00Z; morgen 9 Uhr in Berlin (CEST) ist 07:00Z.
+  assert.equal(row!.planned_at.toISOString(), '2026-09-08T07:00:00.000Z');
+});
+
+test('die kleine Fassung eines Gast-Anhangs hat eine Grenze', async () => {
+  // F04: der Zweig sammelte den ganzen Körper, bevor er irgendetwas prüfte.
+  const { token, taskId } = await linkAuf('edit');
+  const vorher = { max: process.env['SOTE_FILE_MAX_MB'], dir: process.env['SOTE_FILES_DIR'] };
+  process.env['SOTE_FILE_MAX_MB'] = '1';
+  process.env['SOTE_FILES_DIR'] ??= '/tmp/sote-files-grenze';
+  try {
+    const res = await fetch(
+      `${base}/api/share/${token}/tasks/${taskId}/files/00000000-0000-0000-0000-000000000000/web`,
+      { method: 'PUT', headers: { 'content-type': 'image/jpeg' }, body: Buffer.alloc(1_100_000, 1) },
+    );
+    assert.equal(res.status, 413);
+  } finally {
+    if (vorher.max === undefined) delete process.env['SOTE_FILE_MAX_MB'];
+    else process.env['SOTE_FILE_MAX_MB'] = vorher.max;
+    if (vorher.dir === undefined) delete process.env['SOTE_FILES_DIR'];
+    else process.env['SOTE_FILES_DIR'] = vorher.dir;
+  }
+});

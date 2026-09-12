@@ -157,7 +157,7 @@ const VIEWS: readonly ViewId[] = ['today', 'upcoming', 'someday', 'inbox', 'proj
  * ein Feld nicht nennt, darf es nicht auf null setzen; genau deshalb wird hier
  * auf Anwesenheit des Schlüssels geprüft und nicht auf Wahrheit des Werts.
  */
-function readPatch(body: Record<string, unknown>): import('./tasks.js').Patch {
+export function readPatch(body: Record<string, unknown>): import('./tasks.js').Patch {
   const out: Record<string, unknown> = {};
   const date = (v: unknown) => (v === null ? null : new Date(String(v)));
   if ('title' in body) out['title'] = String(body['title']);
@@ -649,7 +649,7 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
    */
   const sharePath = /^\/api\/share\/([A-Za-z0-9_-]{20,200})(\/.*)?$/.exec(path);
   if (sharePath !== null) {
-    await shareRoutes(ctx, req, res, sharePath[1]!, sharePath[2] ?? '', method, now);
+    await shareRoutes(ctx, req, res, sharePath[1]!, sharePath[2] ?? '', method, now, zone);
     return;
   }
 

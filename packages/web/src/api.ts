@@ -1020,7 +1020,8 @@ export const api = {
   shareFileHref: (token: string, taskId: string, fileId: string, size?: 'web') =>
     `/api/share/${token}/tasks/${taskId}/files/${fileId}${size === undefined ? '' : '?size=web'}`,
   shareAdd: (token: string, line: string) =>
-    call<{ id: string; title: string }>(`/api/share/${token}/tasks`, {
+    /** `unknownAssignees`: ein `@name` weist als Gast niemanden zu — er wird genannt. */
+    call<{ id: string; title: string; unknownAssignees: string[] }>(`/api/share/${token}/tasks`, {
       method: 'POST',
       body: JSON.stringify({ line }),
     }),

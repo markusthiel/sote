@@ -202,6 +202,25 @@ export interface CreateFromLine {
    * `patch`.
    */
   readonly assigneeIds?: readonly string[];
+  /**
+   * Was der Aufrufer DARF — für den Gast über einen Link.
+   *
+   * `assign: false`: `@name` wird nicht aufgelöst und nicht eingetragen,
+   * sondern als unbekannt gemeldet. Ein Gast sieht Namen, keine Personen
+   * (Konzept §7), und die direkte Bearbeitung verbietet ihm die Zuweisung
+   * ausdrücklich — bis zum Audit vom 12.09.2026 (F17) tat die
+   * Schnellerfassung sie trotzdem, samt Meldung an die Person.
+   *
+   * `pinProject: true`: `#name` gilt nicht, das Projekt ist gesetzt. Vorher
+   * korrigierte die Gast-Route das NACH dem Anlegen mit einem zweiten
+   * UPDATE — die Aufgabe lag einen Moment im falschen Projekt, mit dem
+   * Sortierschlüssel des falschen Projekts. Jetzt entscheidet es die
+   * Transaktion, die sie anlegt.
+   *
+   * Als Fähigkeiten und nicht als „istGast": ein zweiter Aufrufer mit
+   * anderen Grenzen braucht dann kein zweites Flag.
+   */
+  readonly may?: { readonly assign?: boolean; readonly pinProject?: boolean };
 }
 
 export interface Created {
@@ -258,7 +277,7 @@ export async function createFromLine(pool: Pool, input: CreateFromLine): Promise
     let ambiguousProject: string | undefined;
     /** Der Name gehört einem Ordner — er trägt keine Aufgaben. */
     let folderProject: string | undefined;
-    if (q.project !== undefined) {
+    if (q.project !== undefined && input.may?.pinProject !== true) {
       /*
        * `#name` meint ein **Projekt**, keinen Ordner (Konzept 10d).
        *
@@ -384,6 +403,13 @@ export async function createFromLine(pool: Pool, input: CreateFromLine): Promise
     }
 
     for (const name of q.assignees) {
+      if (input.may?.assign === false) {
+        // Kein Auflösen, kein Eintragen, keine Meldung — und nicht still:
+        // der Name kommt als unbekannt zurück, damit die Oberfläche sagen
+        // kann, dass hier niemand zugewiesen wird.
+        unknownAssignees.push(name);
+        continue;
+      }
       // Vier Schreibweisen, weil niemand „+Markus Thiel" tippt: ein
       // Leerzeichen beendet das Zeichen, also muss der Vorname reichen. Und
       // der Teil vor dem @, weil Adressen kürzer sind als Namen. (Wer die

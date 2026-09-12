@@ -30,7 +30,7 @@ import { queryOne, queryRows } from './db.js';
 import { addChild, addComment, detail } from './detail.js';
 import { stream } from './nudge.js';
 import { fail, json, readJson } from './http/respond.js';
-import { detailView, taskView } from './routes.js';
+import { detailView, readPatch, taskView } from './routes.js';
 import { isInlineSafe } from '@sote/core';
 import { accessByToken, type RightLevel } from './shares.js';
 import { complete, move, NotFound, OutOfOrder, patch, reopen, createFromLine } from './tasks.js';
@@ -76,6 +76,8 @@ export async function shareRoutes(
   rest: string,
   method: string,
   now: Date,
+  /** Die Zone des Browsers, geprüft in `routes.ts` — „morgen 9 Uhr" meint sie. */
+  zone: string,
 ): Promise<void> {
   const access = await accessByToken(ctx.pool, token);
   if (access === null) {
@@ -313,8 +315,25 @@ export async function shareRoutes(
     }
 
     if (fileId !== undefined && fileWeg[3] === '/web' && method === 'PUT') {
+      /*
+       * MIT GRENZE, wie der Anhang selbst und wie die Mitgliederroute. Die
+       * kleine Fassung ist kleiner als das Original — eine Grenze, die grösser
+       * wäre als die des Originals, wäre keine. Vorher sammelte dieser Zweig
+       * den ganzen Körper, bevor er irgendetwas prüfte: wer einen
+       * Bearbeitungslink hatte, konnte den Speicher des Prozesses füllen
+       * (Audit 12.09.2026, F04).
+       */
+      const grenze = maxBytes();
       const stücke: Buffer[] = [];
-      for await (const stück of req) stücke.push(stück as Buffer);
+      let größe = 0;
+      for await (const stück of req) {
+        größe += (stück as Buffer).length;
+        if (größe > grenze) {
+          fail(res, 413, 'too_big', 'die kleine Fassung ist zu groß');
+          return;
+        }
+        stücke.push(stück as Buffer);
+      }
       const ok = await attachWeb(ctx.pool, {
         id: fileId,
         taskId,
@@ -440,26 +459,34 @@ export async function shareRoutes(
      * 10e), und er steht hier, wo er anfällt. Wer über einen Link etwas
      * anlegt, erscheint als „über einen Link" und nicht als jemand.
      */
+    /*
+     * DIESELBEN Regeln wie die direkte Bearbeitung eines Gasts, an den
+     * gemeinsamen Dienst übergeben statt hinterher korrigiert (Audit
+     * 12.09.2026, F17):
+     *
+     * - `#projekt` gilt NICHT, das Projekt ist gesetzt. Sonst wäre die
+     *   Schnellerfassung ein Weg aus dem eigenen Gegenstand hinaus. Vorher
+     *   stand hier ein zweites UPDATE nach dem Anlegen.
+     * - `@name` weist NICHT zu. Der Gast-PATCH verbietet Zuweisungen, und
+     *   die Schnellerfassung tat sie trotzdem — mit Meldung an die Person.
+     * - Die Zone des Browsers, wie beim Mitglied: „morgen 9 Uhr" eines
+     *   Gasts in Berlin war bis hierher 9 Uhr UTC.
+     */
     const out = await createFromLine(ctx.pool, {
       workspaceId: access.workspaceId,
       userId: null,
       line,
       now,
+      zone,
       projectId: access.projectId,
+      may: { assign: false, pinProject: true },
     });
-    /*
-     * Und `#projekt` aus der Zeile gilt hier NICHT: das Projekt ist gesetzt.
-     * Sonst könnte eine Zeile eine Aufgabe in ein Projekt legen, das die
-     * Freigabe nicht meint — die Schnellerfassung wäre ein Weg aus ihrem
-     * eigenen Gegenstand hinaus.
-     */
-    if (out.task.project_id !== access.projectId) {
-      await ctx.pool.query('UPDATE tasks SET project_id = $2 WHERE id = $1', [
-        out.task.id,
-        access.projectId,
-      ]);
-    }
-    json(res, 201, { id: out.task.id, title: out.task.title });
+    json(res, 201, {
+      id: out.task.id,
+      title: out.task.title,
+      // Damit die Oberfläche sagen kann, dass ein `@name` hier niemand ist.
+      unknownAssignees: out.unknownAssignees,
+    });
     return;
   }
 
@@ -627,7 +654,16 @@ export async function shareRoutes(
           fail(res, 400, 'nothing', 'dieser Link darf daran nichts ändern');
           return;
         }
-        await patch(ctx.pool, taskId, access.workspaceId, erlaubt as never);
+        /*
+         * DURCH DENSELBEN LESER wie beim Mitglied. Vorher gingen die Felder
+         * roh an `patch()`, mit `as never` am Typprüfer vorbei — und `patch`
+         * kennt `plannedAt`, nicht `planned`: ein Gast, der nur einen Termin
+         * änderte, bekam „nichts zu ändern"; zusammen mit einem Titel ging
+         * die Anfrage durch und der Termin blieb, wie er war (Audit
+         * 12.09.2026, F05). Ein Cast, der den Typprüfer zum Schweigen
+         * bringt, bringt genau die Warnung zum Schweigen, die hier fehlte.
+         */
+        await patch(ctx.pool, taskId, access.workspaceId, readPatch(erlaubt), null);
         json(res, 200, { ok: true });
         return;
       }
