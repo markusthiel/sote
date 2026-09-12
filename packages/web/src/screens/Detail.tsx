@@ -21,7 +21,15 @@ import { useCallback, useEffect, useRef, useState, type ReactElement } from 'rea
 
 import { COMMON_LEAD_MINUTES, formatDuration, sameLabel, saysLead } from '@sote/core';
 
-import { api, ApiError, type Detail as DetailData, type Project, type Task } from '../api.js';
+import {
+  api,
+  ApiError,
+  streamUrl,
+  type Detail as DetailData,
+  type Project,
+  type Task,
+} from '../api.js';
+import { useNudge } from '../hooks/useNudge.js';
 import { toggleDone } from '../tasks/toggleDone.js';
 import { FieldRow, FreeDate, FreeDuration, FreeLabel } from '../components/FieldRow.js';
 import { LookPicker } from '../components/LookPicker.js';
@@ -94,6 +102,15 @@ export interface DetailIO {
    * Gast ins Leere führt.
    */
   toggleChild: (task: Task) => Promise<unknown>;
+  /**
+   * Wo diese Ansicht erfährt, dass sich etwas geändert hat.
+   *
+   * In der Anbindung und nicht fest verdrahtet: ein Gast hat keinen Zugang zum
+   * Strom eines Mitglieds. Fest verdrahtet hätte seine Seite dauerhaft gegen
+   * eine Adresse geklopft, die ihm 401 antwortet — und `EventSource` versucht
+   * es von selbst immer wieder.
+   */
+  stream: string;
 }
 
 /** Die Anbindung eines Mitglieds. */
@@ -123,6 +140,7 @@ export const memberIO = (taskId: string, workspace: string | undefined): DetailI
   addChild: (title) => api.addChild(taskId, title, workspace),
   addComment: (body) => api.addComment(taskId, body, workspace),
   toggleChild: (kind) => toggleDone(kind, workspace),
+  stream: streamUrl(workspace),
 });
 
 /**
@@ -143,6 +161,8 @@ export const guestIO = (token: string, taskId: string): DetailIO => ({
     kind.completed === null
       ? api.shareComplete(token, kind.id)
       : api.shareReopen(token, kind.id),
+  /* Der Strom der FREIGABE: derselbe, den der Gast-Bildschirm schon benutzt. */
+  stream: `/api/share/${token}/stream`,
   /*
    * ANHÄNGE — auch beim Gast.
    *
@@ -362,6 +382,29 @@ export function Detail({
    * andere.
    */
   const [tab, setTab] = useDetailTab(TABS, 'felder');
+
+  /*
+   * KOMMENTARE KOMMEN LIVE HEREIN.
+   *
+   * GEWÜNSCHT: „Die Kommentare kommen noch nicht live rein bei anderen, die es
+   * gerade offen haben. Geht das? Dann wäre es schon fast ein Chat."
+   *
+   * Ein eigener Scope (`comments`, Migration 0037) und nicht `tasks`: sonst
+   * lüde bei jedem Satz jede offene Liste neu, obwohl in keiner Liste ein
+   * Kommentar steht. Hier hört genau die Ansicht zu, in der einer sichtbar
+   * wäre.
+   *
+   * Neu geladen wird die GANZE Aufgabe und nicht nur die Kommentare. Das ist
+   * mehr als nötig und trotzdem richtig: wer gerade mitliest, während jemand
+   * anders schreibt, sieht auch dessen Haken und Datum — und ein zweiter Weg,
+   * der nur Kommentare holt, wäre eine zweite Wahrheit über dieselbe Aufgabe.
+   *
+   * Der eigene Beitrag löst das genauso aus, und das ist kein Fehler: die
+   * Antwort auf „abgeschickt" ist dieselbe Liste, die alle anderen bekommen.
+   */
+  useNudge(anbindung.stream, 'comments', () => {
+    void load().catch(() => undefined);
+  });
 
   const load = useCallback(async () => {
     try {

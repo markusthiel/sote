@@ -114,7 +114,24 @@ export async function shareRoutes(
    * sein Projekt.
    */
   if (rest === '/stream' && method === 'GET') {
-    stream(req, res, (ws, scope) => ws === access.workspaceId && scope === 'tasks');
+    /*
+     * `tasks` UND `comments`, aber nicht mehr.
+     *
+     * Ein Gast soll erfahren, dass sich seine Liste geändert hat und dass
+     * jemand geschrieben hat — beides betrifft, was er vor sich sieht.
+     * `projects` und `shares` nicht: dass anderswo ein Projekt umbenannt
+     * wurde, ist eine Auskunft über einen Arbeitsbereich, den er nicht kennt.
+     *
+     * Die Klingel nennt ohnehin nur einen Scope und keinen Inhalt — aber „wann
+     * passiert dort etwas" ist auch eine Auskunft, und die kleinere ist hier
+     * die richtige.
+     */
+    stream(
+      req,
+      res,
+      (ws, scope) =>
+        ws === access.workspaceId && (scope === 'tasks' || scope === 'comments'),
+    );
     return;
   }
 

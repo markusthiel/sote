@@ -35,7 +35,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import { Client, type Pool } from 'pg';
 
 /** Die Scopes, die ein Client abonnieren darf. */
-export const SCOPES = ['tasks', 'projects', 'shares'] as const;
+export const SCOPES = ['tasks', 'projects', 'shares', 'comments'] as const;
 export type Scope = (typeof SCOPES)[number];
 
 const isScope = (v: string): v is Scope => (SCOPES as readonly string[]).includes(v);

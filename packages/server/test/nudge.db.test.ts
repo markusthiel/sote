@@ -320,3 +320,40 @@ test('der Strom ist auf SEINEN Arbeitsbereich gefiltert', async () => {
   // … waehrend die Klingel sehr wohl gelaeutet hat, nur fuer einen anderen.
   assert.ok(alle.some((p) => p.startsWith(`${fremd!.id}:`)));
 });
+
+test('ein Kommentar klingelt — mit eigenem Scope', async () => {
+  /*
+   * GEWUENSCHT: „Die Kommentare kommen noch nicht live rein bei anderen, die es
+   * gerade offen haben. Geht das? Dann waere es schon fast ein Chat."
+   *
+   * Ein EIGENER Scope und nicht `tasks`: sonst luede bei jedem Satz jede
+   * offene Liste neu, obwohl in keiner Liste ein Kommentar steht. Bei zwei
+   * Leuten, die sich unterhalten, waere das ein vollstaendiger Listenabruf je
+   * Satz -- fuer eine Zeile, die nur in EINER offenen Detailspalte sichtbar
+   * ist.
+   */
+  const laut = await horch(() =>
+    // Als GAST geschrieben: der Trigger haengt an der Aufgabe und nicht am
+    // Verfasser, und ein Konto braucht dieser Test nicht.
+    pool.query(
+      `INSERT INTO task_comments (task_id, author_guest, body) VALUES ($1,'Gast','Hallo')`,
+      [task],
+    ),
+  );
+  assert.deepEqual(laut, ['comments']);
+});
+
+test('und das Zuruecknehmen auch', async () => {
+  // Sonst staende ein zurueckgenommener Kommentar bei den anderen weiter da
+  // und verschwaende beim naechsten Laden ohne Zutun -- das liest sich wie ein
+  // Fehler.
+  const c = await queryOne<{ id: string }>(
+    pool,
+    `INSERT INTO task_comments (task_id, author_guest, body) VALUES ($1,'Gast','Weg') RETURNING id`,
+    [task],
+  );
+  const laut = await horch(() =>
+    pool.query('DELETE FROM task_comments WHERE id = $1', [c!.id]),
+  );
+  assert.deepEqual(laut, ['comments']);
+});
