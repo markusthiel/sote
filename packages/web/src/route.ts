@@ -228,3 +228,29 @@ export function modeOfRoute(route: Route): string {
   // kein Ort ist, an dem man arbeitet — sie steht im Kontomenue, wie in SONE.
   return route.kind === 'mode' ? route.mode : 'tasks';
 }
+
+/**
+ * Ob an diesem Ort Aufgaben stehen — und damit eine Detailspalte Sinn hat.
+ *
+ * Gemeldet: „Wenn man den Workspace wechselt und die Seitenleiste noch offen
+ * ist, kommt da ein Fehler … auch wenn man zu Benachrichtigungen oder sonst
+ * wohin wechselt: die Leiste bleibt offen, macht da aber keinen Sinn mehr."
+ *
+ * Die Spalte gehört zu einer Aufgabe in einer Liste. Wo keine Liste ist,
+ * gehört sie zu — nichts, und zeigt dann entweder einen fremden Bereich oder
+ * einen Fehler. Also: eine Antwort darauf, welche Orte Aufgaben zeigen, an
+ * einer Stelle, und `App` schließt die Spalte, wenn der Ort sie verlässt.
+ * Als Aufzählung der Orte MIT Liste, nicht ohne: ein neuer Ort kommt so ohne
+ * Spalte zur Welt, bis jemand sagt, dass er eine braucht.
+ */
+const MIT_AUFGABEN: ReadonlySet<Route['kind']> = new Set<Route['kind']>([
+  'today',
+  'upcoming',
+  'someday',
+  'inbox',
+  'project',
+  'search',
+  'task',
+]);
+
+export const showsTasks = (route: Route): boolean => MIT_AUFGABEN.has(route.kind);

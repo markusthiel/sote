@@ -5,7 +5,7 @@ import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 import { neighboursFor, neighboursForStep, reordered } from '../src/reorder.js';
-import { modeOfRoute, parseRoute, pathOf, viewOf, type Route } from '../src/route.js';
+import { modeOfRoute, parseRoute, pathOf, showsTasks, viewOf, type Route } from '../src/route.js';
 
 /* ── Die Ansicht ist ein Ort ───────────────────────────────────────────── */
 
@@ -221,4 +221,27 @@ test('kein Fall steht zweimal im switch', () => {
   for (const [name, n] of seen) {
     assert.ok(n <= 2, `„${name}" steht ${n}-mal — mindestens einer ist toter Code`);
   }
+});
+
+test('die Detailspalte gehört zu Orten mit Aufgaben — und zu keinem anderen', () => {
+  // Gemeldet: offen geblieben bei Benachrichtigungen, Freigaben, Bereichswechsel.
+  const mit: Route[] = [
+    { kind: 'today' },
+    { kind: 'upcoming' },
+    { kind: 'someday' },
+    { kind: 'inbox' },
+    { kind: 'project', projectId: 'p' },
+    { kind: 'search', q: 'x' },
+    { kind: 'task', taskId: 't' },
+  ];
+  const ohne: Route[] = [
+    { kind: 'notifications' },
+    { kind: 'shares' },
+    { kind: 'settings', section: 'rollen' },
+    { kind: 'workspaces', section: 'alle' },
+    { kind: 'admin', section: 'konten' },
+    { kind: 'mode', mode: 'trash' },
+  ];
+  for (const r of mit) assert.equal(showsTasks(r), true, r.kind);
+  for (const r of ohne) assert.equal(showsTasks(r), false, r.kind);
 });

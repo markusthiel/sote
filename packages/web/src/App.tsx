@@ -24,7 +24,7 @@ import { ProjectTree } from './components/ProjectTree.js';
 import { TopBar } from './components/TopBar.js';
 import { WorkspaceMenu } from './components/WorkspaceMenu.js';
 import { modeOf, type ModeId } from './modes.js';
-import { modeOfRoute, parseRoute, pathOf, viewOf, type Route } from './route.js';
+import { modeOfRoute, parseRoute, pathOf, viewOf, type Route, showsTasks } from './route.js';
 import { Setup } from './screens/Setup.js';
 import { SignIn } from './screens/SignIn.js';
 import { TaskList } from './screens/TaskList.js';
@@ -278,6 +278,17 @@ export function App() {
    * über Kalender.
    */
   const openTask = route.kind === 'task' ? route.taskId : openTaskState;
+  /*
+   * Die Spalte schließt, wenn der Ort keine Aufgaben mehr zeigt.
+   *
+   * Gemeldet: offen geblieben beim Wechsel zu Benachrichtigungen, Freigaben,
+   * Einstellungen — „macht da aber ja keinen Sinn mehr". Als Effekt über die
+   * Route und nicht in `go()`: der Zurück-Knopf des Browsers geht nicht durch
+   * `go()`, und die Spalte soll auch dann zugehen.
+   */
+  useEffect(() => {
+    if (!showsTasks(route)) setOpenTaskState(null);
+  }, [route]);
   const setOpenTask = useCallback(
     (id: string | null) => {
       if (route.kind === 'task') {
@@ -660,6 +671,13 @@ export function App() {
             current={workspace}
             onPick={(id) => {
               setWorkspace(id);
+              /*
+               * Und die Detailspalte zu: sie zeigte eine Aufgabe des ALTEN
+               * Bereichs, und die Route darunter fragt sie im neuen ab —
+               * „Aufgabe … gibt es nicht", in Rot, in einer Spalte, die
+               * niemand mehr gemeint hat. Gemeldet mit Bild.
+               */
+              setOpenTaskState(null);
               // Gemerkt, damit ein Neuladen hier bleibt.
               localStorage.setItem(LAST_WORKSPACE, id);
               /*
