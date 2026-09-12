@@ -434,6 +434,49 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
   const askedZone = url.searchParams.get('tz');
   const zone = askedZone !== null && isZone(askedZone) ? askedZone : 'UTC';
 
+  /* ── Kalender: der Weg, den ein Kalenderprogramm gehen kann ──────────────
+   *
+   * VOR der Anmeldeschranke, und zwar zwangsweise: ein Kalenderprogramm kann
+   * sich nicht anmelden. Es holt eine Adresse ab, in einem Rutsch, ohne Konto
+   * — also trägt die Adresse das Geheimnis.
+   *
+   * `.ics` am Ende, weil manche Programme nach der Endung gehen und nicht nach
+   * dem Kopf der Antwort. Er steht trotzdem richtig da.
+   *
+   * UND VOR DEM STATISCHEN RÜCKFALL. Der Weg heißt `/kalender/…` und nicht
+   * `/api/…` — der Zweig unten, der alles außerhalb `/api/` als Datei der
+   * Oberfläche behandelt, hat ihn darum verschluckt: 404 für jedes
+   * Kalenderprogramm, ohne dass eine Datenbankabfrage lief. Dieselbe Form
+   * wie die Gast-Klingel in `shareRoutes.ts` („eine Route hinter einer, die
+   * sie verschluckt, ist still"), nur dass `calendar.db.test.ts` `icsByToken`
+   * direkt rief und es nicht sehen konnte. Gefunden im Audit vom 12.09.2026
+   * (F07); seitdem gibt es einen Test, der den Weg über HTTP geht.
+   */
+  const icsPath = /^\/kalender\/([A-Za-z0-9_-]{20,200})\.ics$/.exec(path);
+  if (icsPath !== null) {
+    if (method !== 'GET' && method !== 'HEAD') {
+      fail(res, 405, 'no_method', 'ein Kalender wird geholt und nicht geschrieben');
+      return;
+    }
+    const text = await icsByToken(ctx.pool, icsPath[1]!, now, baseUrl());
+    if (text === undefined) {
+      /*
+       * Unbekannt und widerrufen sehen GLEICH aus. Ein „widerrufen" wäre die
+       * Auskunft, dass es diesen Link einmal gab — die schuldet der Server
+       * niemandem, der ihn nicht (mehr) hat.
+       */
+      fail(res, 404, 'no_calendar', 'diesen Kalender gibt es nicht');
+      return;
+    }
+    res.statusCode = 200;
+    res.setHeader('content-type', 'text/calendar; charset=utf-8');
+    // Kein Zwischenspeichern: ein Kalender, der eine alte Antwort aus einem
+    // Puffer bekommt, zeigt mit Überzeugung den Stand von vorher.
+    res.setHeader('cache-control', 'no-store');
+    res.end(method === 'HEAD' ? undefined : text);
+    return;
+  }
+
   if (!path.startsWith('/api/')) {
     if (ctx.webRoot === undefined) {
       fail(res, 404, 'no_web', 'diese Instanz liefert keine Oberfläche aus');
@@ -550,40 +593,6 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
   const sharePath = /^\/api\/share\/([A-Za-z0-9_-]{20,200})(\/.*)?$/.exec(path);
   if (sharePath !== null) {
     await shareRoutes(ctx, req, res, sharePath[1]!, sharePath[2] ?? '', method, now);
-    return;
-  }
-
-  /* ── Kalender: der Weg, den ein Kalenderprogramm gehen kann ──────────────
-   *
-   * VOR der Anmeldeschranke, und zwar zwangsweise: ein Kalenderprogramm kann
-   * sich nicht anmelden. Es holt eine Adresse ab, in einem Rutsch, ohne Konto
-   * — also trägt die Adresse das Geheimnis.
-   *
-   * `.ics` am Ende, weil manche Programme nach der Endung gehen und nicht nach
-   * dem Kopf der Antwort. Er steht trotzdem richtig da.
-   */
-  const icsPath = /^\/kalender\/([A-Za-z0-9_-]{20,200})\.ics$/.exec(path);
-  if (icsPath !== null) {
-    if (method !== 'GET' && method !== 'HEAD') {
-      fail(res, 405, 'no_method', 'ein Kalender wird geholt und nicht geschrieben');
-      return;
-    }
-    const text = await icsByToken(ctx.pool, icsPath[1]!, now, baseUrl());
-    if (text === undefined) {
-      /*
-       * Unbekannt und widerrufen sehen GLEICH aus. Ein „widerrufen" wäre die
-       * Auskunft, dass es diesen Link einmal gab — die schuldet der Server
-       * niemandem, der ihn nicht (mehr) hat.
-       */
-      fail(res, 404, 'no_calendar', 'diesen Kalender gibt es nicht');
-      return;
-    }
-    res.statusCode = 200;
-    res.setHeader('content-type', 'text/calendar; charset=utf-8');
-    // Kein Zwischenspeichern: ein Kalender, der eine alte Antwort aus einem
-    // Puffer bekommt, zeigt mit Überzeugung den Stand von vorher.
-    res.setHeader('cache-control', 'no-store');
-    res.end(method === 'HEAD' ? undefined : text);
     return;
   }
 

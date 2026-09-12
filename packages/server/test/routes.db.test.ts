@@ -769,3 +769,35 @@ test('ein Bild ohne Inhalt ist keines', async () => {
   });
   assert.equal(res.status, 400);
 });
+
+test('ein Kalenderabonnement ist über HTTP erreichbar — nicht nur als Funktion', async () => {
+  /*
+   * Audit 12.09.2026, F07: der Weg `/kalender/:token.ics` stand HINTER dem
+   * Zweig, der alles außerhalb `/api/` als Datei der Oberfläche behandelt.
+   * Jedes Kalenderprogramm bekam 404, bevor eine Datenbankabfrage lief.
+   * `calendar.db.test.ts` rief `icsByToken` direkt und konnte das nicht
+   * sehen — ein Test, der die Kette selbst schließt, prüft eine Kette, die
+   * es nicht gibt. Dieser hier geht den Weg, den Apple Kalender geht.
+   */
+  process.env['SOTE_SHARE_KEY'] = Buffer.alloc(32, 3).toString('hex');
+  const angelegt = await call('/api/calendar', { method: 'POST' });
+  assert.equal(angelegt.status, 201);
+  const feed = (await angelegt.json()) as { token: string };
+
+  // Ohne Sitzung, wie ein Kalenderprogramm.
+  const res = await fetch(`${base}/kalender/${feed.token}.ics`);
+  assert.equal(res.status, 200);
+  assert.match(res.headers.get('content-type') ?? '', /^text\/calendar/);
+  assert.match(await res.text(), /BEGIN:VCALENDAR/);
+
+  const kopf = await fetch(`${base}/kalender/${feed.token}.ics`, { method: 'HEAD' });
+  assert.equal(kopf.status, 200);
+
+  const fremd = await fetch(`${base}/kalender/${'x'.repeat(43)}.ics`);
+  assert.equal(fremd.status, 404);
+  const grund = (await fremd.json()) as { error: { code: string } };
+  assert.equal(grund.error.code, 'no_calendar', 'die Route antwortet — nicht der Dateiausgeber');
+
+  const schreiben = await fetch(`${base}/kalender/${feed.token}.ics`, { method: 'POST' });
+  assert.equal(schreiben.status, 405);
+});
