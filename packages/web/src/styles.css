@@ -2582,16 +2582,18 @@ body {
 /* Ein Schlagwort in der Zeile.
    
    Kein Rahmen und keine Füllung: acht Etiketten mit Kästchen drumherum sind
-   acht Kästen in einer Zeile, die drei Wörter zeigen soll. Das `@` steht davor
+   acht Kästen in einer Zeile, die drei Wörter zeigen soll. Das `#` steht davor
    und trägt die Bedeutung — es ist dasselbe Zeichen, mit dem man es tippt und
-   sucht, also sagt es „das ist ein Schlagwort" ohne ein Wort dafür. */
+   sucht, also sagt es „das ist ein Schlagwort" ohne ein Wort dafür. (Hier
+   stand nach dem letzten Drehen der Zeichen noch `@`, das Zeichen für eine
+   Person — gemeldet als „zeigt @Markus, aber das ist das Schlagwort".) */
 .tag {
   font-family: var(--sote-mono);
   font-size: var(--sone-text-xs);
   color: var(--text-muted);
 }
 .tag::before {
-  content: "@";
+  content: "#";
   color: var(--text-faint);
 }
 

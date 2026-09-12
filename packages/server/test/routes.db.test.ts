@@ -187,7 +187,7 @@ test('me nennt den Arbeitsbereich, in dem man Mitglied ist', async () => {
 test('eine Zeile anlegen, und der Satz zur Wiederholung kommt mit', async () => {
   const res = await call('/api/tasks', {
     method: 'POST',
-    body: JSON.stringify({ line: 'Filter reinigen jeden zweiten Dienstag 8 Uhr #haus !!' }),
+    body: JSON.stringify({ line: 'Filter reinigen jeden zweiten Dienstag 8 Uhr +haus !!' }),
   });
   assert.equal(res.status, 201);
   const body = (await res.json()) as {
@@ -203,7 +203,7 @@ test('eine Zeile anlegen, und der Satz zur Wiederholung kommt mit', async () => 
 test('ein unbekanntes Projekt wird gemeldet, nicht angelegt', async () => {
   const res = await call('/api/tasks', {
     method: 'POST',
-    body: JSON.stringify({ line: 'Beleg suchen #gibtesnicht' }),
+    body: JSON.stringify({ line: 'Beleg suchen +gibtesnicht' }),
   });
   const body = (await res.json()) as { unknownProject: string | null };
   assert.equal(body.unknownProject, 'gibtesnicht');
@@ -517,7 +517,7 @@ test('ein Link mit edit legt an, hakt ab und öffnet wieder', async () => {
   assert.equal((await fetch(`${base}/api/share/${t}/tasks/${id}/complete`, { method: 'DELETE' })).status, 200);
 });
 
-test('ein Link legt nichts in ein fremdes Projekt, auch nicht über #projekt', async () => {
+test('ein Link legt nichts in ein fremdes Projekt, auch nicht über +projekt', async () => {
   /*
    * Sonst wäre die Schnellerfassung ein Weg aus dem eigenen Gegenstand hinaus:
    * „Kabel #anderes" würde eine Aufgabe dort ablegen, wo die Freigabe nicht
@@ -539,7 +539,7 @@ test('ein Link legt nichts in ein fremdes Projekt, auch nicht über #projekt', a
   const angelegt = await fetch(`${base}/api/share/${made.share.token}/tasks`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ line: 'Kabel #Zuhause' }),
+    body: JSON.stringify({ line: 'Kabel +Zuhause' }),
   });
   const id = ((await angelegt.json()) as { id: string }).id;
   const row = await queryOne<{ project_id: string }>(
@@ -874,7 +874,7 @@ const als = (cookie: string, path: string, init: RequestInit = {}) =>
 async function eineAufgabe(): Promise<string> {
   const res = await call('/api/tasks', {
     method: 'POST',
-    body: JSON.stringify({ line: `Stufenprobe ${Math.random().toString(36).slice(2, 8)} #haus` }),
+    body: JSON.stringify({ line: `Stufenprobe ${Math.random().toString(36).slice(2, 8)} +haus` }),
   });
   assert.equal(res.status, 201);
   const body = (await res.json()) as { task: { id: string } };
@@ -1014,7 +1014,7 @@ test('ein Gast sieht nur die Schlagwörter seines Projekts, nicht die des Arbeit
   // Ein Schlagwort, das nur an einer Aufgabe AUSSERHALB des freigegebenen Projekts hängt.
   const fremd = await call('/api/tasks', {
     method: 'POST',
-    body: JSON.stringify({ line: `Interne Sache +${geheim} #haus` }),
+    body: JSON.stringify({ line: `Interne Sache #${geheim} +haus` }),
   });
   assert.equal(fremd.status, 201);
   const res = await call(`/api/share/${token}/tasks/${taskId}`);
@@ -1070,7 +1070,7 @@ test('die Gast-Schnellerfassung weist niemanden zu, bleibt im Projekt und rechne
   const res = await fetch(`${base}/api/share/${token}/tasks?tz=Europe%2FBerlin`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ line: 'Fenster putzen @Markus #haus morgen 9 Uhr' }),
+    body: JSON.stringify({ line: 'Fenster putzen @Markus +haus morgen 9 Uhr' }),
   });
   assert.equal(res.status, 201);
   const body = (await res.json()) as { id: string; unknownAssignees: string[] };
@@ -1086,7 +1086,7 @@ test('die Gast-Schnellerfassung weist niemanden zu, bleibt im Projekt und rechne
     'SELECT project_id, planned_at FROM tasks WHERE id = $1',
     [body.id],
   );
-  assert.equal(row!.project_id, gastProjekt, '#haus zieht nicht aus der Freigabe hinaus');
+  assert.equal(row!.project_id, gastProjekt, '+haus zieht nicht aus der Freigabe hinaus');
   // NOW ist der 7.9.2026 10:00Z; morgen 9 Uhr in Berlin (CEST) ist 07:00Z.
   assert.equal(row!.planned_at.toISOString(), '2026-09-08T07:00:00.000Z');
 });

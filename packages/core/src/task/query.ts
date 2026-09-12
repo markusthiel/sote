@@ -115,20 +115,25 @@ export function parseTaskQuery(input: string): TaskQuery {
   let due: 'today' | 'week' | 'overdue' | undefined;
 
   for (const part of splitQuery(input)) {
-    // Das Zeichen zuerst: `+guest:lars` ist eine Zuweisung an einen Gast und
-    // keine unbekannte Facette namens `+guest`. Die erste Fassung prüfte den
+    // Das Zeichen zuerst: `@guest:lars` ist eine Zuweisung an einen Gast und
+    // keine unbekannte Facette namens `@guest`. Die erste Fassung prüfte den
     // Doppelpunkt vorher und ließ solche Token als Freitext durchfallen — die
     // Suche nach einem Gast fand dann nichts.
     const first = part[0];
     if ((first === '#' || first === '@' || first === '+') && part.length > 1) {
       const value = unquote(part.slice(1));
-      if (first === '#') {
+      /*
+       * DIESELBEN DREI ZEICHEN wie in `quickAdd.ts`: `@` Person, `#`
+       * Schlagwort, `+` Projekt. Die Suche spricht die Sprache der Erfassung;
+       * alles andere wäre ein Feld, in dem dasselbe Zeichen etwas anderes
+       * bedeutet. Und `withFacet` unten schreibt sie zurück — mit demselben
+       * Paar, sonst sucht ein Klick auf ein Schlagwort nach einer Person
+       * (genau das war nach dem letzten Drehen der Fall).
+       */
+      if (first === '+') {
         projects.push(value);
         read.push({ facet: 'projekt', value });
       } else if (first === '@') {
-        /* `@` ist eine PERSON — seit dem Umdrehen der Zeichen, und die Suche
-           spricht dieselbe Sprache wie die Erfassung. Alles andere waere ein
-           Feld, in dem dasselbe Zeichen etwas anderes bedeutet. */
         assignees.push(value);
         read.push({ facet: 'zugewiesen', value });
       } else {
@@ -253,6 +258,22 @@ const KEY_OF: Record<Facet, string> = {
 };
 
 /**
+ * Das Kurzzeichen je Facette — DASSELBE Paar wie beim Lesen oben.
+ *
+ * Als Tabelle und nicht als Kette von Bedingungen: nach dem letzten Drehen
+ * der Zeichen stand hier noch `schlagwort → '@'`, während das Lesen `@` längst
+ * als Person nahm. Ein Klick auf ein Schlagwort in einer Zeile fügte `@name`
+ * ein, und die Suche fand die Aufgaben dieser Person — oder niemanden.
+ * `query.test.ts` prüft seither, dass `withFacet` und `parseQuery` sich einig
+ * sind.
+ */
+export const SIGIL_OF: Partial<Record<Facet, string>> = {
+  projekt: '+',
+  schlagwort: '#',
+  zugewiesen: '@',
+};
+
+/**
  * Eine Facette in einer bestehenden Abfrage setzen, ersetzen oder entfernen.
  *
  * `value === undefined` entfernt sie. `multiple` sagt, ob mehrere Werte
@@ -271,7 +292,7 @@ export function buildTaskQuery(
   { multiple = false }: { multiple?: boolean } = {},
 ): string {
   const key = KEY_OF[facet];
-  const sigil = facet === 'projekt' ? '#' : facet === 'schlagwort' ? '@' : facet === 'zugewiesen' ? '+' : null;
+  const sigil = SIGIL_OF[facet] ?? null;
 
   const kept: string[] = [];
   let alreadyThere = false;
@@ -288,8 +309,7 @@ export function buildTaskQuery(
         partValue = unquote(part.slice(colon + 1));
       }
     } else if (sigil !== null && part.startsWith(sigil) && part.length > 1) {
-      partFacet =
-        sigil === '#' ? 'project' : sigil === '@' ? 'label' : 'assignee';
+      partFacet = FACETS[facet];
       partValue = unquote(part.slice(1));
     } else if (/^!{1,3}$/.test(part)) {
       partFacet = 'priority';

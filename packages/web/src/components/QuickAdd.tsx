@@ -227,7 +227,7 @@ export function QuickAdd({
    * zusammenkleben — wäre die einzige, bei der etwas verlorengehen kann.
    *
    * Jede Zeile geht durch dieselbe Erfassung wie eine getippte, also gelten
-   * `morgen 9 Uhr`, `#projekt` und `!!` je Zeile. Ein Absatz aus einer Mail
+   * `morgen 9 Uhr`, `+projekt` und `!!` je Zeile. Ein Absatz aus einer Mail
    * wird damit zu einer Liste, in der die Termine schon stehen.
    */
   function pasteLines(text: string): boolean {
@@ -346,14 +346,14 @@ export function QuickAdd({
           /*
            * Der Platzhalter ist ein VERSPRECHEN, und es muss stimmen.
            *
-           * Er nannte `#haus` — und über eine Freigabe gilt `#projekt` nicht:
+           * Er nannte `+haus` — und über eine Freigabe gilt `+projekt` nicht:
            * dort ist das Projekt gesetzt, sonst wäre die Schnellerfassung ein
            * Weg aus dem eigenen Gegenstand hinaus (Konzept 10e). Im Bild
            * stand also eine Anleitung für etwas, das der Server absichtlich
            * ignoriert — dieselbe Sorte Fehler wie ein Knopf, der nichts tut,
            * nur in Worten.
            */
-          placeholder={hint ?? 'Aufgabe hinzufügen — „morgen 9 Uhr #haus !!“'}
+          placeholder={hint ?? 'Aufgabe hinzufügen — „morgen 9 Uhr +haus !!“'}
           aria-label="Aufgabe hinzufügen"
           enterKeyHint="done"
         />

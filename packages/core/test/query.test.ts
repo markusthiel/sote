@@ -26,10 +26,10 @@ test('Freitext bleibt Freitext', () => {
 });
 
 test('die Zeichen aus der Schnellerfassung gelten auch hier', () => {
-  // Wer #haus tippt, um etwas anzulegen, tippt #haus, um es zu finden.
+  // Wer +haus tippt, um etwas anzulegen, tippt +haus, um es zu finden.
   // `@` ist eine Person, `+` ein Schlagwort — die Suche spricht dieselbe
   // Sprache wie die Erfassung.
-  const q = parseTaskQuery('messen #haus +unterwegs @anna !!');
+  const q = parseTaskQuery('messen +haus #unterwegs @anna !!');
   assert.equal(q.text, 'messen');
   assert.deepEqual(q.projects, ['haus']);
   assert.deepEqual(q.labels, ['unterwegs']);
@@ -58,14 +58,14 @@ test('ein Wert in Anführungszeichen darf Leerzeichen haben', () => {
 });
 
 test('mehrere Werte derselben Facette stehen nebeneinander', () => {
-  const q = parseTaskQuery('+eilig +unterwegs prio:1 prio:2');
+  const q = parseTaskQuery('#eilig #unterwegs prio:1 prio:2');
   assert.deepEqual(q.labels, ['eilig', 'unterwegs']);
   assert.deepEqual(q.priorities, [1, 2]);
 });
 
 test('ein Zeichen mit Doppelpunkt bleibt ein Zeichen', () => {
-  // `+guest:lars` ist eine Zuweisung an einen Gast und keine unbekannte
-  // Facette namens `+guest`. Die erste Fassung prüfte den Doppelpunkt vorher,
+  // `#guest:lars` ist eine Zuweisung an einen Gast und keine unbekannte
+  // Facette namens `#guest`. Die erste Fassung prüfte den Doppelpunkt vorher,
   // und die Suche nach einem Gast fand nichts.
   const q = parseTaskQuery('@guest:lars dosen');
   assert.deepEqual(q.assignees, ['guest:lars']);
@@ -91,7 +91,7 @@ test('ein unbekannter Wert einer bekannten Facette bleibt Text', () => {
 });
 
 test('read nennt jede gelesene Facette für die Chips', () => {
-  const q = parseTaskQuery('#haus +eilig @anna !!! ist:erledigt frist:heute');
+  const q = parseTaskQuery('+haus #eilig @anna !!! ist:erledigt frist:heute');
   assert.deepEqual(q.read, [
     { facet: 'projekt', value: 'haus' },
     { facet: 'schlagwort', value: 'eilig' },
@@ -108,7 +108,7 @@ test('eine leere Abfrage ist erkennbar leer — auch mit Status', () => {
   // Status allein ist kein Suchauftrag: „alle offenen" ist keine Suche,
   // sondern eine Ansicht.
   assert.equal(isEmptyQuery(parseTaskQuery('ist:offen')), true);
-  assert.equal(isEmptyQuery(parseTaskQuery('#haus')), false);
+  assert.equal(isEmptyQuery(parseTaskQuery('+haus')), false);
   assert.equal(isEmptyQuery(parseTaskQuery('kabel')), false);
 });
 
@@ -137,7 +137,7 @@ test('eine Facette ersetzen, die es nur einmal geben darf', () => {
 
 test('eine Facette entfernen', () => {
   assert.equal(buildTaskQuery('kabel status:erledigt', 'status', undefined), 'kabel');
-  assert.equal(buildTaskQuery('#haus kabel', 'projekt', undefined), 'kabel');
+  assert.equal(buildTaskQuery('+haus kabel', 'projekt', undefined), 'kabel');
 });
 
 test('mehrfache Facetten sammeln, und derselbe Wert schaltet ab', () => {
@@ -151,8 +151,8 @@ test('mehrfache Facetten sammeln, und derselbe Wert schaltet ab', () => {
 });
 
 test('die Kurzform wird als dieselbe Facette erkannt und ersetzt', () => {
-  // Wer `#haus` getippt hat und dann im Panel „Büro" wählt, will nicht beide.
-  assert.equal(buildTaskQuery('#haus kabel', 'projekt', 'büro'), 'kabel projekt:büro');
+  // Wer `+haus` getippt hat und dann im Panel „Büro" wählt, will nicht beide.
+  assert.equal(buildTaskQuery('+haus kabel', 'projekt', 'büro'), 'kabel projekt:büro');
   assert.equal(buildTaskQuery('!! kabel', 'priorität', '1'), 'kabel prio:1');
 });
 
@@ -166,7 +166,7 @@ test('lesen und zurückschreiben ergibt dieselbe Abfrage', () => {
   // Der eigentliche Punkt: die Bedienelemente lesen den String, ändern eine
   // Sache und schreiben ihn zurück. Wenn dabei etwas verloren geht, driften
   // Panel und Feld auseinander.
-  const start = 'kabel messen #haus @eilig +anna prio:2 frist:heute';
+  const start = 'kabel messen +haus #eilig @anna prio:2 frist:heute';
   const parsed = parseTaskQuery(start);
   let round = start;
   round = buildTaskQuery(round, 'priorität', '2');
@@ -178,4 +178,35 @@ test('lesen und zurückschreiben ergibt dieselbe Abfrage', () => {
   assert.deepEqual(again.assignees, parsed.assignees);
   assert.deepEqual(again.priorities, parsed.priorities);
   assert.equal(again.due, parsed.due);
+});
+
+test('die Zeichen: @ Person, # Schlagwort, + Projekt — beim Lesen UND beim Zurückschreiben', () => {
+  /*
+   * GEMELDET: „Wenn ich ein Schlagwort auswähle, zeigt er @Markus — aber das
+   * ist das Schlagwort." Nach dem letzten Drehen der Zeichen las die Suche `@`
+   * als Person, während `buildTaskQuery` für ein Schlagwort noch `@` schrieb.
+   * Ein Klick auf ein Schlagwort suchte damit nach einer Person.
+   *
+   * Dieser Test hält beide Richtungen aneinander fest — für jedes der drei.
+   */
+  const q = parseTaskQuery('+haus #eilig @anna');
+  assert.deepEqual(q.projects, ['haus']);
+  assert.deepEqual(q.labels, ['eilig']);
+  assert.deepEqual(q.assignees, ['anna']);
+
+  assert.equal(buildTaskQuery('', 'projekt', 'haus'), 'projekt:haus');
+  const geschrieben = [
+    buildTaskQuery('', 'schlagwort', 'eilig'),
+    buildTaskQuery('', 'zugewiesen', 'anna'),
+  ];
+  // Zurückgeschrieben wird die lange Form — und die lange Form liest sich
+  // in dieselbe Facette wie das Kurzzeichen. Wichtig ist: `#eilig` in der
+  // Zeile wird von `buildTaskQuery('schlagwort')` als SEINE Facette erkannt
+  // und ersetzt, nicht als fremde stehen gelassen.
+  assert.deepEqual(parseTaskQuery(geschrieben.join(' ')).labels, ['eilig']);
+  assert.deepEqual(parseTaskQuery(geschrieben.join(' ')).assignees, ['anna']);
+  assert.equal(buildTaskQuery('#eilig kabel', 'schlagwort', undefined), 'kabel', '# ist Schlagwort');
+  assert.equal(buildTaskQuery('+haus kabel', 'projekt', undefined), 'kabel', '+ ist Projekt');
+  assert.equal(buildTaskQuery('@anna kabel', 'zugewiesen', undefined), 'kabel', '@ ist Person');
+  assert.equal(buildTaskQuery('@anna kabel', 'schlagwort', undefined), '@anna kabel', 'und nicht Schlagwort');
 });

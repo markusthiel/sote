@@ -97,7 +97,7 @@ test('eine Farbe, die keine ist, wird abgelehnt', async () => {
     () => create(pool, ws, { name: 'Haus', color: 'rot; background: url(x)' }),
     OutOfOrder,
   );
-  await assert.rejects(() => create(pool, ws, { name: 'Haus', color: '#xyz' }), OutOfOrder);
+  await assert.rejects(() => create(pool, ws, { name: 'Haus', color: '+xyz' }), OutOfOrder);
 });
 
 /* ── Der Name entscheidet, ob #name raten müsste ───────────────────────── */
@@ -122,7 +122,7 @@ test('derselbe Name unter verschiedenen Eltern ist erlaubt', async () => {
   assert.equal((await tree(ws)).filter((p) => p.name === 'Kabel').length, 2);
 });
 
-test('dann ist #kabel mehrdeutig — und die Erfassung rät nicht', async () => {
+test('dann ist +kabel mehrdeutig — und die Erfassung rät nicht', async () => {
   const ws = await space('p-ambiguous');
   const haus = await create(pool, ws, { name: 'Haus' });
   const buero = await create(pool, ws, { name: 'Büro' });
@@ -132,7 +132,7 @@ test('dann ist #kabel mehrdeutig — und die Erfassung rät nicht', async () => 
   const out = await createFromLine(pool, {
     workspaceId: ws,
     userId,
-    line: 'Kabel messen #kabel',
+    line: 'Kabel messen +kabel',
     now: NOW,
   });
   assert.equal(out.ambiguousProject, 'kabel');
@@ -192,7 +192,7 @@ test('umbenennen lässt die Aufgaben, wo sie sind', async () => {
   const t = await createFromLine(pool, {
     workspaceId: ws,
     userId,
-    line: 'Kabel messen #haus',
+    line: 'Kabel messen +haus',
     now: NOW,
   });
   assert.equal(t.task.project_id, p.id);

@@ -18,7 +18,7 @@
  *
  * ## Was hier NICHT geht, und warum
  *
- * **Erfassen.** „morgen 9 Uhr #haus" — in welchem Bereich? `#haus` kann es
+ * **Erfassen.** „morgen 9 Uhr +haus" — in welchem Bereich? `+haus` kann es
  * zweimal geben. Ein Bereichswähler neben dem Feld wäre die Antwort, und damit
  * wäre der Vorteil dieser Seite wieder weg: sie soll die Frage „wo?"
  * abnehmen, nicht stellen.

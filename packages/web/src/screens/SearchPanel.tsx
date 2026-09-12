@@ -163,7 +163,7 @@ export function SearchPanel({
                 pille(
                   p.name,
                   // Verglichen ohne Rücksicht auf Groß- und Kleinschreibung:
-                  // die Abfrage wird getippt, und `#Haus` und `#haus` sind
+                  // die Abfrage wird getippt, und `+Haus` und `+haus` sind
                   // dasselbe Projekt.
                   gelesen.projects.some((x) => x.toLowerCase() === p.name.toLowerCase()),
                   'projekt',

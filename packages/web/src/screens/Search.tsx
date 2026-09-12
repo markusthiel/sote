@@ -16,7 +16,7 @@
  * Bildschirme das nicht tun.
  */
 
-import { buildTaskQuery, parseTaskQuery, sameLabel, type Facet } from '@sote/core';
+import { buildTaskQuery, parseTaskQuery, sameLabel, SIGIL_OF, type Facet } from '@sote/core';
 import { useCallback, useEffect, useState } from 'react';
 
 import { api, ApiError, type Project, type Task } from '../api.js';
@@ -25,8 +25,8 @@ import { toggleDone } from '../tasks/toggleDone.js';
 
 const EXAMPLES: readonly { q: string; says: string }[] = [
   { q: 'kabel', says: 'Titel und Notiz, auch halbe Wörter' },
-  { q: '#haus', says: 'in einem Projekt' },
-  { q: '+unterwegs', says: 'mit einem Schlagwort' },
+  { q: '+haus', says: 'in einem Projekt' },
+  { q: '#unterwegs', says: 'mit einem Schlagwort' },
   { q: '+anna', says: 'jemandem zugewiesen' },
   { q: '!!', says: 'nach Priorität — !!! ist dringend' },
   { q: 'frist:überfällig', says: 'auch heute oder woche' },
@@ -71,9 +71,10 @@ export function Search({
    */
   const refine = (name: string) => {
     if (parsed.labels.some((have) => sameLabel(have, name))) return;
-    /* `+` ist das Zeichen für ein Schlagwort — seit dem Umdrehen der beiden.
-       Hier stand `@`, und das hätte die Suche nach einer PERSON eingefügt. */
-    onQuery(`${q.trim()} +${name}`.trim());
+    /* `#` ist das Zeichen für ein Schlagwort (`@` Person, `+` Projekt). Das
+       Zeichen kommt aus dem Kern, nicht aus dem Gedächtnis: nach jedem Drehen
+       stand hier eines, das der Kern anders las. */
+    onQuery(`${q.trim()} ${SIGIL_OF.schlagwort}${name}`.trim());
   };
   const nothingAsked =
     parsed.text === '' &&

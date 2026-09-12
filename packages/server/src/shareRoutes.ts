@@ -464,7 +464,7 @@ export async function shareRoutes(
      * gemeinsamen Dienst übergeben statt hinterher korrigiert (Audit
      * 12.09.2026, F17):
      *
-     * - `#projekt` gilt NICHT, das Projekt ist gesetzt. Sonst wäre die
+     * - `+projekt` gilt NICHT, das Projekt ist gesetzt. Sonst wäre die
      *   Schnellerfassung ein Weg aus dem eigenen Gegenstand hinaus. Vorher
      *   stand hier ein zweites UPDATE nach dem Anlegen.
      * - `@name` weist NICHT zu. Der Gast-PATCH verbietet Zuweisungen, und

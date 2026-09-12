@@ -1125,7 +1125,7 @@ export const api = {
    * Eine Aufgabe aus einer Zeile.
    *
    * `projectId` ist die **Herkunft des Bildschirms**, nicht eine Angabe aus der
-   * Zeile: wer in einem Projekt tippt, meint dieses Projekt. Ein `#projekt` in
+   * Zeile: wer in einem Projekt tippt, meint dieses Projekt. Ein `+projekt` in
    * der Zeile gewinnt trotzdem — das ist eine Ansage, das hier nur ein Ort.
    */
   createTask: (

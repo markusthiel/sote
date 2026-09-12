@@ -73,7 +73,7 @@ const add = (workspaceId: string, line: string) =>
 
 test('eine Teilaufgabe erbt Projekt und Arbeitsbereich vom Elternteil', async () => {
   const { workspaceId, projectId } = await scratch('d-inherit');
-  const parent = await add(workspaceId, 'Umzug vorbereiten #haus');
+  const parent = await add(workspaceId, 'Umzug vorbereiten +haus');
   const child = await addChild(pool, parent.task.id, workspaceId, userId, 'Kartons zählen');
 
   assert.equal(child.project_id, projectId);
@@ -85,7 +85,7 @@ test('die Projektansicht zeigt die Teilaufgabe nicht als eigene Zeile', async ()
   // Sonst stünde dieselbe Sache zweimal in einer Liste, mit zwei Kästchen, die
   // dasselbe meinen.
   const { workspaceId, projectId } = await scratch('d-nodouble');
-  const parent = await add(workspaceId, 'Umzug vorbereiten #haus');
+  const parent = await add(workspaceId, 'Umzug vorbereiten +haus');
   await addChild(pool, parent.task.id, workspaceId, userId, 'Kartons zählen');
 
   const rows = await list(pool, 'project', workspaceId, NOW, projectId);
@@ -99,7 +99,7 @@ test('eine Teilaufgabe mit eigenem Datum steht in Heute — das ist ihr Zweck', 
   // Echte Teilaufgaben statt Checklistenpunkte heißt: sie haben eigene Fristen
   // und eigene Prioritäten. Eine, die heute dran ist, muss in Heute stehen.
   const { workspaceId } = await scratch('d-today');
-  const parent = await add(workspaceId, 'Umzug vorbereiten #haus');
+  const parent = await add(workspaceId, 'Umzug vorbereiten +haus');
   const child = await addChild(pool, parent.task.id, workspaceId, userId, 'Kartons zählen');
   await patch(pool, child.id, workspaceId, {
     plannedAt: new Date(Date.UTC(2026, 8, 7, 9, 0)),
@@ -113,7 +113,7 @@ test('eine Teilaufgabe mit eigenem Datum steht in Heute — das ist ihr Zweck', 
 
 test('eine Teilaufgabe bekommt keine Teilaufgaben', async () => {
   const { workspaceId } = await scratch('d-onedeep');
-  const parent = await add(workspaceId, 'Umzug #haus');
+  const parent = await add(workspaceId, 'Umzug +haus');
   const child = await addChild(pool, parent.task.id, workspaceId, userId, 'Kartons');
   await assert.rejects(
     () => addChild(pool, child.id, workspaceId, userId, 'noch tiefer'),
@@ -123,7 +123,7 @@ test('eine Teilaufgabe bekommt keine Teilaufgaben', async () => {
 
 test('eine leere Teilaufgabe wird abgelehnt', async () => {
   const { workspaceId } = await scratch('d-empty');
-  const parent = await add(workspaceId, 'Umzug #haus');
+  const parent = await add(workspaceId, 'Umzug +haus');
   await assert.rejects(
     () => addChild(pool, parent.task.id, workspaceId, userId, '   '),
     OutOfOrder,
@@ -132,7 +132,7 @@ test('eine leere Teilaufgabe wird abgelehnt', async () => {
 
 test('mehrere Teilaufgaben landen in ihrer eigenen Reihe, nicht in der des Projekts', async () => {
   const { workspaceId, projectId } = await scratch('d-order');
-  const parent = await add(workspaceId, 'Umzug #haus');
+  const parent = await add(workspaceId, 'Umzug +haus');
   const a = await addChild(pool, parent.task.id, workspaceId, userId, 'a');
   const b = await addChild(pool, parent.task.id, workspaceId, userId, 'b');
   const c = await addChild(pool, parent.task.id, workspaceId, userId, 'c');
@@ -142,7 +142,7 @@ test('mehrere Teilaufgaben landen in ihrer eigenen Reihe, nicht in der des Proje
 
   // Der Schlüsselraum ist pro Geschwisterkreis, also darf eine Teilaufgabe
   // denselben Schlüssel tragen wie eine oberste Zeile im selben Projekt.
-  const top = await add(workspaceId, 'zweite oberste #haus');
+  const top = await add(workspaceId, 'zweite oberste +haus');
   assert.equal(a.sort_key, 'a0');
   assert.notEqual(top.task.sort_key, a.sort_key);
   const rows = await list(pool, 'project', workspaceId, NOW, projectId);
@@ -152,7 +152,7 @@ test('mehrere Teilaufgaben landen in ihrer eigenen Reihe, nicht in der des Proje
 
 test('eine weggeworfene Aufgabe nimmt ihre Teilaufgaben aus der Detailspalte', async () => {
   const { workspaceId } = await scratch('d-trash');
-  const parent = await add(workspaceId, 'Umzug #haus');
+  const parent = await add(workspaceId, 'Umzug +haus');
   const child = await addChild(pool, parent.task.id, workspaceId, userId, 'Kartons');
   await trash(pool, 'task', child.id, workspaceId, userId);
   const d = await detail(pool, parent.task.id, workspaceId);
@@ -161,14 +161,14 @@ test('eine weggeworfene Aufgabe nimmt ihre Teilaufgaben aus der Detailspalte', a
 
 test('eine weggeworfene Aufgabe hat keine Detailspalte', async () => {
   const { workspaceId } = await scratch('d-trashparent');
-  const parent = await add(workspaceId, 'Umzug #haus');
+  const parent = await add(workspaceId, 'Umzug +haus');
   await trash(pool, 'task', parent.task.id, workspaceId, userId);
   await assert.rejects(() => detail(pool, parent.task.id, workspaceId), NotFound);
 });
 
 test('erledigte Teilaufgaben stehen unten', async () => {
   const { workspaceId } = await scratch('d-donelast');
-  const parent = await add(workspaceId, 'Umzug #haus');
+  const parent = await add(workspaceId, 'Umzug +haus');
   const a = await addChild(pool, parent.task.id, workspaceId, userId, 'a');
   await addChild(pool, parent.task.id, workspaceId, userId, 'b');
   await complete(pool, a.id, userId, NOW);
@@ -180,7 +180,7 @@ test('erledigte Teilaufgaben stehen unten', async () => {
 
 test('ein Kommentar trägt den Namen des Verfassers und keinen Gastschlüssel', async () => {
   const { workspaceId } = await scratch('d-comment');
-  const t = await add(workspaceId, 'Kopplung entwerfen #haus');
+  const t = await add(workspaceId, 'Kopplung entwerfen +haus');
   const c = await addComment(pool, t.task.id, workspaceId, userId, '  Erst die Rechte.  ');
 
   assert.equal(c.body, 'Erst die Rechte.');
@@ -193,7 +193,7 @@ test('ein Kommentar trägt den Namen des Verfassers und keinen Gastschlüssel', 
 
 test('Kommentare stehen in der Reihenfolge, in der sie geschrieben wurden', async () => {
   const { workspaceId } = await scratch('d-order2');
-  const t = await add(workspaceId, 'Kopplung #haus');
+  const t = await add(workspaceId, 'Kopplung +haus');
   await addComment(pool, t.task.id, workspaceId, userId, 'erst');
   await addComment(pool, t.task.id, workspaceId, userId, 'dann');
   const d = await detail(pool, t.task.id, workspaceId);
@@ -206,7 +206,7 @@ test('ein Kommentar eines Gastes bricht die Abfrage nicht', async () => {
   // liegen die beiden in getrennten Spalten, und dieser Test hält fest, dass
   // die Detailabfrage einen Gast verkraftet.
   const { workspaceId } = await scratch('d-guest');
-  const t = await add(workspaceId, 'Umzug Büro #haus');
+  const t = await add(workspaceId, 'Umzug Büro +haus');
   await pool.query(
     `INSERT INTO task_comments (task_id, author_guest, body) VALUES ($1,$2,$3)`,
     [t.task.id, 'guest:Lars', 'Dosen sind gezählt.'],
@@ -219,7 +219,7 @@ test('ein Kommentar eines Gastes bricht die Abfrage nicht', async () => {
 
 test('ein leerer Kommentar wird abgelehnt', async () => {
   const { workspaceId } = await scratch('d-emptyc');
-  const t = await add(workspaceId, 'Kopplung #haus');
+  const t = await add(workspaceId, 'Kopplung +haus');
   await assert.rejects(
     () => addComment(pool, t.task.id, workspaceId, userId, '\n  '),
     OutOfOrder,
@@ -273,7 +273,7 @@ test('mit Herkunft steht dort URL und Titel — gespeichert, nicht abgefragt', a
 
 test('die Detailspalte nennt den Projektnamen, damit die Spalte allein lesbar ist', async () => {
   const { workspaceId } = await scratch('d-pname');
-  const t = await add(workspaceId, 'Kabel messen #haus');
+  const t = await add(workspaceId, 'Kabel messen +haus');
   const d = await detail(pool, t.task.id, workspaceId);
   assert.equal(d.projectName, 'Haus');
 });

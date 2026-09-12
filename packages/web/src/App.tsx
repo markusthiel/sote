@@ -12,7 +12,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import type { Board, Landing, ListView, Look } from '@sote/core';
+import { SIGIL_OF, type Board, type Landing, type ListView, type Look } from '@sote/core';
 
 import { streamUrl, api, ApiError, type Me, type Project } from './api.js';
 import { useBoard, useLook, useScheme } from './appearance.js';
@@ -1148,7 +1148,7 @@ export function App() {
             onChanged={() => void loadPanel()}
             openTask={openTask}
             onOpenTask={setOpenTask}
-            onLabel={(name) => go({ kind: 'search', q: `@${name}` })}
+            onLabel={(name) => go({ kind: 'search', q: `${SIGIL_OF.schlagwort}${name}` })}
             onOpenProject={(id) => go({ kind: 'project', projectId: id })}
             listView={
               /*

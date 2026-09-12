@@ -334,7 +334,7 @@ export async function addComment(
      *
      * `@name` wie im Schnellerfasser — und zwar geprüft gegen die Mitglieder
      * DIESES Arbeitsbereichs: ein Name, den es hier nicht gibt, ist Text, so
-     * wie ein `#projekt`, das es nicht gibt.
+     * wie ein `+projekt`, das es nicht gibt.
      *
      * Und wer genannt wurde, bekommt NICHT zusätzlich die allgemeine Meldung
      * „neuer Kommentar". Zwei Meldungen über einen Satz sind eine zu viel, und

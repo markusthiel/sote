@@ -266,11 +266,29 @@ function parseInUtc(input: string, options: QuickAddOptions): QuickAdd {
   const assignees: string[] = [];
 
   // ── Zeichen zuerst: sie sind eindeutig und verkleinern den Suchraum.
-  // Eine Aufgabe hat **ein** Projekt. Das erste `#` ist es; jedes weitere wird
+  /*
+   * DIE DREI ZEICHEN: `@` eine Person, `#` ein Schlagwort, `+` ein Projekt.
+   *
+   * Zum zweiten Mal gedreht. Das erste Mal: „`+` für Schlagwörter und `@` für
+   * Personen, das ist gängiger" — `@` war vorher das Schlagwort. Dann stand
+   * `#` am Projekt und `+` am Schlagwort, und die Meldung dazu: „@ ist für
+   * User, # für Tags und + für Projekt dachte ich, das wäre am sinnvollsten."
+   * Auch das stimmt: `#` ist überall sonst das Zeichen für ein Schlagwort, und
+   * ein Projekt ist das, was man einer Aufgabe HINZUFÜGT — ein `+`.
+   *
+   * Die Zeichen stehen nirgends gespeichert: sie werden beim Lesen einer Zeile
+   * erkannt und danach als Projekt, Schlagwort oder Zuständigkeit abgelegt.
+   * Ein Drehen kostet darum keine Wanderung über alte Daten — nur diese
+   * Datei, `query.ts` (die Suche spricht dieselbe Sprache), das Stylesheet
+   * (`.tag::before`), die Platzhalter und die Tests. Und genau das war das
+   * letzte Mal die Falle: `query.ts` behielt an einer Stelle das alte Paar,
+   * und ein Klick auf ein Schlagwort suchte nach einer Person.
+   */
+  // Eine Aufgabe hat **ein** Projekt. Das erste `+` ist es; jedes weitere wird
   // als Schlagwort gelesen und nicht stehen gelassen. Ein Zeichen, das erkennbar
   // Syntax ist und trotzdem im Titel landet, sieht wie ein Fehler aus — und
   // stillschweigend wegzuwerfen verliert, was jemand gemeint hat.
-  for (const m of input.matchAll(/(^|\s)#([^\s#@+!]+)/g)) {
+  for (const m of input.matchAll(/(^|\s)\+([^\s#@+!]+)/g)) {
     const at = m.index + m[1]!.length;
     const end = at + 1 + m[2]!.length;
     if (!r.free(at, end)) continue;
@@ -282,29 +300,13 @@ function parseInUtc(input: string, options: QuickAddOptions): QuickAdd {
       r.take('label', at, end);
     }
   }
-  /*
-   * `@` IST EINE PERSON, `+` EIN SCHLAGWORT — und das war einmal umgekehrt.
-   *
-   * GEMELDET: „Dann lass uns das bitte umdrehen, + für Schlagwörter und @ für
-   * Personen, das ist gängiger."
-   *
-   * Stimmt, und der Beleg dafür steht in der Meldung davor: ich hatte beim
-   * Bauen der Nennungen von selbst `@` für eine Person geschrieben — ohne
-   * nachzusehen, weil es überall sonst so ist. Wer eine Schreibweise aus
-   * Gewohnheit falsch errät, errät sie auch im Gebrauch falsch.
-   *
-   * Die Zeichen stehen nirgends gespeichert: sie werden beim Lesen einer Zeile
-   * erkannt und danach als Schlagwort oder Zuständigkeit abgelegt. Ein
-   * Vertauschen kostet darum keine Wanderung über alte Daten — nur diese
-   * Datei, die Tests und die Sätze, die es erklären.
-   */
   for (const m of input.matchAll(/(^|\s)@([^\s#@+!]+)/g)) {
     const at = m.index + m[1]!.length;
     if (!r.free(at, at + 1 + m[2]!.length)) continue;
     assignees.push(m[2]!);
     r.take('assignee', at, at + 1 + m[2]!.length);
   }
-  for (const m of input.matchAll(/(^|\s)\+([^\s#@+!]+)/g)) {
+  for (const m of input.matchAll(/(^|\s)#([^\s#@+!]+)/g)) {
     const at = m.index + m[1]!.length;
     if (!r.free(at, at + 1 + m[2]!.length)) continue;
     labels.push(m[2]!);

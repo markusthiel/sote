@@ -16,7 +16,7 @@
  *   („Dosen" soll „Dose" finden). Keins von beiden allein genügt, also wird
  *   jedes Wort zu `(wort:* | wort)`.
  * - **Projekt und Schlagwort nach Namen**, nicht nach Id: die Abfrage ist ein
- *   String, den jemand getippt haben kann, und `#haus` soll auch dann gehen,
+ *   String, den jemand getippt haben kann, und `+haus` soll auch dann gehen,
  *   wenn es aus einem Lesezeichen kommt.
  * - **Offen ist die Vorgabe.** Wer sucht, sucht meistens etwas zu tun. Wer
  *   Erledigtes will, sagt `ist:erledigt`.

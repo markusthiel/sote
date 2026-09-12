@@ -130,8 +130,8 @@ test('ein weggeworfenes Projekt nimmt seine Aufgaben aus allen Ansichten mit', a
   // in Heute stehen, während das Projekt aus dem Panel verschwunden war — und
   // niemand fand den Ort, an dem man sie loswird.
   const { workspaceId, haus } = await scratch('t-cascade');
-  await add(workspaceId, 'Kartons bestellen heute #haus');
-  await add(workspaceId, 'Kabel messen #haus');
+  await add(workspaceId, 'Kartons bestellen heute +haus');
+  await add(workspaceId, 'Kabel messen +haus');
   await add(workspaceId, 'ohne Projekt heute');
 
   await trash(pool, 'project', haus, workspaceId, userId);
@@ -156,8 +156,8 @@ test('ein weggeworfenes Projekt nimmt seine Aufgaben aus allen Ansichten mit', a
 
 test('ein zurückgeholtes Projekt bringt seine Aufgaben mit', async () => {
   const { workspaceId, haus } = await scratch('t-back');
-  await add(workspaceId, 'Kartons bestellen heute #haus');
-  await add(workspaceId, 'Kabel messen #haus');
+  await add(workspaceId, 'Kartons bestellen heute +haus');
+  await add(workspaceId, 'Kabel messen +haus');
   await trash(pool, 'project', haus, workspaceId, userId);
   await restore(pool, 'project', haus, workspaceId);
 
@@ -172,7 +172,7 @@ test('ein zurückgeholtes Projekt bringt seine Aufgaben mit', async () => {
 
 test('eine einzeln weggeworfene Aufgabe kommt in ihr Projekt zurück', async () => {
   const { workspaceId, haus } = await scratch('t-simple');
-  const t = await add(workspaceId, 'Kabel messen #haus');
+  const t = await add(workspaceId, 'Kabel messen +haus');
   await trash(pool, 'task', t.task.id, workspaceId, userId);
   await restore(pool, 'task', t.task.id, workspaceId);
   const rows = await list(pool, 'project', workspaceId, NOW, haus);
@@ -183,7 +183,7 @@ test('liegt ihr Projekt im Papierkorb, verlangt das Zurück ein Ziel', async () 
   // Der eine Ausgang, den ein Zurück-Knopf nicht haben darf: zurückgeholt und
   // trotzdem unsichtbar.
   const { workspaceId, haus, buero } = await scratch('t-target');
-  const t = await add(workspaceId, 'Kabel messen #haus');
+  const t = await add(workspaceId, 'Kabel messen +haus');
   await trash(pool, 'task', t.task.id, workspaceId, userId);
   await trash(pool, 'project', haus, workspaceId, userId);
 
@@ -205,7 +205,7 @@ test('liegt ihr Projekt im Papierkorb, verlangt das Zurück ein Ziel', async () 
 
 test('als Ziel geht auch „ohne Projekt"', async () => {
   const { workspaceId, haus } = await scratch('t-none');
-  const t = await add(workspaceId, 'Kabel messen #haus');
+  const t = await add(workspaceId, 'Kabel messen +haus');
   await trash(pool, 'task', t.task.id, workspaceId, userId);
   await trash(pool, 'project', haus, workspaceId, userId);
   await restore(pool, 'task', t.task.id, workspaceId, null);
@@ -220,7 +220,7 @@ test('als Ziel geht auch „ohne Projekt"', async () => {
 
 test('ein Ziel, das es nicht gibt, wird abgelehnt', async () => {
   const { workspaceId, haus } = await scratch('t-badtarget');
-  const t = await add(workspaceId, 'Kabel messen #haus');
+  const t = await add(workspaceId, 'Kabel messen +haus');
   await trash(pool, 'task', t.task.id, workspaceId, userId);
   await trash(pool, 'project', haus, workspaceId, userId);
   await assert.rejects(
@@ -234,10 +234,10 @@ test('zurückgeholt wird ans Ende der Zielliste, ohne Schlüsselkollision', asyn
   // Die Lücke von damals ist längst zu, und ein alter Schlüssel kollidiert mit
   // dem Unique-Index aus Migration 0003.
   const { workspaceId, haus } = await scratch('t-key');
-  const first = await add(workspaceId, 'eins #haus');
+  const first = await add(workspaceId, 'eins +haus');
   await trash(pool, 'task', first.task.id, workspaceId, userId);
-  await add(workspaceId, 'zwei #haus');
-  await add(workspaceId, 'drei #haus');
+  await add(workspaceId, 'zwei +haus');
+  await add(workspaceId, 'drei +haus');
   await restore(pool, 'task', first.task.id, workspaceId);
   const rows = await list(pool, 'project', workspaceId, NOW, haus);
   assert.deepEqual(
@@ -264,8 +264,8 @@ test('endgültig löschen geht nur aus dem Papierkorb', async () => {
 
 test('ein endgültig gelöschtes Projekt nimmt seine Aufgaben mit', async () => {
   const { workspaceId, haus } = await scratch('t-purge-project');
-  await add(workspaceId, 'a #haus');
-  await add(workspaceId, 'b #haus');
+  await add(workspaceId, 'a +haus');
+  await add(workspaceId, 'b +haus');
   await trash(pool, 'project', haus, workspaceId, userId);
   await purge(pool, 'project', haus, workspaceId);
   const left = await queryOne<{ n: string }>(

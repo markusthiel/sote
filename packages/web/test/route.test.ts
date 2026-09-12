@@ -25,7 +25,7 @@ test('jede Route überlebt den Weg in die URL und zurück', () => {
     { kind: 'someday' },
     { kind: 'project', projectId: ID },
     { kind: 'search', q: '' },
-    { kind: 'search', q: 'kabel #haus' },
+    { kind: 'search', q: 'kabel +haus' },
     { kind: 'mode', mode: 'trash' },
   ];
   for (const route of routes) {

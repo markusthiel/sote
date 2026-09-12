@@ -164,8 +164,8 @@ test('ein Projekt zeigt Erledigtes, wenn man danach fragt — und dann unten', a
    * fragt dieser Test danach, statt es vorauszusetzen.
    */
   const { workspaceId, projectId } = await scratch('v-project');
-  const one = await add(workspaceId, 'offen #haus');
-  const two = await add(workspaceId, 'erledigt #haus');
+  const one = await add(workspaceId, 'offen +haus');
+  const two = await add(workspaceId, 'erledigt +haus');
   await complete(pool, two.task.id, userId, NOW);
 
   const rows = await list(pool, 'project', workspaceId, NOW, projectId, undefined, true);

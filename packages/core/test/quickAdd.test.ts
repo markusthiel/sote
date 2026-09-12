@@ -13,8 +13,8 @@ const iso = (d: Date | undefined) => (d === undefined ? undefined : d.toISOStrin
 
 /* ── Der Testfall aus dem Konzept ──────────────────────────────────────── */
 
-test('„Steuerbescheid morgen 9 Uhr #finanzen !!"', () => {
-  const q = parse('Steuerbescheid morgen 9 Uhr #finanzen !!');
+test('„Steuerbescheid morgen 9 Uhr +finanzen !!"', () => {
+  const q = parse('Steuerbescheid morgen 9 Uhr +finanzen !!');
   assert.equal(q.title, 'Steuerbescheid');
   assert.equal(iso(q.planned), iso(utc(2026, 9, 8, 9, 0)));
   assert.equal(q.project, 'finanzen');
@@ -22,8 +22,8 @@ test('„Steuerbescheid morgen 9 Uhr #finanzen !!"', () => {
   assert.equal(q.due, undefined);
 });
 
-test('„Filter reinigen jeden zweiten Dienstag 8 Uhr #haus !!"', () => {
-  const q = parse('Filter reinigen jeden zweiten Dienstag 8 Uhr #haus !!');
+test('„Filter reinigen jeden zweiten Dienstag 8 Uhr +haus !!"', () => {
+  const q = parse('Filter reinigen jeden zweiten Dienstag 8 Uhr +haus !!');
   assert.equal(q.title, 'Filter reinigen');
   assert.equal(q.project, 'haus');
   assert.equal(q.priority, 2);
@@ -101,15 +101,15 @@ test('Schlagwörter und Zuweisungen sind Mengen, das Projekt ist eines', () => {
    * gespeichert -- sie werden beim Lesen erkannt --, also kostete das
    * Umdrehen keine Wanderung ueber alte Daten.
    */
-  const q = parse('Kabel kaufen +unterwegs +baumarkt @anna @lars #haus');
+  const q = parse('Kabel kaufen #unterwegs #baumarkt @anna @lars +haus');
   assert.equal(q.title, 'Kabel kaufen');
   assert.deepEqual(q.labels, ['unterwegs', 'baumarkt']);
   assert.deepEqual(q.assignees, ['anna', 'lars']);
   assert.equal(q.project, 'haus');
 });
 
-test('ein zweites #tag wird Schlagwort und bleibt nicht als Syntax im Titel', () => {
-  const q = parse('Kabel kaufen #haus #garten');
+test('ein zweites +tag wird Schlagwort und bleibt nicht als Syntax im Titel', () => {
+  const q = parse('Kabel kaufen +haus +garten');
   assert.equal(q.title, 'Kabel kaufen');
   assert.equal(q.project, 'haus');
   assert.deepEqual(q.labels, ['garten']);
@@ -155,7 +155,7 @@ test('täglich, wöchentlich, monatlich', () => {
 /* ── Was gelesen wurde, wird gemeldet ─────────────────────────────────── */
 
 test('read nennt jede gelesene Stelle, auch zwei für einen Wert', () => {
-  const input = 'Steuerbescheid morgen 9 Uhr #finanzen !!';
+  const input = 'Steuerbescheid morgen 9 Uhr +finanzen !!';
   const q = parseQuickAdd(input, { now: NOW });
 
   // „morgen" und „9 Uhr" sind zwei Stellen, die zusammen einen Zeitpunkt
@@ -282,7 +282,7 @@ test('die Dauer wird zurückgemeldet, damit das Feld sie hervorheben kann', () =
 });
 
 test('Dauer und Priorität stören sich nicht', () => {
-  const q = parseQuickAdd('Etwas ~30 !! #haus', { now: NOW });
+  const q = parseQuickAdd('Etwas ~30 !! +haus', { now: NOW });
   assert.equal(q.duration, 30);
   assert.equal(q.priority, 2);
   assert.equal(q.project, 'haus');

@@ -50,7 +50,7 @@ export function TaskRow({
   /**
    * Ein Klick auf ein Schlagwort — führt in die Suche.
    *
-   * KEIN eigener Bildschirm „alle Aufgaben mit +wort": den gibt es schon, er
+   * KEIN eigener Bildschirm „alle Aufgaben mit #wort": den gibt es schon, er
    * heisst Suche und ist ein Ort mit einer Adresse (`claude/suche-als-ort.md`).
    * Ein zweiter Weg zu derselben Liste wäre einer, den man pflegen muss, damit
    * beide dasselbe zeigen.
@@ -230,7 +230,7 @@ export function TaskRow({
                 key={name}
                 type="button"
                 className="tag as-tag"
-                title={`Aufgaben mit @${name} suchen`}
+                title={`Aufgaben mit #${name} suchen`}
                 onClick={() => onLabel(name)}
               >
                 {name}

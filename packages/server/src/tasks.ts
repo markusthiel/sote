@@ -188,7 +188,7 @@ export interface CreateFromLine {
   readonly now: Date;
   /** Die Zone, in der „9 Uhr" gemeint ist. Fehlt sie: UTC, wie vorher. */
   readonly zone?: string;
-  /** Projekt, in dem die Zeile getippt wurde. `#name` schlägt es. */
+  /** Projekt, in dem die Zeile getippt wurde. `+name` schlägt es. */
   readonly projectId?: string | null;
   /**
    * Wer in der Oberfläche als PILLE gewählt wurde — Konto-Ids, keine Namen.
@@ -211,7 +211,7 @@ export interface CreateFromLine {
    * ausdrücklich — bis zum Audit vom 12.09.2026 (F17) tat die
    * Schnellerfassung sie trotzdem, samt Meldung an die Person.
    *
-   * `pinProject: true`: `#name` gilt nicht, das Projekt ist gesetzt. Vorher
+   * `pinProject: true`: `+name` gilt nicht, das Projekt ist gesetzt. Vorher
    * korrigierte die Gast-Route das NACH dem Anlegen mit einem zweiten
    * UPDATE — die Aufgabe lag einen Moment im falschen Projekt, mit dem
    * Sortierschlüssel des falschen Projekts. Jetzt entscheidet es die
@@ -225,10 +225,10 @@ export interface CreateFromLine {
 
 export interface Created {
   readonly task: TaskRow;
-  /** Ein `#name`, den es im Arbeitsbereich nicht gibt. Wird gemeldet, nicht angelegt. */
+  /** Ein `+name`, den es im Arbeitsbereich nicht gibt. Wird gemeldet, nicht angelegt. */
   readonly unknownProject: string | undefined;
   /**
-   * Ein `#name`, auf den mehrere passen.
+   * Ein `+name`, auf den mehrere passen.
    *
    * „Kabel" darf es unter „Haus" und unter „Büro" geben — das sind zwei
    * verschiedene Dinge, und der Index in Migration 0004 lässt sie zu Recht
@@ -247,7 +247,7 @@ export interface Created {
   readonly folderProject: string | undefined;
   readonly unknownAssignees: readonly string[];
   /**
-   * Ein `+name`, auf den **mehrere** passen.
+   * Ein `@name`, auf den **mehrere** passen.
    *
    * Getrennt von `unknownAssignees`, weil es eine andere Nachricht ist: „gibt
    * es hier nicht" gegen „wen von beiden meinst du". Eine von zwei Personen
@@ -261,7 +261,7 @@ export interface Created {
  * Eine Zeile wird eine Aufgabe.
  *
  * Was der Parser nicht auflösen kann — ein Projekt- oder Personenname, den es
- * nicht gibt —, wird **gemeldet und nicht erfunden**. Ein `#finanzen`, das
+ * nicht gibt —, wird **gemeldet und nicht erfunden**. Ein `+finanzen`, das
  * stillschweigend ein neues Projekt anlegt, produziert Karteileichen; eines,
  * das stillschweigend verschwindet, verliert, was jemand gemeint hat.
  */
@@ -279,7 +279,7 @@ export async function createFromLine(pool: Pool, input: CreateFromLine): Promise
     let folderProject: string | undefined;
     if (q.project !== undefined && input.may?.pinProject !== true) {
       /*
-       * `#name` meint ein **Projekt**, keinen Ordner (Konzept 10d).
+       * `+name` meint ein **Projekt**, keinen Ordner (Konzept 10d).
        *
        * Ohne `kind = 'list'` fand die Abfrage nach der Migration zwei Zeilen —
        * den Ordner „Haus" und das Projekt „Haus" darin — und meldete
@@ -410,7 +410,7 @@ export async function createFromLine(pool: Pool, input: CreateFromLine): Promise
         unknownAssignees.push(name);
         continue;
       }
-      // Vier Schreibweisen, weil niemand „+Markus Thiel" tippt: ein
+      // Vier Schreibweisen, weil niemand „@Markus Thiel" tippt: ein
       // Leerzeichen beendet das Zeichen, also muss der Vorname reichen. Und
       // der Teil vor dem @, weil Adressen kürzer sind als Namen. (Wer die
       // Person im Popup wählt, kommt gar nicht hier an — die reist als Id.)

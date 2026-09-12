@@ -210,7 +210,7 @@ export function FreeLabel({
         />
       </label>
       {bad ? (
-        <div className="fpop-note">ein Wort ohne Leerzeichen — damit `+` es wiederfindet</div>
+        <div className="fpop-note">ein Wort ohne Leerzeichen — damit `#` es wiederfindet</div>
       ) : schon ? (
         <div className="fpop-note">hängt schon dran</div>
       ) : null}

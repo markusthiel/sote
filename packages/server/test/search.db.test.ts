@@ -177,20 +177,20 @@ test('nach Projekt, auch über die Kurzform', async () => {
   await create(pool, ws, { name: 'Haus', parentId: o1.id });
   const o2 = await create(pool, ws, { name: 'Ordner Büro' });
   await create(pool, ws, { name: 'Büro', parentId: o2.id });
-  await add(ws, 'Kabel messen #haus');
-  await add(ws, 'Kabel bestellen #büro');
+  await add(ws, 'Kabel messen +haus');
+  await add(ws, 'Kabel bestellen +büro');
 
-  assert.deepEqual(await found(ws, '#haus'), ['Kabel messen']);
+  assert.deepEqual(await found(ws, '+haus'), ['Kabel messen']);
   assert.deepEqual(await found(ws, 'projekt:büro'), ['Kabel bestellen']);
-  assert.deepEqual(await found(ws, 'kabel #haus'), ['Kabel messen']);
+  assert.deepEqual(await found(ws, 'kabel +haus'), ['Kabel messen']);
 });
 
 test('zwei Schlagwörter verengen — beide müssen dran sein', async () => {
   const ws = await space('s-labels');
-  await add(ws, 'A +eilig +unterwegs');
-  await add(ws, 'B +eilig');
-  assert.deepEqual(await found(ws, '+eilig'), ['A', 'B']);
-  assert.deepEqual(await found(ws, '+eilig +unterwegs'), ['A']);
+  await add(ws, 'A #eilig #unterwegs');
+  await add(ws, 'B #eilig');
+  assert.deepEqual(await found(ws, '#eilig'), ['A', 'B']);
+  assert.deepEqual(await found(ws, '#eilig #unterwegs'), ['A']);
 });
 
 test('nach Zuständigen, mit Vornamen wie in der Erfassung', async () => {
@@ -248,10 +248,10 @@ test('Text und Facetten zusammen', async () => {
   const ws = await space('s-mixed');
   const o3 = await create(pool, ws, { name: 'Ordner Haus' });
   await create(pool, ws, { name: 'Haus', parentId: o3.id });
-  await add(ws, 'Kabel messen #haus !!');
-  await add(ws, 'Kabel bestellen #haus');
+  await add(ws, 'Kabel messen +haus !!');
+  await add(ws, 'Kabel bestellen +haus');
   await add(ws, 'Kabel messen');
-  assert.deepEqual(await found(ws, 'messen #haus !!'), ['Kabel messen']);
+  assert.deepEqual(await found(ws, 'messen +haus !!'), ['Kabel messen']);
 });
 
 /* ── Ränder ────────────────────────────────────────────────────────────── */
@@ -281,7 +281,7 @@ test('mehr Treffer als das Limit werden als solche gemeldet', async () => {
 
 test('die gelesene Abfrage kommt mit zurück, damit die Chips nicht geraten werden', async () => {
   const ws = await space('s-read');
-  const out = await search(pool, ws, 'kabel #haus !!', NOW);
+  const out = await search(pool, ws, 'kabel +haus !!', NOW);
   assert.deepEqual(out.query.read, [
     { facet: 'projekt', value: 'haus' },
     { facet: 'priorität', value: '2' },
@@ -292,5 +292,5 @@ test('die gelesene Abfrage kommt mit zurück, damit die Chips nicht geraten werd
 test('ein Projektname, den es nicht gibt, findet nichts statt alles', async () => {
   const ws = await space('s-nosuch');
   await add(ws, 'Kabel messen');
-  assert.deepEqual(await found(ws, '#gibtsnicht'), []);
+  assert.deepEqual(await found(ws, '+gibtsnicht'), []);
 });

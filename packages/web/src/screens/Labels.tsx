@@ -83,7 +83,7 @@ export function Labels({ workspace }: { workspace: string | undefined }) {
       <section className="settings-card">
         <h2>Schlagwörter</h2>
         <p className="muted">
-          Sie entstehen beim Vergeben — <code>+unterwegs</code> in der
+          Sie entstehen beim Vergeben — <code>#unterwegs</code> in der
           Schnellerfassung oder im Feld an einer Aufgabe. Hier lassen sie sich
           richtigstellen und wegräumen.
         </p>
@@ -97,7 +97,7 @@ export function Labels({ workspace }: { workspace: string | undefined }) {
       {data.labels.length === 0 ? (
         <section className="settings-card">
           <p className="muted">
-            Noch keine. Schreib <code>+wort</code> in eine Aufgabe, dann steht
+            Noch keine. Schreib <code>#wort</code> in eine Aufgabe, dann steht
             hier eines.
           </p>
         </section>
