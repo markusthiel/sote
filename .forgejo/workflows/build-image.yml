@@ -264,16 +264,26 @@ jobs:
             printf "  node %s\n" "$(node --version)"
           '
 
-          # Und nicht als root. Das Dockerfile sagt `USER node`; eine
-          # Behauptung im Dockerfile ist noch keine Messung.
+          # Und nicht als root.
+          #
+          # Gemessen wird, als wer der Prozess ENDET, und nicht, was das Abbild
+          # erklaert. Der Einstiegspunkt beginnt bewusst als root, richtet die
+          # Rechte am Datenverzeichnis und uebergibt per su-exec an uid 1000.
+          # Weil er das Kommando aus CMD durchreicht, laeuft `id -u` durch
+          # denselben Weg wie der Server - die Antwort ist damit die Kennung,
+          # unter der auch der Server laufen wuerde.
+          #
+          # Ein Aufruf mit `--entrypoint /bin/sh` wuerde die Uebergabe
+          # ueberspringen und root messen: das Gegenteil dessen, was zu
+          # beweisen ist.
           echo
           echo "Rechte:"
-          uid="$(docker run --rm --entrypoint /bin/sh "$FIRST" -c 'id -u')"
-          if [ "$uid" = "0" ]; then
-            echo "  der Server würde als root laufen" >&2
+          uid="$(docker run --rm "$FIRST" id -u 2>/dev/null | tail -1)"
+          if [ "$uid" != "1000" ]; then
+            echo "  erwartet war uid 1000, gemessen: ${uid:-nichts}" >&2
             exit 1
           fi
-          echo "  läuft als uid $uid"
+          echo "  der Server laeuft als uid $uid"
 
           # Der Healthcheck aus compose fragt /api/health. Ohne Datenbank kommt
           # der Server nicht bis dorthin — geprüft wird darum nur, dass er ohne

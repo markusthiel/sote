@@ -45,20 +45,36 @@ COPY packages/server/migrations packages/server/migrations
 # außer in einer Zeile „Cannot find module".
 COPY docker/healthcheck.mjs docker/healthcheck.mjs
 
-# Das Verzeichnis für Anhänge, und zwar VOR dem Wechsel auf `node`.
+# Das Verzeichnis für Anhänge, mit dem richtigen Eigentümer.
 #
 # Docker legt ein leeres benanntes Volume mit den Rechten des Pfades an, den es
-# im Image überdeckt. Gibt es den Pfad nicht, gehört der Einhängepunkt root —
-# und der Server, der als `node` läuft, bekommt beim ersten Anhang ein
-# `EACCES` aus `mkdir`. Die Oberfläche sagt dann nur „Hochladen ging nicht",
-# und im Protokoll steht eine Zeile, die niemand sucht.
+# im Abbild überdeckt. Gibt es den Pfad dort nicht, gehört der Einhängepunkt
+# root — und der Server bekommt beim ersten Anhang ein `EACCES` aus `mkdir`.
+# Die Oberfläche sagt dann nur „Hochladen ging nicht", und im Protokoll steht
+# eine Zeile, die niemand sucht.
 #
-# Die Zeile hier ist damit keine Kosmetik: sie entscheidet, ob Anhänge
-# überhaupt funktionieren. `SOTE_FILES_DIR` zeigt in der Vorgabe hierher.
-RUN mkdir -p /data/files && chown -R node:node /data
+# Das deckt NEUE Volumes ab. Für schon vorhandene und für Bind-Mounts greift es
+# nicht — dafür gibt es den Einstiegspunkt.
+#
+# su-exec gibt die Rechte im Einstiegspunkt ab, ohne einen root-Prozess
+# zurückzulassen; warum der Container überhaupt als root beginnt, steht in
+# docker/entrypoint.sh.
+RUN apk add --no-cache su-exec \
+ && mkdir -p /data/files \
+ && chown -R node:node /data
 
-# Nicht als root. Der Workflow misst das nach dem Bauen, weil eine Zeile im
-# Dockerfile noch keine Messung ist.
-USER node
+COPY --chown=node:node docker/entrypoint.sh docker/entrypoint.sh
+
+# Bewusst KEIN `USER node`.
+#
+# Der Einstiegspunkt beginnt als root, macht das Datenverzeichnis benutzbar —
+# der einzige Weg, ein vorhandenes Volume oder einen Bind-Mount zu behandeln,
+# deren Eigentümerschaft nicht aus dem Abbild kommt — und übergibt dann an den
+# Server als uid 1000. Kein root-Prozess überlebt diese Übergabe.
+#
+# Was zählt, ist der Benutzer, unter dem der Server ENDET, nicht der, den das
+# Abbild erklärt: ein Abbild mit `USER` lässt sich immer noch mit `--user 0`
+# starten. Deshalb prüft scripts/verify-image.sh den laufenden Container.
 EXPOSE 8080
+ENTRYPOINT ["docker/entrypoint.sh"]
 CMD ["node", "packages/server/dist/main.js"]
