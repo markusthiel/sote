@@ -2680,16 +2680,57 @@ body {
 .quick-field {
   display: flex;
   align-items: center;
+  /* Pillen brauchen Platz; das Feld dahinter nimmt, was übrig ist. */
+  flex-wrap: wrap;
   gap: var(--sote-quick-gap);
   padding: 11px var(--sote-quick-pad);
+}
+
+/* Eine gewählte Person im Erfassungsfeld: ein Ding, kein Wort. */
+.quick-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sone-space-2);
+  padding: var(--sone-space-1) var(--sone-space-2) var(--sone-space-1) var(--sone-space-4);
+  border-radius: 999px;
+  background: var(--accent-quiet);
+  color: var(--accent-text);
+  font-size: var(--sone-text-sm);
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.quick-pill > span[aria-hidden] {
+  opacity: 0.6;
+}
+
+.quick-pill-x {
+  border: 0;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+  font-size: var(--sone-text-md);
+  line-height: 1;
+  padding: 0 var(--sone-space-2);
+  border-radius: 999px;
+  opacity: 0.7;
+}
+
+.quick-pill-x:hover,
+.quick-pill-x:focus-visible {
+  opacity: 1;
+  background: var(--raised);
 }
 
 .quick-field input {
   border: 0;
   background: none;
   outline: none;
-  flex: 1;
-  min-width: 0;
+  /* Wächst, aber nicht unter eine Handbreit: mit Pillen davor bricht das
+     Feld dann in die nächste Zeile, statt auf ein Zeichen zusammenzufallen.
+     Bei 400px mit zwei Namen stand hier ein „n" — gemessen, nicht geraten. */
+  flex: 1 1 8rem;
+  min-width: 8rem;
 }
 
 .chips {

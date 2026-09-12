@@ -191,15 +191,17 @@ export interface CreateFromLine {
   /** Projekt, in dem die Zeile getippt wurde. `#name` schlägt es. */
   readonly projectId?: string | null;
   /**
-   * Wen die Oberfläche hinter `@` AUSGEWÄHLT hat: Token (kleingeschrieben,
-   * ohne `@`) → Konto-Id.
+   * Wer in der Oberfläche als PILLE gewählt wurde — Konto-Ids, keine Namen.
    *
    * Eine Auswahl aus einer Liste ist eine Entscheidung, kein Suchbegriff.
-   * Vorher kam nur der Vorname an, und der Server suchte danach — bei zwei
-   * Leuten mit demselben Vornamen war die Auswahl damit umsonst. Steht ein
-   * Token hier, gilt die Id; steht es nicht, wird der Name aufgelöst.
+   * Vorher kam nur der Vorname als Text an, und der Server suchte danach —
+   * bei zwei Leuten mit demselben Vornamen war die Auswahl damit umsonst.
+   * Diese Ids werden zugewiesen, ohne Rätselraten; ein getipptes `@name` in
+   * der Zeile wird daneben weiterhin über den Namen aufgelöst. Eine Id, die
+   * hier nicht Mitglied ist, ist ein Fehler und wird abgelehnt — wie in
+   * `patch`.
    */
-  readonly chosen?: Readonly<Record<string, string>>;
+  readonly assigneeIds?: readonly string[];
 }
 
 export interface Created {
@@ -338,25 +340,54 @@ export async function createFromLine(pool: Pool, input: CreateFromLine): Promise
 
     const unknownAssignees: string[] = [];
     const ambiguousAssignees: string[] = [];
+    /*
+     * Eine Zuweisung, ob aus Pille oder aus Wort, ist dieselbe: eintragen und
+     * in DERSELBEN Transaktion melden. Sonst gibt es einen Zustand, in dem
+     * jemand zuständig ist und nichts davon erfährt — oder umgekehrt eine
+     * Meldung über eine Zuweisung, die zurückgerollt wurde. `deliver` schweigt
+     * von selbst, wenn jemand sich selbst zuweist.
+     *
+     * Über `deliver`, nicht über `notify` allein: eine Zuweisung ist die
+     * lauteste Sorte Meldung — jemand legt mir etwas hin, und wer es nicht
+     * mitbekommt, hält jemand anderen auf. Sie geht darum nach Vorgabe auch
+     * per Mail und aufs Gerät, und wer das anders will, stellt es ein.
+     */
+    const angelegt = row;
+    const zuweisen = async (userId: string) => {
+      await client.query(
+        'INSERT INTO task_assignees (task_id, user_id) VALUES ($1,$2) ON CONFLICT DO NOTHING',
+        [angelegt.id, userId],
+      );
+      await deliver(client, {
+        userId,
+        actorId: input.userId,
+        workspaceId: input.workspaceId,
+        kind: 'assigned',
+        taskId: angelegt.id,
+        title: angelegt.title,
+        body: 'Dir zugewiesen',
+        url: `${baseUrl() ?? ''}/a/${angelegt.id}`,
+      });
+    };
+
+    const gewaehlt = [...new Set(input.assigneeIds ?? [])];
+    if (gewaehlt.length > 0) {
+      const ok = await queryRows<{ user_id: string }>(
+        client,
+        `SELECT user_id FROM workspace_members WHERE workspace_id = $1 AND user_id = ANY($2::uuid[])`,
+        [input.workspaceId, gewaehlt],
+      );
+      if (ok.length !== gewaehlt.length) {
+        throw new OutOfOrder('nur Mitglieder dieses Arbeitsbereichs können zuständig sein');
+      }
+      for (const id of gewaehlt) await zuweisen(id);
+    }
+
     for (const name of q.assignees) {
-      /*
-       * GEWÄHLT schlägt GETIPPT. Die Id muss Mitglied sein — eine fremde Id in
-       * `chosen` ist entweder ein Fehler oder ein Versuch, und in beiden Fällen
-       * fällt sie auf den Namen zurück, statt still jemanden von außen
-       * einzutragen.
-       */
-      const gewaehlt = input.chosen?.[name.toLowerCase()];
-      const mitglied =
-        gewaehlt === undefined
-          ? undefined
-          : await queryOne<{ id: string }>(
-              client,
-              `SELECT user_id AS id FROM workspace_members WHERE workspace_id = $1 AND user_id = $2`,
-              [input.workspaceId, gewaehlt],
-            );
       // Vier Schreibweisen, weil niemand „+Markus Thiel" tippt: ein
       // Leerzeichen beendet das Zeichen, also muss der Vorname reichen. Und
-      // der Teil vor dem @, weil Adressen kürzer sind als Namen.
+      // der Teil vor dem @, weil Adressen kürzer sind als Namen. (Wer die
+      // Person im Popup wählt, kommt gar nicht hier an — die reist als Id.)
       //
       // In ZWEI STUFEN. Der ganze Name oder die ganze Adresse ist ein Treffer,
       // der Vorname oder der Teil vor dem @ nur ein Anhalt. Vorher standen
@@ -365,7 +396,7 @@ export async function createFromLine(pool: Pool, input: CreateFromLine): Promise
       // denn der zweite passte auf den Vornamen. Genau eine Person, die
       // GENAU heißt, was getippt wurde, gewinnt jetzt vor allen, die nur so
       // anfangen. Erst wenn niemand genau passt, zählt der Anhalt.
-      const treffer = mitglied !== undefined ? [{ id: mitglied.id, genau: true }] : await queryRows<{ id: string; genau: boolean }>(
+      const treffer = await queryRows<{ id: string; genau: boolean }>(
         client,
         `SELECT u.id,
                 (lower(u.display_name) = lower($2) OR lower(u.email) = lower($2)) AS genau
@@ -382,34 +413,7 @@ export async function createFromLine(pool: Pool, input: CreateFromLine): Promise
       const genau = treffer.filter((t) => t.genau);
       const people = genau.length > 0 ? genau : treffer;
       if (people.length === 1) {
-        await client.query(
-          'INSERT INTO task_assignees (task_id, user_id) VALUES ($1,$2) ON CONFLICT DO NOTHING',
-          [row.id, people[0]!.id],
-        );
-        /*
-         * In DERSELBEN Transaktion wie die Zuweisung.
-         *
-         * Sonst gibt es einen Zustand, in dem jemand zuständig ist und nichts
-         * davon erfährt — oder umgekehrt eine Meldung über eine Zuweisung, die
-         * zurückgerollt wurde. `notify` selbst schweigt, wenn jemand sich
-         * selbst zuweist.
-         */
-        /*
-         * Über `deliver`, nicht über `notify` allein: eine Zuweisung ist die
-         * lauteste Sorte Meldung — jemand legt mir etwas hin, und wer es nicht
-         * mitbekommt, hält jemand anderen auf. Sie geht darum nach Vorgabe
-         * auch per Mail und aufs Gerät, und wer das anders will, stellt es ein.
-         */
-        await deliver(client, {
-          userId: people[0]!.id,
-          actorId: input.userId,
-          workspaceId: input.workspaceId,
-          kind: 'assigned',
-          taskId: row.id,
-          title: row.title,
-          body: 'Dir zugewiesen',
-          url: `${baseUrl() ?? ''}/a/${row.id}`,
-        });
+        await zuweisen(people[0]!.id);
       } else if (people.length === 0) {
         unknownAssignees.push(name);
       } else {

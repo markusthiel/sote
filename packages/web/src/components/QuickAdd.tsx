@@ -31,13 +31,13 @@ export function QuickAdd({
 }: {
   now: Date;
   /**
-   * Die Zeile — und wen das Popup hinter `@` AUSGEWÄHLT hat, als Ids.
+   * Die Zeile — und wer als PILLE im Feld steht, als Konto-Ids.
    *
-   * `chosen` ist der Schlüssel des Tokens (kleingeschrieben, ohne `@`) auf die
-   * Konto-Id. Fehlt ein Token darin, hat jemand den Namen getippt statt
-   * gewählt, und der Server löst ihn wie bisher über den Namen auf.
+   * Die Pillen sind keine Wörter in der Zeile: der Server bekommt sie als
+   * Ids und rät nicht. Ein getipptes `@name` OHNE Auswahl bleibt in der Zeile
+   * und wird wie bisher über den Namen aufgelöst.
    */
-  onSubmit: (line: string, chosen: Readonly<Record<string, string>>) => void;
+  onSubmit: (line: string, assigneeIds: readonly string[]) => void;
   busy: boolean;
   unknownProject: string | null;
   /** Ein anderer Platzhalter, wo ein anderes Versprechen gilt. */
@@ -60,19 +60,24 @@ export function QuickAdd({
   const [cursor, setCursor] = useState<number | null>(null);
   const [gewaehlt, setGewaehlt] = useState(0);
   /**
-   * WEN DAS POPUP EINGESETZT HAT — Token → Konto-Id.
+   * WER ALS PILLE IM FELD STEHT.
    *
-   * Markus: „Ich habe in dem kleinen Popup den Namen explizit ausgewählt,
-   * also dürfte die Zuweisung ja nur eine Möglichkeit gehabt haben." Hatte
-   * sie nicht: `waehle` schrieb nur den Vornamen in die Zeile und warf die Id
-   * weg, und der Server suchte danach wieder nach dem Wort. Bei zwei Leuten
-   * mit demselben Vornamen war die Auswahl damit umsonst — die Meldung „passt
-   * auf mehrere Leute" kam über eine Person, auf die man gerade geklickt hat.
+   * Markus, zweimal: „Ich habe in dem kleinen Popup den Namen explizit
+   * ausgewählt, also dürfte die Zuweisung ja nur eine Möglichkeit gehabt
+   * haben." — und dann: „Am besten wäre, wenn eine Pille entstehen würde mit
+   * dem Namen. Und wenn man die Pille löscht, dann verschwindet gleich alles.
+   * Dann gibt es da keine Probleme mit halben Namen."
    *
-   * Eine Auswahl ist eine Entscheidung. Sie wird hier behalten und geht mit
-   * der Zeile hinaus; der Server nimmt die Id, wenn das Token noch dasteht.
+   * Vorher schrieb `waehle` den VORNAMEN als Text in die Zeile und warf die Id
+   * weg; der Server suchte danach wieder nach dem Wort. Bei zwei Leuten mit
+   * demselben Vornamen war die Auswahl umsonst — und „Markus Thiel" liess
+   * sich gar nicht schreiben, weil das Leerzeichen das Zeichen beendet.
+   *
+   * Jetzt ist eine gewählte Person KEIN Wort in der Zeile mehr. Sie steht als
+   * Pille mit ganzem Namen vor dem Text, reist als Id hinaus, und geht mit
+   * einem Klick oder Rückschritt ganz — nicht buchstabenweise.
    */
-  const [ausgewaehlt, setAusgewaehlt] = useState<Record<string, string>>({});
+  const [pillen, setPillen] = useState<{ id: string; name: string }[]>([]);
   const feld = useRef<HTMLInputElement | null>(null);
 
   /*
@@ -158,26 +163,30 @@ export function QuickAdd({
       ? []
       : people!
           .filter((p) => p.name.toLowerCase().includes(angefangen.wort))
+          // Wer schon als Pille steht, wird nicht nochmal angeboten.
+          .filter((p) => !pillen.some((q) => q.id === p.id))
           /* Höchstens sechs: eine Liste, die den halben Bildschirm füllt,
              liest niemand — sie wird überflogen und dann weggetippt. */
           .slice(0, 6);
 
-  /** Den angefangenen Namen durch den gewählten ersetzen — und die Id behalten. */
+  /** Das angefangene `@wort` aus der Zeile nehmen und die Person als Pille setzen. */
   function waehle(person: { id: string; name: string }) {
     if (angefangen === undefined) return;
     const bis = cursor ?? line.length;
     /*
-     * Ein Leerzeichen dahinter, und der Cursor davor: nach einer Auswahl
-     * schreibt man weiter, nicht mitten im Namen. Namen mit Leerzeichen
-     * bekommen keine Anführungszeichen — in der Zeile steht der Vorname, aber
-     * WER gemeint ist, steht in `ausgewaehlt` und reist als Id mit.
+     * Das `@` und das Angefangene verschwinden aus dem Text; was bleibt, wird
+     * an der Stelle zusammengezogen, ohne doppeltes Leerzeichen. Der Cursor
+     * steht danach, wo das `@` stand — man schreibt weiter, als hätte man
+     * nie abgebogen.
      */
-    const kurz = person.name.split(/\s+/)[0]!;
-    const neu = `${line.slice(0, angefangen.von)}@${kurz} ${line.slice(bis)}`;
+    const davor = line.slice(0, angefangen.von).replace(/\s+$/, '');
+    const danach = line.slice(bis).replace(/^\s+/, '');
+    const neu = davor === '' ? danach : danach === '' ? davor : `${davor} ${danach}`;
     setLine(neu);
-    setAusgewaehlt((alt) => ({ ...alt, [kurz.toLowerCase()]: person.id }));
+    // Dieselbe Person zweimal ist eine Person.
+    setPillen((alt) => (alt.some((p) => p.id === person.id) ? alt : [...alt, person]));
     setGewaehlt(0);
-    const stelle = angefangen.von + kurz.length + 2;
+    const stelle = davor === '' ? 0 : davor.length + 1;
     // Nach dem Zeichnen: vorher steht der alte Wert im Feld.
     requestAnimationFrame(() => {
       feld.current?.focus();
@@ -188,22 +197,20 @@ export function QuickAdd({
 
   function submit() {
     const value = line.trim();
+    // Eine Pille ohne Text ist noch keine Aufgabe: ein Titel fehlt.
     if (value === '' || busy) return;
-    /*
-     * Nur, was noch in der Zeile steht. Wer nach der Auswahl das Wort
-     * überschrieben oder gelöscht hat, hat die Entscheidung zurückgenommen —
-     * eine Id für ein Token, das es nicht mehr gibt, wäre eine Zuweisung, die
-     * niemand sieht.
-     */
-    const chosen: Record<string, string> = {};
-    for (const name of parsed?.assignees ?? []) {
-      const id = ausgewaehlt[name.toLowerCase()];
-      if (id !== undefined) chosen[name.toLowerCase()] = id;
-    }
-    onSubmit(value, chosen);
+    onSubmit(
+      value,
+      pillen.map((p) => p.id),
+    );
     // Offen bleiben. Wer eine Aufgabe notiert, notiert oft die nächste.
     setLine('');
-    setAusgewaehlt({});
+    setPillen([]);
+  }
+
+  function pilleWeg(id: string) {
+    setPillen((alt) => alt.filter((p) => p.id !== id));
+    feld.current?.focus();
   }
 
   /**
@@ -231,7 +238,7 @@ export function QuickAdd({
       // Aufgabe ist keine.
       .filter((z) => z !== '');
     if (zeilen.length < 2) return false;
-    for (const z of zeilen) onSubmit(z, {});
+    for (const z of zeilen) onSubmit(z, []);
     return true;
   }
 
@@ -241,6 +248,23 @@ export function QuickAdd({
         <span aria-hidden="true" style={{ color: 'var(--text-faint)' }}>
           +
         </span>
+        {pillen.map((p) => (
+          <span key={p.id} className="quick-pill">
+            <span aria-hidden="true">@</span>
+            {p.name}
+            <button
+              type="button"
+              className="quick-pill-x"
+              aria-label={`${p.name} entfernen`}
+              // Vor dem Klick, damit das Feld den Fokus nicht erst verliert
+              // und die Liste zuklappt.
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => pilleWeg(p.id)}
+            >
+              ×
+            </button>
+          </span>
+        ))}
         <input
           ref={feld}
           value={line}
@@ -295,11 +319,28 @@ export function QuickAdd({
                 return;
               }
             }
+            /*
+             * Rückschritt am Anfang nimmt die letzte Pille — GANZ. Das ist der
+             * Punkt an einer Pille: sie ist ein Ding, kein Wort, und geht als
+             * eines. Buchstabenweise gelöschte Namen waren halbe Namen, die
+             * der Server dann für jemand anderen hielt.
+             */
+            if (
+              e.key === 'Backspace' &&
+              pillen.length > 0 &&
+              e.currentTarget.selectionStart === 0 &&
+              e.currentTarget.selectionEnd === 0
+            ) {
+              e.preventDefault();
+              pilleWeg(pillen[pillen.length - 1]!.id);
+              return;
+            }
             if (e.key === 'Enter') {
               e.preventDefault();
               submit();
             } else if (e.key === 'Escape') {
               setLine('');
+              setPillen([]);
             }
           }}
           /*

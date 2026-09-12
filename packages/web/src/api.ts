@@ -1122,8 +1122,8 @@ export const api = {
     line: string,
     workspace?: string,
     projectId?: string,
-    /** Wen das Popup hinter `@` gewählt hat: Token → Konto-Id. */
-    chosen?: Readonly<Record<string, string>>,
+    /** Wer als Pille im Feld stand — Konto-Ids, keine Namen. */
+    assigneeIds?: readonly string[],
   ) =>
     call<{
       task: Task;
@@ -1138,7 +1138,7 @@ export const api = {
       body: JSON.stringify({
         line,
         ...(projectId === undefined ? {} : { projectId }),
-        ...(chosen === undefined || Object.keys(chosen).length === 0 ? {} : { chosen }),
+        ...(assigneeIds === undefined || assigneeIds.length === 0 ? {} : { assigneeIds }),
       }),
     }),
   trash: (kind: 'tasks' | 'projects', id: string, workspace?: string) =>

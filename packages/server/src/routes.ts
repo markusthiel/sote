@@ -2242,7 +2242,7 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
     const body = (await readJson(req)) as {
       line?: unknown;
       projectId?: unknown;
-      chosen?: unknown;
+      assigneeIds?: unknown;
     };
     const line = typeof body?.line === 'string' ? body.line : '';
     if (line.trim() === '') {
@@ -2250,16 +2250,12 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
       return;
     }
     /*
-     * Wen das Popup hinter `@` gewählt hat — Token → Konto-Id. Nur Zeichenketten
-     * auf Zeichenketten; alles andere wird stumm verworfen, und der Name wird
-     * dann wie bisher aufgelöst. Ob die Id Mitglied ist, prüft `createFromLine`.
+     * Wer als Pille im Feld stand — Konto-Ids. Nur Ids, die wie eine aussehen;
+     * ob sie Mitglied sind, prüft `createFromLine` und lehnt sonst ab.
      */
-    const chosen: Record<string, string> = {};
-    if (typeof body?.chosen === 'object' && body.chosen !== null) {
-      for (const [k, v] of Object.entries(body.chosen as Record<string, unknown>)) {
-        if (typeof v === 'string' && /^[0-9a-f-]{36}$/.test(v)) chosen[k.toLowerCase()] = v;
-      }
-    }
+    const assigneeIds = Array.isArray(body?.assigneeIds)
+      ? body.assigneeIds.filter((x): x is string => typeof x === 'string' && /^[0-9a-f-]{36}$/.test(x))
+      : [];
     const out = await createFromLine(ctx.pool, {
       zone,
       workspaceId,
@@ -2267,7 +2263,7 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
       line,
       now,
       projectId: typeof body?.projectId === 'string' ? body.projectId : null,
-      chosen,
+      assigneeIds,
     });
     json(res, 201, {
       task: taskView(out.task),

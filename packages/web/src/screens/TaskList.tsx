@@ -427,7 +427,7 @@ export function TaskList({
     }
   }
 
-  async function add(line: string, chosen: Readonly<Record<string, string>> = {}) {
+  async function add(line: string, assigneeIds: readonly string[] = []) {
     setBusy(true);
     setNotice(undefined);
     setUnknownProject(null);
@@ -436,7 +436,7 @@ export function TaskList({
       // meint dieses Projekt. Vorher ging die Zeile ohne Projekt hinaus und
       // die Aufgabe landete in Heute oder Irgendwann — angelegt, aber nicht
       // dort, wo man stand.
-      const out = await api.createTask(line, workspace, projectId, chosen);
+      const out = await api.createTask(line, workspace, projectId, assigneeIds);
       // Vier verschiedene Nachrichten, und keine davon ist „ging nicht":
       // unbekannt und mehrdeutig sind zwei Fälle, und für Projekt und Person
       // je einer.
@@ -1065,7 +1065,7 @@ export function TaskList({
         {istOrdner || (form === 'board' && route.kind === 'project') ? null : (
           <QuickAdd
             now={now}
-            onSubmit={(line, chosen) => void add(line, chosen)}
+            onSubmit={(line, assigneeIds) => void add(line, assigneeIds)}
             busy={busy}
             unknownProject={unknownProject}
             people={leute}
