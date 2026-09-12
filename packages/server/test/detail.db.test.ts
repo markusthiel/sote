@@ -347,6 +347,65 @@ test('@vorname genügt, und bei zwei Treffern wird nicht geraten', async () => {
   assert.deepEqual(four.ambiguousAssignees, ['Markus']);
 });
 
+test('wer im Popup gewählt wurde, ist gewählt — nicht gesucht', async () => {
+  /*
+   * Markus: „Ich habe in dem kleinen Popup den Namen explizit ausgewählt, also
+   * dürfte die Zuweisung ja nur eine Möglichkeit gehabt haben." Hatte sie
+   * nicht: die Oberfläche schrieb den Vornamen in die Zeile und der Server
+   * suchte danach. Jetzt reist die Id mit, und sie gewinnt.
+   */
+  const { workspaceId } = await scratch('d-chosen');
+  const role = await queryOne<{ id: string }>(
+    pool,
+    'SELECT id FROM roles WHERE workspace_id = $1 LIMIT 1',
+    [workspaceId],
+  );
+  const zweiter = await queryOne<{ id: string }>(
+    pool,
+    `INSERT INTO users (email, display_name) VALUES ($1,$2) RETURNING id`,
+    [`markus-test-${process.pid}@example.org`, 'Markus Test'],
+  );
+  await pool.query(
+    `INSERT INTO workspace_members (workspace_id, user_id, role_id) VALUES ($1,$2,$3)`,
+    [workspaceId, zweiter!.id, role!.id],
+  );
+
+  // Ohne Auswahl: zwei Vornamen, keine Entscheidung.
+  const blind = await add(workspaceId, 'Rückruf @Markus');
+  assert.deepEqual(blind.ambiguousAssignees, ['Markus']);
+
+  // Mit Auswahl: der Gewählte, und niemand sonst.
+  const gewaehlt = await createFromLine(pool, {
+    workspaceId,
+    userId,
+    line: 'Rückruf @Markus',
+    now: NOW,
+    chosen: { markus: zweiter!.id },
+  });
+  assert.deepEqual(gewaehlt.ambiguousAssignees, []);
+  assert.deepEqual(gewaehlt.unknownAssignees, []);
+  assert.deepEqual(
+    (await detail(pool, gewaehlt.task.id, workspaceId)).assignees.map((a) => a.userId),
+    [zweiter!.id],
+  );
+
+  // Eine Id, die hier nicht Mitglied ist, zählt nicht — der Name wird aufgelöst.
+  const fremd = await queryOne<{ id: string }>(
+    pool,
+    `INSERT INTO users (email, display_name) VALUES ($1,$2) RETURNING id`,
+    [`fremd-chosen-${process.pid}@example.org`, 'Fremd'],
+  );
+  const abgewiesen = await createFromLine(pool, {
+    workspaceId,
+    userId,
+    line: 'Rückruf @Markus',
+    now: NOW,
+    chosen: { markus: fremd!.id },
+  });
+  assert.deepEqual(abgewiesen.ambiguousAssignees, ['Markus'], 'zurück auf den Namen');
+  assert.equal((await detail(pool, abgewiesen.task.id, workspaceId)).assignees.length, 0);
+});
+
 test('eine Nennung meldet gerichtet — und nicht doppelt', async () => {
   /*
    * GEWUENSCHT: „Namensnennungen … bei den Benachrichtigungen."

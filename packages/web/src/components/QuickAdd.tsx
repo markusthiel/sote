@@ -30,7 +30,14 @@ export function QuickAdd({
   people,
 }: {
   now: Date;
-  onSubmit: (line: string) => void;
+  /**
+   * Die Zeile — und wen das Popup hinter `@` AUSGEWÄHLT hat, als Ids.
+   *
+   * `chosen` ist der Schlüssel des Tokens (kleingeschrieben, ohne `@`) auf die
+   * Konto-Id. Fehlt ein Token darin, hat jemand den Namen getippt statt
+   * gewählt, und der Server löst ihn wie bisher über den Namen auf.
+   */
+  onSubmit: (line: string, chosen: Readonly<Record<string, string>>) => void;
   busy: boolean;
   unknownProject: string | null;
   /** Ein anderer Platzhalter, wo ein anderes Versprechen gilt. */
@@ -52,6 +59,20 @@ export function QuickAdd({
   /** Wo der Cursor steht — `null` heisst: die Auswahl ist zu. */
   const [cursor, setCursor] = useState<number | null>(null);
   const [gewaehlt, setGewaehlt] = useState(0);
+  /**
+   * WEN DAS POPUP EINGESETZT HAT — Token → Konto-Id.
+   *
+   * Markus: „Ich habe in dem kleinen Popup den Namen explizit ausgewählt,
+   * also dürfte die Zuweisung ja nur eine Möglichkeit gehabt haben." Hatte
+   * sie nicht: `waehle` schrieb nur den Vornamen in die Zeile und warf die Id
+   * weg, und der Server suchte danach wieder nach dem Wort. Bei zwei Leuten
+   * mit demselben Vornamen war die Auswahl damit umsonst — die Meldung „passt
+   * auf mehrere Leute" kam über eine Person, auf die man gerade geklickt hat.
+   *
+   * Eine Auswahl ist eine Entscheidung. Sie wird hier behalten und geht mit
+   * der Zeile hinaus; der Server nimmt die Id, wenn das Token noch dasteht.
+   */
+  const [ausgewaehlt, setAusgewaehlt] = useState<Record<string, string>>({});
   const feld = useRef<HTMLInputElement | null>(null);
 
   /*
@@ -141,19 +162,20 @@ export function QuickAdd({
              liest niemand — sie wird überflogen und dann weggetippt. */
           .slice(0, 6);
 
-  /** Den angefangenen Namen durch den gewählten ersetzen. */
-  function waehle(name: string) {
+  /** Den angefangenen Namen durch den gewählten ersetzen — und die Id behalten. */
+  function waehle(person: { id: string; name: string }) {
     if (angefangen === undefined) return;
     const bis = cursor ?? line.length;
     /*
      * Ein Leerzeichen dahinter, und der Cursor davor: nach einer Auswahl
      * schreibt man weiter, nicht mitten im Namen. Namen mit Leerzeichen
-     * bekommen keine Anführungszeichen — der Server nimmt den Vornamen, und
-     * genau dafür gibt es die Meldung „bei zwei Treffern wird nicht geraten".
+     * bekommen keine Anführungszeichen — in der Zeile steht der Vorname, aber
+     * WER gemeint ist, steht in `ausgewaehlt` und reist als Id mit.
      */
-    const kurz = name.split(/\s+/)[0]!;
+    const kurz = person.name.split(/\s+/)[0]!;
     const neu = `${line.slice(0, angefangen.von)}@${kurz} ${line.slice(bis)}`;
     setLine(neu);
+    setAusgewaehlt((alt) => ({ ...alt, [kurz.toLowerCase()]: person.id }));
     setGewaehlt(0);
     const stelle = angefangen.von + kurz.length + 2;
     // Nach dem Zeichnen: vorher steht der alte Wert im Feld.
@@ -167,9 +189,21 @@ export function QuickAdd({
   function submit() {
     const value = line.trim();
     if (value === '' || busy) return;
-    onSubmit(value);
+    /*
+     * Nur, was noch in der Zeile steht. Wer nach der Auswahl das Wort
+     * überschrieben oder gelöscht hat, hat die Entscheidung zurückgenommen —
+     * eine Id für ein Token, das es nicht mehr gibt, wäre eine Zuweisung, die
+     * niemand sieht.
+     */
+    const chosen: Record<string, string> = {};
+    for (const name of parsed?.assignees ?? []) {
+      const id = ausgewaehlt[name.toLowerCase()];
+      if (id !== undefined) chosen[name.toLowerCase()] = id;
+    }
+    onSubmit(value, chosen);
     // Offen bleiben. Wer eine Aufgabe notiert, notiert oft die nächste.
     setLine('');
+    setAusgewaehlt({});
   }
 
   /**
@@ -197,7 +231,7 @@ export function QuickAdd({
       // Aufgabe ist keine.
       .filter((z) => z !== '');
     if (zeilen.length < 2) return false;
-    for (const z of zeilen) onSubmit(z);
+    for (const z of zeilen) onSubmit(z, {});
     return true;
   }
 
@@ -252,7 +286,7 @@ export function QuickAdd({
               }
               if (e.key === 'Enter' || e.key === 'Tab') {
                 e.preventDefault();
-                waehle(treffer[gewaehlt]?.name ?? treffer[0]!.name);
+                waehle(treffer[gewaehlt] ?? treffer[0]!);
                 return;
               }
               if (e.key === 'Escape') {
@@ -300,7 +334,7 @@ export function QuickAdd({
                 className="quick-person"
                 data-on={i === gewaehlt ? 'yes' : undefined}
                 onMouseEnter={() => setGewaehlt(i)}
-                onClick={() => waehle(p.name)}
+                onClick={() => waehle(p)}
               >
                 {p.name}
               </button>

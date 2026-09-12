@@ -190,6 +190,16 @@ export interface CreateFromLine {
   readonly zone?: string;
   /** Projekt, in dem die Zeile getippt wurde. `#name` schlägt es. */
   readonly projectId?: string | null;
+  /**
+   * Wen die Oberfläche hinter `@` AUSGEWÄHLT hat: Token (kleingeschrieben,
+   * ohne `@`) → Konto-Id.
+   *
+   * Eine Auswahl aus einer Liste ist eine Entscheidung, kein Suchbegriff.
+   * Vorher kam nur der Vorname an, und der Server suchte danach — bei zwei
+   * Leuten mit demselben Vornamen war die Auswahl damit umsonst. Steht ein
+   * Token hier, gilt die Id; steht es nicht, wird der Name aufgelöst.
+   */
+  readonly chosen?: Readonly<Record<string, string>>;
 }
 
 export interface Created {
@@ -329,6 +339,21 @@ export async function createFromLine(pool: Pool, input: CreateFromLine): Promise
     const unknownAssignees: string[] = [];
     const ambiguousAssignees: string[] = [];
     for (const name of q.assignees) {
+      /*
+       * GEWÄHLT schlägt GETIPPT. Die Id muss Mitglied sein — eine fremde Id in
+       * `chosen` ist entweder ein Fehler oder ein Versuch, und in beiden Fällen
+       * fällt sie auf den Namen zurück, statt still jemanden von außen
+       * einzutragen.
+       */
+      const gewaehlt = input.chosen?.[name.toLowerCase()];
+      const mitglied =
+        gewaehlt === undefined
+          ? undefined
+          : await queryOne<{ id: string }>(
+              client,
+              `SELECT user_id AS id FROM workspace_members WHERE workspace_id = $1 AND user_id = $2`,
+              [input.workspaceId, gewaehlt],
+            );
       // Vier Schreibweisen, weil niemand „+Markus Thiel" tippt: ein
       // Leerzeichen beendet das Zeichen, also muss der Vorname reichen. Und
       // der Teil vor dem @, weil Adressen kürzer sind als Namen.
@@ -340,7 +365,7 @@ export async function createFromLine(pool: Pool, input: CreateFromLine): Promise
       // denn der zweite passte auf den Vornamen. Genau eine Person, die
       // GENAU heißt, was getippt wurde, gewinnt jetzt vor allen, die nur so
       // anfangen. Erst wenn niemand genau passt, zählt der Anhalt.
-      const treffer = await queryRows<{ id: string; genau: boolean }>(
+      const treffer = mitglied !== undefined ? [{ id: mitglied.id, genau: true }] : await queryRows<{ id: string; genau: boolean }>(
         client,
         `SELECT u.id,
                 (lower(u.display_name) = lower($2) OR lower(u.email) = lower($2)) AS genau

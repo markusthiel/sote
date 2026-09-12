@@ -1118,7 +1118,13 @@ export const api = {
    * Zeile: wer in einem Projekt tippt, meint dieses Projekt. Ein `#projekt` in
    * der Zeile gewinnt trotzdem — das ist eine Ansage, das hier nur ein Ort.
    */
-  createTask: (line: string, workspace?: string, projectId?: string) =>
+  createTask: (
+    line: string,
+    workspace?: string,
+    projectId?: string,
+    /** Wen das Popup hinter `@` gewählt hat: Token → Konto-Id. */
+    chosen?: Readonly<Record<string, string>>,
+  ) =>
     call<{
       task: Task;
       unknownProject: string | null;
@@ -1132,6 +1138,7 @@ export const api = {
       body: JSON.stringify({
         line,
         ...(projectId === undefined ? {} : { projectId }),
+        ...(chosen === undefined || Object.keys(chosen).length === 0 ? {} : { chosen }),
       }),
     }),
   trash: (kind: 'tasks' | 'projects', id: string, workspace?: string) =>

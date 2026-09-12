@@ -2239,11 +2239,26 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
   }
 
   if (path === '/api/tasks' && method === 'POST') {
-    const body = (await readJson(req)) as { line?: unknown; projectId?: unknown };
+    const body = (await readJson(req)) as {
+      line?: unknown;
+      projectId?: unknown;
+      chosen?: unknown;
+    };
     const line = typeof body?.line === 'string' ? body.line : '';
     if (line.trim() === '') {
       fail(res, 400, 'empty_line', 'ohne Text keine Aufgabe');
       return;
+    }
+    /*
+     * Wen das Popup hinter `@` gewählt hat — Token → Konto-Id. Nur Zeichenketten
+     * auf Zeichenketten; alles andere wird stumm verworfen, und der Name wird
+     * dann wie bisher aufgelöst. Ob die Id Mitglied ist, prüft `createFromLine`.
+     */
+    const chosen: Record<string, string> = {};
+    if (typeof body?.chosen === 'object' && body.chosen !== null) {
+      for (const [k, v] of Object.entries(body.chosen as Record<string, unknown>)) {
+        if (typeof v === 'string' && /^[0-9a-f-]{36}$/.test(v)) chosen[k.toLowerCase()] = v;
+      }
     }
     const out = await createFromLine(ctx.pool, {
       zone,
@@ -2252,6 +2267,7 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
       line,
       now,
       projectId: typeof body?.projectId === 'string' ? body.projectId : null,
+      chosen,
     });
     json(res, 201, {
       task: taskView(out.task),
