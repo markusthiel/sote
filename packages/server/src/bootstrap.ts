@@ -289,6 +289,30 @@ export async function setupFirstAccount(
     }
 
     const id = await createAccountIn(client, input);
+
+    /*
+     * Wer die Instanz einrichtet, verwaltet sie.
+     *
+     * Migration 0012 setzt `is_admin` für das älteste Konto — aber nur für
+     * Instanzen, in denen zu diesem Zeitpunkt schon jemand war. Auf einer
+     * FRISCHEN Datenbank laufen die Migrationen, **bevor** es ein Konto
+     * gibt: das UPDATE trifft nichts, `createAccountIn` schreibt kein
+     * `is_admin`, die Spalte steht auf ihrem DEFAULT false — und danach
+     * kann niemand die Instanz verwalten. Nur noch über die Datenbank zu
+     * heilen, also genau der Zustand, den die Migration bei sich selbst
+     * vermeiden wollte.
+     *
+     * Hier und nicht in `createAccountIn`: dieselbe Funktion legt auch
+     * eingeladene Konten an (`routes.ts`, Einladung und
+     * Single-Sign-on). Wer eine Einladung annimmt, richtet nichts ein.
+     *
+     * Ohne Bedingung: dieser Zweig läuft nur, wenn es KEIN Konto gab —
+     * das steht oben im selben Transaktionsblock und unter demselben
+     * Advisory Lock. Es kann hier also niemanden geben, dem das Recht
+     * weggenommen würde.
+     */
+    await client.query('UPDATE users SET is_admin = true WHERE id = $1', [id]);
+
     // Einmal und nie wieder: der Schlüssel ist mit dem ersten Konto verbraucht.
     gate.close();
     return id;

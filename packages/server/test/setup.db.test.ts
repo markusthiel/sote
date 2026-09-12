@@ -144,6 +144,38 @@ test('der richtige Schlüssel legt Konto, Arbeitsbereich und vier Rollen an', as
   assert.ok(session !== null, 'anmelden muss gehen');
 });
 
+test('wer einrichtet, verwaltet die Instanz', async () => {
+  if (!usable) return;
+  const gate = new SetupKey();
+  const key = await gate.openIfEmpty(pool);
+  const id = await setupFirstAccount(pool, gate, key!, account);
+
+  /*
+   * Der Fall, der im Betrieb auftrat und den vorher nichts geprüft hat.
+   *
+   * Migration 0012 macht das älteste Konto zum Administrator — aber sie
+   * läuft auf einer frischen Datenbank, BEVOR es eines gibt. Das UPDATE
+   * trifft dann nichts, und `is_admin` bleibt auf seinem DEFAULT false.
+   * Ergebnis: eine eingerichtete Instanz, die niemand verwalten kann,
+   * ohne dass eine Fehlermeldung darauf hinweist.
+   *
+   * Genau deshalb prüft dieser Test die SPALTE und nicht, ob irgendein
+   * Bildschirm sichtbar ist: die Ursache lag in der Datenbank.
+   */
+  const wer = await queryOne<{ is_admin: boolean }>(
+    pool,
+    'SELECT is_admin FROM users WHERE id = $1',
+    [id],
+  );
+  assert.equal(wer?.is_admin, true, 'das erste Konto verwaltet die Instanz');
+
+  const admins = await queryOne<{ n: string }>(
+    pool,
+    'SELECT count(*) AS n FROM users WHERE is_admin',
+  );
+  assert.equal(admins?.n, '1', 'genau einer, nicht mehr');
+});
+
 /* ── Der eigentliche Punkt: ein zweites Mal geht nicht ─────────────────── */
 
 test('derselbe Schlüssel legt kein zweites Konto an', async () => {
