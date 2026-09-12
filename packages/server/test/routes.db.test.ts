@@ -832,3 +832,157 @@ test('ein Kalenderabonnement ist über HTTP erreichbar — nicht nur als Funktio
   const schreiben = await fetch(`${base}/kalender/${feed.token}.ics`, { method: 'POST' });
   assert.equal(schreiben.status, 405);
 });
+
+/* ── Die Listenstufe an den Routen (Audit 12.09.2026, F01) ────────────────── */
+
+/**
+ * Ein zweites Konto in DIESEM Arbeitsbereich, mit einer Rolle der genannten
+ * Stufe — und sein Keks. `null` ist der Gast mit Konto.
+ */
+async function mitgliedMit(level: 'viewer' | 'editor' | null): Promise<{ cookie: string; userId: string }> {
+  const adresse = `stufe-${level ?? 'gast'}-${process.pid}-${Math.random().toString(36).slice(2, 8)}@example.org`;
+  const u = await queryOne<{ id: string }>(
+    pool,
+    'INSERT INTO users (email, display_name) VALUES ($1,$2) RETURNING id',
+    [adresse, level ?? 'Gast'],
+  );
+  await setPassword(pool, u!.id, 'ein gutes Kennwort');
+  const r = await queryOne<{ id: string }>(
+    pool,
+    `INSERT INTO roles (workspace_id, name, list_level) VALUES ($1,$2,$3) RETURNING id`,
+    [workspaceId, `Rolle ${adresse}`, level],
+  );
+  await pool.query(
+    `INSERT INTO workspace_members (workspace_id, user_id, role_id, is_owner) VALUES ($1,$2,$3,false)`,
+    [workspaceId, u!.id, r!.id],
+  );
+  const res = await fetch(`${base}/api/session`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ email: adresse, password: 'ein gutes Kennwort' }),
+  });
+  assert.equal(res.status, 200);
+  return { cookie: (res.headers.get('set-cookie') ?? '').split(';')[0]!, userId: u!.id };
+}
+
+const als = (cookie: string, path: string, init: RequestInit = {}) =>
+  fetch(`${base}${path}`, {
+    ...init,
+    headers: { 'content-type': 'application/json', cookie, ...(init.headers ?? {}) },
+  });
+
+async function eineAufgabe(): Promise<string> {
+  const res = await call('/api/tasks', {
+    method: 'POST',
+    body: JSON.stringify({ line: `Stufenprobe ${Math.random().toString(36).slice(2, 8)} #haus` }),
+  });
+  assert.equal(res.status, 201);
+  const body = (await res.json()) as { task: { id: string } };
+  return body.task.id;
+}
+
+test('ein viewer liest — und jede schreibende Route sagt 403, ohne etwas zu ändern', async () => {
+  /*
+   * Vor dem Fix: HTTP 200 auf jedem dieser Wege. `list_level` wurde nur beim
+   * Anlegen einer Freigabe gelesen; die Rolle „nur lesend" im Einstellungs-
+   * bereich bewachte nichts (ADR-0087: der Schalter, der nichts bewacht).
+   */
+  const { cookie } = await mitgliedMit('viewer');
+  const taskId = await eineAufgabe();
+
+  for (const weg of ['/api/today', '/api/tasks?view=today', `/api/tasks/${taskId}`, '/api/projects', '/api/labels', '/api/shares', '/api/counts']) {
+    const res = await als(cookie, weg);
+    assert.equal(res.status, 200, `GET ${weg}`);
+  }
+
+  const schreibend: [string, string, unknown][] = [
+    ['PATCH', `/api/tasks/${taskId}`, { title: 'umbenannt' }],
+    ['POST', '/api/tasks', { line: 'neu' }],
+    ['POST', `/api/tasks/${taskId}/complete`, {}],
+    ['POST', `/api/tasks/${taskId}/comments`, { body: 'hallo' }],
+    ['POST', `/api/tasks/${taskId}/children`, { line: 'kind' }],
+    ['POST', `/api/tasks/${taskId}/move`, { projectId: null }],
+    ['POST', `/api/tasks/${taskId}/trash`, {}],
+    ['POST', '/api/projects', { name: 'Neu' }],
+    ['POST', '/api/shares', { projectId: '00000000-0000-0000-0000-000000000000', right: 'edit' }],
+    ['POST', '/api/board', { name: 'Spalte' }],
+  ];
+  for (const [method, weg, body] of schreibend) {
+    const res = await als(cookie, weg, { method, body: JSON.stringify(body) });
+    assert.equal(res.status, 403, `${method} ${weg}`);
+    const grund = (await res.json()) as { error: { code: string } };
+    assert.equal(grund.error.code, 'read_only', `${method} ${weg}`);
+  }
+  const noch = await queryOne<{ title: string; completed_at: Date | null; trashed_at: Date | null }>(
+    pool,
+    'SELECT title, completed_at, trashed_at FROM tasks WHERE id = $1',
+    [taskId],
+  );
+  assert.match(noch!.title, /^Stufenprobe/);
+  assert.equal(noch!.completed_at, null);
+  assert.equal(noch!.trashed_at, null);
+
+  // Persönliches an einer Aufgabe darf er: eine Erinnerung ist seine, nicht die der Aufgabe.
+  const erinnerung = await als(cookie, `/api/tasks/${taskId}/reminders`, {
+    method: 'POST',
+    body: JSON.stringify({ minutes: 10 }),
+  });
+  assert.equal(erinnerung.status, 200);
+
+  // Und /api/me sagt es ihm, damit die Oberfläche keine Knöpfe zeigt, die 403 antworten.
+  const me = (await (await als(cookie, '/api/me')).json()) as { workspaces: { id: string; listLevel: string | null }[] };
+  assert.equal(me.workspaces.find((w) => w.id === workspaceId)?.listLevel, 'viewer');
+});
+
+test('ein Gast mit Konto sieht keine Listen — Mitgliedschaft ersetzt keine Stufe', async () => {
+  const { cookie } = await mitgliedMit(null);
+  const taskId = await eineAufgabe();
+
+  for (const weg of ['/api/today', `/api/tasks/${taskId}`, '/api/projects', '/api/labels', '/api/shares', '/api/search?q=Stufe', '/api/counts']) {
+    const res = await als(cookie, weg);
+    assert.equal(res.status, 403, `GET ${weg}`);
+    const grund = (await res.json()) as { error: { code: string } };
+    assert.equal(grund.error.code, 'no_list_level', `GET ${weg}`);
+  }
+  const patch = await als(cookie, `/api/tasks/${taskId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ title: 'vom Gast' }),
+  });
+  assert.equal(patch.status, 403);
+  const erinnerung = await als(cookie, `/api/tasks/${taskId}/reminders`, {
+    method: 'POST',
+    body: JSON.stringify({ minutes: 10 }),
+  });
+  assert.equal(erinnerung.status, 403, 'auch nichts Persönliches an eine Aufgabe, die er nicht sieht');
+
+  // Was ihm bleibt: sein Konto. Glocke, Kanäle, die eigene Antwort.
+  for (const weg of ['/api/me', '/api/notifications', '/api/notification-channels', '/api/settings']) {
+    const res = await als(cookie, weg);
+    assert.equal(res.status, 200, `GET ${weg}`);
+  }
+  const me = (await (await als(cookie, '/api/me')).json()) as { workspaces: { id: string; listLevel: string | null }[] };
+  assert.equal(me.workspaces.find((w) => w.id === workspaceId)?.listLevel, null);
+});
+
+test('eine Gruppe hebt hinauf: der Gast in einer Editor-Gruppe schreibt', async () => {
+  // Das MAXIMUM über Rolle und Gruppen (ADR-0026) — eine Gruppe gibt dazu und nimmt nie.
+  const { cookie, userId: gast } = await mitgliedMit(null);
+  const editor = await queryOne<{ id: string }>(
+    pool,
+    `INSERT INTO roles (workspace_id, name, list_level) VALUES ($1,$2,'editor') RETURNING id`,
+    [workspaceId, `Redaktion ${gast}`],
+  );
+  const gruppe = await queryOne<{ id: string }>(
+    pool,
+    `INSERT INTO groups (workspace_id, name, role_id) VALUES ($1,'Redaktion',$2) RETURNING id`,
+    [workspaceId, editor!.id],
+  );
+  await pool.query('INSERT INTO group_members (group_id, user_id) VALUES ($1,$2)', [gruppe!.id, gast]);
+
+  const taskId = await eineAufgabe();
+  const patch = await als(cookie, `/api/tasks/${taskId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ title: 'aus der Gruppe' }),
+  });
+  assert.equal(patch.status, 200);
+});

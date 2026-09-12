@@ -26,10 +26,12 @@
  */
 
 import {
+  isListLevel,
   readSettings,
   resolveLanding,
   resolveLook,
   resolveSettings,
+  type ListLevel,
   type Right,
   type Settings,
 } from '@sote/core';
@@ -112,6 +114,62 @@ export async function mayDo(
 }
 
 /**
+ * Die wirksame Listenstufe einer Person in einem Arbeitsbereich — oder `null`.
+ *
+ * Das MAXIMUM über die eigene Rolle und die Rollen aller Gruppen, in denen sie
+ * ist, aus demselben Grund wie die Vereinigung der Rechte oben: eine Gruppe
+ * kann hinaufheben und nie herunterziehen (ADR-0026). Eigentümerschaft ist
+ * `admin`, ohne dass eine Rolle es sagen müsste.
+ *
+ * `null` heisst wirklich nichts (ADR-0110): Mitglied sein, ohne die Listen zu
+ * sehen — das ist der Gast mit Konto. Bis zum Audit vom 12.09.2026 (F01) las
+ * der Server diese Stufe nur beim Anlegen einer Freigabe; jede Aufgabenroute
+ * prüfte Mitgliedschaft und sonst nichts. Ein viewer konnte schreiben, ein
+ * Gast alles lesen. Jetzt fragt `routes.ts` einmal hier und entscheidet
+ * daraus für jeden Weg, der Listen liest oder schreibt.
+ *
+ * Ein Nichtmitglied bekommt ebenfalls `null` — der Aufrufer hat die
+ * Mitgliedschaft vorher festgestellt, und wenn nicht, ist „nichts" die
+ * richtige Antwort.
+ */
+export async function effectiveListLevel(
+  q: Pool | PoolClient,
+  userId: string,
+  workspaceId: string,
+): Promise<ListLevel | null> {
+  const row = await queryOne<{ level: string | null }>(
+    q,
+    `SELECT CASE
+              WHEN m.is_owner THEN 'admin'
+              ELSE (
+                SELECT lvl FROM (
+                  SELECT r.list_level AS lvl
+                  UNION ALL
+                  SELECT gr.list_level
+                    FROM group_members gm
+                    JOIN groups g ON g.id = gm.group_id
+                    JOIN roles gr ON gr.id = g.role_id
+                   WHERE gm.user_id = $1 AND g.workspace_id = $2
+                ) s
+                WHERE lvl IS NOT NULL
+                ORDER BY CASE lvl WHEN 'admin' THEN 3 WHEN 'editor' THEN 2 WHEN 'viewer' THEN 1 END DESC
+                LIMIT 1
+              )
+            END AS level
+       FROM workspace_members m
+       JOIN roles r ON r.id = m.role_id
+      WHERE m.user_id = $1 AND m.workspace_id = $2`,
+    [userId, workspaceId],
+  );
+  const lvl = row?.level ?? null;
+  return lvl !== null && isListLevel(lvl) ? lvl : null;
+}
+
+/** Ob eine Stufe schreiben darf. Eine Frage, an einer Stelle beantwortet. */
+export const levelWrites = (level: ListLevel | null): boolean =>
+  level === 'editor' || level === 'admin';
+
+/**
  * Darf diese Person in den Projekten dieses Arbeitsbereichs schreiben?
  *
  * Die **Stufe** und nicht ein Recht — das ist SONEs Zweiteilung (ADR-0087):
@@ -128,28 +186,7 @@ export async function mayWriteLists(
   userId: string,
   workspaceId: string,
 ): Promise<boolean> {
-  const row = await queryOne<{ ok: boolean }>(
-    q,
-    // Das MAXIMUM der Stufen, aus demselben Grund wie die Vereinigung oben:
-    // eine Gruppe kann hinaufheben und nie herunterziehen.
-    `SELECT (
-              m.is_owner
-              OR r.list_level IN ('editor','admin')
-              OR EXISTS (
-                   SELECT 1 FROM group_members gm
-                     JOIN groups g ON g.id = gm.group_id
-                     JOIN roles gr ON gr.id = g.role_id
-                    WHERE gm.user_id = $1
-                      AND g.workspace_id = $2
-                      AND gr.list_level IN ('editor','admin')
-                 )
-            ) AS ok
-       FROM workspace_members m
-       JOIN roles r ON r.id = m.role_id
-      WHERE m.user_id = $1 AND m.workspace_id = $2`,
-    [userId, workspaceId],
-  );
-  return row?.ok === true;
+  return levelWrites(await effectiveListLevel(q, userId, workspaceId));
 }
 
 export async function isAdmin(q: Pool | PoolClient, userId: string): Promise<boolean> {

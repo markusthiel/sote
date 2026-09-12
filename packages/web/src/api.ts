@@ -128,6 +128,13 @@ export interface Me {
     /** Dieselbe Form wie beim Projekt, plus `titleColor` für den Namen. */
     icon: { icon?: string; iconColor?: string; titleColor?: string } | null;
     owner: boolean;
+    /**
+     * Die wirksame Listenstufe hier — `null` heisst: keine Listen, nur
+     * Freigegebenes. Der Server setzt sie seit dem Audit vom 12.09.2026 (F01)
+     * an jeder Route durch; die Oberfläche soll daraus lernen, was sie
+     * anbieten darf (SONE ADR-0095), statt Knöpfe zu zeigen, die 403 sagen.
+     */
+    listLevel: 'viewer' | 'editor' | 'admin' | null;
   }[];
 }
 

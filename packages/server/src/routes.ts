@@ -27,6 +27,8 @@ import {
   isAdmin,
   mayChange,
   mayDo,
+  effectiveListLevel,
+  levelWrites,
   mayWriteLists,
   patchSettings,
   type Scope,
@@ -390,6 +392,43 @@ async function memberWorkspace(
     [userId],
   );
   return first?.workspace_id ?? null;
+}
+
+/**
+ * Was ein Weg hinter der Arbeitsbereichsschranke an Listenstufe braucht.
+ *
+ * `none`: persönlich (Bild, Glocke, Kanäle, eigene Einstellungen, ein neuer
+ * Arbeitsbereich) oder verwaltend (Leute, Gruppen, Rollen, Konten,
+ * Einladungen, Wartung, der Arbeitsbereich selbst) — die verwaltenden Wege
+ * prüfen ihr Recht selbst.
+ *
+ * `read`: alles, was nur liest — und die wenigen Schreibwege, die etwas
+ * PERSÖNLICHES an eine Aufgabe hängen, ohne sie zu ändern: eine Erinnerung,
+ * die eigene Sicht auf eine Liste, das eigene Kalenderabonnement. Ein viewer
+ * darf das; er darf nur die Aufgabe selbst nicht anfassen.
+ *
+ * `write`: der Rest. Als Vorgabe und nicht als Liste, damit ein neuer Weg
+ * geschützt zur Welt kommt.
+ */
+export function listAccessNeeded(path: string, method: string): 'none' | 'read' | 'write' {
+  if (
+    path.startsWith('/api/me/') ||
+    path.startsWith('/api/users/') ||
+    path.startsWith('/api/notification') ||
+    path === '/api/workspaces' ||
+    path === '/api/stream' ||
+    path === '/api/settings' ||
+    /^\/api\/settings\/(instance|workspace|user)$/.test(path) ||
+    path === '/api/workspace' ||
+    path === '/api/workspace/export' ||
+    /^\/api\/(people|groups|roles|accounts|invitations|maintenance)(\/|$)/.test(path)
+  ) {
+    return 'none';
+  }
+  if (method === 'GET' || method === 'HEAD') return 'read';
+  if (path === '/api/calendar' || path === '/api/list-views') return 'read';
+  if (/^\/api\/tasks\/[0-9a-f-]{36}\/reminders(\/|$)/.test(path)) return 'read';
+  return 'write';
 }
 
 /** Der Auslieferer wird pro Wurzel einmal gebaut, nicht pro Anfrage. */
@@ -874,15 +913,24 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
        * wissen*.
        */
       unread: await unreadCount(ctx.pool, userId),
-      workspaces: spaces.map((w) => ({
-        id: w.id,
-        name: w.name,
-        icon: readIcon(w.icon),
-        // „Eigentümer" oder „Mitglied" — mehr sagt diese Antwort nicht, weil
-        // sie mehr nicht braucht. Welche Rechte eine Rolle trägt, ist eine
-        // Frage an den Arbeitsbereich und nicht an das Konto.
-        owner: w.is_owner,
-      })),
+      workspaces: await Promise.all(
+        spaces.map(async (w) => ({
+          id: w.id,
+          name: w.name,
+          icon: readIcon(w.icon),
+          // „Eigentümer" oder „Mitglied" — mehr sagt diese Antwort nicht, weil
+          // sie mehr nicht braucht. Welche Rechte eine Rolle trägt, ist eine
+          // Frage an den Arbeitsbereich und nicht an das Konto.
+          owner: w.is_owner,
+          /*
+           * Die Listenstufe kommt mit, seit der Server sie durchsetzt (Audit
+           * 12.09.2026, F01): eine Oberfläche, die jeden Knopf zeigt und auf
+           * jeden 403 bekommt, ist eine Lüge und keine Absicherung (SONE
+           * ADR-0095). `null` heisst: hier gibt es für dich keine Listen.
+           */
+          listLevel: await effectiveListLevel(ctx.pool, userId, w.id),
+        })),
+      ),
     });
     return;
   }
@@ -999,6 +1047,41 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
   const workspaceId = await memberWorkspace(ctx, userId, url.searchParams.get('workspace'));
   if (workspaceId === null) {
     fail(res, 403, 'not_a_member', 'kein Zugriff auf diesen Arbeitsbereich');
+    return;
+  }
+
+  /*
+   * ── Und ab hier braucht fast alles eine Listenstufe ──────────────────────
+   *
+   * Mitglied zu sein heisst nicht, die Listen zu sehen. Eine Rolle ist (eine
+   * Stufe, eine Menge von Rechten), und `list_level = NULL` heisst wirklich
+   * nichts (ADR-0110, Konzept §7, `bootstrap.ts`). Bis zum Audit vom
+   * 12.09.2026 (F01) stand diese Regel in drei Kommentaren und in KEINER
+   * Route: `mayWriteLists` wurde nur beim Anlegen einer Freigabe gefragt, und
+   * jede Aufgabenroute prüfte die Zeile in `workspace_members` und sonst
+   * nichts. Ein viewer konnte patchen, ein Gast mit Konto alles lesen und
+   * exportieren. Genau der Schalter, der nichts bewacht (ADR-0087).
+   *
+   * EINE Frage, EINMAL gestellt, VOR den Routen — und nicht sechzig Prüfungen
+   * in sechzig Zweigen, von denen der einundsechzigste sie vergisst. Was
+   * eine Route braucht, sagt `listAccessNeeded`; die Regel ist fail-closed:
+   * ein neuer Weg braucht Schreibrecht, bis jemand ihn ausdrücklich in die
+   * Liste der persönlichen oder verwaltenden Wege aufnimmt.
+   *
+   * Die Rechte (`people.manage` …) sind die ANDERE Hälfte der Rolle und von
+   * der Stufe unabhängig: wer Leute verwalten darf, darf es auch ohne die
+   * Listen zu sehen. Darum laufen die verwaltenden Wege an dieser Prüfung
+   * vorbei — sie haben ihre eigenen Wächter, und `check-rights-enforced.mjs`
+   * hält die im Bau fest.
+   */
+  const level = await effectiveListLevel(ctx.pool, userId, workspaceId);
+  const need = listAccessNeeded(path, method);
+  if (need !== 'none' && level === null) {
+    fail(res, 403, 'no_list_level', 'deine Rolle hier zeigt dir keine Listen — nur, was dir freigegeben wurde');
+    return;
+  }
+  if (need === 'write' && !levelWrites(level)) {
+    fail(res, 403, 'read_only', 'deine Rolle hier liest mit, sie schreibt nicht');
     return;
   }
 
