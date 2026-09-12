@@ -35,6 +35,7 @@ import type { Pool } from 'pg';
 import webpush from 'web-push';
 
 import { queryOne, queryRows } from './db.js';
+import { handle } from './jobs.js';
 
 /** Woran ein Zustelldienst erkennt, wen er vor sich hat. */
 const KONTAKT = 'mailto:sote@localhost';
@@ -186,3 +187,35 @@ export async function pushTo(pool: Pool, userId: string, note: PushNote): Promis
   }
   return zugestellt;
 }
+
+/**
+ * Der Bearbeiter für `push.send` — der Auftrag, den `deliver()` legt.
+ *
+ * Er FEHLTE. `deliver()` legte seit dem ersten Tag Aufträge dieser Art (für
+ * Zuweisungen und Kommentare), und kein Modul hat sie je bearbeitet: jeder
+ * lief in „kein Bearbeiter", fünf Versuche, dann liegen gelassen. Nur die
+ * Aufgabenerinnerungen kamen an, weil `taskReminders.ts` `pushTo` direkt
+ * ruft. Gefunden im Audit vom 12.09.2026 (F08) — und vorher schon als „ob
+ * Push wirklich rausgeht, ist ungetestet" notiert. Jetzt ist es getestet.
+ *
+ * Die Nutzlast wird GEPRÜFT und nicht geglaubt: ein Auftrag ohne `userId`
+ * oder ohne Titel ist ein Programmierfehler beim Legen, und der soll als
+ * Fehler im Auftrag stehen, nicht als leere Meldung auf einem Gerät.
+ *
+ * Ein Konto ohne Geräte ist KEIN Fehler: `pushTo` liefert 0, der Auftrag ist
+ * erledigt. Die Kanalwahl hat `deliver()` schon getroffen.
+ */
+handle('push.send', async (ctx) => {
+  const p = ctx.job.payload;
+  const userId = typeof p['userId'] === 'string' ? p['userId'] : '';
+  const note = p['note'] as Partial<PushNote> | undefined;
+  if (userId === '' || note === undefined || typeof note.title !== 'string' || note.title === '') {
+    throw new Error('push.send ohne Konto oder ohne Titel');
+  }
+  await pushTo(ctx.pool, userId, {
+    title: note.title,
+    ...(typeof note.body === 'string' ? { body: note.body } : {}),
+    ...(typeof note.url === 'string' ? { url: note.url } : {}),
+    ...(typeof note.tag === 'string' ? { tag: note.tag } : {}),
+  });
+});

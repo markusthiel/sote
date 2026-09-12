@@ -12,6 +12,7 @@ import type { Pool } from 'pg';
 
 import { makePool, queryOne, queryRows } from '../src/db.js';
 import { migrate } from '../src/migrate.js';
+import { enqueue, knownKinds, runOne } from '../src/jobs.js';
 import { pushKeys, subscribePush, unsubscribePush } from '../src/push.js';
 
 let pool: Pool;
@@ -103,4 +104,48 @@ test('ein geloeschtes Konto nimmt seine Geraete mit', async () => {
     weg!.id,
   ]);
   assert.equal(rest.length, 0);
+});
+
+test('push.send hat einen Bearbeiter — und der Auftrag wird erledigt', async () => {
+  /*
+   * Audit 12.09.2026, F08: `deliver()` legte `push.send`-Aufträge, und kein
+   * Modul bearbeitete sie. Jeder lief in „kein Bearbeiter", fünfmal, und
+   * blieb liegen. Der Fehler war von aussen unsichtbar, weil die Aufgaben-
+   * erinnerungen `pushTo` direkt rufen und darum ankamen.
+   *
+   * Hier ein Konto ohne Geräte: `pushTo` schickt nichts, und genau das ist
+   * die Erledigung — keine Verbindung nach aussen, kein Fehler.
+   */
+  assert.ok(knownKinds().includes('push.send'), 'der Bearbeiter ist angemeldet');
+
+  const leer = await queryOne<{ id: string }>(
+    pool,
+    `INSERT INTO users (email, display_name) VALUES ($1,'Ohne Geraet') RETURNING id`,
+    [`push-leer-${process.pid}@example.org`],
+  );
+  await pool.query("DELETE FROM jobs WHERE kind = 'push.send'");
+  await enqueue(pool, 'push.send', {
+    payload: { userId: leer!.id, note: { title: 'Dir zugewiesen', url: '/t/x' } },
+  });
+  assert.equal(await runOne(pool, new Date(), ['push.send']), true);
+  const row = await queryOne<{ done_at: Date | null; last_error: string | null }>(
+    pool,
+    "SELECT done_at, last_error FROM jobs WHERE kind = 'push.send'",
+  );
+  assert.notEqual(row!.done_at, null, 'erledigt');
+  assert.equal(row!.last_error, null);
+});
+
+test('ein push.send ohne Konto oder Titel ist ein Fehler im Auftrag, keine leere Meldung', async () => {
+  await pool.query("DELETE FROM jobs WHERE kind = 'push.send'");
+  await enqueue(pool, 'push.send', { payload: { note: { title: 'ohne Konto' } } });
+  assert.equal(await runOne(pool, new Date(), ['push.send']), true);
+  const row = await queryOne<{ done_at: Date | null; last_error: string | null; attempts: number }>(
+    pool,
+    "SELECT done_at, last_error, attempts FROM jobs WHERE kind = 'push.send'",
+  );
+  assert.equal(row!.done_at, null);
+  assert.match(row!.last_error ?? '', /ohne Konto/);
+  assert.equal(row!.attempts, 1);
+  await pool.query("DELETE FROM jobs WHERE kind = 'push.send'");
 });
