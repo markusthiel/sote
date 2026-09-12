@@ -9,7 +9,11 @@
 
 import type { Pool } from 'pg';
 
+import { mentionsIn } from '@sote/core';
+
 import { queryOne, queryRows, withTransaction } from './db.js';
+import { deliver } from './deliver.js';
+import { baseUrl } from './env.js';
 import { notify } from './notifications.js';
 import { NotFound, OutOfOrder, keyAtEnd, type TaskRow } from './tasks.js';
 
@@ -229,6 +233,15 @@ export async function addComment(
    * später in einer Zeile ohne Urheber.
    */
   guestName = 'über einen Link',
+  /**
+   * Worauf geantwortet wird — EINE Ebene.
+   *
+   * Wer auf eine Antwort antwortet, antwortet auf deren Ursprung: das setzt
+   * die Abfrage unten durch, und es ist die einzige Regel, die ohne
+   * Einrückungstiefe auskommt. Ein Gespräch, das sich verzweigt, liest niemand
+   * mehr von oben nach unten.
+   */
+  parentId?: string | null,
 ): Promise<Comment> {
   const clean = body.trim();
   if (clean === '') throw new OutOfOrder('ein leerer Kommentar ist keiner');
@@ -241,13 +254,30 @@ export async function addComment(
     );
     if (exists === undefined) throw new NotFound(`Aufgabe ${taskId} gibt es nicht`);
 
+    /*
+     * Der Ursprung wird AUFGELÖST: zeigt `parentId` auf eine Antwort, hängt die
+     * neue an deren Ursprung. So bleibt es bei einer Ebene, ohne dass die
+     * Oberfläche es wissen muss — sie schickt einfach, worauf jemand getippt
+     * hat.
+     */
+    let anker: string | null = null;
+    if (parentId !== undefined && parentId !== null) {
+      const p = await queryOne<{ id: string; parent_id: string | null }>(
+        client,
+        'SELECT id, parent_id FROM task_comments WHERE id = $1 AND task_id = $2',
+        [parentId, taskId],
+      );
+      if (p === undefined) throw new NotFound('diesen Kommentar gibt es hier nicht');
+      anker = p.parent_id ?? p.id;
+    }
+
     const row = await queryOne<{ id: string; created_at: Date }>(
       client,
-      `INSERT INTO task_comments (task_id, author_id, author_guest, body)
-       VALUES ($1,$2,$3,$4)
+      `INSERT INTO task_comments (task_id, author_id, author_guest, body, parent_id)
+       VALUES ($1,$2,$3,$4,$5)
        RETURNING id, created_at`,
       // Genau eines von beiden, wie der CHECK verlangt: ein Konto ODER ein Name.
-      [taskId, userId, userId === null ? guestName : null, clean],
+      [taskId, userId, userId === null ? guestName : null, clean, anker],
     );
     if (row === undefined) throw new Error('INSERT ohne Zeile');
 
@@ -270,13 +300,87 @@ export async function addComment(
        ) x WHERE x.id IS NOT NULL`,
       [taskId],
     );
+    /*
+     * WER GENANNT WIRD, WIRD ZUERST BEDIENT.
+     *
+     * GEWÜNSCHT: „Namensnennungen … bei den Benachrichtigungen."
+     *
+     * `@name` wie im Schnellerfasser — und zwar geprüft gegen die Mitglieder
+     * DIESES Arbeitsbereichs: ein Name, den es hier nicht gibt, ist Text, so
+     * wie ein `#projekt`, das es nicht gibt.
+     *
+     * Und wer genannt wurde, bekommt NICHT zusätzlich die allgemeine Meldung
+     * „neuer Kommentar". Zwei Meldungen über einen Satz sind eine zu viel, und
+     * die gerichtete ist die bessere.
+     */
+    const genannt = new Set<string>();
+    const namen = mentionsIn(body);
+    if (namen.length > 0) {
+      const treffer = await queryRows<{ id: string }>(
+        client,
+        `SELECT u.id FROM users u
+           JOIN workspace_members m ON m.user_id = u.id AND m.workspace_id = $2
+          WHERE lower(u.display_name) = ANY($1::text[])`,
+        [namen, workspaceId],
+      );
+      for (const t of treffer) genannt.add(t.id);
+    }
+
+    /*
+     * WER AUF EINE ANTWORT WARTET.
+     *
+     * GEWÜNSCHT: „Antworten in Kommentaren". Wer auf einen Kommentar antwortet,
+     * meldet es dessen Verfasser — gerichteter als „neuer Kommentar" und darum
+     * eine eigene Art.
+     */
+    let beantwortet: string | null = null;
+    if (anker !== null) {
+      const ursprung = await queryOne<{ author_id: string | null }>(
+        client,
+        'SELECT author_id FROM task_comments WHERE id = $1',
+        [anker],
+      );
+      beantwortet = ursprung?.author_id ?? null;
+      if (beantwortet !== null) genannt.add(beantwortet);
+    }
+
+    const url = `${baseUrl() ?? ''}/a/${taskId}`;
+    const titel = await queryOne<{ title: string }>(
+      client,
+      'SELECT title FROM tasks WHERE id = $1',
+      [taskId],
+    );
+    const wie = titel?.title ?? 'Aufgabe';
+    const vonWem = userId === null ? (guestName ?? 'Ein Gast') : null;
+
+    for (const wer of genannt) {
+      await deliver(client, {
+        userId: wer,
+        actorId: userId,
+        workspaceId,
+        kind: wer === beantwortet ? 'replied' : 'mentioned',
+        taskId,
+        title: wie,
+        body:
+          wer === beantwortet
+            ? `${vonWem ?? 'Jemand'} hat auf deinen Kommentar geantwortet: ${body.slice(0, 140)}`
+            : `${vonWem ?? 'Jemand'} nennt dich: ${body.slice(0, 140)}`,
+        url,
+      });
+    }
+
     for (const wer of betroffen) {
-      await notify(client, {
+      // Wer schon gerichtet gemeldet wurde, bekommt nicht noch die allgemeine.
+      if (genannt.has(wer.id)) continue;
+      await deliver(client, {
         userId: wer.id,
+        actorId: userId,
         workspaceId,
         kind: 'commented',
         taskId,
-        actorId: userId,
+        title: wie,
+        body: `${vonWem ?? 'Neuer Kommentar'}: ${body.slice(0, 140)}`,
+        url,
       });
     }
 

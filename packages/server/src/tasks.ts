@@ -23,6 +23,8 @@ import {
 import type { Pool } from 'pg';
 
 import { queryOne, queryRows, withTransaction, type PoolClient } from './db.js';
+import { deliver } from './deliver.js';
+import { baseUrl } from './env.js';
 import { notify } from './notifications.js';
 
 export interface TaskRow {
@@ -354,12 +356,21 @@ export async function createFromLine(pool: Pool, input: CreateFromLine): Promise
          * zurückgerollt wurde. `notify` selbst schweigt, wenn jemand sich
          * selbst zuweist.
          */
-        await notify(client, {
+        /*
+         * Über `deliver`, nicht über `notify` allein: eine Zuweisung ist die
+         * lauteste Sorte Meldung — jemand legt mir etwas hin, und wer es nicht
+         * mitbekommt, hält jemand anderen auf. Sie geht darum nach Vorgabe
+         * auch per Mail und aufs Gerät, und wer das anders will, stellt es ein.
+         */
+        await deliver(client, {
           userId: people[0]!.id,
+          actorId: input.userId,
           workspaceId: input.workspaceId,
           kind: 'assigned',
           taskId: row.id,
-          actorId: input.userId,
+          title: row.title,
+          body: 'Dir zugewiesen',
+          url: `${baseUrl() ?? ''}/a/${row.id}`,
         });
       } else if (people.length === 0) {
         unknownAssignees.push(name);

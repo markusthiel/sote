@@ -61,3 +61,20 @@ export function loadConfig(): Config {
     sessionDays: count('SOTE_SESSION_DAYS', 30, { min: 1, max: 400 }),
   };
 }
+
+/**
+ * Die Adresse, unter der dieser Server erreichbar ist.
+ *
+ * HIER und nicht in `invitations.ts`, wo sie herkam: sobald Aufgaben und
+ * Kommentare Links in ihre Meldungen schreiben, importieren sie das Modul —
+ * und `invitations.ts` zieht die halbe Anwendung nach. Der Kreis brach beim
+ * Start mit „Cannot access 'OutOfOrder' before initialization", also an einer
+ * Stelle, die mit Einladungen nichts zu tun hat.
+ *
+ * `env.ts` importiert nichts. Das macht es zum richtigen Ort für eine Angabe,
+ * die überall gebraucht wird.
+ */
+export function baseUrl(): string | undefined {
+  const raw = (process.env['SOTE_BASE_URL'] ?? '').trim().replace(/\/+$/, '');
+  return raw === '' ? undefined : raw;
+}

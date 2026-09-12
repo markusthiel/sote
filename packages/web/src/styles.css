@@ -2112,6 +2112,60 @@ body {
   overscroll-behavior: none;
 }
 
+/* ── Wohin Meldungen gehen ─────────────────────────────────────────────────
+ *
+ * Drei Spalten, von denen die erste sagt, WORUM es geht, und die anderen
+ * beiden, wohin. Der Posteingang fehlt mit Absicht: er ist kein Kanal, sondern
+ * der Ort, an dem eine Meldung ohnehin steht.
+ */
+.channels {
+  display: flex;
+  flex-direction: column;
+  margin-block-start: var(--sone-space-4);
+}
+
+.channels-head,
+.channels-row {
+  display: grid;
+  grid-template-columns: 1fr 4rem 4rem;
+  align-items: center;
+  gap: var(--sone-space-3);
+}
+
+/* Die Überschrift leise und in Schmalschrift: sie benennt zwei Spalten und ist
+   keine Zeile der Liste. */
+.channels-head {
+  padding-block-end: var(--sone-space-2);
+  border-bottom: 1px solid var(--line);
+  font-family: var(--sote-mono);
+  font-size: var(--sone-text-xs);
+  color: var(--text-faint);
+  text-align: center;
+}
+
+.channels-head span:first-child {
+  text-align: start;
+}
+
+.channels-row {
+  padding-block: var(--sone-space-3);
+  border-bottom: 1px solid var(--line);
+}
+
+/* Name und Erklärung untereinander: die Erklärung sagt, WANN es passiert, und
+   das ist die Frage, die man beim Einstellen hat. */
+.channels-what {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sone-space-1);
+}
+
+.channels-row input[type="checkbox"] {
+  justify-self: center;
+  inline-size: var(--sone-space-5);
+  block-size: var(--sone-space-5);
+}
+
 /* ── „Überall": eine Liste aus allen Arbeitsbereichen ──────────────────────
  *
  * Dieselbe Zeile wie in einer Liste, nur mit der Marke des Bereichs am Ende —

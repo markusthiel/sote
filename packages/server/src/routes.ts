@@ -8,7 +8,7 @@
 
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 
-import { AVATAR_MAX_BYTES, isAvatarType, describe as describeRecurrence, isListLevel, isZone, readIcon, readTaskCover, readTaskLook, isInlineSafe } from '@sote/core';
+import { AVATAR_MAX_BYTES, isAvatarType, describe as describeRecurrence, isListLevel, isZone, readIcon, readTaskCover, readTaskLook, isInlineSafe, NOTE_KINDS, channelDefaults, isNoteKind } from '@sote/core';
 import type { Pool } from 'pg';
 
 import { openSession, signIn, signOut, userOfToken } from './auth.js';
@@ -55,6 +55,7 @@ import {
 } from './sso.js';
 import { knownKinds } from './jobs.js';
 import { list as listNotifications, markRead, unreadCount } from './notifications.js';
+import { setChannels } from './deliver.js';
 import { stream } from './nudge.js';
 import { pushKeys, subscribePush, unsubscribePush } from './push.js';
 import { deleteWorkspace, exportWorkspace } from './workspace.js';
@@ -1137,6 +1138,64 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
      * entscheidet die Route, die die Liste liefert.
      */
     stream(req, res, (ws) => ws === workspaceId);
+    return;
+  }
+
+  /*
+   * WOHIN MELDUNGEN GEHEN — je Person und Art.
+   *
+   * GEWÜNSCHT: „konfigurierbar machen, was per E-Mail benachrichtigt wird, über
+   * die Oberfläche oder per App".
+   *
+   * Ohne Arbeitsbereich, denn die Wahl gehört dem KONTO: wer keine Mail über
+   * Kommentare will, will sie in keinem Bereich. Darum steht die Route über
+   * der Bereichsprüfung.
+   */
+  if (path === '/api/notification-channels' && method === 'GET') {
+    const rows = await queryRows<{ kind: string; email: boolean; push: boolean }>(
+      ctx.pool,
+      'SELECT kind, email, push FROM notification_channels WHERE user_id = $1',
+      [userId],
+    );
+    const gesetzt = new Map(rows.map((r) => [r.kind, { email: r.email, push: r.push }]));
+    json(res, 200, {
+      /*
+       * Immer ALLE Arten, mit der geltenden Wahl — gesetzt oder Vorgabe. Die
+       * Oberfläche soll nicht wissen müssen, was die Vorgaben sind: zwei
+       * Stellen, die dieselbe Vorgabe kennen, laufen beim ersten Ändern
+       * auseinander.
+       */
+      channels: NOTE_KINDS.map((kind) => ({
+        kind,
+        ...(gesetzt.get(kind) ?? channelDefaults(kind)),
+        eigen: gesetzt.has(kind),
+      })),
+      /* Ob dieser Server überhaupt Mail verschicken kann — sonst ist der
+         Schalter ein Versprechen ohne Deckung. */
+      mailOn: mailConfig() !== undefined,
+    });
+    return;
+  }
+
+  if (path === '/api/notification-channels' && method === 'PUT') {
+    const body = (await readJson(req)) as Record<string, unknown>;
+    const kind = body['kind'];
+    if (!isNoteKind(kind)) {
+      fail(res, 422, 'bad_kind', 'diese Art von Meldung gibt es nicht');
+      return;
+    }
+    await setChannels(
+      ctx.pool,
+      userId,
+      kind,
+      body['channels'] === null
+        ? null
+        : {
+            email: Boolean((body['channels'] as Record<string, unknown>)?.['email']),
+            push: Boolean((body['channels'] as Record<string, unknown>)?.['push']),
+          },
+    );
+    json(res, 200, { ok: true });
     return;
   }
 
@@ -2323,13 +2382,16 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
 
   const talk = /^\/api\/tasks\/([0-9a-f-]{36})\/comments$/.exec(path);
   if (talk && method === 'POST') {
-    const body = (await readJson(req)) as { body?: unknown };
+    const body = (await readJson(req)) as { body?: unknown; parentId?: unknown };
     const comment = await addComment(
       ctx.pool,
       talk[1]!,
       workspaceId,
       userId,
       typeof body?.body === 'string' ? body.body : '',
+      undefined,
+      /* Worauf geantwortet wird — der Server loest auf eine Ebene auf. */
+      typeof body?.parentId === 'string' ? body.parentId : null,
     );
     json(res, 201, {
       comment: { ...comment, createdAt: comment.createdAt.toISOString() },

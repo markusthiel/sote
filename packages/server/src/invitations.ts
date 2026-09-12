@@ -33,6 +33,10 @@ import { createHash, randomBytes } from 'node:crypto';
 
 import type { Pool } from 'pg';
 
+import { baseUrl } from './env.js';
+
+/* Weiterhin von hier zu haben: die Einladungen benutzen sie am meisten. */
+export { baseUrl };
 import { queryOne, queryRows } from './db.js';
 import { queueMail } from './mail.js';
 import { seal, unseal } from './secretbox.js';
@@ -54,10 +58,6 @@ export interface Invitation {
 }
 
 /** Die eigene Adresse, oder nichts. */
-export function baseUrl(): string | undefined {
-  const raw = (process.env['SOTE_BASE_URL'] ?? '').trim().replace(/\/+$/, '');
-  return raw === '' ? undefined : raw;
-}
 
 export async function listInvitations(pool: Pool): Promise<Invitation[]> {
   const rows = await queryRows<{

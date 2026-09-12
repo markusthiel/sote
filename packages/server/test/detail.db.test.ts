@@ -12,7 +12,7 @@ import { after, before, test } from 'node:test';
 
 import type { Pool } from 'pg';
 
-import { makePool, queryOne } from '../src/db.js';
+import { makePool, queryOne, queryRows } from '../src/db.js';
 import { makeList } from './support/tree.js';
 import { addChild, addComment, detail } from '../src/detail.js';
 import { migrate } from '../src/migrate.js';
@@ -315,4 +315,70 @@ test('+vorname genügt, und bei zwei Treffern wird nicht geraten', async () => {
   // Der volle Name trifft weiterhin eindeutig.
   const exact = await add(workspaceId, 'Rückruf drei +markus.berg');
   assert.deepEqual(exact.unknownAssignees, ['markus.berg']);
+});
+
+test('eine Nennung meldet gerichtet — und nicht doppelt', async () => {
+  /*
+   * GEWUENSCHT: „Namensnennungen … bei den Benachrichtigungen."
+   *
+   * Wer genannt wird, bekommt NICHT zusaetzlich die allgemeine Meldung „neuer
+   * Kommentar". Zwei Meldungen ueber einen Satz sind eine zu viel, und die
+   * gerichtete ist die bessere.
+   */
+  const { workspaceId } = await scratch(`nennung-${process.pid}`);
+  const zweiter = await queryOne<{ id: string }>(
+    pool,
+    `INSERT INTO users (email, display_name) VALUES ($1,'Anna') RETURNING id`,
+    [`anna-${process.pid}@example.org`],
+  );
+  const rolle = await queryOne<{ id: string }>(
+    pool,
+    `SELECT id FROM roles WHERE workspace_id = $1 LIMIT 1`,
+    [workspaceId],
+  );
+  await pool.query(
+    `INSERT INTO workspace_members (workspace_id, user_id, role_id) VALUES ($1,$2,$3)`,
+    [workspaceId, zweiter!.id, rolle!.id],
+  );
+
+  const t = await add(workspaceId, 'Etwas mit Nennung');
+  await addComment(pool, t.task.id, workspaceId, userId, 'bitte @anna ansehen');
+
+  const meldungen = await queryRows<{ kind: string }>(
+    pool,
+    'SELECT kind FROM notifications WHERE user_id = $1 AND task_id = $2',
+    [zweiter!.id, t.task.id],
+  );
+  /*
+   * GENAU EINE. Anna ist weder Urheberin noch zustaendig, bekaeme also ohne
+   * Nennung gar nichts -- mit Nennung genau eine. Und wer beides waere,
+   * bekaeme trotzdem nur eine: die gerichtete.
+   */
+  assert.equal(meldungen.length, 1);
+});
+
+test('eine Antwort haengt am Ursprung, auch in der zweiten Ebene', async () => {
+  /*
+   * EINE Ebene: wer auf eine Antwort antwortet, antwortet auf deren Ursprung.
+   * Das loest der Server auf -- die Oberflaeche schickt einfach, worauf jemand
+   * getippt hat, und muss die Regel nicht kennen.
+   */
+  const { workspaceId } = await scratch(`gespraech-${process.pid}`);
+  const t = await add(workspaceId, 'Gespraech');
+  const erster = await addComment(pool, t.task.id, workspaceId, userId, 'Frage?');
+  const antwort = await addComment(
+    pool, t.task.id, workspaceId, userId, 'Antwort', undefined, erster.id,
+  );
+  const drauf = await addComment(
+    pool, t.task.id, workspaceId, userId, 'Nachfrage', undefined, antwort.id,
+  );
+
+  const rows = await queryRows<{ id: string; parent_id: string | null }>(
+    pool,
+    'SELECT id, parent_id FROM task_comments WHERE task_id = $1',
+    [t.task.id],
+  );
+  assert.equal(rows.find((r) => r.id === antwort.id)?.parent_id, erster.id);
+  // Die Nachfrage haengt am ERSTEN und nicht an der Antwort.
+  assert.equal(rows.find((r) => r.id === drauf.id)?.parent_id, erster.id);
 });

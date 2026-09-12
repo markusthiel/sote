@@ -55,6 +55,8 @@ import { useEffect, useState } from 'react';
 
 import { api, ApiError, type SettingsAnswer } from '../api.js';
 import { applyScheme } from '../appearance.js';
+import { NOTE_SAYS, type NoteKind } from '@sote/core';
+
 import { OwnColor } from '../components/OwnColor.js';
 import { pushAus, pushEin, pushStand, type PushStand } from '../lib/push.js';
 import { avatarVariant } from '../imageVariant.js';
@@ -78,6 +80,7 @@ export const SETTING_SECTIONS = [
   { id: 'zeit', label: 'Zeit', hint: 'Deine Zeitzone' },
   { id: 'landen', label: 'Wo du landest', hint: 'Beim Anmelden' },
   { id: 'erinnern', label: 'Erinnerungen', hint: 'Post am Morgen' },
+  { id: 'melden', label: 'Benachrichtigungen', hint: 'Was wo ankommt' },
   { id: 'kalender', label: 'Kalender', hint: 'Abonnement für dein Programm' },
 ] as const;
 
@@ -321,6 +324,56 @@ export function Settings({
    */
   const [pushLage, setPushLage] = useState<PushStand>(() => pushStand());
   const [busy, setBusy] = useState(false);
+  /**
+   * Wohin Meldungen gehen — vom Server, auch wenn es nur die Vorgabe ist.
+   *
+   * `undefined` heisst „noch nicht geladen" und nicht „nichts eingestellt":
+   * die beiden zu verwechseln hiesse, für einen Augenblick alle Schalter aus
+   * zu zeigen und damit etwas zu behaupten, das nicht stimmt.
+   */
+  const [kanaele, setKanaele] = useState<
+    | {
+        channels: { kind: string; email: boolean; push: boolean; eigen: boolean }[];
+        mailOn: boolean;
+      }
+    | undefined
+  >(undefined);
+
+  useEffect(() => {
+    if (section !== 'melden') return;
+    void api
+      .channels()
+      .then(setKanaele)
+      .catch(() => undefined);
+  }, [section]);
+
+  /*
+   * Sofort umlegen und dann schreiben.
+   *
+   * Ein Schalter, der erst nach der Antwort umspringt, fühlt sich kaputt an —
+   * und die Antwort kommt hier immer, weil es eine Zeile in einer Tabelle ist.
+   * Geht es doch schief, lädt der Fehlerfall die Wahrheit neu.
+   */
+  async function setzeKanal(kind: string, wohin: { email: boolean; push: boolean }) {
+    setKanaele((alt) =>
+      alt === undefined
+        ? alt
+        : {
+            ...alt,
+            channels: alt.channels.map((c) =>
+              c.kind === kind ? { ...c, ...wohin, eigen: true } : c,
+            ),
+          },
+    );
+    setBusy(true);
+    try {
+      await api.setChannels(kind, wohin);
+    } catch {
+      setKanaele(await api.channels().catch(() => undefined));
+    } finally {
+      setBusy(false);
+    }
+  }
   const { hatBild, picStand, picBusy, picNotice, bildHoch, bildWeg } = useAvatar(userId);
 
   const load = async () => {
@@ -1081,6 +1134,79 @@ export function Settings({
             Reist mit dir: wer hier dunkel wählt, bekommt am Telefon auch dunkel.
           </p>
           {schemeRow('user', data.levels.user.scheme, 'Wie der Arbeitsbereich')}
+        </section>
+      ) : null}
+
+      {section === 'melden' ? (
+        <section className="settings-card">
+          <h2>Benachrichtigungen</h2>
+          {/*
+            WAS WO ANKOMMT.
+
+            GEWÜNSCHT: „konfigurierbar machen, was per E-Mail benachrichtigt
+            wird, über die Oberfläche oder per App?"
+
+            Drei Spalten, von denen eine keine Wahl ist: der POSTEINGANG ist
+            immer an. Er ist kein Kanal, sondern der Ort, an dem eine Meldung
+            ohnehin steht — ihn abschaltbar zu machen hiesse, Meldungen zu
+            erzeugen, die niemand je sieht.
+
+            Die geltende Wahl kommt vom SERVER, auch wenn sie nur die Vorgabe
+            ist. Zwei Stellen, die dieselbe Vorgabe kennen, laufen beim ersten
+            Ändern auseinander.
+          */}
+          <p className="muted small">
+            Im Posteingang steht jede Meldung — das lässt sich nicht abstellen.
+            Hier wählst du, was zusätzlich per Mail kommt und was auf deine
+            Geräte.
+          </p>
+
+          {kanaele === undefined ? (
+            <p className="muted small">Wird geladen…</p>
+          ) : (
+            <div className="channels">
+              <div className="channels-head">
+                <span />
+                <span>Mail</span>
+                <span>App</span>
+              </div>
+              {kanaele.channels.map((c) => (
+                <div className="channels-row" key={c.kind}>
+                  <span className="channels-what">
+                    <b>{NOTE_SAYS[c.kind as NoteKind]?.says ?? c.kind}</b>
+                    <span className="muted small">
+                      {NOTE_SAYS[c.kind as NoteKind]?.hint ?? ''}
+                    </span>
+                  </span>
+                  <input
+                    type="checkbox"
+                    aria-label={`${NOTE_SAYS[c.kind as NoteKind]?.says ?? c.kind} per Mail`}
+                    checked={c.email}
+                    /* Ohne Mailversand ist der Schalter ein Versprechen ohne
+                       Deckung — dann steht er da und lässt sich nicht legen. */
+                    disabled={busy || !kanaele.mailOn}
+                    onChange={(e) =>
+                      void setzeKanal(c.kind, { email: e.target.checked, push: c.push })
+                    }
+                  />
+                  <input
+                    type="checkbox"
+                    aria-label={`${NOTE_SAYS[c.kind as NoteKind]?.says ?? c.kind} auf Geräte`}
+                    checked={c.push}
+                    disabled={busy}
+                    onChange={(e) =>
+                      void setzeKanal(c.kind, { email: c.email, push: e.target.checked })
+                    }
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+          {kanaele !== undefined && !kanaele.mailOn ? (
+            <p className="muted small">
+              Dieser Server verschickt keine Mail — ohne SMTP bleibt die Spalte aus.
+            </p>
+          ) : null}
         </section>
       ) : null}
 

@@ -13,6 +13,7 @@ export * from './time/zone.js';
 export * from './look/color.js';
 export * from './task/cover.js';
 export * from './task/look.js';
+export * from './task/notes.js';
 export * from './task/shrink.js';
 export * from './look/listView.js';
 export * from './look/settings.js';

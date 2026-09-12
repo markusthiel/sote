@@ -634,6 +634,18 @@ export const api = {
   }) => call<{ ok: true }>('/api/push', { method: 'POST', body: JSON.stringify(abo) }),
   pushUnsubscribe: (endpoint: string) =>
     call<{ ok: true }>('/api/push', { method: 'DELETE', body: JSON.stringify({ endpoint }) }),
+  /** Wohin Meldungen gehen — je Art, mit der geltenden Wahl. */
+  channels: () =>
+    call<{
+      channels: { kind: string; email: boolean; push: boolean; eigen: boolean }[];
+      mailOn: boolean;
+    }>('/api/notification-channels'),
+  /** Setzen; `null` nimmt die Wahl zurück auf die Vorgabe. */
+  setChannels: (kind: string, channels: { email: boolean; push: boolean } | null) =>
+    call<{ ok: true }>('/api/notification-channels', {
+      method: 'PUT',
+      body: JSON.stringify({ kind, channels }),
+    }),
   labels: (workspace?: string) =>
     call<{
       labels: { id: string; name: string; tasks: number; color: string | null }[];
@@ -1280,10 +1292,10 @@ export const api = {
       `/api/tasks/${id}/children${workspace === undefined ? '' : `?workspace=${workspace}`}`,
       { method: 'POST', body: JSON.stringify({ title }) },
     ),
-  addComment: (id: string, body: string, workspace?: string) =>
+  addComment: (id: string, body: string, workspace?: string, parentId?: string | null) =>
     call<{ comment: Comment }>(
       `/api/tasks/${id}/comments${workspace === undefined ? '' : `?workspace=${workspace}`}`,
-      { method: 'POST', body: JSON.stringify({ body }) },
+      { method: 'POST', body: JSON.stringify({ body, parentId: parentId ?? null }) },
     ),
   /** Den Haken zurücknehmen — DELETE auf denselben Weg, nicht POST auf einen zweiten. */
   reopen: (id: string, workspace?: string) =>
