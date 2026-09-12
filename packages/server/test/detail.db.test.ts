@@ -342,7 +342,7 @@ test('eine Nennung meldet gerichtet — und nicht doppelt', async () => {
   );
 
   const t = await add(workspaceId, 'Etwas mit Nennung');
-  await addComment(pool, t.task.id, workspaceId, userId, 'bitte @anna ansehen');
+  await addComment(pool, t.task.id, workspaceId, userId, 'bitte +anna ansehen');
 
   const meldungen = await queryRows<{ kind: string }>(
     pool,
@@ -381,4 +381,30 @@ test('eine Antwort haengt am Ursprung, auch in der zweiten Ebene', async () => {
   assert.equal(rows.find((r) => r.id === antwort.id)?.parent_id, erster.id);
   // Die Nachfrage haengt am ERSTEN und nicht an der Antwort.
   assert.equal(rows.find((r) => r.id === drauf.id)?.parent_id, erster.id);
+});
+
+test('Gespraeche stehen nacheinander — nicht in zufaelliger Reihenfolge', async () => {
+  /*
+   * Mein erster Versuch sortierte nach `COALESCE(parent_id, id)`, und das
+   * heisst fuer einen Beitrag ohne Antwort: nach seiner eigenen Id. Eine Id
+   * ist hier ein Zufallswert -- das Gespraech stand also zufaellig da.
+   *
+   * Gefunden hat es ein Test von frueher („Kommentare stehen in der
+   * Reihenfolge, in der sie geschrieben wurden"), geschrieben lange bevor es
+   * Antworten gab. Dieser hier haelt zusaetzlich fest, was mit Antworten
+   * gilt.
+   */
+  const { workspaceId } = await scratch(`reihenfolge-${process.pid}`);
+  const t = await add(workspaceId, 'Reihenfolge');
+
+  const eins = await addComment(pool, t.task.id, workspaceId, userId, 'eins');
+  await addComment(pool, t.task.id, workspaceId, userId, 'zwei');
+  await addComment(pool, t.task.id, workspaceId, userId, 'antwort auf eins', undefined, eins.id);
+
+  const d = await detail(pool, t.task.id, workspaceId);
+  assert.deepEqual(
+    d.comments.map((c) => c.body),
+    // Die Antwort steht bei ihrem Ursprung, und die Gespraeche nacheinander.
+    ['eins', 'antwort auf eins', 'zwei'],
+  );
 });

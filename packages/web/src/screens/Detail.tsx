@@ -1850,7 +1850,7 @@ export function Detail({
                 rows={2}
                 value={commentLine}
                 aria-label="Kommentar schreiben"
-                placeholder="Schreiben — Enter schickt, Umschalt und Enter macht eine Zeile"
+                placeholder="Schreiben — +name nennt jemanden, Enter schickt"
                 disabled={busy}
                 onChange={(e) => setCommentLine(e.target.value)}
                 onKeyDown={(e) => {

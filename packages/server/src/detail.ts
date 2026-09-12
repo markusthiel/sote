@@ -112,8 +112,18 @@ export async function detail(
     }>(
       client,
       /*
-       * MIT dem Ursprung, und sortiert so, dass Antworten bei ihrem Kommentar
-       * stehen: erst nach dem Anker (Ursprung oder eigene Id), dann nach Zeit.
+       * MIT dem Ursprung, und sortiert nach der ZEIT DES ANKERS.
+       *
+       * Mein erster Versuch war `COALESCE(parent_id, id)` — und das heisst für
+       * einen Beitrag ohne Antwort: sortiere nach seiner eigenen Id. Eine Id
+       * ist hier ein Zufallswert, also stand das Gespräch in zufälliger
+       * Reihenfolge. Ein bestehender Test hat es sofort gemeldet
+       * („Kommentare stehen in der Reihenfolge, in der sie geschrieben
+       * wurden") — geschrieben lange bevor es Antworten gab.
+       *
+       * Richtig ist die Zeit des Ursprungs, dann die eigene: Gespräche stehen
+       * nacheinander, und innerhalb eines Gesprächs steht die Antwort hinter
+       * dem, worauf sie antwortet.
        *
        * Die Reihenfolge hier und nicht in der Oberfläche: sie ist eine
        * Eigenschaft des Gesprächs und keine der Darstellung, und eine zweite
@@ -122,9 +132,11 @@ export async function detail(
        */
       `SELECT c.id, c.body, c.created_at, c.author_guest, c.parent_id,
               u.display_name AS author_name
-         FROM task_comments c LEFT JOIN users u ON u.id = c.author_id
+         FROM task_comments c
+         LEFT JOIN users u ON u.id = c.author_id
+         LEFT JOIN task_comments p ON p.id = c.parent_id
         WHERE c.task_id = $1
-        ORDER BY COALESCE(c.parent_id, c.id), c.created_at`,
+        ORDER BY COALESCE(p.created_at, c.created_at), c.created_at`,
       [taskId],
     );
 
