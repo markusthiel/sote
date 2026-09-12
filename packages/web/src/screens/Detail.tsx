@@ -409,6 +409,19 @@ export function Detail({
   useNudge(anbindung.stream, 'comments', () => {
     void load().catch(() => undefined);
   });
+  /*
+   * UND auf `tasks`: Titel, Datum, Schlagwort, Zuständige, Anhang — wenn
+   * jemand anders die offene Aufgabe ändert, soll die Spalte es zeigen, nicht
+   * erst der nächste eigene Klick. Vorher hörte sie nur auf Kommentare.
+   *
+   * Titel und Notiz sind unkontrollierte Felder (`defaultValue`, gespeichert
+   * beim Verlassen): ein Nachladen im Hintergrund überschreibt nicht, was
+   * jemand gerade tippt. Der eigene Patch löst es ebenfalls aus — `save()`
+   * lädt ohnehin, das Fenster in `useNudge` fasst beides zusammen.
+   */
+  useNudge(anbindung.stream, 'tasks', () => {
+    void load().catch(() => undefined);
+  });
 
   const load = useCallback(async () => {
     try {

@@ -19,7 +19,8 @@
 
 import { useCallback, useEffect, useState } from 'react';
 
-import { api, ApiError, type Project } from '../api.js';
+import { api, ApiError, streamUrl, type Project } from '../api.js';
+import { useNudge } from '../hooks/useNudge.js';
 import { matchesShare, type ShareRow, type SharesView } from './SharesPanel.js';
 
 export function Shares({
@@ -91,6 +92,14 @@ export function Shares({
   useEffect(() => {
     void load().catch(() => setNotice('Laden ging nicht.'));
   }, [load]);
+  /*
+   * Der Scope `shares` klingelt seit Migration 0020 — und niemand hörte zu.
+   * Ein Link, den jemand auf einem anderen Gerät zurückzieht, verschwindet
+   * jetzt hier, ohne dass jemand neu lädt (wie SONEs Freigaben-Überblick).
+   */
+  useNudge(streamUrl(workspace), 'shares', () => {
+    void load().catch(() => undefined);
+  });
 
   async function tun(fn: () => Promise<unknown>, wenn: string) {
     setBusy(true);

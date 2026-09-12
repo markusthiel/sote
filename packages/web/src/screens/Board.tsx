@@ -28,7 +28,8 @@
 import { colorValue, generateKeyBetween } from '@sote/core';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { api, ApiError, type Task } from '../api.js';
+import { api, ApiError, streamUrl, type Task } from '../api.js';
+import { useNudge } from '../hooks/useNudge.js';
 import { TaskRow } from '../components/TaskRow.js';
 import { ChevronRightIcon, PencilIcon, TrashIcon } from '../components/icons.js';
 import { CheckIcon } from '../components/viewIcons.js';
@@ -111,6 +112,15 @@ export function Board({
   useEffect(() => {
     void load().catch(() => setNotice('Die Spalten ließen sich nicht laden.'));
   }, [load]);
+  /*
+   * Die Tafel hörte auf NICHTS. Die Karten kommen als `tasks` von aussen und
+   * folgen der Liste; die Spalten aber lud nur dieser Bildschirm, einmal —
+   * eine Spalte, die jemand anders anlegt oder umbenennt, erschien erst nach
+   * einem Reload. Seit Migration 0041 klingelt `board_columns` auf `tasks`.
+   */
+  useNudge(streamUrl(workspace), 'tasks', () => {
+    void load().catch(() => undefined);
+  });
 
   async function tun(fn: () => Promise<unknown>, wenn: string) {
     setBusy(true);

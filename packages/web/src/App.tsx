@@ -139,6 +139,13 @@ export function App() {
    * Zahlen kämen aus verschiedenen Augenblicken (SONEs `InboxPanel`).
    */
   const { notes, reload: reloadNotes } = useNotifications();
+  /*
+   * Die Zahl an der Glocke — aus der Liste, die der Bildschirm ohnehin hält,
+   * nicht aus `/api/me`. Eine Zahl und eine Liste aus zwei Abfragen laufen
+   * auseinander, sobald eine der beiden neu lädt und die andere nicht; und
+   * `/api/me` nachzuladen kostet die Einstellungen gleich mit.
+   */
+  const ungelesen = notes.filter((n) => n.readAt === null).length;
   const [noteView, setNoteView] = useState<NoteView>({ of: 'unread' });
   /*
    * Welche Freigaben gezeigt werden.
@@ -235,22 +242,21 @@ export function App() {
    */
   /* Mit dem Arbeitsbereich — sonst hört die Seite dem ersten zu und nicht dem,
      den sie zeigt. Siehe die ausführliche Notiz in `TaskList`. */
-  useNudge(streamUrl(workspace), 'projects', () => void loadPanel());
+  useNudge(streamUrl(workspace), 'projects', () => {
+    void loadPanel();
+    // Name und Zeichen des Arbeitsbereichs stehen in `/api/me` — seit
+    // Migration 0041 klingelt ein Umbenennen auf `projects`. Mit dem
+    // aktuellen Bereich, damit die Wahl nicht springt.
+    void loadMe(workspace);
+  });
   useNudge(streamUrl(workspace), 'tasks', () => void loadPanel());
   /*
    * Und die Glocke: eine Zuweisung ist eine Änderung an einer Aufgabe, ein
    * Kommentar ein Kommentar — beides kann eine Meldung erzeugt haben. Die
-   * Liste UND die Zahl (`/api/me`) neu holen, sonst zeigt die Glocke eine
-   * Zahl von vorhin.
+   * Liste neu holen; die Zahl an der Glocke zählt aus ihr.
    */
-  useNudge(streamUrl(workspace), 'tasks', () => {
-    reloadNotes();
-    void loadMe();
-  });
-  useNudge(streamUrl(workspace), 'comments', () => {
-    reloadNotes();
-    void loadMe();
-  });
+  useNudge(streamUrl(workspace), 'tasks', reloadNotes);
+  useNudge(streamUrl(workspace), 'comments', reloadNotes);
 
   /**
    * Ein Ort wird betreten, nicht ein Zustand gesetzt.
@@ -442,11 +448,12 @@ export function App() {
    * eigene Farbe kennen.
    */
   const [shell, setShell] = useState<HTMLElement | null>(null);
+  const angemeldet = me !== undefined && me !== null;
   useEffect(() => {
     // Erst mit Sitzung fragen. Vorher antwortet die Route 401, und ein
     // erwarteter Fehlschlag im Protokoll ist einer, den man beim Suchen nach
     // einem echten überliest.
-    if (me === undefined || me === null) return;
+    if (!angemeldet) return;
     /*
      * MIT dem Arbeitsbereich, und neu bei jedem Wechsel: der wirksame Look
      * hängt vom Bereich ab. Ohne den Parameter kam immer der des ersten
@@ -471,10 +478,17 @@ export function App() {
         if (window.location.pathname === '/') go(landingRoute(s.effective.landing, projects));
       })
       .catch(() => undefined);
-  }, [me, workspace]);
+    /*
+     * Abhängig davon, OB jemand angemeldet ist — nicht vom `me`-Objekt.
+     * `loadMe()` läuft auch nach einem Umbenennen des Arbeitsbereichs oder
+     * einem neuen Konto, und jedes Mal ein neues Objekt; die Einstellungen
+     * darauf neu zu holen (und auf `/` an die Landeseite zu springen) wäre
+     * ein Effekt, der mehr tut, als sein Anlass verlangt.
+     */
+  }, [angemeldet, workspace]);
   /* Die Abweichungen dieser Person, einmal je Arbeitsbereich. */
   useEffect(() => {
-    if (me === undefined) return;
+    if (!angemeldet) return;
     void api
       .listViews(workspace)
       .then(setListViews)
@@ -482,7 +496,7 @@ export function App() {
       // Rückfallebene. Eine Fehlermeldung über eine Anzeigeform wäre lauter
       // als die Sache ist.
       .catch(() => undefined);
-  }, [me, workspace]);
+  }, [angemeldet, workspace]);
 
   useScheme(scheme);
   useLook(look, shell);
@@ -644,7 +658,7 @@ export function App() {
         }
         // Ungelesene Benachrichtigungen, nicht der Posteingang: die Zahl an
         // einer Glocke soll von dem sprechen, was hinter der Glocke liegt.
-        inboxCount={me.unread ?? 0}
+        inboxCount={ungelesen}
         displayName={me.displayName}
         email={me.email}
         onSettings={() => go({ kind: 'settings', section: 'profil' })}
@@ -1059,11 +1073,7 @@ export function App() {
           <Notifications
             notes={notes}
             view={noteView}
-            onChanged={() => {
-              reloadNotes();
-              // Die Zahl an der Glocke kommt aus `/api/me`.
-              void loadMe();
-            }}
+            onChanged={reloadNotes}
             onOpenTask={(taskId, ws) => void openTaskAt(ws, taskId)}
           />
         ) : route.kind === 'settings' && route.section === 'kalender' ? (
@@ -1281,7 +1291,7 @@ export function App() {
         }
         // Ungelesene Benachrichtigungen, nicht der Posteingang: die Zahl an
         // einer Glocke soll von dem sprechen, was hinter der Glocke liegt.
-        inboxCount={me.unread ?? 0}
+        inboxCount={ungelesen}
         displayName={me.displayName}
         email={me.email}
         onSettings={() => go({ kind: 'settings', section: 'profil' })}

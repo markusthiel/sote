@@ -357,3 +357,85 @@ test('und das Zuruecknehmen auch', async () => {
   );
   assert.deepEqual(laut, ['comments']);
 });
+
+/* ── Die Tabellen NEBEN den Aufgaben (Migration 0041) ─────────────────────── */
+
+test('ein Schlagwort an einer Aufgabe klingelt — und Name oder Farbe des Schlagworts auch', async () => {
+  /*
+   * GEMELDET: „Wenn ich das Schlagwort einer Aufgabe hinzufüge, färbt sich
+   * die Aufgabe erst nach Reload." Keine Spalte von `tasks`, sondern eine
+   * Zeile in `task_labels` — und die Tabelle hatte keinen Trigger. Der Test
+   * aus 0032 konnte das nicht sehen: er prüft Spalten, nicht Tabellen.
+   */
+  const l = await queryOne<{ id: string }>(
+    pool,
+    `INSERT INTO labels (workspace_id, name, color) VALUES ($1,'dringend','red') RETURNING id`,
+    [ws],
+  );
+  // Das Anlegen selbst hat geklingelt — wegräumen, damit der nächste Schritt allein zählt.
+  await new Promise((r) => setTimeout(r, 250));
+
+  const anhaengen = await horch(() =>
+    pool.query('INSERT INTO task_labels (task_id, label_id) VALUES ($1,$2)', [task, l!.id]),
+  );
+  assert.deepEqual(anhaengen, ['tasks'], 'anhängen');
+
+  const umfaerben = await horch(() =>
+    pool.query(`UPDATE labels SET color = 'blue' WHERE id = $1`, [l!.id]),
+  );
+  assert.deepEqual(umfaerben, ['tasks'], 'umfärben');
+
+  const abnehmen = await horch(() =>
+    pool.query('DELETE FROM task_labels WHERE task_id = $1 AND label_id = $2', [task, l!.id]),
+  );
+  assert.deepEqual(abnehmen, ['tasks'], 'abnehmen');
+});
+
+test('eine Zuweisung klingelt', async () => {
+  const u = await queryOne<{ id: string }>(
+    pool,
+    `INSERT INTO users (email, display_name) VALUES ($1,'Zust') RETURNING id`,
+    [`nudge-zust-${process.pid}@example.org`],
+  );
+  const hin = await horch(() =>
+    pool.query('INSERT INTO task_assignees (task_id, user_id) VALUES ($1,$2)', [task, u!.id]),
+  );
+  assert.deepEqual(hin, ['tasks']);
+  const weg = await horch(() =>
+    pool.query('DELETE FROM task_assignees WHERE task_id = $1 AND user_id = $2', [task, u!.id]),
+  );
+  assert.deepEqual(weg, ['tasks']);
+});
+
+test('eine Spalte der Tafel klingelt auf tasks', async () => {
+  const ordner = await queryOne<{ id: string }>(
+    pool,
+    `INSERT INTO projects (workspace_id, name, kind, sort_key) VALUES ($1,'Ordner','folder','zo') RETURNING id`,
+    [ws],
+  );
+  const p = await queryOne<{ id: string }>(
+    pool,
+    `INSERT INTO projects (workspace_id, parent_id, name, kind, sort_key) VALUES ($1,$2,'Tafel','list','zt') RETURNING id`,
+    [ws, ordner!.id],
+  );
+  await new Promise((r) => setTimeout(r, 250));
+  const neu = await horch(() =>
+    pool.query(`INSERT INTO board_columns (project_id, name, sort_key) VALUES ($1,'Offen','a')`, [p!.id]),
+  );
+  assert.deepEqual(neu, ['tasks']);
+  const um = await horch(() =>
+    pool.query(`UPDATE board_columns SET name = 'In Arbeit' WHERE project_id = $1`, [p!.id]),
+  );
+  assert.deepEqual(um, ['tasks']);
+});
+
+test('ein umbenannter Arbeitsbereich klingelt auf projects — ein Stempel nicht', async () => {
+  const um = await horch(() =>
+    pool.query(`UPDATE workspaces SET name = name || '!' WHERE id = $1`, [ws]),
+  );
+  assert.deepEqual(um, ['projects']);
+  const nichts = await horch(() =>
+    pool.query(`UPDATE workspaces SET name = name WHERE id = $1`, [ws]),
+  );
+  assert.deepEqual(nichts, []);
+});
