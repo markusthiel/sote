@@ -38,7 +38,7 @@
 
 import type { Pool } from 'pg';
 
-import { queryOne, queryRows } from './db.js';
+import { queryOne, queryRows, withTransaction } from './db.js';
 import { NotFound, OutOfOrder } from './tasks.js';
 
 export interface Person {
@@ -225,8 +225,38 @@ export async function removePerson(
   if (row.is_owner && Number(row.owners) <= 1) {
     throw new OutOfOrder('der letzte Eigentümer kann nicht gehen — sonst verwaltet niemand mehr');
   }
-  await pool.query('DELETE FROM workspace_members WHERE workspace_id = $1 AND user_id = $2', [
-    workspaceId,
-    userId,
-  ]);
+  await withTransaction(pool, async (client) => {
+    await client.query('DELETE FROM workspace_members WHERE workspace_id = $1 AND user_id = $2', [
+      workspaceId,
+      userId,
+    ]);
+    /*
+     * UND die Zuständigkeiten dieser Person in diesem Arbeitsbereich.
+     *
+     * Eine Zuweisung ist ein Versprechen, an etwas zu arbeiten — wer nicht
+     * mehr hier ist, kann es nicht halten, und die Aufgabe zeigte sonst
+     * weiter auf jemanden, den niemand mehr in der Liste findet. Ausserdem
+     * ist die Zuweisung ein Weg, auf dem Meldungen entstehen (`deliver`
+     * prüft die Mitgliedschaft seitdem selbst, Audit 12.09.2026, F13 —
+     * aber ein Verweis, der ins Leere zeigt, gehört trotzdem nicht stehen
+     * gelassen). Kommentare und Urheberschaft bleiben: das ist Geschichte,
+     * und Geschichte wird nicht umgeschrieben.
+     *
+     * Und die Gruppen: `group_members` hängt per Fremdschlüssel an `users`,
+     * nicht an der Mitgliedschaft — wer den Arbeitsbereich verlässt, bliebe
+     * in seinen Gruppen und hielte darüber weiter eine Rolle. Also hier, aus
+     * demselben Grund: eine Gruppe im Arbeitsbereich ist eine Aussage über
+     * Leute IM Arbeitsbereich.
+     */
+    await client.query(
+      `DELETE FROM task_assignees a USING tasks t
+        WHERE a.task_id = t.id AND t.workspace_id = $1 AND a.user_id = $2`,
+      [workspaceId, userId],
+    );
+    await client.query(
+      `DELETE FROM group_members gm USING groups g
+        WHERE gm.group_id = g.id AND g.workspace_id = $1 AND gm.user_id = $2`,
+      [workspaceId, userId],
+    );
+  });
 }

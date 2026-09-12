@@ -111,6 +111,32 @@ export async function deliver(
   if (input.userId === input.actorId) return;
 
   /*
+   * NUR AN MITGLIEDER.
+   *
+   * Wer den Arbeitsbereich verlassen hat oder entfernt wurde, bekommt keine
+   * neuen Inhalte mehr — nicht in den Posteingang, nicht per Mail, nicht
+   * aufs Gerät. Die Empfänger kommen aus Urheber und Zuständigen einer
+   * Aufgabe, und beides überlebt den Austritt: der Urheber steht in der
+   * Zeile, die Zuweisung wird beim Entfernen zwar gelöscht (`removePerson`),
+   * aber `deliver` darf sich nicht darauf verlassen, dass jeder Weg dorthin
+   * aufgeräumt hat. Bis zum Audit vom 12.09.2026 (F13) bekam ein
+   * entferntes Konto weiter Mails mit Aufgabentitel und Kommentartext —
+   * am empfindlichsten beim Ausscheiden Externer.
+   *
+   * Hier und nicht beim Aufrufer: es gibt fünf Aufrufer, und die Prüfung
+   * gehört an die Stelle, an der die Meldung entsteht. Für `reminder` gilt
+   * dasselbe — eine Erinnerung an eine Aufgabe, die man nicht mehr sieht,
+   * ist eine Auskunft über sie.
+   */
+  const mitglied = await queryOne<{ ok: boolean }>(
+    q,
+    `SELECT true AS ok FROM workspace_members
+      WHERE workspace_id = $1 AND user_id = $2`,
+    [input.workspaceId, input.userId],
+  );
+  if (mitglied === undefined) return;
+
+  /*
    * `commented`, `assigned`, `mentioned`, `replied` stehen im Posteingang;
    * `reminder` nicht — sie ist keine Nachricht von jemandem, sondern eine
    * Verabredung mit sich selbst, und sie steht schon als Aufgabe da.

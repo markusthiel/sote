@@ -9,7 +9,7 @@ import { after, before, test } from 'node:test';
 
 import type { Pool } from 'pg';
 
-import { makePool, queryOne } from '../src/db.js';
+import { makePool, queryOne, queryRows } from '../src/db.js';
 import { migrate } from '../src/migrate.js';
 import { addPerson, findPeople, people, removePerson, setRole } from '../src/people.js';
 import { NotFound, OutOfOrder } from '../src/tasks.js';
@@ -175,6 +175,34 @@ test('ein Mitglied kann gehen, und der Eigentümer bleibt', async () => {
   const liste = await people(pool, ws);
   assert.equal(liste.length, 1);
   assert.equal(liste[0]!.isOwner, true);
+});
+
+test('wer geht, nimmt seine Zuständigkeiten und Gruppen mit', async () => {
+  // Audit 12.09.2026, F13: die Zuweisung überlebte den Austritt und blieb ein
+  // Weg, auf dem Meldungen mit Inhalt entstanden.
+  const { ws, member } = await scratch('p-leave-clean');
+  await addPerson(pool, ws, bert, member);
+  const t = await queryOne<{ id: string }>(
+    pool,
+    `INSERT INTO tasks (workspace_id, title, sort_key) VALUES ($1,'Bleibt','a0') RETURNING id`,
+    [ws],
+  );
+  await pool.query('INSERT INTO task_assignees (task_id, user_id) VALUES ($1,$2)', [t!.id, bert]);
+  const g = await queryOne<{ id: string }>(
+    pool,
+    `INSERT INTO groups (workspace_id, name) VALUES ($1,'Redaktion') RETURNING id`,
+    [ws],
+  );
+  await pool.query('INSERT INTO group_members (group_id, user_id) VALUES ($1,$2)', [g!.id, bert]);
+
+  await removePerson(pool, ws, bert);
+
+  const zust = await queryRows(pool, 'SELECT 1 FROM task_assignees WHERE task_id = $1 AND user_id = $2', [t!.id, bert]);
+  assert.equal(zust.length, 0, 'keine Zuweisung mehr');
+  const grp = await queryRows(pool, 'SELECT 1 FROM group_members WHERE group_id = $1 AND user_id = $2', [g!.id, bert]);
+  assert.equal(grp.length, 0, 'in keiner Gruppe mehr');
+  // Die Aufgabe selbst bleibt — Geschichte wird nicht umgeschrieben.
+  assert.notEqual(await queryOne(pool, 'SELECT 1 FROM tasks WHERE id = $1', [t!.id]), undefined);
 });
 
 test('wer nicht hier ist, kann nicht gehen', async () => {

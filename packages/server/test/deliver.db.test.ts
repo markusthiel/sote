@@ -46,6 +46,22 @@ before(async () => {
     [`deliver-${process.pid}`],
   );
   ws = w!.id;
+  /*
+   * BEIDE sind Mitglieder — so, wie Produktion es schreibt. `deliver` prüft
+   * die Mitgliedschaft (Audit 12.09.2026, F13); ein Fixture ohne sie prüft
+   * eine Form, die es nicht gibt (SONE ADR-0102).
+   */
+  const rolle = await queryOne<{ id: string }>(
+    pool,
+    `INSERT INTO roles (workspace_id, name, list_level) VALUES ($1,'member','editor') RETURNING id`,
+    [ws],
+  );
+  for (const wer of [ich, du]) {
+    await pool.query(
+      `INSERT INTO workspace_members (workspace_id, user_id, role_id, is_owner) VALUES ($1,$2,$3,$4)`,
+      [ws, wer, rolle!.id, wer === ich],
+    );
+  }
   const t = await queryOne<{ id: string }>(
     pool,
     `INSERT INTO tasks (workspace_id, title, sort_key) VALUES ($1,'Etwas','a0') RETURNING id`,
@@ -188,4 +204,39 @@ test('die Erinnerung steht NICHT im Posteingang', async () => {
     [du],
   );
   assert.equal(nachher.length, vorher.length);
+});
+
+test('wer nicht mehr Mitglied ist, bekommt nichts — nicht einmal in den Posteingang', async () => {
+  /*
+   * Audit 12.09.2026, F13. Die Empfänger kommen aus Urheber und Zuständigen;
+   * beides überlebt den Austritt. Vorher ging die Mail mit Titel und
+   * Kommentartext trotzdem hinaus.
+   */
+  const fremd = await queryOne<{ id: string }>(
+    pool,
+    `INSERT INTO users (email, display_name) VALUES ($1,'Fort') RETURNING id`,
+    [`deliver-fort-${process.pid}@t.tools`],
+  );
+  const vorherMail = await auftraege('mail.send');
+  const vorherPush = await auftraege('push.send');
+  await withTransaction(pool, (client) =>
+    deliver(client, {
+      userId: fremd!.id,
+      actorId: ich,
+      workspaceId: ws,
+      kind: 'commented',
+      taskId: task,
+      title: 'Etwas',
+      body: 'ein vertraulicher Satz',
+      url: `https://example.test/a/${task}`,
+    }),
+  );
+  const posteingang = await queryRows<{ id: string }>(
+    pool,
+    'SELECT id FROM notifications WHERE user_id = $1 AND task_id = $2',
+    [fremd!.id, task],
+  );
+  assert.equal(posteingang.length, 0);
+  assert.equal(await auftraege('mail.send'), vorherMail);
+  assert.equal(await auftraege('push.send'), vorherPush);
 });
