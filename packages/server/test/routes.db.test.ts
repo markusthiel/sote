@@ -136,7 +136,38 @@ test('anmelden setzt einen HttpOnly-Keks', async () => {
   const set = res.headers.get('set-cookie') ?? '';
   assert.match(set, /HttpOnly/);
   assert.match(set, /SameSite=Lax/);
+  // Der Wert ist der Token — ein String mit Länge, kein `[object Object]`
+  // (Audit 12.09.2026, F09: die SSO-Stelle schrieb das Sitzungsobjekt).
+  assert.match(set.split(';')[0]!, /^sote_session=[A-Za-z0-9_-]{20,}$/);
+  // Ohne Basisadresse kein `Secure`: eine Testinstanz ohne TLS soll gehen.
+  assert.doesNotMatch(set, /Secure/);
   sessionCookie = set.split(';')[0]!;
+});
+
+test('auf einer HTTPS-Instanz trägt der Keks Secure', async () => {
+  /*
+   * Audit 12.09.2026, F12. Woher der Server das weiss: aus `SOTE_BASE_URL`,
+   * derselben Angabe, aus der die Links in Mails gebaut werden.
+   */
+  const vorher = process.env['SOTE_BASE_URL'];
+  process.env['SOTE_BASE_URL'] = 'https://sote.example';
+  try {
+    const res = await call('/api/session', {
+      method: 'POST',
+      body: JSON.stringify({ email, password: 'ein gutes Kennwort' }),
+    });
+    assert.equal(res.status, 200);
+    assert.match(res.headers.get('set-cookie') ?? '', /; Secure/);
+    // Und das Abmelden löscht mit denselben Attributen — sonst löscht es nichts.
+    const weg = await fetch(`${base}/api/session`, {
+      method: 'DELETE',
+      headers: { cookie: (res.headers.get('set-cookie') ?? '').split(';')[0]! },
+    });
+    assert.match(weg.headers.get('set-cookie') ?? '', /Max-Age=0.*Secure/);
+  } finally {
+    if (vorher === undefined) delete process.env['SOTE_BASE_URL'];
+    else process.env['SOTE_BASE_URL'] = vorher;
+  }
 });
 
 test('me nennt den Arbeitsbereich, in dem man Mitglied ist', async () => {

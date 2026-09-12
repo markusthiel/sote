@@ -118,6 +118,34 @@ import { listViewsOf, setListView, ViewTrouble } from './listViews.js';
 import { childrenOf, counts, list, listAcross, splitOverdue, type ViewId } from './views.js';
 
 const COOKIE = 'sote_session';
+
+/**
+ * Der Sitzungskeks — EINE Stelle, die ihn schreibt.
+ *
+ * Vorher stand dieselbe Zeile fünfmal in dieser Datei, und die fünfte (SSO)
+ * war falsch: sie schrieb `${session}` statt `${session.token}`, der Keks
+ * hiess `[object Object]`, und wer sich beim Anbieter angemeldet hatte, war
+ * hier trotzdem niemand. Der Typprüfer kann das nicht sehen — in einem
+ * Template-Literal ist jedes Objekt ein String. Gefunden im Audit vom
+ * 12.09.2026 (F09). Eine Funktion mit einem `string`-Parameter kann den
+ * Fehler nicht mehr machen.
+ *
+ * `Secure`, wenn die Instanz über HTTPS erreichbar ist (F12). Woher der
+ * Server das weiss: aus `SOTE_BASE_URL` — dieselbe Angabe, aus der auch die
+ * Links in Mails gebaut werden. Ohne Basisadresse oder mit `http://` fehlt
+ * das Attribut, damit eine Testinstanz ohne TLS weiter funktioniert; der
+ * Reverse Proxy davor bleibt trotzdem die Regel (docker-compose.yml).
+ */
+function sessionCookie(token: string, days: number): string {
+  const secure = baseUrl()?.startsWith('https://') === true ? '; Secure' : '';
+  return `${COOKIE}=${token}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${days * 86_400}${secure}`;
+}
+
+/** Das Gegenstück: ein Keks, der sofort abläuft. Dieselben Attribute, sonst löscht er nichts. */
+function clearedSessionCookie(): string {
+  const secure = baseUrl()?.startsWith('https://') === true ? '; Secure' : '';
+  return `${COOKIE}=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0${secure}`;
+}
 const VIEWS: readonly ViewId[] = ['today', 'upcoming', 'someday', 'inbox', 'project'];
 
 /**
@@ -544,12 +572,7 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
       now,
     );
     if (session !== null) {
-      res.setHeader(
-        'set-cookie',
-        `${COOKIE}=${session.token}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${
-          ctx.config.sessionDays * 86_400
-        }`,
-      );
+      res.setHeader('set-cookie', sessionCookie(session.token, ctx.config.sessionDays));
     }
     json(res, 201, { userId: id });
     return;
@@ -569,12 +592,7 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
       fail(res, 401, 'bad_credentials', 'E-Mail oder Kennwort stimmt nicht');
       return;
     }
-    res.setHeader(
-      'set-cookie',
-      `${COOKIE}=${session.token}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${
-        ctx.config.sessionDays * 86_400
-      }`,
-    );
+    res.setHeader('set-cookie', sessionCookie(session.token, ctx.config.sessionDays));
     json(res, 200, { ok: true });
     return;
   }
@@ -728,12 +746,7 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
     }
     const session = await openSession(ctx.pool, userId, now, ctx.config.sessionDays);
     res.statusCode = 302;
-    res.setHeader(
-      'set-cookie',
-      `${COOKIE}=${session}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${
-        ctx.config.sessionDays * 86_400
-      }`,
-    );
+    res.setHeader('set-cookie', sessionCookie(session.token, ctx.config.sessionDays));
     res.setHeader('location', flow.nextPath ?? '/');
     res.end();
     return;
@@ -797,12 +810,7 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
       now,
     );
     if (session !== null) {
-      res.setHeader(
-        'set-cookie',
-        `${COOKIE}=${session.token}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${
-          ctx.config.sessionDays * 86_400
-        }`,
-      );
+      res.setHeader('set-cookie', sessionCookie(session.token, ctx.config.sessionDays));
     }
     json(res, 201, { ok: true });
     return;
@@ -817,7 +825,7 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
 
   if (path === '/api/session' && method === 'DELETE') {
     if (token !== undefined) await signOut(ctx.pool, token);
-    res.setHeader('set-cookie', `${COOKIE}=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0`);
+    res.setHeader('set-cookie', clearedSessionCookie());
     json(res, 200, { ok: true });
     return;
   }
