@@ -174,6 +174,26 @@ test('wer einrichtet, verwaltet die Instanz', async () => {
     'SELECT count(*) AS n FROM users WHERE is_admin',
   );
   assert.equal(admins?.n, '1', 'genau einer, nicht mehr');
+
+  /*
+   * Die Gegenprobe, und sie traegt die Bedingung.
+   *
+   * Das Recht haengt an „es gab noch niemanden“ und nicht am Weg. Ohne
+   * diese Zeile waere eine Fassung, die JEDEM Konto `is_admin` gibt,
+   * genauso gruen — und eine Einladung machte den Eingeladenen zum
+   * Instanzadministrator.
+   */
+  const zweiter = await createAccount(pool, {
+    email: 'zweite@example.org',
+    displayName: 'Zweite Person',
+    password: 'kennwort-zwei',
+  });
+  const auch = await queryOne<{ is_admin: boolean }>(
+    pool,
+    'SELECT is_admin FROM users WHERE id = $1',
+    [zweiter],
+  );
+  assert.equal(auch?.is_admin, false, 'ein spaeteres Konto verwaltet nichts');
 });
 
 /* ── Der eigentliche Punkt: ein zweites Mal geht nicht ─────────────────── */
