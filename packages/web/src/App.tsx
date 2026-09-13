@@ -12,7 +12,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { SIGIL_OF, type Board, type Landing, type ListView, type Look } from '@sote/core';
+import { colorValue, SIGIL_OF, type Board, type Landing, type ListView, type Look } from '@sote/core';
 
 import { streamUrl, api, ApiError, type Me, type Project } from './api.js';
 import { useBoard, useLook, useScheme } from './appearance.js';
@@ -30,6 +30,8 @@ import { Setup } from './screens/Setup.js';
 import { SignIn } from './screens/SignIn.js';
 import { TaskList } from './screens/TaskList.js';
 import { Calendar } from './screens/Calendar.js';
+import { CalendarSources } from './screens/CalendarSources.js';
+import { useCalendarSources } from './hooks/useCalendarSources.js';
 import { Detail } from './screens/Detail.js';
 import { Search } from './screens/Search.js';
 import { landingRoute, markRoute, rememberRoute } from './landing.js';
@@ -153,6 +155,8 @@ export function App() {
    * Adresse, wie der Filter der Glocke: ein Blickwinkel, kein Ort.
    */
   const [calScope, setCalScope] = useState<string | null>(null);
+  const calendarSources = useCalendarSources(me?.id, route.kind);
+  const [hiddenCalendars, setHiddenCalendars] = useState<ReadonlySet<string>>(new Set());
   /*
    * Welche Freigaben gezeigt werden.
    *
@@ -722,13 +726,13 @@ export function App() {
               */}
               <div className="panel-scope">über alle Arbeitsbereiche</div>
             </>
-          ) : route.kind === 'calendar' ? (
+          ) : route.kind === 'calendar' || route.kind === 'calendar-sources' ? (
             <>
               <div className="sidebar-head">
                 <div className="panel-title">Kalender</div>
               </div>
               <div className="panel-scope">
-                {calScope === null
+                {route.kind === 'calendar-sources' ? 'für dein Konto' : calScope === null
                   ? 'über alle Arbeitsbereiche'
                   : (me.workspaces.find((w) => w.id === calScope)?.name ?? '')}
               </div>
@@ -919,6 +923,35 @@ export function App() {
             ) : null
           ) : null}
 
+          {route.kind === 'calendar' || route.kind === 'calendar-sources' ? (
+            <div className="panel-menu-group">
+              <button className="panel-menu-item" aria-current={route.kind === 'calendar-sources' ? 'page' : undefined}
+                onClick={() => go({ kind: 'calendar-sources' })}>
+                <span className="panel-menu-label">Kalender einbinden …</span>
+              </button>
+              {route.kind === 'calendar-sources' ? <button className="panel-menu-item"
+                onClick={() => go({ kind: 'calendar', span: 'week', date: isoDate(now) })}>
+                <span className="panel-menu-label">Zur Kalenderansicht</span>
+              </button> : <>
+                {(calendarSources.data?.feeds.length ?? 0) > 0 ? <div className="sidebar-label">Eingebundene Kalender</div> : null}
+                {calendarSources.data?.feeds.filter((f) => calScope === null || f.showsIn === null || f.showsIn.includes(calScope)).map((f) => (
+                  <button key={f.id} className="panel-menu-item" aria-pressed={!hiddenCalendars.has(f.id)}
+                    title={hiddenCalendars.has(f.id) ? 'Kalender einblenden' : 'Kalender ausblenden'}
+                    onClick={() => setHiddenCalendars((current) => {
+                      const next = new Set(current);
+                      if (next.has(f.id)) next.delete(f.id); else next.add(f.id);
+                      return next;
+                    })}>
+                    <span className="calendar-source-dot" style={{ background: colorValue(f.color) ?? 'var(--text-muted)', opacity: hiddenCalendars.has(f.id) ? 0.3 : 1 }} />
+                    <span className="panel-menu-label">{f.name}</span>
+                    {hiddenCalendars.has(f.id) ? <span className="muted small">aus</span> : null}
+                  </button>
+                ))}
+                {calendarSources.error ? <p className="note-error">{calendarSources.error}</p> : null}
+              </>}
+            </div>
+          ) : null}
+
           {/*
             Die Filter der Suche stehen in der LEISTE: eine Suche einzugrenzen
             ist Navigation innerhalb dieser Suche (SONEs ADR-0069, angewandt und
@@ -952,6 +985,7 @@ export function App() {
           {SECTION_NAV !== null ||
         route.kind === 'notifications' ||
         route.kind === 'calendar' ||
+        route.kind === 'calendar-sources' ||
         route.kind === 'shares' ||
         route.kind === 'search' ? null : (
           <>
@@ -1156,8 +1190,13 @@ export function App() {
               setLook(out.look);
             }}
           />
+        ) : route.kind === 'calendar-sources' ? (
+          <CalendarSources data={calendarSources.data} error={calendarSources.error}
+            workspaces={me.workspaces} reload={calendarSources.reload} />
         ) : route.kind === 'calendar' ? (
           <Calendar
+            sources={calendarSources.data?.feeds ?? []}
+            hiddenSources={hiddenCalendars}
             span={route.span}
             date={route.date}
             scope={calScope}

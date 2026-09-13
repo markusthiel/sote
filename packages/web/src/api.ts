@@ -7,6 +7,45 @@
  * übersetzt.
  */
 
+export interface CalendarSource {
+  id: string;
+  name: string;
+  color: string | null;
+  showsIn: string[] | null;
+  fetchedAt: string | null;
+  lastError: string | null;
+  createdAt: string;
+  writing?: CalendarWriter | null;
+}
+
+export interface CalendarWriter {
+  enabled: boolean;
+  workspaces: string[];
+  mode: 'planned' | 'due' | 'both';
+  timezone: string;
+  syncedAt: string | null;
+  lastError: string | null;
+  count: number;
+  conflict: boolean;
+}
+export interface CalendarWriterInput {
+  url?: string; username?: string; password?: string;
+  workspaces: string[]; mode: CalendarWriter['mode']; timezone: string; enabled: boolean;
+}
+
+export interface SpanEvent {
+  feedId: string;
+  uid: string;
+  recurrenceId: string;
+  title: string;
+  start: string;
+  end: string;
+  allDay: boolean;
+  location: string | null;
+}
+
+export type CalendarSourceFields = { name?: string; color?: string | null; showsIn?: string[] | null };
+
 export class ApiError extends Error {
   constructor(
     readonly status: number,
@@ -1302,9 +1341,29 @@ export const api = {
    * Alle Aufgaben mit Zeitpunkt in einem Fenster — für den Kalender. Die
    * Grenzen als Augenblicke: der Browser rechnet seine Tage in seiner Zone.
    */
+  calendarSources: () => call<{ possible: boolean; max: number; feeds: CalendarSource[] }>('/api/calendar-sources'),
+  saveCalendarWriter: (id: string, body: CalendarWriterInput) =>
+    call<{ ok: true }>(`/api/calendar-sources/${id}/writer`, { method: 'PUT', body: JSON.stringify(body) }),
+  syncCalendarWriter: (id: string) =>
+    call<{ ok: true }>(`/api/calendar-sources/${id}/writer/sync`, { method: 'POST' }),
+  pauseCalendarWriter: (id: string) =>
+    call<{ ok: true }>(`/api/calendar-sources/${id}/writer/pause`, { method: 'POST' }),
+  resolveCalendarWriter: (id: string) =>
+    call<{ ok: true }>(`/api/calendar-sources/${id}/writer/resolve`, { method: 'POST' }),
+  disconnectCalendarWriter: (id: string) =>
+    call<{ ok: true }>(`/api/calendar-sources/${id}/writer`, { method: 'DELETE' }),
+  addCalendarSource: (body: CalendarSourceFields & { url: string }) =>
+    call<CalendarSource>('/api/calendar-sources', { method: 'POST', body: JSON.stringify(body) }),
+  patchCalendarSource: (id: string, body: CalendarSourceFields) =>
+    call<CalendarSource>(`/api/calendar-sources/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+  removeCalendarSource: (id: string) =>
+    call<{ ok: true }>(`/api/calendar-sources/${id}`, { method: 'DELETE' }),
+  refreshCalendarSource: (id: string) =>
+    call<{ ok: true }>(`/api/calendar-sources/${id}/refresh`, { method: 'POST' }),
   span: (from: Date, to: Date, workspace: string | null, done = false) =>
     call<{
       tasks: (Task & { workspaceId: string })[];
+      events: SpanEvent[];
       workspaces: { id: string; name: string; icon: { icon?: string; iconColor?: string } | null }[];
     }>(
       `/api/span?from=${encodeURIComponent(from.toISOString())}&to=${encodeURIComponent(to.toISOString())}${

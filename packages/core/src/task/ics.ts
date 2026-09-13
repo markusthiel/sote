@@ -64,7 +64,7 @@ function esc(text: string): string {
     .replace(/\\/g, '\\\\')
     .replace(/;/g, '\\;')
     .replace(/,/g, '\\,')
-    .replace(/\r?\n/g, '\\n');
+    .replace(/\r\n|\r|\n/g, '\\n');
 }
 
 /** `20260907T090000Z` — immer UTC, weil das keine Zeitzonen-Definition braucht. */
@@ -191,6 +191,27 @@ export function buildIcs(input: {
 
   lines.push('END:VCALENDAR');
   return `${lines.map(fold).join('\r\n')}\r\n`;
+}
+
+/** Ein einzelnes CalDAV-Objekt. METHOD gehört in Abos, niemals in einen CalDAV-PUT. */
+export function buildCalDavEvent(input: {
+  task: IcsTask; kind: 'plan' | 'due'; uid: string; timezone: string; base?: string | undefined;
+}): string {
+  const { task, kind } = input;
+  let at = kind === 'plan' ? task.planned : task.due;
+  if (at === null) throw new Error('Ein Kalendereintrag braucht einen Zeitpunkt.');
+  const allDay = kind === 'plan' ? task.plannedAllDay : task.dueAllDay;
+  if (allDay) {
+    // Aufgaben speichern Augenblicke; die beim Einrichten gewählte Zone sagt,
+    // welchen Kalendertag die Person damit gemeint hat.
+    const parts = new Intl.DateTimeFormat('en', { timeZone: input.timezone, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(at);
+    const n = (type: string) => Number(parts.find((p) => p.type === type)?.value);
+    at = new Date(Date.UTC(n('year'), n('month') - 1, n('day')));
+  }
+  return ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//SOTE//Aufgaben//DE', 'CALSCALE:GREGORIAN',
+    ...event({ uid: input.uid, summary: kind === 'due' ? `Frist: ${task.title}` : task.title,
+      at, allDay, duration: kind === 'plan' ? task.duration : null, task, now: task.updatedAt, base: input.base }),
+    'END:VCALENDAR', ''].map(fold).join('\r\n');
 }
 
 function event(input: {

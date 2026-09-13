@@ -32,6 +32,9 @@ importers:
       '@sote/core':
         specifier: workspace:*
         version: link:../core
+      '@xmldom/xmldom':
+        specifier: 0.9.12
+        version: 0.9.12
       ical.js:
         specifier: ^2.2.1
         version: 2.2.1
@@ -761,6 +764,10 @@ packages:
     engines: {node: ^14.18.0 || >=16.0.0}
     peerDependencies:
       vite: ^4.2.0 || ^5.0.0 || ^6.0.0 || ^7.0.0
+
+  '@xmldom/xmldom@0.9.12':
+    resolution: {integrity: sha512-5AXjrcMClTryPe9LgZrygpB1lj7s0S9E0+W+AHaVKAVyHanafK86iPSvG5xHVSp/jC+VH1UXu0TAEmY279xH7A==}
+    engines: {node: '>=14.6'}
 
   agent-base@7.1.4:
     resolution: {integrity: sha512-MnA+YT8fwfJPgBx3m60MNqakm30XOkyIoH1y6huTQvC0PwZG7ki8NacLBcrPbNoo8vEZy7Jpuk7+jMO+CUovTQ==}
@@ -1560,6 +1567,8 @@ snapshots:
       vite: 6.4.3(@types/node@22.20.1)(tsx@4.23.13)
     transitivePeerDependencies:
       - supports-color
+
+  '@xmldom/xmldom@0.9.12': {}
 
   agent-base@7.1.4: {}
 

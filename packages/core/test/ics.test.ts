@@ -10,7 +10,7 @@
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 
-import { buildIcs, type IcsTask } from '../src/task/ics.js';
+import { buildCalDavEvent, buildIcs, type IcsTask } from '../src/task/ics.js';
 
 const NOW = new Date(Date.UTC(2026, 8, 7, 10, 0, 0));
 
@@ -31,6 +31,29 @@ function task(over: Partial<IcsTask> = {}): IcsTask {
 }
 
 const lines = (text: string) => text.split('\r\n');
+
+test('CalDAV enthält ein Objekt mit fester UID, ohne METHOD und ohne ungewählte Frist', () => {
+  const output = buildCalDavEvent({ task: task({ duration: 90, due: NOW }), kind: 'plan', uid: 'stable@sote', timezone: 'Europe/Berlin' });
+  assert.equal((output.match(/BEGIN:VEVENT/g) ?? []).length, 1);
+  assert.ok(output.includes('UID:stable@sote\r\n'));
+  assert.ok(output.includes('DTEND:20260908T103000Z'));
+  assert.equal(output.includes('METHOD:'), false);
+  assert.equal(output.includes('Frist:'), false);
+});
+
+test('CalDAV-Ganztag benutzt die eingestellte Zone und ein exklusives Ende', () => {
+  const output = buildCalDavEvent({ task: task({ planned: new Date('2026-09-13T22:00:00Z'), plannedAllDay: true }), kind: 'plan', uid: 'date@sote', timezone: 'Europe/Berlin' });
+  assert.ok(output.includes('DTSTART;VALUE=DATE:20260914'));
+  assert.ok(output.includes('DTEND;VALUE=DATE:20260915'));
+});
+
+test('CalDAV-Fristen tragen keine Aufgabendauer und Text kann keine ICS-Eigenschaften einschleusen', () => {
+  const output = buildCalDavEvent({ task: task({ title: 'Test\rATTENDEE:evil\nEnde', due: NOW, duration: 90 }), kind: 'due', uid: 'due@sote', timezone: 'UTC' });
+  assert.ok(output.includes('SUMMARY:Frist: Test\\nATTENDEE:evil\\nEnde'));
+  assert.equal(output.includes('\r\nATTENDEE:'), false);
+  assert.equal(output.includes('DTEND:'), false);
+  assert.throws(() => buildCalDavEvent({ task: task(), kind: 'due', uid: 'x', timezone: 'UTC' }));
+});
 
 test('ein Dokument mit Kopf und Fuß', () => {
   const out = buildIcs({ tasks: [], name: 'SOTE — Haus', now: NOW });

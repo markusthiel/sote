@@ -55,7 +55,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { colorValue } from '@sote/core';
 
-import { api, ApiError, streamUrl, type Project, type Task } from '../api.js';
+import { api, ApiError, streamUrl, type CalendarSource, type SpanEvent, type Project, type Task } from '../api.js';
+import { eventKey, eventOnDay, timedEventsOnDay } from '../calendarEvents.js';
 import {
   clock,
   isoDate,
@@ -93,6 +94,8 @@ export function Calendar({
   span,
   date,
   scope,
+  sources,
+  hiddenSources,
   createIn,
   createInName,
   projects,
@@ -106,6 +109,8 @@ export function Calendar({
   date: string;
   /** Ein Arbeitsbereich — oder `null` für alle. */
   scope: string | null;
+  sources: readonly CalendarSource[];
+  hiddenSources: ReadonlySet<string>;
   /** Wohin eine per Klick erfasste Aufgabe geht. */
   createIn: string | undefined;
   createInName: string;
@@ -121,6 +126,8 @@ export function Calendar({
   const anker = useMemo(() => parseIsoDate(date) ?? startOfDay(now), [date, now]);
   const fenster = useMemo(() => spanOf(span, anker), [span, anker]);
   const [tasks, setTasks] = useState<(Task & { workspaceId: string })[] | undefined>(undefined);
+  const [events, setEvents] = useState<SpanEvent[]>([]);
+  const loadVersion = useRef(0);
   const [bereiche, setBereiche] = useState<
     { id: string; name: string; icon: { icon?: string; iconColor?: string } | null }[]
   >([]);
@@ -128,18 +135,23 @@ export function Calendar({
   const [showDone, setShowDone] = useState(false);
 
   const load = useCallback(async () => {
+    const version = ++loadVersion.current;
     try {
       const out = await api.span(fenster.from, fenster.to, scope, showDone);
+      if (version !== loadVersion.current) return;
       setTasks(out.tasks);
+      setEvents(out.events);
       setBereiche(out.workspaces);
       setNotice(undefined);
     } catch (e) {
+      if (version !== loadVersion.current) return;
       setNotice(e instanceof ApiError ? e.message : 'Laden ging nicht.');
     }
   }, [fenster, scope, showDone]);
 
   useEffect(() => {
     void load();
+    return () => { loadVersion.current++; };
   }, [load]);
   /*
    * Die Klingel des Bereichs, in dem man steht — bei „Alle" hört der Kalender
@@ -322,7 +334,7 @@ export function Calendar({
   /** Klick auf eine leere Stelle einer Spalte: die Viertelstunde darunter. */
   const klickInSpalte = (e: React.MouseEvent<HTMLDivElement>, tag: Date) => {
     if (gezogen.current || drag !== null) return;
-    if ((e.target as HTMLElement).closest('.cal-chip, .cal-draft') !== null) return;
+    if ((e.target as HTMLElement).closest('.cal-chip, .cal-draft, .cal-event') !== null) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
     const minutes = Math.max(0, Math.min(24 * 60 - 15, Math.floor(((e.clientY - rect.top) / (HOUR_REM * rem)) * 4) * 15));
@@ -406,6 +418,27 @@ export function Calendar({
     </button>
   );
 
+  const visibleEvents = events.filter((e) => !hiddenSources.has(e.feedId));
+  const eventsOn = (day: Date) => visibleEvents.filter((e) => eventOnDay(e, day) !== null);
+  const eventCard = (e: SpanEvent, day: Date, layout?: { lane: number; lanes: number }) => {
+    const source = sources.find((s) => s.id === e.feedId);
+    const segment = eventOnDay(e, day)!;
+    const time = (minutes: number) => `${Math.floor(minutes / 60)}:${String(minutes % 60).padStart(2, '0')}`;
+    const label = e.allDay ? 'ganztägig' : `${time(segment.from)}–${time(segment.to)}`;
+    return <div key={eventKey(e)} className={layout ? 'cal-event cal-event-timed' : 'cal-event'}
+      title={`${source?.name ?? 'Fremder Kalender'} · ${e.title} · ${label}${e.location ? ` · ${e.location}` : ''}`}
+      style={{ ['--eigen' as string]: colorValue(source?.color) ?? 'var(--text-muted)',
+        ...(layout ? {
+          top: `${segment.from / 60 * HOUR_REM}rem`,
+          height: `${Math.min(1440 - segment.from, Math.max(segment.to - segment.from, 15)) / 60 * HOUR_REM}rem`,
+          insetInlineStart: `calc(${layout.lane / layout.lanes * 100}% + var(--sone-space-1))`,
+          width: `calc(${100 / layout.lanes}% - var(--sone-space-2))`,
+        } : {}) }}>
+      {!e.allDay ? <span className="cal-chip-time">{label}</span> : null}
+      <span className="cal-chip-title">{e.title}</span>
+    </div>;
+  };
+
   const monat = () => (
     <div className="cal-month" role="grid" aria-label={titleOf('month', anker)}>
       {SHORT_DAYS.map((d) => (
@@ -417,7 +450,9 @@ export function Calendar({
         const eintraege = jeTag.get(isoDate(tag)) ?? [];
         const fremd = tag.getMonth() !== anker.getMonth();
         const sichtbar = eintraege.slice(0, 3);
-        const mehr = eintraege.length - sichtbar.length;
+        const termine = eventsOn(tag);
+        const sichtbareTermine = termine.slice(0, Math.max(0, 3 - sichtbar.length));
+        const mehr = eintraege.length - sichtbar.length + termine.length - sichtbareTermine.length;
         return (
           <div
             key={isoDate(tag)}
@@ -429,7 +464,7 @@ export function Calendar({
             data-target={drag?.bewegt && drag.ziel !== null && sameDay(drag.ziel.day, tag) ? 'yes' : undefined}
             onClick={(ev) => {
               if (gezogen.current || drag !== null) return;
-              if ((ev.target as HTMLElement).closest('button, .cal-draft') !== null) return;
+              if ((ev.target as HTMLElement).closest('button, .cal-draft, .cal-event') !== null) return;
               setEntwurf({ day: tag, minutes: null });
             }}
           >
@@ -442,6 +477,7 @@ export function Calendar({
               {tag.getDate()}
             </button>
             {sichtbar.map((e) => karte(e, true, 'month'))}
+            {sichtbareTermine.map((e) => eventCard(e, tag))}
             {entwurf !== null && entwurf.minutes === null && sameDay(entwurf.day, tag) && span === 'month'
               ? entwurfFeld(true)
               : null}
@@ -491,11 +527,12 @@ export function Calendar({
             }
             onClick={(ev) => {
               if (gezogen.current || drag !== null) return;
-              if ((ev.target as HTMLElement).closest('button, .cal-draft') !== null) return;
+              if ((ev.target as HTMLElement).closest('button, .cal-draft, .cal-event') !== null) return;
               setEntwurf({ day: tag, minutes: null });
             }}
           >
             {(jeTag.get(isoDate(tag)) ?? []).filter((e) => e.allDay).map((e) => karte(e, false, 'allday'))}
+            {eventsOn(tag).filter((e) => e.allDay).map((e) => eventCard(e, tag))}
             {entwurf !== null && entwurf.minutes === null && sameDay(entwurf.day, tag) ? entwurfFeld(true) : null}
           </div>
         ))}
@@ -525,6 +562,7 @@ export function Calendar({
                 aria-hidden="true"
               />
             ))}
+            {timedEventsOnDay(visibleEvents, tag).map((entry) => eventCard(entry.event, tag, entry))}
             {(jeTag.get(isoDate(tag)) ?? [])
               .filter((e) => !e.allDay)
               .map((e) => {
@@ -585,7 +623,7 @@ export function Calendar({
             {span === 'week' ? <div className="section-label">{longDate(tag)}</div> : null}
             {eintraege.length === 0 ? (
               <div className="empty">
-                <strong>Für diesen Tag ist nichts geplant.</strong>
+                <strong>Für diesen Tag sind keine Aufgaben geplant.</strong>
               </div>
             ) : (
               eintraege.map((e) => zeile(e.task))
@@ -595,7 +633,7 @@ export function Calendar({
       })}
       {span === 'week' && (tasks?.length ?? 0) === 0 ? (
         <div className="empty">
-          <strong>In dieser Woche ist nichts geplant.</strong>
+          <strong>In dieser Woche sind keine Aufgaben geplant.</strong>
         </div>
       ) : null}
     </div>
@@ -611,10 +649,11 @@ export function Calendar({
           {tasks === undefined
             ? 'lädt'
             : anzahl === 0
-              ? 'nichts geplant'
-              : `${anzahl} ${anzahl === 1 ? 'Aufgabe' : 'Aufgaben'}`}
+              ? `${visibleEvents.length} Termine · keine Aufgaben geplant`
+              : `${anzahl} ${anzahl === 1 ? 'Aufgabe' : 'Aufgaben'} · ${visibleEvents.length} Termine`}
         </div>
         <div className="head-views" role="group" aria-label="Anzeige">
+          <button type="button" className="head-toggle wide" onClick={() => void load()}>Aktualisieren</button>
           <button
             type="button"
             className="head-toggle"

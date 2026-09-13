@@ -30,6 +30,7 @@ test('jede Route überlebt den Weg in die URL und zurück', () => {
     { kind: 'calendar', span: 'week', date: '2026-09-14' },
     { kind: 'calendar', span: 'month', date: '2026-09-01' },
     { kind: 'calendar', span: 'day', date: '2026-09-14' },
+    { kind: 'calendar-sources' },
   ];
   for (const route of routes) {
     assert.deepEqual(roundTrip(route), route, `${pathOf(route)} kommt nicht zurück`);
@@ -245,6 +246,9 @@ test('der Ort einer Route: Projekte sind je einer, Suchabfragen sind einer', () 
 });
 
 test('/kalender ohne Tag ist die Woche von heute, mit Unsinn auch', () => {
+  assert.deepEqual(parseRoute('/kalender/quellen'), { kind: 'calendar-sources' });
+  assert.equal(modeOfRoute({ kind: 'calendar-sources' }), 'calendar');
+  assert.notEqual(placeOf({ kind: 'calendar-sources' }), placeOf({ kind: 'calendar', span: 'week', date: '2026-09-14' }));
   const r = parseRoute('/kalender');
   assert.equal(r.kind, 'calendar');
   if (r.kind === 'calendar') {

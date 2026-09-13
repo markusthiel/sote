@@ -12,6 +12,7 @@ import { startRunner } from './jobs.js';
 import { startListening } from './nudge.js';
 import { scheduleReminders } from './reminders.js';
 import { scheduleFeeds } from './calendarSources.js';
+import { scheduleCalendarWrites } from './calendarWriters.js';
 import { scheduleFileSweep } from './taskFiles.js';
 import { scheduleTaskReminders } from './taskReminders.js';
 import { migrate } from './migrate.js';
@@ -70,6 +71,7 @@ const server = makeServer({ pool, config, now: () => new Date(), webRoot, setup 
  * Prozess da ist.
  */
 server.listen(config.port, () => {
+  void scheduleCalendarWrites(pool).catch((e: unknown) => console.error('Kalenderschreiben:', e));
   void scheduleRecurring(pool).catch((e: unknown) => console.error('Zeitplan:', e));
   /*
    * Erinnerungen nur, wenn dieser Server Mail verschicken kann — und wenn

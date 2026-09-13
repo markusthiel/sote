@@ -70,6 +70,7 @@ export type Route =
    * denselben Tag meint.
    */
   | { readonly kind: 'calendar'; readonly span: 'month' | 'week' | 'day'; readonly date: string }
+  | { readonly kind: 'calendar-sources' }
   /**
    * Ein Link auf ein Projekt, ohne Konto (Konzept 10e).
    *
@@ -159,6 +160,7 @@ export function parseRoute(pathname: string, queryString = ''): Route {
     case 'posteingang':
       return { kind: 'inbox' };
     case 'kalender': {
+      if (parts[1] === 'quellen') return { kind: 'calendar-sources' };
       // `/kalender` allein ist die Woche von heute; die Spanne kommt als Wort,
       // der Tag als `YYYY-MM-DD`. Unsinn fällt auf die Woche von heute zurück,
       // nicht auf einen Fehlerbildschirm.
@@ -202,6 +204,8 @@ export function pathOf(route: Route): string {
       return '/posteingang';
     case 'calendar':
       return `/kalender/${route.span === 'month' ? 'monat' : route.span === 'day' ? 'tag' : 'woche'}/${route.date}`;
+    case 'calendar-sources':
+      return '/kalender/quellen';
     case 'share':
       return `/f/${route.token}`;
     case 'shares':
@@ -240,7 +244,7 @@ export function modeOfRoute(route: Route): string {
   // mehr: sie haben einen Inhalt, und die Platzhalterseite hat keinen.
   if (route.kind === 'workspaces') return 'workspaces';
   if (route.kind === 'inbox') return 'inbox';
-  if (route.kind === 'calendar') return 'calendar';
+  if (route.kind === 'calendar' || route.kind === 'calendar-sources') return 'calendar';
   if (route.kind === 'shares') return 'shares';
   if (route.kind === 'notifications') return 'notifications';
   // Die Verwaltung ist KEIN Modus. Sie steht nicht in der Schiene, weil sie

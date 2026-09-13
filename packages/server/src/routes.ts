@@ -38,6 +38,8 @@ import { create as createProject, NameTaken, update as updateProject } from './p
 import type { Config } from './env.js';
 import { cookie, fail, json, readJson } from './http/respond.js';
 import { Throttle } from './http/throttle.js';
+import { CalDavError } from './caldav.js';
+import { acceptWriterConflict, assertSource, disconnectWriter, pauseWriter, requestWrite, saveWriter, withCalendarWriteLock, writerStatus } from './calendarWriters.js';
 import { accounts, deleteAccount, setAdmin } from './accounts.js';
 import { TRASH_DAYS } from './handlers.js';
 import {
@@ -1109,10 +1111,11 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
    * Fähigkeitslink, und die Oberfläche braucht nur „gesetzt".
    */
   if (path === '/api/calendar-sources' && method === 'GET') {
+    const writers = await writerStatus(ctx.pool, userId);
     json(res, 200, {
       possible: feedsPossible(),
       max: MAX_FEEDS,
-      feeds: await listFeeds(ctx.pool, userId),
+      feeds: (await listFeeds(ctx.pool, userId)).map((feed) => ({ ...feed, writing: writers[feed.id] ?? null })),
     });
     return;
   }
@@ -1145,6 +1148,37 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
     json(res, 201, ergebnis);
     return;
   }
+  const writerPath = /^\/api\/calendar-sources\/([0-9a-f-]{36})\/writer(\/sync|\/pause|\/resolve)?$/.exec(path);
+  if (writerPath !== null) {
+    const feedId = writerPath[1]!;
+    try {
+      await assertSource(ctx.pool, userId, feedId);
+      if (writerPath[2] === '/sync' && method === 'POST') {
+        const current = (await writerStatus(ctx.pool, userId))[feedId];
+        if (!current?.enabled) { fail(res, 409, 'writer_paused', 'Das Schreiben ist nicht eingeschaltet.'); return; }
+        await requestWrite(ctx.pool, feedId);
+        json(res, 202, { ok: true });
+      } else if (writerPath[2] === '/pause' && method === 'POST') {
+        await pauseWriter(ctx.pool, userId, feedId);
+        json(res, 200, { ok: true });
+      } else if (writerPath[2] === '/resolve' && method === 'POST') {
+        await acceptWriterConflict(ctx.pool, userId, feedId);
+        json(res, 202, { ok: true });
+      } else if (writerPath[2] === undefined && method === 'PUT') {
+        const body: unknown = await readJson(req);
+        if (!body || typeof body !== 'object' || Array.isArray(body)) { fail(res, 400, 'bad_writer', 'Ungültige Schreibeinstellungen.'); return; }
+        await saveWriter(ctx.pool, userId, feedId, body as Record<string, unknown>);
+        json(res, 200, { ok: true });
+      } else if (writerPath[2] === undefined && method === 'DELETE') {
+        await disconnectWriter(ctx.pool, userId, feedId);
+        json(res, 200, { ok: true });
+      } else { fail(res, 405, 'method_not_allowed', 'Dieser Aufruf ist hier nicht möglich.'); }
+    } catch (e) {
+      if (!(e instanceof CalDavError)) throw e;
+      fail(res, 400, 'calendar_writer', e.message);
+    }
+    return;
+  }
   const feedPath = /^\/api\/calendar-sources\/([0-9a-f-]{36})(\/refresh)?$/.exec(path);
   if (feedPath !== null) {
     const feedId = feedPath[1]!;
@@ -1173,7 +1207,7 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
       return;
     }
     if (feedPath[2] === undefined && method === 'DELETE') {
-      const ok = await removeFeed(ctx.pool, userId, feedId);
+      const ok = await withCalendarWriteLock(ctx.pool, feedId, (db) => removeFeed(db, userId, feedId));
       if (!ok) fail(res, 404, 'no_feed', 'diesen Kalender gibt es nicht');
       else json(res, 200, { ok: true });
       return;

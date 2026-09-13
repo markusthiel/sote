@@ -36,7 +36,7 @@
  */
 
 import ICAL from 'ical.js';
-import type { Pool } from 'pg';
+import type { Pool, PoolClient } from 'pg';
 
 import { queryOne, queryRows, withTransaction } from './db.js';
 import { enqueue, handle, type JobContext } from './jobs.js';
@@ -86,7 +86,11 @@ export function normalizeFeedUrl(raw: string): string {
 
 export const isFeedUrl = (raw: string): boolean => isPushEndpoint(normalizeFeedUrl(raw));
 
-const zoneOf = (t: ICAL.Time): Date => t.toJSDate();
+// DATE hat keine Zeitzone. UTC-Mitternacht transportiert hier das Datum;
+// toJSDate() würde stattdessen die lokale Zeitzone des Servers hineinrechnen.
+const zoneOf = (t: ICAL.Time): Date => t.isDate
+  ? new Date(Date.UTC(t.year, t.month - 1, t.day))
+  : t.toJSDate();
 
 /**
  * Ein ICS-Dokument im Fenster [from, to) ausrollen.
@@ -142,7 +146,7 @@ export function readIcs(text: string, from: Date, to: Date): FeedEvent[] {
     const it = e.iterator();
     let n = 0;
     for (let next = it.next(); next !== undefined && n < MAX_OCCURRENCES; next = it.next(), n++) {
-      if (next.toJSDate() >= to) break;
+      if (zoneOf(next) >= to) break;
       const d = e.getOccurrenceDetails(next);
       // Ein Vorkommen, das eine Ausnahme ersetzt, trägt deren Kennung.
       const kennung = d.item !== e ? next.toString() : '';
@@ -240,7 +244,7 @@ export async function updateFeed(
   return row === undefined ? null : feedOf(row);
 }
 
-export async function removeFeed(pool: Pool, userId: string, feedId: string): Promise<boolean> {
+export async function removeFeed(pool: Pool | PoolClient, userId: string, feedId: string): Promise<boolean> {
   const r = await pool.query('DELETE FROM calendar_sources WHERE id = $1 AND user_id = $2', [feedId, userId]);
   return (r.rowCount ?? 0) > 0;
 }
@@ -299,6 +303,16 @@ export async function eventsOf(
        JOIN calendar_sources f ON f.id = e.feed_id
       WHERE f.user_id = $1 AND e.starts_at < $3 AND e.ends_at > $2
         AND ($4::uuid IS NULL OR f.shows_in IS NULL OR $4 = ANY(f.shows_in))
+        AND NOT EXISTS (
+          SELECT 1 FROM calendar_write_events we
+          JOIN calendar_writers w ON w.id = we.writer_id AND w.feed_id = f.id
+          JOIN tasks t ON t.id = we.task_id
+          WHERE we.uid = e.uid AND t.completed_at IS NULL AND t.trashed_at IS NULL
+            AND (t.project_id IS NULL OR NOT project_in_trash(t.project_id))
+            AND ($4::uuid IS NULL OR t.workspace_id = $4)
+            AND ((we.kind = 'plan' AND t.planned_at IS NOT NULL)
+              OR (we.kind = 'due' AND t.planned_at IS NULL AND t.due_at IS NOT NULL))
+        )
       ORDER BY e.starts_at`,
     [userId, from, to, workspaceId],
   );
