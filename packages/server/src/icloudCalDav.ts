@@ -6,6 +6,12 @@ const DAV = 'DAV:';
 const CAL = 'urn:ietf:params:xml:ns:caldav';
 const ROOT = 'https://caldav.icloud.com/';
 export interface ICloudCalendar { url: string; name: string }
+type Step = 'Anmeldung' | 'Alternativer Sucheinstieg' | 'Kalenderordner' | 'Kalenderliste';
+class ICloudHttpError extends CalDavError {
+  constructor(readonly status: number, step: Step, host: string) {
+    super(`iCloud-Suche – ${step} (${host}): ${davFailure(status).message}`);
+  }
+}
 
 /** Nur Apples CalDAV-Hosts, auch bei Hrefs und Weiterleitungen. Nie beliebige iCloud-Subdomains. */
 function appleUrl(raw: string, base: string): string {
@@ -39,23 +45,23 @@ export async function discoverICloudCalendars(raw: Record<string, unknown>, tran
     throw new CalDavError('Für die iCloud-Kalendersuche Apple Account und App-spezifisches Passwort eintragen.');
   }
   let requests = 0;
-  async function props(rawUrl: string, requested: string, depth = '0'): Promise<{ url: string; responses: Element[] }> {
+  async function props(rawUrl: string, requested: string, step: Step, depth = '0'): Promise<{ url: string; responses: Element[] }> {
     let url = appleUrl(rawUrl, ROOT);
     while (++requests <= 12) {
       // Jeder Zielwechsel wird vor Übergabe der Zugangsdaten validiert. Der allgemeine Transport folgt keinem Redirect.
       const result = await transport(url, { url: new URL(url).origin + '/', username, password }, 'PROPFIND',
         `<?xml version="1.0"?><d:propfind xmlns:d="DAV:" xmlns:c="${CAL}"><d:prop>${requested}</d:prop></d:propfind>`, { depth });
-      if ([301, 302, 307, 308].includes(result.status) && result.location) {
+      if ([301, 302, 303, 307, 308].includes(result.status) && result.location) {
         url = appleUrl(result.location, url);
         continue;
       }
-      if (result.status !== 207) throw davFailure(result.status);
+      if (result.status !== 207) throw new ICloudHttpError(result.status, step, new URL(url).hostname);
       try {
         if (/<!DOCTYPE|<!ENTITY/i.test(result.body)) throw new Error('XML');
         const doc = new DOMParser({ onError: () => { throw new Error('XML'); } }).parseFromString(result.body, 'application/xml');
         if (doc.documentElement?.namespaceURI !== DAV || doc.documentElement.localName !== 'multistatus') throw new Error('XML');
         return { url, responses: children(doc.documentElement, DAV, 'response') };
-      } catch { throw new CalDavError('iCloud hat keine lesbare CalDAV-Antwort geliefert.'); }
+      } catch { throw new CalDavError(`iCloud-Suche – ${step}: iCloud hat keine lesbare CalDAV-Antwort geliefert.`); }
     }
     throw new CalDavError('Die iCloud-Kalendersuche benötigt zu viele Weiterleitungen oder Kalenderordner.');
   }
@@ -69,16 +75,23 @@ export async function discoverICloudCalendars(raw: Record<string, unknown>, tran
     return [];
   }
 
-  const root = await props(ROOT, '<d:current-user-principal/>');
+  // RFC 6764: Kann der voreingestellte Einstieg nicht bedient werden, den
+  // standardisierten Dienstpfad fragen. Keine geratenen Konto- oder Serverpfade.
+  let root;
+  try { root = await props(ROOT, '<d:current-user-principal/>', 'Anmeldung'); }
+  catch (e) {
+    if (!(e instanceof ICloudHttpError) || ![404, 405].includes(e.status)) throw e;
+    root = await props(ROOT + '.well-known/caldav', '<d:current-user-principal/>', 'Alternativer Sucheinstieg');
+  }
   const principal = hrefs(root, DAV, 'current-user-principal')[0];
   if (!principal) throw new CalDavError('iCloud hat keinen angemeldeten Kalenderbenutzer geliefert. Apple Account und App-Kennwort prüfen.');
-  const account = await props(principal, '<c:calendar-home-set/>');
+  const account = await props(principal, '<c:calendar-home-set/>', 'Kalenderordner');
   const homes = [...new Set(hrefs(account, CAL, 'calendar-home-set'))];
   if (!homes.length) throw new CalDavError('Für diesen Apple Account wurde kein Kalenderordner gefunden.');
   if (homes.length > 5) throw new CalDavError('iCloud hat zu viele Kalenderordner geliefert.');
   const calendars = new Map<string, ICloudCalendar>();
   for (const home of homes) {
-    const result = await props(home, '<d:displayname/><d:resourcetype/><c:supported-calendar-component-set/><d:current-user-privilege-set/>', '1');
+    const result = await props(home, '<d:displayname/><d:resourcetype/><c:supported-calendar-component-set/><d:current-user-privilege-set/>', 'Kalenderliste', '1');
     for (const response of result.responses) {
       const resource = property(response, DAV, 'resourcetype');
       if (!resource || !children(resource, CAL, 'calendar').length) continue;

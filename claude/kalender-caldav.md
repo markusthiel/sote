@@ -16,6 +16,8 @@ Für die Schreibanbindung die E-Mail-Adresse des Apple Accounts als Benutzername
 
 Die Suche beginnt bei `https://caldav.icloud.com/`, ermittelt Principal und Kalenderordner und fragt deren Kalender ab ([CalDAV-Client-Dokumentation](https://caldav.readthedocs.io/stable/about.html)). Alle Hrefs und Weiterleitungen werden auf HTTPS, Standardport und die Hosts `caldav.icloud.com` beziehungsweise `p<Nummer>-caldav.icloud.com` begrenzt. Es werden keine Zugangsdaten an andere Dienste weitergereicht. Die Anmeldung wird nur für die Suche verwendet; erst das Speichern versiegelt sie in der Datenbank.
 
+Nach einer gemeldeten HTTP-404-Antwort bei der Suche: Liefert der Einstieg 404 oder 405, fragt SOTE einmal `/.well-known/caldav` gemäß [RFC 6764](https://www.rfc-editor.org/rfc/rfc6764.html#section-5) ab. Anmeldung, Kalenderordner und Kalenderliste werden in HTTP-Fehlern getrennt benannt; nur der Servername, keine Kontopfade oder Zugangsdaten, erscheint dabei. Ein Fehler an einem späteren Abruf wird nicht durch einen neuen Anmeldeversuch verdeckt. Der genaue Auslöser der gemeldeten 404 ist noch nicht bestätigt und muss mit der präziseren Meldung eingegrenzt werden.
+
 ## Verhalten
 
 - Offene Aufgaben werden etwa jede Minute als einzelne VEVENT-Ressourcen übertragen: Titel, Beschreibung, Zeitpunkt, Dauer und Aufgabenlink. Plan und Frist können getrennte Termine ergeben.
@@ -40,3 +42,5 @@ Die Lesequelle unterdrückt zurückgelesene eigene Plantermine, wenn dieselbe Au
 242 Core- und 90 Web-Tests bestehen. Einrichtung, Pausieren und Konfliktauflösung wurden zusätzlich mit den echten React-Komponenten und einer simulierten API im Browser geprüft. Im vollständigen Serverlauf scheiterten 14 bestehende Dateianhangtests an Windows-Pfadprüfungen; ein weiterer bestehender Datumstest besteht mit `TZ=UTC` wie in CI. Ein Test mit einem echten Anbieter steht noch aus.
 
 Die iCloud-Erweiterung ergänzt sieben Tests für Kalenderermittlung, Rechtefilter, erfolgreiche Eigenschaften, erlaubte und gesperrte Weiterleitungen, ungültiges XML, Anmeldung und öffentliche Leselinks. Zusammen mit den acht CalDAV-Protokolltests bestehen alle 15 Tests. Suche, Auswahl, Übernahme der Schreibadresse und Speichern wurden im Browser mit einer simulierten iCloud-Antwort geprüft; ein echtes Apple-Konto wurde dafür nicht verwendet.
+
+Drei weitere Tests prüfen den 404-Ausweichweg, Fehlermeldungen je Abrufschritt und den unveränderten Schutz von Zugangsdaten. Alle 18 Protokolltests sowie Server-Typprüfung und -Build bestehen.

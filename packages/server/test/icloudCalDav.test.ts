@@ -93,3 +93,45 @@ test('Öffentliche iCloud-Leselinks werden auch mit HTTPS als schreibgeschützt 
     assert.throws(() => calendarUrl(url), /Kalender-Leselink/);
   }
 });
+
+test('404 am Einstieg verwendet den standardisierten Dienstpfad und dessen Apple-Weiterleitung', async () => {
+  const f = fixture(); const visited: string[] = [];
+  f.documents.set(shard + '/', f.documents.get(root)!);
+  f.documents.set(shard + '/123/principal/', f.documents.get(root + '123/principal/')!);
+  const transport: DavTransport = async (...args) => {
+    visited.push(args[0]);
+    if (args[0] === root) return {status:404,body:'',etag:null};
+    if (args[0] === root + '.well-known/caldav') return {status:303,body:'',etag:null,location:shard + '/'};
+    return f.transport(...args);
+  };
+  assert.equal((await discoverICloudCalendars(login,transport)).length,1);
+  assert.deepEqual(visited.slice(0,3), [root,root + '.well-known/caldav',shard + '/']);
+});
+
+test('Fehlermeldung nennt den Abrufschritt und Host, aber keine Kontopfade, Kennwörter oder Antworttexte', async () => {
+  for (const [url, step] of [[root + '123/principal/', 'Kalenderordner'], [shard + '/123/calendars/', 'Kalenderliste']]) {
+    const f = fixture(); let failures = 0;
+    const transport: DavTransport = async (...args) => {
+      if (args[0] === url) { failures++; return {status:404,body:'private-answer app-password test@example.com',etag:null}; }
+      return f.transport(...args);
+    };
+    await assert.rejects(() => discoverICloudCalendars(login,transport), (e: Error) => {
+      assert.match(e.message, new RegExp(`iCloud-Suche – ${step}.*HTTP 404`));
+      for (const secret of ['123', 'app-password', 'test@example.com', 'private-answer']) assert.equal(e.message.includes(secret),false);
+      return true;
+    });
+    assert.equal(failures,1);
+    assert.ok(!f.calls.some(c => c.url.includes('.well-known')));
+  }
+});
+
+test('Falsche Anmeldung wird nicht wiederholt; auch der Ausweichweg gibt keine Zugangsdaten an fremde Hosts weiter', async () => {
+  let calls = 0;
+  await assert.rejects(() => discoverICloudCalendars(login,async () => { calls++; return {status:401,body:'',etag:null}; }), /Anmeldung.*Anmeldung abgelehnt/);
+  assert.equal(calls,1);
+  calls=0;
+  await assert.rejects(() => discoverICloudCalendars(login,async () => {
+    calls++; return calls===1 ? {status:404,body:'',etag:null} : {status:302,body:'',etag:null,location:'https://evil.example/'};
+  }), /Zieladresse/);
+  assert.equal(calls,2);
+});
