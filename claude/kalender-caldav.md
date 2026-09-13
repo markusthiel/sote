@@ -70,3 +70,13 @@ Der native HTTPS-Transport sendete bisher keinen `User-Agent`. Ein [Entwicklerbe
 Ein zusätzlicher Transporttest leitet den tatsächlichen Node-HTTP-Aufruf auf einen lokalen Testserver um und prüft die übertragenen Header, Ressourcenadresse, UTF-8-Inhalte sowie If-None-Match/If-Match. Er scheitert vor der Korrektur an der fehlenden Programmkennung. Es werden keine echten Zugangsdaten und kein Apple-Server verwendet. Der nächste reale Abgleich muss bestätigen, ob diese Korrektur den gemeldeten 404 behebt.
 
 Mit der Korrektur bestehen alle 25 CalDAV-Protokoll- und Transporttests sowie Server-Typprüfung und -Build.
+
+### Vergleich im laufenden Container
+
+Der Nutzer hat die Programmkennung im laufenden `sote-server-1` nachgewiesen; PUT 404 besteht weiterhin. Damit ist auch diese Korrektur keine Lösung des konkreten Fehlers.
+
+`scripts/diagnose-caldav.mjs --sync` kann ohne neues Image über stdin im vorhandenen Container (Arbeitsverzeichnis `/app`) ausgeführt werden. Es wählt nur dann eine Verbindung, wenn genau eine eingeschaltete private iCloud-Verbindung einen PUT-Fehler hat. Es führt den normalen `syncWriter` mit dessen Sperre, Auswahlregeln, gespeicherten Quittungen und Konfliktschutz aus. Nach einem aktuellen PUT 404 wiederholt es dieselbe URL, denselben Inhalt und dieselbe Schreibbedingung einmal über Nodes `fetch`; weitere Aufrufe dieses Abgleichs bleiben bei diesem Client. Ein erfolgreicher Versuch wird regulär in der Datenbank bestätigt. Es werden keine zusätzlichen Testtermine angelegt. Der reguläre Hintergrunddienst bleibt unverändert.
+
+Die Ausgabe enthält nur HTTP-Ergebnisse, Servername, maskierte Pfadstruktur, Inhaltslänge und abschließenden Writerstatus. Zugangsdaten, Kontopfadsegmente, UIDs und Termininhalte werden nicht ausgegeben. Der alternative Client ist auf HTTPS mit privaten Apple-CalDAV-Zielen auf dem Standardport begrenzt, folgt keinen Redirects und begrenzt Antwortgröße und Laufzeit. Diese manuell gestartete Diagnose ist kein allgemeiner Ersatz für den DNS-gebundenen Produktionstransport.
+
+Fünf zusätzliche Tests prüfen den identischen bedingten Wiederholungsaufruf, die Weiterverwendung des Clients, unverändertes Verhalten bei Erfolg/Anmeldefehlern/Konflikten, Zielbeschränkung, Ausgabe ohne private Inhalte und die Antwortgrößenbegrenzung. Sie laufen über `pnpm test` auch in CI. Das Ergebnis am echten Konto steht noch aus.
