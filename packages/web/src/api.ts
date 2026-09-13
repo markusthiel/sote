@@ -17,6 +17,7 @@ export interface CalendarSource {
   createdAt: string;
   writing?: CalendarWriter | null;
   kind?: 'ics' | 'caldav' | 'google' | 'microsoft';
+  writable?: boolean | null;
   provider?: 'icloud' | 'google' | 'microsoft' | 'caldav' | 'ics';
 }
 
@@ -1362,7 +1363,7 @@ export const api = {
   disconnectCalendarWriter: (id: string) =>
     call<{ ok: true }>(`/api/calendar-sources/${id}/writer`, { method: 'DELETE' }),
   discoverCalendars: (body: { provider: 'icloud' | 'caldav'; url?: string; username: string; password: string }) =>
-    call<{ calendars: { url: string; name: string; writable: boolean }[] }>('/api/calendar-sources/discover', { method: 'POST', body: JSON.stringify(body) }),
+    call<{ calendars: { url: string; name: string; writable: boolean | null }[] }>('/api/calendar-sources/discover', { method: 'POST', body: JSON.stringify(body) }),
   addCalendarSource: (body: CalendarSourceFields & { url: string; kind?: 'ics' | 'caldav'; username?: string; password?: string }) =>
     call<CalendarSource>('/api/calendar-sources', { method: 'POST', body: JSON.stringify(body) }),
   patchCalendarSource: (id: string, body: CalendarSourceFields) =>

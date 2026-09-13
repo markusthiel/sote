@@ -174,11 +174,11 @@ export async function createCloudSource(pool:Pool,userId:string,accountId:string
   try {
     await db.query('BEGIN');await db.query('SELECT id FROM users WHERE id=$1 FOR UPDATE',[userId]);
     const existing=await queryOne<{id:string}>(db,'SELECT id FROM calendar_sources WHERE user_id=$1 AND oauth_account_id=$2 AND remote_calendar_id=$3',[userId,accountId,calendarId]);
-    if(existing){await db.query('COMMIT');return existing.id;}
+    if(existing){await db.query('UPDATE calendar_sources SET writable=$2 WHERE id=$1',[existing.id,selected.writable]);await db.query('COMMIT');return existing.id;}
     const count=await queryOne<{n:string}>(db,'SELECT count(*) AS n FROM calendar_sources WHERE user_id=$1',[userId]);
     if(Number(count?.n)>=12)throw new CalDavError('Höchstens 12 Kalender können verbunden werden.');
-    const source=await queryOne<{id:string}>(db,`INSERT INTO calendar_sources (user_id,name,color,url_sealed,connection_kind,oauth_account_id,remote_calendar_id)
-      VALUES ($1,$2,'blue',$3,$4,$5,$6) RETURNING id`,[userId,(name.trim()||selected.name).slice(0,120),seal(ROOT[provider]),provider,accountId,calendarId]);
+    const source=await queryOne<{id:string}>(db,`INSERT INTO calendar_sources (user_id,name,color,url_sealed,connection_kind,oauth_account_id,remote_calendar_id,writable)
+      VALUES ($1,$2,'blue',$3,$4,$5,$6,$7) RETURNING id`,[userId,(name.trim()||selected.name).slice(0,120),seal(ROOT[provider]),provider,accountId,calendarId,selected.writable]);
     await db.query('COMMIT');return source!.id;
   }catch(e){await db.query('ROLLBACK');throw e;}finally{db.release();}
 }

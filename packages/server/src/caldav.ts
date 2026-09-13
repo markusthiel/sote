@@ -95,7 +95,7 @@ export function davFailure(status: number): CalDavError {
   return new CalDavError(`Der Kalenderdienst antwortet mit HTTP ${status}.`);
 }
 
-export async function checkCalendar(credentials: CalDavCredentials, transport: DavTransport = davRequest, requireWrite = true): Promise<void> {
+export async function checkCalendar(credentials: CalDavCredentials, transport: DavTransport = davRequest, requireWrite = true): Promise<boolean | null> {
   const res = await transport(calendarUrl(credentials.url), credentials, 'PROPFIND',
     '<?xml version="1.0"?><d:propfind xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav"><d:prop><d:resourcetype/><c:supported-calendar-component-set/><d:current-user-privilege-set/></d:prop></d:propfind>', { depth: '0' });
   if (res.status !== 207) throw davFailure(res.status);
@@ -110,7 +110,7 @@ export async function checkCalendar(credentials: CalDavCredentials, transport: D
       const propstats = response.getElementsByTagNameNS('DAV:', 'propstat');
       let calendar = false;
       let supported = true;
-      let writable = true;
+      let writable: boolean | null = null;
       for (let p = 0; p < propstats.length; p++) {
         const propstat = propstats.item(p)!;
         if (!/\s200\s/.test(propstat.getElementsByTagNameNS('DAV:', 'status').item(0)?.textContent ?? '')) continue;
@@ -126,8 +126,8 @@ export async function checkCalendar(credentials: CalDavCredentials, transport: D
       }
       if (!calendar) throw new CalDavError('Diese Adresse ist kein CalDAV-Kalenderordner.');
       if (!supported) throw new CalDavError('Dieser Kalender unterstützt keine Termine (VEVENT).');
-      if (requireWrite && !writable) throw new CalDavError('Für diesen Kalender fehlen Schreibrechte.');
-      return;
+      if (requireWrite && writable === false) throw new CalDavError('Für diesen Kalender fehlen Schreibrechte.');
+      return writable;
     }
     throw new CalDavError('Die Antwort enthält den gewählten Kalender nicht.');
   } catch (e) { throw e instanceof CalDavError ? e : new CalDavError('Unverständliche XML-Antwort des Kalenderdienstes.'); }

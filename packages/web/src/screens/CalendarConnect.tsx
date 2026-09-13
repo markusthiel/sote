@@ -1,13 +1,14 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { api, ApiError } from '../api.js';
 import { CloudCalendarConnect } from './CloudCalendarConnect.js';
+import { CalendarAccess, calendarAccessLabel } from '../components/CalendarAccess.js';
 
 export const calendarProviders = [
-  { id: 'icloud', name: 'iCloud', mark: 'iC', detail: 'Privat verbinden · lesen und schreiben' },
-  { id: 'google', name: 'Google Kalender', mark: 'G', detail: 'Mit Google anmelden · lesen und schreiben' },
-  { id: 'microsoft', name: 'Microsoft 365 / Outlook', mark: 'M', detail: 'Mit Microsoft anmelden · lesen und schreiben' },
+  { id: 'icloud', name: 'iCloud', mark: 'iC', detail: 'Privat mit deinem Apple Account verbinden' },
+  { id: 'google', name: 'Google Kalender', mark: 'G', detail: 'Mit deinem Google-Konto anmelden' },
+  { id: 'microsoft', name: 'Microsoft 365 / Outlook', mark: 'M', detail: 'Mit deinem Microsoft-Konto anmelden' },
   { id: 'nextcloud', name: 'Nextcloud', mark: 'N', detail: 'Mit deinem Server verbinden' },
-  { id: 'caldav', name: 'Anderer CalDAV-Anbieter', mark: 'C', detail: 'Kalender suchen · lesen und schreiben' },
+  { id: 'caldav', name: 'Anderer CalDAV-Anbieter', mark: 'C', detail: 'Mit deinem Kalenderdienst verbinden' },
   { id: 'ics', name: 'Kalenderlink', mark: '↗', detail: 'ICS- oder webcal-Adresse abonnieren' },
 ] as const;
 type Provider = typeof calendarProviders[number]['id'];
@@ -28,7 +29,7 @@ export function CalendarConnect({ onConnected, onCancel }: { onConnected: (id: s
   const [password, setPassword] = useState('');
   const [url, setUrl] = useState('');
   const [name, setName] = useState('');
-  const [found, setFound] = useState<{ url: string; name: string; writable: boolean }[]>([]);
+  const [found, setFound] = useState<{ url: string; name: string; writable: boolean | null }[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
   const privateAccess = provider === 'icloud' || provider === 'nextcloud' || provider === 'caldav';
@@ -46,10 +47,10 @@ export function CalendarConnect({ onConnected, onCancel }: { onConnected: (id: s
     <div className="calendar-section-heading"><div><span className="calendar-eyebrow">NEUE VERBINDUNG</span><h2 ref={heading} tabIndex={-1}>{provider ? providerName(provider) + ' verbinden' : 'Wo liegt dein Kalender?'}</h2></div>
       <button className="btn quiet small" onClick={onCancel} disabled={busy}>Schließen</button></div>
     {!provider ? <div className="calendar-provider-grid">{calendarProviders.map((p) => <button key={p.id} className="calendar-provider-option" onClick={() => { setProvider(p.id); setError(undefined); }}>
-      <ProviderMark provider={p.id} /><span><strong>{p.name}</strong><small>{p.detail}</small></span><span aria-hidden="true">→</span>
+      <ProviderMark provider={p.id} /><span><strong>{p.name}</strong><CalendarAccess writable={p.id!=='ics'} /><small>{p.detail}</small></span><span aria-hidden="true">→</span>
     </button>)}</div> : <>
       <button className="btn quiet small" disabled={busy} onClick={() => { setProvider(undefined); setSubscription(false); setFound([]); setUrl(''); setName(''); setPassword(''); setError(undefined); }}>← Anderen Anbieter wählen</button>
-      {(provider==='google'||provider==='microsoft')&&!subscription?<><CloudCalendarConnect key={provider} provider={provider} onConnected={onConnected}/><button className="btn quiet small" onClick={()=>setSubscription(true)}>Kalender über einen Abo-Link verbinden</button></>:<div className="calendar-connect-body">
+      {(provider==='google'||provider==='microsoft')&&!subscription?<><CloudCalendarConnect key={provider} provider={provider} onConnected={onConnected}/><button className="btn quiet small" onClick={()=>setSubscription(true)}>Kalender über einen Abo-Link verbinden · Nur Lesen</button></>:<div className="calendar-connect-body">
         <form className="calendar-source-form" onSubmit={(e) => {
           e.preventDefault();
           if (privateAccess && !selected) { void find(); return; }
@@ -59,6 +60,7 @@ export function CalendarConnect({ onConnected, onCancel }: { onConnected: (id: s
             .then((source) => onConnected(source.id)).catch((e: unknown) => setError(e instanceof ApiError ? e.message : 'Verbinden ging nicht.')).finally(() => setBusy(false));
         }}>
           <fieldset className="calendar-source-fields" disabled={busy}>
+            {!privateAccess ? <CalendarAccess writable={false} /> : null}
             {privateAccess ? <>
               {provider !== 'icloud' ? <label className="calendar-field">Serveradresse<input className="set-input" type="url" required value={server} placeholder="https://cloud.example.de/remote.php/dav/"
                 onChange={(e) => { setServer(e.target.value); setFound([]); setUrl(''); }} /><small className="muted">Dein Server oder die CalDAV-Adresse aus dessen Kalendereinstellungen.</small></label> : null}
@@ -70,7 +72,8 @@ export function CalendarConnect({ onConnected, onCancel }: { onConnected: (id: s
               </div>
               {!found.length ? <button className="btn calendar-primary" type="submit">{busy ? 'Kalender werden gesucht …' : 'Kalender suchen'}</button> : <>
                 <label className="calendar-field">Kalender auswählen<select className="set-input" required value={url} onChange={(e) => { setUrl(e.target.value); setName(found.find((c) => c.url === e.target.value)?.name ?? ''); }}>
-                  <option value="">Bitte auswählen …</option>{found.map((c) => <option key={c.url} value={c.url}>{c.name}{c.writable ? '' : ' · nur lesen'}</option>)}</select></label>
+                  <option value="">Bitte auswählen …</option>{found.map((c) => <option key={c.url} value={c.url}>{c.name} · {calendarAccessLabel(c.writable)}</option>)}</select></label>
+                {selected ? <CalendarAccess writable={selected.writable} /> : null}
                 <p className="calendar-inline-status">{found.length} Kalender gefunden. {selected?.writable ? 'Aufgabenübertragung kann anschließend eingerichtet werden.' : 'Der Kalender wird zunächst nur gelesen.'}</p>
               </>}
             </> : <label className="calendar-field">Kalenderlink<input id={`${id}-url`} className="set-input" type="url" required autoComplete="off" spellCheck={false} value={url} placeholder="https://… oder webcal://…" onChange={(e) => setUrl(e.target.value)} /></label>}
@@ -92,5 +95,6 @@ export function CalendarConnect({ onConnected, onCancel }: { onConnected: (id: s
         </aside>
       </div>}
     </>}
+    {!provider ? <p className="muted small">Die Angaben zeigen die Möglichkeiten der Anbindung. Geteilte oder abonnierte Kalender können beim Anbieter auf Lesen beschränkt sein. Aufgaben werden erst nach deiner Aktivierung übertragen.</p> : null}
   </section>;
 }

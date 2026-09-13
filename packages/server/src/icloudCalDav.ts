@@ -5,7 +5,7 @@ import { calendarUrl, CalDavError, davFailure, davRequest, type DavTransport } f
 const DAV = 'DAV:';
 const CAL = 'urn:ietf:params:xml:ns:caldav';
 const ROOT = 'https://caldav.icloud.com/';
-export interface ICloudCalendar { url: string; name: string; writable?: boolean }
+export interface ICloudCalendar { url: string; name: string; writable?: boolean | null }
 type Step = 'Anmeldung' | 'Alternativer Sucheinstieg' | 'Kalenderordner' | 'Kalenderliste';
 class ICloudHttpError extends CalDavError {
   constructor(readonly status: number, step: Step, host: string) {
@@ -98,7 +98,7 @@ export async function discoverICloudCalendars(raw: Record<string, unknown>, tran
       const components = property(response, CAL, 'supported-calendar-component-set');
       if (components && !children(components, CAL, 'comp').some((c) => c.getAttribute('name') === 'VEVENT')) continue;
       const privileges = property(response, DAV, 'current-user-privilege-set');
-      let writable = true;
+      let writable: boolean | null = null;
       if (privileges) {
         const granted = children(privileges, DAV, 'privilege');
         const has = (name: string) => granted.some((p) => children(p, DAV, name).length > 0);

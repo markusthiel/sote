@@ -37,9 +37,9 @@ export function readCalDavCredentials(raw: Record<string, unknown>): CalDavCrede
   return { url: calendarUrl(String(raw['url'] ?? '')), username, password };
 }
 
-export interface DiscoveredCalendar { url: string; name: string; writable: boolean }
+export interface DiscoveredCalendar { url: string; name: string; writable: boolean | null }
 export async function discoverCalDavCalendars(raw: Record<string, unknown>, transport: DavTransport = davRequest): Promise<DiscoveredCalendar[]> {
-  if (raw['provider'] === 'icloud') return (await discoverICloudCalendars(raw, transport, true)).map((c) => ({ ...c, writable: c.writable !== false }));
+  if (raw['provider'] === 'icloud') return (await discoverICloudCalendars(raw, transport, true)).map((c) => ({ ...c, writable: c.writable ?? null }));
   const start = String(raw['url'] ?? '').trim();
   const credentials = readCalDavCredentials({ ...raw, url: start.endsWith('/') ? start : start + '/' });
   const origin = new URL(credentials.url).origin;
@@ -78,7 +78,7 @@ export async function discoverCalDavCalendars(raw: Record<string, unknown>, tran
       const has = (name: string) => privileges?.getElementsByTagNameNS(DAV, name).length;
       return [{ url: calendarUrl(found.endsWith('/') ? found : found + '/'),
         name: property(item, DAV, 'displayname')?.textContent?.trim().slice(0, 120) || 'Kalender',
-        writable: !privileges || !!(has('all') || has('write') || (has('write-content') && has('bind') && has('unbind'))) }];
+        writable: privileges ? !!(has('all') || has('write') || (has('write-content') && has('bind') && has('unbind'))) : null }];
     });
   }
   function links(result: Awaited<ReturnType<typeof props>>, ns: string, name: string): string[] {

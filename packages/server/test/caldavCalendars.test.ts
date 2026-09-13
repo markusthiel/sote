@@ -18,7 +18,7 @@ test('Allgemeine CalDAV-Suche folgt Principal und Kalender-Heimat, einschließli
     return {status:207,etag:null,body:xml(response('/calendars/person/team/', calendar) + response('/calendars/person/read/', calendar + '<d:current-user-privilege-set><d:privilege><d:read/></d:privilege></d:current-user-privilege-set>'))};
   };
   const found = await discoverCalDavCalendars(credentials, transport);
-  assert.equal(found.length,2); assert.equal(found[0]!.writable,true); assert.equal(found[1]!.writable,false);
+  assert.equal(found.length,2); assert.equal(found[0]!.writable,null); assert.equal(found[1]!.writable,false);
   assert.deepEqual(calls,[credentials.url,'https://cloud.example/principals/person/','https://cloud.example/calendars/person/']);
 });
 
@@ -55,6 +55,8 @@ test('Private Kalender werden mit begrenztem REPORT-Zeitfenster gelesen; Teilaus
 
 test('Lesekalender können geprüft werden, ein Schreibzugang verlangt weiterhin Schreibrechte', async () => {
   const transport: DavTransport = async () => ({status:207,etag:null,body:xml(response('/remote.php/dav/',calendar+'<d:current-user-privilege-set><d:privilege><d:read/></d:privilege></d:current-user-privilege-set>'))});
-  await checkCalendar(credentials,transport,false);
+  assert.equal(await checkCalendar(credentials,transport,false),false);
   await assert.rejects(() => checkCalendar(credentials,transport),/Schreibrechte/);
+  assert.equal(await checkCalendar(credentials,async () => ({status:207,etag:null,body:xml(response('/remote.php/dav/',calendar))}),false),null);
+  assert.equal(await checkCalendar(credentials,async () => ({status:207,etag:null,body:xml(response('/remote.php/dav/',calendar+'<d:current-user-privilege-set><d:privilege><d:write/></d:privilege></d:current-user-privilege-set>'))}),false),true);
 });

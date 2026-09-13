@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api, ApiError } from '../api.js';
+import { CalendarAccess, calendarAccessLabel } from '../components/CalendarAccess.js';
 
 /** Kontoanmeldung und Kalenderauswahl sind getrennt: Anmelden aktiviert kein Schreiben. */
 export function CloudCalendarConnect({provider,onConnected}:{provider:'google'|'microsoft';onConnected:(id:string)=>Promise<void>}) {
@@ -50,7 +51,8 @@ export function CloudCalendarConnect({provider,onConnected}:{provider:'google'|'
       {account&&!loading&&calendars.length>0?<form className="calendar-source-form" onSubmit={e=>{
         e.preventDefault();setBusy(true);setError(undefined);void api.connectCloudCalendar(account,{calendarId:calendar,name:name.trim()}).then(r=>onConnected(r.id)).catch(e=>setError(message(e))).finally(()=>setBusy(false));
       }}><fieldset className="calendar-source-fields" disabled={busy}>
-        <label className="calendar-field">Kalender auswählen<select className="set-input" required value={calendar} onChange={e=>{setCalendar(e.target.value);setName(calendars.find(c=>c.id===e.target.value)?.name??'');}}><option value="">Bitte auswählen …</option>{calendars.map(c=><option key={c.id} value={c.id}>{c.name}{c.writable?'':' · nur lesen'}</option>)}</select></label>
+        <label className="calendar-field">Kalender auswählen<select className="set-input" required value={calendar} onChange={e=>{setCalendar(e.target.value);setName(calendars.find(c=>c.id===e.target.value)?.name??'');}}><option value="">Bitte auswählen …</option>{calendars.map(c=><option key={c.id} value={c.id}>{c.name} · {calendarAccessLabel(c.writable)}</option>)}</select></label>
+        {calendar ? <CalendarAccess writable={calendars.find(c=>c.id===calendar)?.writable} /> : null}
         <label className="calendar-field">Name in SOTE<input className="set-input" maxLength={120} value={name} onChange={e=>setName(e.target.value)} /></label>
         <button className="btn calendar-primary" disabled={!calendar} type="submit">{busy?'Verbindet …':'Kalender verbinden'}</button>
       </fieldset></form>:null}

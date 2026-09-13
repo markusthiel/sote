@@ -4,6 +4,7 @@ import { api, ApiError, type CalendarSource, type CalendarSourceFields } from '.
 import { OwnColor } from '../components/OwnColor.js';
 import { CalendarWriter } from './CalendarWriter.js';
 import { CalendarConnect, ProviderMark, providerName } from './CalendarConnect.js';
+import { CalendarAccess } from '../components/CalendarAccess.js';
 
 type Workspace = { id: string; name: string };
 type SourceData = Awaited<ReturnType<typeof api.calendarSources>>;
@@ -102,14 +103,17 @@ function SourceCard({ source, workspaces, possible, reload, initiallyOpen }: {
     finally { setBusy(false); }
   }
   const failed = !!(source.lastError || source.writing?.lastError);
+  // Ein ICS-Abo kann einen separaten, bereits eingerichteten Schreibzugang besitzen.
+  const writable = source.kind === 'ics' || !source.kind ? !!source.writing : source.writable ?? (source.writing ? true : null);
   return <section className="calendar-connection" aria-label={source.name}>
     <div className="calendar-connection-heading"><ProviderMark provider={source.provider} /><div className="calendar-connection-title">
       <h2 ref={heading} tabIndex={-1}><span className="calendar-source-dot" style={{ background: colorValue(source.color) ?? 'var(--text-muted)' }} />{source.name}</h2>
       <p>{providerName(source.provider)} · {source.kind === 'google'||source.kind==='microsoft'?'Konto verbunden':source.kind === 'caldav' ? 'Privater Kalenderzugang' : 'Kalenderabo'}</p>
+      <CalendarAccess writable={writable} />
     </div><span className="calendar-status" data-state={failed ? 'error' : source.fetchedAt ? 'ready' : 'pending'}>{failed ? 'Aufmerksamkeit nötig' : source.fetchedAt ? 'Verbunden' : 'Erster Abruf läuft'}</span></div>
     <div className="calendar-connection-summary">
       <div><span>TERMINE LESEN</span><strong>{source.fetchedAt ? 'Automatisch aktiv' : 'Wird vorbereitet'}</strong><small>{source.fetchedAt ? `Zuletzt ${new Date(source.fetchedAt).toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' })}` : 'Der erste Abruf läuft im Hintergrund.'}</small></div>
-      <div><span>AUFGABEN ÜBERTRAGEN</span><strong>{source.writing ? source.writing.enabled ? `${source.writing.count} Kalenderkopien` : 'Pausiert' : 'Nicht eingerichtet'}</strong><small>{source.writing?.enabled ? 'SOTE → Kalender · etwa jede Minute' : 'Du bestimmst, welche Aufgaben erscheinen.'}</small></div>
+      <div><span>AUFGABEN ÜBERTRAGEN</span><strong>{source.writing ? source.writing.enabled ? `Aktiv · ${source.writing.count} Kalenderkopien` : 'Pausiert' : 'Nicht eingerichtet'}</strong><small>{source.writing?.enabled ? 'SOTE → Kalender · etwa jede Minute' : 'Du bestimmst, welche Aufgaben erscheinen.'}</small></div>
       <div><span>SICHTBAR IN</span><strong>{source.showsIn === null ? 'Allen Arbeitsbereichen' : source.showsIn.length === 1 ? workspaces.find((w) => w.id === source.showsIn?.[0])?.name ?? 'Einem Arbeitsbereich' : `${source.showsIn.length} Arbeitsbereichen`}</strong><small>Für dein SOTE-Konto</small></div>
     </div>
     {failed ? <div className="calendar-problem"><strong>{source.writing?.conflict ? 'Änderung im Zielkalender prüfen' : 'Ein Abgleich braucht Aufmerksamkeit'}</strong><details><summary>Fehlerdetails anzeigen</summary><p>{source.lastError ?? source.writing?.lastError}</p></details></div> : null}

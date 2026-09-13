@@ -1,4 +1,5 @@
 import { useEffect, useId, useState } from 'react';
+import { calendarAccessLabel } from '../components/CalendarAccess.js';
 import { api, ApiError, browserZone, type CalendarSource, type CalendarWriter as Writer } from '../api.js';
 
 /** Der Schreibzugang gehört genau einem Kalender. Zugangsdaten werden nie zurückgeliefert. */
@@ -11,7 +12,7 @@ export function CalendarWriter({ source, workspaces, possible, reload }: {
   const [url, setUrl] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [calendars, setCalendars] = useState<{ url: string; name: string }[]>([]);
+  const [calendars, setCalendars] = useState<{ url: string; name: string; writable: boolean | null }[]>([]);
   const [selected, setSelected] = useState<string[]>(writer?.workspaces ?? []);
   const [mode, setMode] = useState<Writer['mode']>(writer?.mode ?? 'planned');
   const [timezone, setTimezone] = useState(writer?.timezone ?? browserZone());
@@ -90,7 +91,7 @@ export function CalendarWriter({ source, workspaces, possible, reload }: {
           setCalendars([]);
           void action(async () => {
             const found = await api.discoverCalendars({ provider, url: url.trim(), username: username.trim(), password: password.trim() });
-            const writable = found.calendars.filter((c) => c.writable);
+            const writable = found.calendars.filter((c) => c.writable !== false);
             if (!writable.length) throw new ApiError(400, 'no_writable_calendars', 'Keine Kalender mit Schreibrechten gefunden.');
             setCalendars(writable); setUrl(''); setPassword(password.trim());
           }, 'Kalender gefunden. Wähle denselben Kalender wie bei deiner Leseverbindung.');
@@ -99,7 +100,7 @@ export function CalendarWriter({ source, workspaces, possible, reload }: {
           <label htmlFor={`${id}-icloud`}>Zielkalender</label>
           <select id={`${id}-icloud`} className="set-input" required value={calendars.some((calendar) => calendar.url === url) ? url : ''} onChange={(e) => setUrl(e.target.value)}>
             <option value="">Kalender auswählen …</option>
-            {calendars.map((calendar) => <option key={calendar.url} value={calendar.url}>{calendar.name}</option>)}
+            {calendars.map((calendar) => <option key={calendar.url} value={calendar.url}>{calendar.name} · {calendarAccessLabel(calendar.writable)}</option>)}
           </select>
         </> : null}
         </div></details>}

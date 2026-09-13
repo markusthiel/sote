@@ -1141,8 +1141,9 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
       return;
     }
     let credentials;
+    let writable: boolean | null = null;
     if (body['kind'] === 'caldav') {
-      try { credentials = readCalDavCredentials(body); await checkCalendar(credentials, davRequest, false); }
+      try { credentials = readCalDavCredentials(body); writable = await checkCalendar(credentials, davRequest, false); }
       catch (e) { if (!(e instanceof CalDavError)) throw e; fail(res, 400, 'calendar_access', e.message); return; }
     } else if (body['kind'] !== undefined && body['kind'] !== 'ics') {
       fail(res, 400, 'bad_calendar', 'Unbekannte Kalenderverbindung.'); return;
@@ -1152,7 +1153,7 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
       url,
       color: colorValue(body?.['color']) === undefined ? null : String(body?.['color']),
       showsIn,
-      ...(credentials ? { credentials } : {}),
+      ...(credentials ? { credentials, writable } : {}),
     });
     if (ergebnis === 'no_key') {
       fail(res, 503, 'no_key', 'dieser Server hat keinen Schlüssel, um Adressen zu versiegeln');

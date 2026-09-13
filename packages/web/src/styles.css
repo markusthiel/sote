@@ -7250,6 +7250,9 @@ label.btn {
 .calendar-field-grid,
 .calendar-workspace-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sone-space-5); }
 .calendar-inline-status { color: var(--accent); font-size: var(--sone-text-sm); margin: 0; }
+.calendar-access-badge { display: inline-block; justify-self: start; max-inline-size: 100%; padding: var(--sone-space-2) var(--sone-space-4); border-radius: var(--sone-radius); background: var(--surface-chrome); color: var(--text-muted); font-size: var(--sone-text-xs); font-weight: 550; }
+.calendar-access-badge[data-access="write"] { color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--surface-raised)); }
+.calendar-connection-title > .calendar-access-badge { margin-block-start: var(--sone-space-3); }
 .calendar-writer { max-inline-size: 48rem; }
 .calendar-writer h3 { font-size: 1.05rem; font-weight: 550; margin-block-start: 0; }
 .calendar-writer > .calendar-source-form { margin-block-start: var(--sone-space-6); }

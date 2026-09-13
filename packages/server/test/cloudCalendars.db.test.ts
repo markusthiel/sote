@@ -76,8 +76,13 @@ for(const provider of ['google','microsoft'] as const){
   test(`${provider}: Kalenderauswahl prüft Besitz und Schreibrechte, erneutes Verbinden bleibt eindeutig`,async(t)=>{
     const f=await fixture(provider);t.mock.method(globalThis,'fetch',f.fetcher);
     assert.equal(await createCloudSource(pool,f.user,f.account,'cal','Doppelt',f.fetcher),f.feed);
+    assert.equal((await listFeeds(pool,f.user)).find(feed=>feed.id===f.feed)?.writable,true);
     await assert.rejects(()=>createCloudSource(pool,randomUUID(),f.account,'cal','',f.fetcher),/gibt es nicht/);
     const readonly=await createCloudSource(pool,f.user,f.account,'readonly','Nur lesen',f.fetcher);await assert.rejects(()=>saveWriter(pool,f.user,readonly,f.input),/Schreibrechte/);
+    assert.equal((await listFeeds(pool,f.user)).find(feed=>feed.id===readonly)?.writable,false);
+    await pool.query('UPDATE calendar_sources SET writable=NULL WHERE id=$1',[f.feed]);
+    await fetchFeed(pool,f.feed,now);
+    assert.equal((await listFeeds(pool,f.user)).find(feed=>feed.id===f.feed)?.writable,true);
     assert.equal((await listFeeds(pool,f.user))[0]?.kind,provider);assert.ok(!JSON.stringify(await listFeeds(pool,f.user)).includes('refresh'));
   });
   test(`${provider}: Plan und Frist bleiben getrennt; Fehler beim Lesen erhalten fremde Termine`,async(t)=>{
