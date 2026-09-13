@@ -1,6 +1,6 @@
 # CalDAV-Schreibanbindung
 
-Stand: 13.09.2026. Implementierung für main; iCloud-Suche vom Nutzer bestätigt, Schreiben am echten Konto noch fehlerhaft.
+Stand: 13.09.2026. iCloud-Suche und erster vollständiger Schreibabgleich am echten Konto vom Nutzer bestätigt: sieben Kalenderkopien, zuletzt abgeglichen um 16:44:39 Uhr nach Update auf `5d78301`.
 
 ## Einrichtung
 
@@ -89,4 +89,6 @@ Ein [reproduzierbarer Fehlerbericht in vdirsyncer #1200](https://github.com/pimu
 
 Die Anpassung erfolgt vor dem Erzeugen und Speichern des Fingerprints, damit Bestätigung, Wiederholung nach verlorener PUT-Antwort und Löschen dieselbe Kalenderdatei zuordnen. Es werden keine Ressourcen umbenannt und keine Verbindungen neu angelegt.
 
-19 Kalenderformat- und 38 CalDAV-Protokoll-/PostgreSQL-Tests sowie Server-Typprüfung und -Build bestehen. Der neue Format-Test scheitert vor der Korrektur an der fehlenden Endzeit. Der Datenbanktest simuliert iClouds Ablehnung und prüft zusätzlich verlorene PUT-Antwort, Wiederholung ohne Duplikate und Aufräumen nach Erledigung. Die Bestätigung am betroffenen iCloud-Konto steht noch aus. Für diese Produktivkorrektur muss nach erfolgreichem Image-Build das neue Image in Portainer gezogen und der Servercontainer neu erstellt werden; das frühere Diagnoseskript allein aktualisiert keinen Anwendungscode.
+19 Kalenderformat- und 38 CalDAV-Protokoll-/PostgreSQL-Tests sowie Server-Typprüfung und -Build bestehen. Der neue Format-Test scheitert vor der Korrektur an der fehlenden Endzeit. Der Datenbanktest simuliert iClouds Ablehnung und prüft zusätzlich verlorene PUT-Antwort, Wiederholung ohne Duplikate und Aufräumen nach Erledigung. Für diese Produktivkorrektur muss nach erfolgreichem Image-Build das neue Image in Portainer gezogen und der Servercontainer neu erstellt werden; das frühere Diagnoseskript allein aktualisiert keinen Anwendungscode.
+
+Nach dem Update auf `5d78301` meldet der Nutzer am 13.09.2026: „Schreiben eingeschaltet · 7 Kalenderkopien · Zuletzt abgeglichen: 13.9.2026, 16:44:39“. Damit ist der erste vollständige Schreibabgleich mit dem eigenen iCloud-Kalender bestätigt und der zuvor gemeldete PUT-404 behoben. Änderungen, Erledigung und Konflikte sind durch automatisierte Tests abgedeckt; eine zusätzliche Bestätigung dieser Abläufe am echten Konto liegt bisher nicht vor.
