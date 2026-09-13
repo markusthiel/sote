@@ -4200,6 +4200,17 @@ select.target { }
   box-shadow: var(--sote-shadow-lg);
 }
 
+.fpop[role="dialog"] { max-block-size: min(40rem, var(--schedule-room, 75dvh)); overflow-y: auto; }
+.task-schedule { padding: var(--sone-space-5); text-align: start; }
+.task-schedule fieldset { display: grid; gap: var(--sone-space-4); border: 0; margin: 0; padding: 0; min-inline-size: 0; }
+.task-schedule label, .task-schedule fieldset > span { font-size: var(--sone-text-sm); }
+.task-schedule .set-input { inline-size: 100%; min-inline-size: 0; box-sizing: border-box; }
+.task-schedule p { margin: 0; overflow-wrap: anywhere; }
+.task-duration-choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sone-space-3); }
+.task-duration-choices [aria-pressed="true"] { color: var(--accent-text); background: var(--accent-quiet); }
+.task-schedule-actions { display: flex; flex-wrap: wrap; gap: var(--sone-space-4); margin-block-start: var(--sone-space-4); }
+.menu.task-schedule-menu { inline-size: min(20rem, calc(100vw - var(--sone-space-7))); max-block-size: min(40rem, var(--schedule-room, 75dvh)); }
+
 .fpop-row {
   display: flex;
   align-items: center;

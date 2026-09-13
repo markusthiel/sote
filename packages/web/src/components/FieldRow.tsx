@@ -37,6 +37,7 @@ export function FieldRow({
   empty,
   children,
   disabled,
+  popupRole = 'menu',
 }: {
   label: string;
   /** Der gesetzte Wert, oder `null` für „nichts gesetzt". */
@@ -46,6 +47,7 @@ export function FieldRow({
   /** Die Klappe. Bekommt ein `close`, damit die Wahl sie schließen kann. */
   children: (close: () => void) => ReactNode;
   disabled?: boolean;
+  popupRole?: 'menu' | 'dialog';
 }) {
   const [open, setOpen] = useState(false);
   const box = useRef<HTMLDivElement | null>(null);
@@ -92,7 +94,7 @@ export function FieldRow({
         // Vorleseansage nicht, was sich ändert.
         aria-label={`${label}: ${value ?? empty} — ändern`}
         aria-expanded={open}
-        aria-haspopup="menu"
+        aria-haspopup={popupRole}
         disabled={disabled === true}
         onClick={() => setOpen((o) => !o)}
       >
@@ -102,7 +104,7 @@ export function FieldRow({
         </span>
       </button>
       {open ? (
-        <div className="fpop" role="menu" aria-labelledby={`${id}-l`}>
+        <div className="fpop" role={popupRole} aria-labelledby={`${id}-l`}>
           {children(close)}
         </div>
       ) : null}

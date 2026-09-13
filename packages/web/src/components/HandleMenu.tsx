@@ -12,12 +12,13 @@
  * Datum, damit niemand nachzählen muss, was „nächster Montag" heißt.
  */
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import type { TaskPatch, Task } from '../api.js';
 import { CalendarOffIcon } from './viewIcons.js';
 import { TrashIcon } from './icons.js';
 import { whenLabel } from '../dates.js';
+import { TaskSchedule } from './TaskSchedule.js';
 
 const PRIORITIES: readonly { level: 1 | 2 | 3 | 4; name: string; color: string }[] = [
   { level: 1, name: 'Dringend', color: 'var(--danger)' },
@@ -64,6 +65,7 @@ export function HandleMenu({
   onClose: () => void;
 }) {
   const box = useRef<HTMLDivElement>(null);
+  const [scheduling, setScheduling] = useState(false);
 
   // Schließen bei Klick daneben und bei Escape — an einer Stelle, damit nicht
   // jedes Popup sein eigenes Verhalten bekommt (SONEs `useDismiss`).
@@ -83,8 +85,10 @@ export function HandleMenu({
   }, [onClose]);
 
   return (
-    <div className="menu" ref={box} role="menu" aria-busy={busy}>
+    <div className={scheduling ? 'menu task-schedule-menu' : 'menu'} ref={box} role={scheduling ? 'dialog' : 'menu'} aria-label={scheduling ? 'Aufgabe planen' : undefined} aria-busy={busy}>
+      {scheduling ? <TaskSchedule task={task} busy={busy} onSave={onPatch} onCancel={() => setScheduling(false)} /> : <>
       <div className="menu-label">Geplant</div>
+      <button type="button" className="menu-item" role="menuitem" disabled={busy} onClick={() => setScheduling(true)}>Datum, Uhrzeit und Dauer …</button>
       {whenOptions(now).map((option) => (
         <button
           key={option.label}
@@ -143,6 +147,7 @@ export function HandleMenu({
             Zeichen in dieser Liste sagt genau das. */}
         <TrashIcon size={15} /> In den Papierkorb
       </button>
+      </>}
     </div>
   );
 }

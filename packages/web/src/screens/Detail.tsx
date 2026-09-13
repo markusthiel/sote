@@ -32,6 +32,8 @@ import {
 import { useNudge } from '../hooks/useNudge.js';
 import { toggleDone } from '../tasks/toggleDone.js';
 import { FieldRow, FreeDate, FreeDuration, FreeLabel } from '../components/FieldRow.js';
+import { TaskSchedule } from '../components/TaskSchedule.js';
+import { DURATION_CHOICES } from '../taskSchedule.js';
 import { LookPicker } from '../components/LookPicker.js';
 import {
   CheckSquareIcon,
@@ -753,10 +755,11 @@ export function Detail({
 
             <FieldRow
               label="geplant"
+              popupRole="dialog"
               value={
                 task.planned === null
                   ? null
-                  : whenLabel(new Date(task.planned), task.plannedAllDay, now)
+                  : `${whenLabel(new Date(task.planned), task.plannedAllDay, now)}${task.plannedAllDay ? ' · ganztägig' : ''}`
               }
               empty="kein Datum"
               disabled={busy}
@@ -767,7 +770,6 @@ export function Detail({
                     <button
                       key={o.label}
                       type="button"
-                      role="menuitem"
                       className="fpop-row"
                       onClick={() => {
                         close();
@@ -790,7 +792,6 @@ export function Detail({
                   ))}
                   <button
                     type="button"
-                    role="menuitem"
                     className="fpop-row"
                     disabled={task.planned === null}
                     onClick={() => {
@@ -800,13 +801,10 @@ export function Detail({
                   >
                     <span className="empty-value">kein Datum</span>
                   </button>
-                  <FreeDate
-                    label="anderer Tag"
-                    onPick={(at) => {
+                  <TaskSchedule task={task} busy={busy} onCancel={close}
+                    onSave={(fields) => {
                       close();
-                      void save(() =>
-                        anbindung.patch({ planned: at.toISOString(), plannedAllDay: true }),
-                      );
+                      void save(() => anbindung.patch({ ...fields }));
                     }}
                   />
                 </>
@@ -964,7 +962,7 @@ export function Detail({
             >
               {(close) => (
                 <>
-                  {[15, 30, 60, 120].map((minutes) => (
+                  {DURATION_CHOICES.map(({ minutes, label }) => (
                     <button
                       key={minutes}
                       type="button"
@@ -976,7 +974,7 @@ export function Detail({
                         void save(() => anbindung.patch({ duration: minutes }));
                       }}
                     >
-                      {formatDuration(minutes)}
+                      {label}
                     </button>
                   ))}
                   {task.duration === null ? null : (

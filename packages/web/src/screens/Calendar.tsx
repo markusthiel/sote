@@ -576,7 +576,7 @@ export function Calendar({
               .filter((e) => !e.allDay)
               .map((e) => {
                 const minuten = e.at.getHours() * 60 + e.at.getMinutes();
-                const dauer = Math.max(e.task.duration ?? DEFAULT_MINUTES, 20);
+                const dauer = Math.max(e.task.duration ?? DEFAULT_MINUTES, 15);
                 return (
                   <div
                     key={e.task.id}
@@ -597,7 +597,7 @@ export function Calendar({
                 aria-hidden="true"
                 style={{
                   top: `${(drag.ziel.minutes / 60) * HOUR_REM}rem`,
-                  height: `${(Math.max((tasks ?? []).find((t) => t.id === drag.id)?.duration ?? DEFAULT_MINUTES, 20) / 60) * HOUR_REM}rem`,
+                  height: `${(Math.max((tasks ?? []).find((t) => t.id === drag.id)?.duration ?? DEFAULT_MINUTES, 15) / 60) * HOUR_REM}rem`,
                 }}
               >
                 {clock(new Date(2000, 0, 1, Math.floor(drag.ziel.minutes / 60), drag.ziel.minutes % 60))}
