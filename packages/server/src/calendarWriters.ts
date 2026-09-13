@@ -7,6 +7,7 @@ import { enqueue, handle } from './jobs.js';
 import { keyPresent, seal, unseal } from './secretbox.js';
 import { effectiveListLevel } from './settings.js';
 import { baseUrl } from './env.js';
+import { rejectedPutError } from './caldavDiagnostics.js';
 import { calendarUrl, CalDavError, CalDavConflict, checkCalendar, davFailure, davRequest, eventFingerprint, eventUid, strongEtag,
   type CalDavCredentials, type DavTransport } from './caldav.js';
 
@@ -180,7 +181,7 @@ export async function putEvent(credentials: CalDavCredentials, written: WrittenE
     if (current.status !== 200 || !strongEtag(current.etag) || remoteFingerprint(current.body) !== eventFingerprint(ics)) throw davFailure(412);
     return current.etag;
   }
-  if (![200, 201, 204].includes(response.status)) throw new CalDavError(`Termin schreiben (PUT): ${davFailure(response.status).message}`);
+  if (![200, 201, 204].includes(response.status)) throw await rejectedPutError(credentials, written.uid, response, transport);
   if (!strongEtag(response.etag)) throw new CalDavError('Der Kalenderdienst liefert keinen brauchbaren ETag.');
   return response.etag;
 }

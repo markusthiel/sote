@@ -9,7 +9,7 @@ import ICAL from 'ical.js';
 export class CalDavError extends Error {}
 export class CalDavConflict extends CalDavError {}
 export interface CalDavCredentials { url: string; username: string; password: string }
-export interface DavResponse { status: number; body: string; etag: string | null; location?: string }
+export interface DavResponse { status: number; body: string; etag: string | null; location?: string; server?: string }
 export type DavTransport = (url: string, credentials: CalDavCredentials, method: string,
   body?: string, headers?: Record<string, string>) => Promise<DavResponse>;
 
@@ -75,7 +75,8 @@ export const davRequest: DavTransport = async (raw, credentials, method, body = 
       });
       res.on('error', () => fail('Die Verbindung zum Kalenderdienst ist abgebrochen.'));
       res.on('end', () => resolve({ status: res.statusCode ?? 0, body: Buffer.concat(chunks).toString('utf8'), etag: res.headers.etag ?? null,
-        ...(res.headers.location ? { location: res.headers.location } : {}) }));
+        ...(res.headers.location ? { location: res.headers.location } : {}),
+        ...(typeof res.headers.server === 'string' ? { server: res.headers.server } : {}) }));
     });
     const timer = setTimeout(() => { req.destroy(); fail('Der Kalenderdienst antwortet nicht rechtzeitig.'); }, 10_000);
     req.on('close', () => clearTimeout(timer));

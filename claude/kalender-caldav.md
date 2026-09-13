@@ -53,4 +53,10 @@ Neue Einträge erhalten deshalb eine stabile 32-stellige Kennung aus Verbindung,
 
 Die Statusanzeige zählt nur bestätigte Kalenderkopien; eine vorgemerkte, aber abgelehnte Übertragung zählt nicht mehr als Erfolg. PUT-Fehler sind als „Termin schreiben (PUT)“ erkennbar. Nach dem Update genügt **Jetzt abgleichen** an der bestehenden Verbindung.
 
-33 Protokoll- und PostgreSQL-Tests bestehen, einschließlich Reparatur einer alten ID, erneuter Abgleiche, anschließender Erledigung, Schutz bestehender Ressourcen und korrigierter Statuszählung. Server-Typprüfung und -Build bestehen. Die Bestätigung mit dem echten iCloud-Konto steht noch aus.
+33 Protokoll- und PostgreSQL-Tests bestehen, einschließlich Reparatur einer alten ID, erneuter Abgleiche, anschließender Erledigung, Schutz bestehender Ressourcen und korrigierter Statuszählung. Server-Typprüfung und -Build bestehen. Der erneute Versuch mit einem eigenen iCloud-Kalender lieferte weiterhin PUT 404; die Verkürzung der UID hat den gemeldeten Fehler somit nicht behoben.
+
+### Schreibdiagnose
+
+Bei PUT 404 prüft SOTE denselben Kalenderordner noch einmal lesend mit PROPFIND. Die Fehlermeldung nennt den Zielserver, die tatsächlich verwendete UID-Länge, den Antworttyp (leer/XML/HTML/Text), bekannte DAV-Fehlercodes und das Ergebnis der Kalenderprüfung. So lassen sich ein nicht mehr erreichbarer Kalenderordner und eine Ablehnung ausschließlich beim Schreiben unterscheiden. Die Diagnose wiederholt keinen PUT, wechselt kein Ziel und zeigt weder Kontopfade noch Kennwörter oder beliebige Antworttexte an.
+
+24 Protokolltests einschließlich drei neuer Diagnosetests bestehen. Die Diagnose ist eine Eingrenzung des weiterhin offenen Fehlers, keine bestätigte iCloud-Schreibkorrektur.
