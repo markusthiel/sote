@@ -1,6 +1,6 @@
 # CalDAV-Schreibanbindung
 
-Stand: 13.09.2026. Implementierung für main; noch nicht mit einem echten Kalenderkonto geprüft.
+Stand: 13.09.2026. Implementierung für main; iCloud-Suche vom Nutzer bestätigt, Schreiben am echten Konto noch fehlerhaft.
 
 ## Einrichtung
 
@@ -60,3 +60,13 @@ Die Statusanzeige zählt nur bestätigte Kalenderkopien; eine vorgemerkte, aber 
 Bei PUT 404 prüft SOTE denselben Kalenderordner noch einmal lesend mit PROPFIND. Die Fehlermeldung nennt den Zielserver, die tatsächlich verwendete UID-Länge, den Antworttyp (leer/XML/HTML/Text), bekannte DAV-Fehlercodes und das Ergebnis der Kalenderprüfung. So lassen sich ein nicht mehr erreichbarer Kalenderordner und eine Ablehnung ausschließlich beim Schreiben unterscheiden. Die Diagnose wiederholt keinen PUT, wechselt kein Ziel und zeigt weder Kontopfade noch Kennwörter oder beliebige Antworttexte an.
 
 24 Protokolltests einschließlich drei neuer Diagnosetests bestehen. Die Diagnose ist eine Eingrenzung des weiterhin offenen Fehlers, keine bestätigte iCloud-Schreibkorrektur.
+
+### Programmkennung beim Schreiben
+
+Die Rückmeldung vom echten Konto bestätigt PUT 404 auf `p39-caldav.icloud.com` mit kurzer UID (32 Bytes), leerem Antworttext von Apple und erfolgreicher anschließender Kalenderprüfung. Die UID-Verkürzung und erneute Einrichtung haben den Schreibfehler nicht behoben.
+
+Der native HTTPS-Transport sendete bisher keinen `User-Agent`. Ein [Entwicklerbericht mit iCloud-Serverantwort und bestätigter Korrektur](https://stackoverflow.com/questions/50720196/creating-new-event-to-icloud-apple-calendar-always-results-400-bad-request) beschreibt erfolgreiche Lesezugriffe, aber abgelehnte PUTs wegen dieser fehlenden Kennung. Dort war der Status 400 mit `Require-User-Agent`, hier ist es 404 ohne Antworttext; die Ursache am betroffenen Konto ist deshalb noch nicht nachgewiesen. SOTE sendet nun bei allen DAV-Aufrufen seine eigene Kennung `SOTE/1.0 (CalDAV)`.
+
+Ein zusätzlicher Transporttest leitet den tatsächlichen Node-HTTP-Aufruf auf einen lokalen Testserver um und prüft die übertragenen Header, Ressourcenadresse, UTF-8-Inhalte sowie If-None-Match/If-Match. Er scheitert vor der Korrektur an der fehlenden Programmkennung. Es werden keine echten Zugangsdaten und kein Apple-Server verwendet. Der nächste reale Abgleich muss bestätigen, ob diese Korrektur den gemeldeten 404 behebt.
+
+Mit der Korrektur bestehen alle 25 CalDAV-Protokoll- und Transporttests sowie Server-Typprüfung und -Build.

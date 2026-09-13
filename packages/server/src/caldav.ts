@@ -61,6 +61,8 @@ export const davRequest: DavTransport = async (raw, credentials, method, body = 
         else callback(null, address.address, address.family);
       }) as NonNullable<Parameters<typeof request>[1]>['lookup'],
       headers: {
+        // iCloud verlangt beim Schreiben eine Programmkennung; node:https setzt keine.
+        'user-agent': 'SOTE/1.0 (CalDAV)',
         authorization: `Basic ${Buffer.from(`${credentials.username}:${credentials.password}`).toString('base64')}`,
         'content-type': method === 'PROPFIND' ? 'application/xml; charset=utf-8' : 'text/calendar; charset=utf-8',
         'content-length': Buffer.byteLength(body), ...headers,
