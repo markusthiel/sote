@@ -70,7 +70,7 @@ import {
   type CalendarSpan,
 } from '../calendar.js';
 import { longDate } from '../dates.js';
-import { CheckSquareIcon } from '../components/icons.js';
+import { ArrowUturnIcon, CalendarIcon, CheckSquareIcon, ChevronRightIcon, ColumnsIcon, PageIcon, TableIcon } from '../components/icons.js';
 import { TaskRow } from '../components/TaskRow.js';
 import { DoneHiddenIcon } from '../components/viewIcons.js';
 import { useNudge } from '../hooks/useNudge.js';
@@ -664,7 +664,7 @@ export function Calendar({
               : `${anzahl} ${anzahl === 1 ? 'Aufgabe' : 'Aufgaben'} · ${visibleEvents.length} Termine`}
         </div>
         <div className="head-views" role="group" aria-label="Anzeige">
-          <button type="button" className="head-toggle wide" onClick={() => void load()}>Aktualisieren</button>
+          <button type="button" className="head-toggle" title="Aktualisieren" aria-label="Aktualisieren" onClick={() => void load()}><ArrowUturnIcon size={18} /></button>
           <button
             type="button"
             className="head-toggle"
@@ -675,30 +675,32 @@ export function Calendar({
           >
             {showDone ? <CheckSquareIcon size={16} /> : <DoneHiddenIcon />}
           </button>
-          <button type="button" className="head-toggle" aria-label="Zurück" onClick={() => onGo(span, step(span, anker, -1))}>
-            ‹
+          <button type="button" className="head-toggle" title="Zurück" aria-label="Zurück" onClick={() => onGo(span, step(span, anker, -1))}>
+            <ChevronRightIcon size={18} style={{ transform: 'rotate(180deg)' }} />
           </button>
-          <button type="button" className="head-toggle wide" onClick={() => onGo(span, heute)}>
-            Heute
+          <button type="button" className="head-toggle" title="Heute" aria-label="Heute" onClick={() => onGo(span, heute)}>
+            <CalendarIcon size={18} />
           </button>
-          <button type="button" className="head-toggle" aria-label="Weiter" onClick={() => onGo(span, step(span, anker, 1))}>
-            ›
+          <button type="button" className="head-toggle" title="Weiter" aria-label="Weiter" onClick={() => onGo(span, step(span, anker, 1))}>
+            <ChevronRightIcon size={18} />
           </button>
           {(
             [
-              ['month', 'Monat'],
-              ['week', 'Woche'],
-              ['day', 'Tag'],
+              ['month', 'Monat', TableIcon],
+              ['week', 'Woche', ColumnsIcon],
+              ['day', 'Tag', PageIcon],
             ] as const
-          ).map(([s, label]) => (
+          ).map(([s, label, Icon]) => (
             <button
               key={s}
               type="button"
-              className="head-toggle wide"
+              className="head-toggle"
+              title={label}
+              aria-label={label}
               aria-pressed={span === s}
               onClick={() => onGo(s, anker)}
             >
-              {label}
+              <Icon size={18} />
             </button>
           ))}
         </div>
