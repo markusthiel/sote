@@ -41,7 +41,8 @@ const css = readFileSync(join(wurzel, 'packages/web/src/styles.css'), 'utf8').re
 );
 
 /** Aus der Oberflaeche gesetzt, nicht im Stylesheet erklaert. */
-const VON_AUSSEN = new Set(['--eigen']);
+// `--cal-days`: wie viele Spalten das Kalenderraster hat (1 oder 7), vom Bauteil gesetzt.
+const VON_AUSSEN = new Set(['--eigen', '--cal-days']);
 
 const erklaert = new Set(VON_AUSSEN);
 /*

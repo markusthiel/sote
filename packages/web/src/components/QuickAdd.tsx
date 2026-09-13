@@ -127,15 +127,13 @@ export function QuickAdd({
     if (parsed.planned !== undefined) {
       chips.push({
         label: 'geplant',
-        value: whenLabel(
-          parsed.planned,
-          parsed.planned.getHours() === 0 && parsed.planned.getMinutes() === 0,
-          now,
-        ),
+        // Ganztägig sagt der Kern, der es in der Wanduhr entschieden hat —
+        // nicht ein Blick auf 0:00 am fertigen Zeitpunkt.
+        value: whenLabel(parsed.planned, parsed.plannedAllDay, now),
       });
     }
     if (parsed.due !== undefined) {
-      chips.push({ label: 'frist', value: whenLabel(parsed.due, true, now) });
+      chips.push({ label: 'frist', value: whenLabel(parsed.due, parsed.dueAllDay, now) });
     }
     if (parsed.recurrence !== undefined) {
       chips.push({

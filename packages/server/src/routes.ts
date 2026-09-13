@@ -118,7 +118,7 @@ import {
 } from './board.js';
 import { colorLabel, LabelTrouble, labelsOfWorkspace, removeLabel, renameLabel } from './labels.js';
 import { listViewsOf, setListView, ViewTrouble } from './listViews.js';
-import { childrenOf, counts, list, listAcross, splitOverdue, type ViewId } from './views.js';
+import { childrenOf, counts, list, listAcross, splitOverdue, type ViewId, span } from './views.js';
 
 const COOKIE = 'sote_session';
 
@@ -1236,6 +1236,30 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
         ).map(([id, kinder]) => [id, kinder.map(taskView)]),
       ),
     });
+    return;
+  }
+
+  /*
+   * Der Kalender: alle Aufgaben mit Zeitpunkt zwischen zwei Augenblicken.
+   *
+   * Ein eigener Weg und keine fünfte Sicht in `/api/tasks`: die Sichten
+   * antworten auf „was steht an", der Kalender auf „was liegt in diesem
+   * Fenster" — die Grenzen kommen vom Aufrufer, nicht aus `now`.
+   * Höchstens 62 Tage: ein Monat mit Rand, mehr fragt die Ansicht nie.
+   */
+  if (path === '/api/span' && method === 'GET') {
+    const from = new Date(url.searchParams.get('from') ?? '');
+    const to = new Date(url.searchParams.get('to') ?? '');
+    if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime()) || to <= from) {
+      fail(res, 400, 'bad_span', '`from` und `to` sind Zeitpunkte, und `to` liegt danach');
+      return;
+    }
+    if (to.getTime() - from.getTime() > 62 * 86_400_000) {
+      fail(res, 400, 'span_too_long', 'höchstens 62 Tage auf einmal');
+      return;
+    }
+    const rows = await span(ctx.pool, workspaceId, from, to, url.searchParams.get('done') === '1');
+    json(res, 200, { tasks: rows.map(taskView) });
     return;
   }
 

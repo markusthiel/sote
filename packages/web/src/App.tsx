@@ -24,10 +24,12 @@ import { ProjectTree } from './components/ProjectTree.js';
 import { TopBar } from './components/TopBar.js';
 import { WorkspaceMenu } from './components/WorkspaceMenu.js';
 import { modeOf, type ModeId } from './modes.js';
+import { isoDate } from './calendar.js';
 import { modeOfRoute, parseRoute, pathOf, placeOf, viewOf, type Route } from './route.js';
 import { Setup } from './screens/Setup.js';
 import { SignIn } from './screens/SignIn.js';
 import { TaskList } from './screens/TaskList.js';
+import { Calendar } from './screens/Calendar.js';
 import { Detail } from './screens/Detail.js';
 import { Search } from './screens/Search.js';
 import { landingRoute, markRoute, rememberRoute } from './landing.js';
@@ -972,6 +974,19 @@ export function App() {
               )}
             </button>
           ))}
+          {/*
+            Der Kalender: ein Ort wie die vier darüber, ohne Zahl — „wie viele
+            Aufgaben liegen im Kalender" ist keine Frage, die jemand stellt.
+            Leuchtet, solange man in irgendeiner seiner drei Spannen ist.
+          */}
+          <button
+            className="panel-menu-item"
+            aria-label="Kalender"
+            aria-current={route.kind === 'calendar' ? 'page' : undefined}
+            onClick={() => go({ kind: 'calendar', span: 'week', date: isoDate(now) })}
+          >
+            <span className="panel-menu-label">Kalender</span>
+          </button>
           </div>
 
           <ProjectTree
@@ -1138,6 +1153,18 @@ export function App() {
               setScheme(out.scheme);
               setLook(out.look);
             }}
+          />
+        ) : route.kind === 'calendar' ? (
+          <Calendar
+            span={route.span}
+            date={route.date}
+            workspace={workspace}
+            projects={projects}
+            now={now}
+            openTask={openTask}
+            onOpenTask={setOpenTask}
+            onGo={(span, tag) => go({ kind: 'calendar', span, date: isoDate(tag) })}
+            onChanged={() => void loadPanel()}
           />
         ) : route.kind !== 'mode' && route.kind !== 'search' ? (
           <TaskList

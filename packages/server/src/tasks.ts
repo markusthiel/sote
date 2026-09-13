@@ -360,9 +360,9 @@ export async function createFromLine(pool: Pool, input: CreateFromLine): Promise
         // Eine Uhrzeit ist eine Erinnerung (Konzept, Abschnitt 9). Ob eine
         // gesetzt wurde, steht in genau diesem Feld — nicht in einem zweiten
         // Schalter, den niemand pflegt.
-        q.planned === undefined ? true : !hasTime(q.planned),
+        q.plannedAllDay,
         q.due ?? null,
-        q.due === undefined ? true : !hasTime(q.due),
+        q.dueAllDay,
         (q.priority ?? 4) satisfies Priority | 4,
         rec?.kind === 'calendar' ? rec.rrule : null,
         rec?.kind === 'calendar' ? rec.dtstart : null,
@@ -503,9 +503,6 @@ export async function createFromLine(pool: Pool, input: CreateFromLine): Promise
     };
   }));
 }
-
-const hasTime = (d: Date) =>
-  d.getUTCHours() !== 0 || d.getUTCMinutes() !== 0 || d.getUTCSeconds() !== 0;
 
 export interface Completion {
   readonly completed: TaskRow;

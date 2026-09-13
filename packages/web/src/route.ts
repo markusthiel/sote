@@ -65,6 +65,12 @@ export type Route =
    */
   | { readonly kind: 'inbox' }
   /**
+   * Der Kalender: eine Spanne (Monat, Woche, Tag) und ein Tag darin, als
+   * `YYYY-MM-DD`. Der Tag und kein Zeitpunkt, damit die Adresse in jeder Zone
+   * denselben Tag meint.
+   */
+  | { readonly kind: 'calendar'; readonly span: 'month' | 'week' | 'day'; readonly date: string }
+  /**
    * Ein Link auf ein Projekt, ohne Konto (Konzept 10e).
    *
    * Der Token steht in der Adresse und nicht in einem Kopf: ein Link muss sich
@@ -152,6 +158,15 @@ export function parseRoute(pathname: string, queryString = ''): Route {
       return { kind: 'someday' };
     case 'posteingang':
       return { kind: 'inbox' };
+    case 'kalender': {
+      // `/kalender` allein ist die Woche von heute; die Spanne kommt als Wort,
+      // der Tag als `YYYY-MM-DD`. Unsinn fällt auf die Woche von heute zurück,
+      // nicht auf einen Fehlerbildschirm.
+      const span =
+        parts[1] === 'monat' ? 'month' : parts[1] === 'tag' ? 'day' : 'week';
+      const date = /^\d{4}-\d{2}-\d{2}$/.test(parts[2] ?? '') ? parts[2]! : todayIso();
+      return { kind: 'calendar', span, date };
+    }
     case 'freigaben':
       return { kind: 'shares' };
     case 'benachrichtigungen':
@@ -184,6 +199,8 @@ export function pathOf(route: Route): string {
       return '/irgendwann';
     case 'inbox':
       return '/posteingang';
+    case 'calendar':
+      return `/kalender/${route.span === 'month' ? 'monat' : route.span === 'day' ? 'tag' : 'woche'}/${route.date}`;
     case 'share':
       return `/f/${route.token}`;
     case 'shares':
@@ -227,6 +244,12 @@ export function modeOfRoute(route: Route): string {
   // Die Verwaltung ist KEIN Modus. Sie steht nicht in der Schiene, weil sie
   // kein Ort ist, an dem man arbeitet — sie steht im Kontomenue, wie in SONE.
   return route.kind === 'mode' ? route.mode : 'tasks';
+}
+
+/** Heute als `YYYY-MM-DD`, örtlich — für `/kalender` ohne Tag. */
+function todayIso(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
 /**

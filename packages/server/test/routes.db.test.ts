@@ -1137,3 +1137,34 @@ test('Kennwortraten wird gedrosselt — vor scrypt, mit Retry-After', async () =
   });
   assert.equal(andere.status, 200);
 });
+
+test('der Kalender holt alle Aufgaben mit Zeitpunkt in einem Fenster — Plan vor Frist', async () => {
+  const a = await call('/api/tasks', {
+    method: 'POST',
+    body: JSON.stringify({ line: 'Im Fenster 15.9.2026 9 Uhr +haus' }),
+  });
+  assert.equal(a.status, 201);
+  const b = await call('/api/tasks', {
+    method: 'POST',
+    body: JSON.stringify({ line: 'Ausserhalb 30.9.2026 +haus' }),
+  });
+  assert.equal(b.status, 201);
+  const ohne = await call('/api/tasks', {
+    method: 'POST',
+    body: JSON.stringify({ line: 'Ohne Zeitpunkt +haus' }),
+  });
+  assert.equal(ohne.status, 201);
+
+  const res = await call('/api/span?from=2026-09-14T00:00:00Z&to=2026-09-21T00:00:00Z');
+  assert.equal(res.status, 200);
+  const body = (await res.json()) as { tasks: { title: string }[] };
+  const titel = body.tasks.map((t) => t.title);
+  assert.ok(titel.includes('Im Fenster'), 'drin');
+  assert.ok(!titel.includes('Ausserhalb'), 'nicht drin');
+  assert.ok(!titel.includes('Ohne Zeitpunkt'), 'ohne Tag steht in keinem Kalender');
+
+  const kaputt = await call('/api/span?from=heute&to=morgen');
+  assert.equal(kaputt.status, 400);
+  const zuLang = await call('/api/span?from=2026-01-01T00:00:00Z&to=2026-06-01T00:00:00Z');
+  assert.equal(zuLang.status, 400);
+});

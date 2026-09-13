@@ -391,3 +391,22 @@ test('„nächsten Montag“ ist der nächste Montag', () => {
   assert.equal(tag('nächsten Montag Team'), '2026-09-14T00:00');
   assert.equal(tag('kommenden Freitag'), '2026-09-18T00:00');
 });
+
+test('„am 15.9." ist ganztägig — auch aus Berlin, wo Mitternacht 22:00 UTC ist', () => {
+  /*
+   * Gefunden im Kalender: jede Aufgabe mit Datum ohne Uhrzeit aus einem Browser
+   * ausserhalb von UTC stand als Block um 0:00 statt in der Zeile für
+   * Ganztägiges. Der Server hatte am fertigen Zeitpunkt in UTC abgelesen, ob
+   * eine Uhrzeit dran ist; in Berlin ist Mitternacht 22:00 UTC. Jetzt sagt es
+   * der Parser, bevor er umrechnet.
+   */
+  const berlin = parseQuickAdd('Steuer abgeben 15.9.2026', { now: NOW, zone: 'Europe/Berlin' });
+  assert.equal(berlin.plannedAllDay, true);
+  assert.equal(berlin.planned?.toISOString(), '2026-09-14T22:00:00.000Z');
+  const mitZeit = parseQuickAdd('Zahnarzt 15.9.2026 9 Uhr', { now: NOW, zone: 'Europe/Berlin' });
+  assert.equal(mitZeit.plannedAllDay, false);
+  const frist = parseQuickAdd('Abgabe bis 20.9.2026', { now: NOW, zone: 'Europe/Berlin' });
+  assert.equal(frist.dueAllDay, true);
+  const nichts = parseQuickAdd('Ohne Datum', { now: NOW });
+  assert.equal(nichts.plannedAllDay, true, 'ohne Datum ist die Frage müssig — und die Vorgabe der Spalte true');
+});

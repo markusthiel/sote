@@ -357,6 +357,40 @@ export async function list(
 }
 
 /**
+ * Alle Aufgaben mit einem Zeitpunkt in einem Zeitraum — für den Kalender.
+ *
+ * Der Zeitpunkt einer Aufgabe ist ihr Plan, sonst ihre Frist: dieselbe
+ * Regel wie in Heute und Demnächst (`COALESCE(planned_at, due_at)`). Eine
+ * Aufgabe ohne beides steht in keinem Kalender — sie hat keinen Tag.
+ *
+ * `from` einschliesslich, `to` ausschliesslich, beides Zeitpunkte: der Browser
+ * rechnet aus seiner Zone „Montag 0:00 bis Montag darauf 0:00" und schickt
+ * die Augenblicke. Der Server hat keine Zone und braucht hier auch keine.
+ *
+ * Erledigtes nur auf Wunsch (`withDone`), wie in den Listen; der Papierkorb
+ * nie. Unteraufgaben kommen mit, wenn sie einen eigenen Zeitpunkt haben — im
+ * Kalender zählt der Tag, nicht die Zugehörigkeit.
+ */
+export async function span(
+  q: Pool | PoolClient,
+  workspaceId: string,
+  from: Date,
+  to: Date,
+  withDone = false,
+): Promise<TaskRow[]> {
+  const alive = withDone ? ALIVE_WITH_DONE : ALIVE;
+  return queryRows<TaskRow>(
+    q,
+    `SELECT ${COLUMNS} FROM tasks
+      WHERE workspace_id = $1 AND ${alive}
+        AND COALESCE(planned_at, due_at) >= $2
+        AND COALESCE(planned_at, due_at) < $3
+      ORDER BY COALESCE(planned_at, due_at) ASC, priority ASC, sort_key ASC`,
+    [workspaceId, from, to],
+  );
+}
+
+/**
  * Die Zahlen für das Panel — aus **denselben** Bedingungen wie die Listen.
  *
  * In einer Abfrage und nicht in drei: drei Runden für drei Zahlen sind drei

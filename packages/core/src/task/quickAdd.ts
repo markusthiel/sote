@@ -57,6 +57,19 @@ export interface QuickAdd {
   readonly title: string;
   readonly planned: Date | undefined;
   readonly due: Date | undefined;
+  /**
+   * Ob eine UHRZEIT getippt wurde — entschieden HIER, in der Wanduhr der
+   * Person, und nicht hinterher am Zeitpunkt.
+   *
+   * Der Server las das lange am fertigen `Date` ab: Mitternacht heisst
+   * ganztägig. Mit der Zone des Browsers ist Mitternacht in Berlin aber
+   * 22:00 UTC, und `getUTCHours() !== 0` sagte „hat eine Zeit". Jede Aufgabe
+   * „am 15.9." aus einem Browser ausserhalb von UTC stand darum als Termin
+   * um Mitternacht da statt als Tag — im Kalender ein Block um 0:00. Hier,
+   * vor dem Umrechnen, ist die Frage noch eindeutig.
+   */
+  readonly plannedAllDay: boolean;
+  readonly dueAllDay: boolean;
   readonly recurrence: Recurrence | undefined;
   /** Name, nicht Id: das Auflösen gehört dem Server. */
   readonly project: string | undefined;
@@ -481,10 +494,15 @@ function parseInUtc(input: string, options: QuickAddOptions): QuickAdd {
     planned = recurrence.dtstart;
   }
 
+  const ganztags = (d: Date | undefined): boolean =>
+    d === undefined || (d.getUTCHours() === 0 && d.getUTCMinutes() === 0 && d.getUTCSeconds() === 0);
   return {
     title: r.title(),
     planned,
     due,
+    // In `parseInUtc` IST die Wanduhr UTC — also stimmt die Frage hier.
+    plannedAllDay: ganztags(planned),
+    dueAllDay: ganztags(due),
     recurrence,
     project,
     labels,

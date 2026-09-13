@@ -1305,6 +1305,16 @@ export const api = {
     const s = q.toString();
     return `/api/tasks/${id}/files/${fileId}${s === '' ? '' : `?${s}`}`;
   },
+  /**
+   * Alle Aufgaben mit Zeitpunkt in einem Fenster — für den Kalender. Die
+   * Grenzen als Augenblicke: der Browser rechnet seine Tage in seiner Zone.
+   */
+  span: (from: Date, to: Date, workspace?: string, done = false) =>
+    call<{ tasks: Task[] }>(
+      `/api/span?from=${encodeURIComponent(from.toISOString())}&to=${encodeURIComponent(to.toISOString())}${
+        done ? '&done=1' : ''
+      }${workspace === undefined ? '' : `&workspace=${workspace}`}`,
+    ),
   detail: (id: string, workspace?: string) =>
     call<Detail>(
       `/api/tasks/${id}${workspace === undefined ? '' : `?workspace=${workspace}`}`,
