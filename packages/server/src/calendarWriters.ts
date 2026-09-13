@@ -95,7 +95,11 @@ export async function saveWriter(pool: Pool, userId: string, feedId: string, raw
     await assertSource(db, userId, feedId);
     for (const workspace of input.workspaces) if (await effectiveListLevel(db, userId, workspace) === null) throw new CalDavError('Du kannst nicht alle gewählten Arbeitsbereiche lesen.');
     const old = await queryOne<WriterRow>(db, 'SELECT * FROM calendar_writers WHERE feed_id = $1', [feedId]);
-    const prior = old && !(input.url && input.username && input.password) ? credentialsOf(old) : undefined;
+    const source = !old ? await queryOne<{ caldav_credentials_sealed: string | null }>(db,
+      'SELECT caldav_credentials_sealed FROM calendar_sources WHERE id=$1', [feedId]) : undefined;
+    const readAccess = source?.caldav_credentials_sealed && unseal(source.caldav_credentials_sealed);
+    const prior = old && !(input.url && input.username && input.password) ? credentialsOf(old)
+      : !old && readAccess ? JSON.parse(readAccess) as CalDavCredentials : undefined;
     const credentials = { url: input.url ?? prior?.url ?? '', username: input.username ?? prior?.username ?? '', password: input.password ?? prior?.password ?? '' };
     if (!credentials.url || !credentials.username || !credentials.password) throw new CalDavError('Kalenderadresse, Benutzername und App-Kennwort angeben.');
     if (old) {

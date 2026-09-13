@@ -5,7 +5,7 @@ import { calendarUrl, CalDavError, davFailure, davRequest, type DavTransport } f
 const DAV = 'DAV:';
 const CAL = 'urn:ietf:params:xml:ns:caldav';
 const ROOT = 'https://caldav.icloud.com/';
-export interface ICloudCalendar { url: string; name: string }
+export interface ICloudCalendar { url: string; name: string; writable?: boolean }
 type Step = 'Anmeldung' | 'Alternativer Sucheinstieg' | 'Kalenderordner' | 'Kalenderliste';
 class ICloudHttpError extends CalDavError {
   constructor(readonly status: number, step: Step, host: string) {
@@ -38,7 +38,7 @@ const property = (response: Element, ns: string, name: string): Element | undefi
   return undefined;
 };
 
-export async function discoverICloudCalendars(raw: Record<string, unknown>, transport: DavTransport = davRequest): Promise<ICloudCalendar[]> {
+export async function discoverICloudCalendars(raw: Record<string, unknown>, transport: DavTransport = davRequest, includeReadOnly = false): Promise<ICloudCalendar[]> {
   const username = typeof raw['username'] === 'string' ? raw['username'].trim() : '';
   const password = typeof raw['password'] === 'string' ? raw['password'].trim() : '';
   if (!username || !password || username.length > 4096 || password.length > 4096 || /[:\r\n]/.test(username) || /[\r\n]/.test(password)) {
@@ -98,17 +98,19 @@ export async function discoverICloudCalendars(raw: Record<string, unknown>, tran
       const components = property(response, CAL, 'supported-calendar-component-set');
       if (components && !children(components, CAL, 'comp').some((c) => c.getAttribute('name') === 'VEVENT')) continue;
       const privileges = property(response, DAV, 'current-user-privilege-set');
+      let writable = true;
       if (privileges) {
         const granted = children(privileges, DAV, 'privilege');
         const has = (name: string) => granted.some((p) => children(p, DAV, name).length > 0);
-        if (!(has('all') || has('write') || ['write-content', 'bind', 'unbind'].every(has))) continue;
+        writable = has('all') || has('write') || ['write-content', 'bind', 'unbind'].every(has);
+        if (!writable && !includeReadOnly) continue;
       }
       const href = children(response, DAV, 'href')[0]?.textContent?.trim();
       if (!href) continue;
       const found = appleUrl(href, result.url);
       const url = calendarUrl(found.endsWith('/') ? found : found + '/');
       const name = property(response, DAV, 'displayname')?.textContent?.trim().slice(0, 200) || 'iCloud-Kalender';
-      calendars.set(url, { url, name });
+      calendars.set(url, { url, name, ...(includeReadOnly ? { writable } : {}) });
       if (calendars.size > 100) throw new CalDavError('Mehr als 100 iCloud-Kalender gefunden. Bitte die direkte CalDAV-Adresse verwenden.');
     }
   }

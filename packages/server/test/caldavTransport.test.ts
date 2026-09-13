@@ -42,9 +42,10 @@ test('Der HTTP-Transport sendet eine eigene Programmkennung, UTF-8 und bedingte 
   const body = 'BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:' + entry.uid + '\r\nDTSTAMP:20260913T100000Z\r\nDTSTART:20260914T100000Z\r\nSUMMARY:Büro 🗓\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n';
   assert.equal(await putEvent(credentials, entry, body, davRequest), '"saved"');
   assert.equal(await putEvent(credentials, { ...entry, etag: '"before"' }, body, davRequest), '"saved"');
-  for (const method of ['PROPFIND', 'GET', 'DELETE']) await davRequest(credentials.url, credentials, method);
+  for (const method of ['PROPFIND', 'REPORT', 'GET', 'DELETE']) await davRequest(credentials.url, credentials, method);
 
-  assert.deepEqual(received.map((r) => r.method), ['PUT', 'PUT', 'PROPFIND', 'GET', 'DELETE']);
+  assert.deepEqual(received.map((r) => r.method), ['PUT', 'PUT', 'PROPFIND', 'REPORT', 'GET', 'DELETE']);
+  for (const req of received.slice(2, 4)) assert.equal(req.headers['content-type'], 'application/xml; charset=utf-8');
   for (const req of received) {
     assert.match(req.headers['user-agent'] ?? '', /^SOTE\//);
     assert.equal(req.headers.authorization, `Basic ${Buffer.from('test-user:test-password').toString('base64')}`);

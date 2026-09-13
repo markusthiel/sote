@@ -38,8 +38,9 @@ import { create as createProject, NameTaken, update as updateProject } from './p
 import type { Config } from './env.js';
 import { cookie, fail, json, readJson } from './http/respond.js';
 import { Throttle } from './http/throttle.js';
-import { CalDavError } from './caldav.js';
+import { CalDavError, checkCalendar, davRequest } from './caldav.js';
 import { discoverICloudCalendars } from './icloudCalDav.js';
+import { discoverCalDavCalendars, readCalDavCredentials } from './caldavCalendars.js';
 import { acceptWriterConflict, assertSource, disconnectWriter, pauseWriter, requestWrite, saveWriter, withCalendarWriteLock, writerStatus } from './calendarWriters.js';
 import { accounts, deleteAccount, setAdmin } from './accounts.js';
 import { TRASH_DAYS } from './handlers.js';
@@ -1111,6 +1112,13 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
    * `/api/span`. Die Adresse selbst kommt NIE zurück — sie ist ein
    * Fähigkeitslink, und die Oberfläche braucht nur „gesetzt".
    */
+  if (path === '/api/calendar-sources/discover' && method === 'POST') {
+    const body: unknown = await readJson(req);
+    if (!body || typeof body !== 'object' || Array.isArray(body)) { fail(res, 400, 'bad_calendar', 'Ungültige Kalenderdaten.'); return; }
+    try { json(res, 200, { calendars: await discoverCalDavCalendars(body as Record<string, unknown>) }); }
+    catch (e) { if (!(e instanceof CalDavError)) throw e; fail(res, 400, 'calendar_discovery', e.message); }
+    return;
+  }
   if (path === '/api/calendar-sources' && method === 'GET') {
     const writers = await writerStatus(ctx.pool, userId);
     json(res, 200, {
@@ -1120,19 +1128,28 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
     });
     return;
   }
-  if (path === '/api/calendar-sources' && method === 'POST') {
-    const body = (await readJson(req)) as Record<string, unknown>;
+    if (path === '/api/calendar-sources' && method === 'POST') {
+      const body = (await readJson(req)) as Record<string, unknown>;
+      if (!body || typeof body !== 'object' || Array.isArray(body)) { fail(res, 400, 'bad_calendar', 'Ungültige Kalenderdaten.'); return; }
     const url = String(body?.['url'] ?? '');
     const showsIn = readShowsIn(body?.['showsIn']);
     if (showsIn === false) {
       fail(res, 400, 'bad_shows_in', '`showsIn` ist eine Liste von Arbeitsbereichen oder null');
       return;
     }
+    let credentials;
+    if (body['kind'] === 'caldav') {
+      try { credentials = readCalDavCredentials(body); await checkCalendar(credentials, davRequest, false); }
+      catch (e) { if (!(e instanceof CalDavError)) throw e; fail(res, 400, 'calendar_access', e.message); return; }
+    } else if (body['kind'] !== undefined && body['kind'] !== 'ics') {
+      fail(res, 400, 'bad_calendar', 'Unbekannte Kalenderverbindung.'); return;
+    }
     const ergebnis = await addFeed(ctx.pool, userId, {
       name: String(body?.['name'] ?? ''),
       url,
       color: colorValue(body?.['color']) === undefined ? null : String(body?.['color']),
       showsIn,
+      ...(credentials ? { credentials } : {}),
     });
     if (ergebnis === 'no_key') {
       fail(res, 503, 'no_key', 'dieser Server hat keinen Schlüssel, um Adressen zu versiegeln');

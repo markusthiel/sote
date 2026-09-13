@@ -56,6 +56,15 @@ test('Anlegen, Umplanen, Wiederholung des Abgleichs und endgültiges Löschen be
   assert.equal((await writerStatus(pool,f.user))[f.feed]?.lastError,null);
 });
 
+test('Schreiben übernimmt den gespeicherten privaten Lesezugang ohne erneute Kennworteingabe', async () => {
+  const f = await fixture(); await f.task();
+  const feed = await addFeed(pool,f.user,{name:'Privat',url:f.input.url,color:'blue',credentials:{url:f.input.url,username:f.input.username,password:f.input.password}});
+  assert.ok(typeof feed === 'object');
+  await saveWriter(pool,f.user,feed.id,{workspaces:[f.workspace],mode:'planned',timezone:'UTC',enabled:true},f.transport);
+  await syncWriter(pool,feed.id,now,f.transport);
+  assert.equal((await writerStatus(pool,f.user))[feed.id]?.count,1);
+});
+
 test('Plan und Frist werden getrennt geschrieben; Erledigung entfernt beide eigenen Ressourcen', async () => {
   const f = await fixture(); const task = await f.task();
   await pool.query("UPDATE tasks SET due_at='2026-09-16T15:00:00Z', due_all_day=false WHERE id=$1",[task]);

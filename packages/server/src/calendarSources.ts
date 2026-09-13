@@ -42,6 +42,8 @@ import { queryOne, queryRows, withTransaction } from './db.js';
 import { enqueue, handle, type JobContext } from './jobs.js';
 import { isPushEndpoint } from './push.js';
 import { keyPresent, seal, unseal } from './secretbox.js';
+import { readCalDavCalendar } from './caldavCalendars.js';
+import { CalDavError, type CalDavCredentials, type DavTransport, davRequest } from './caldav.js';
 
 /** Ein Termin, wie er aus einem fremden Kalender kommt — schon ausgerollt. */
 export interface FeedEvent {
@@ -63,6 +65,8 @@ export interface Feed {
   fetchedAt: Date | null;
   lastError: string | null;
   createdAt: Date;
+  kind: 'ics' | 'caldav';
+  provider: 'icloud' | 'google' | 'microsoft' | 'caldav' | 'ics';
 }
 
 /** Wie viele Kalender eine Person höchstens einbindet. */
@@ -166,6 +170,18 @@ interface FeedRow {
   fetched_at: Date | null;
   last_error: string | null;
   created_at: Date;
+  connection_kind: 'ics' | 'caldav';
+  url_sealed: string;
+}
+
+function providerOf(row: FeedRow): Feed['provider'] {
+  try {
+    const host = new URL(unseal(row.url_sealed) ?? '').hostname;
+    if (host.endsWith('.icloud.com')) return 'icloud';
+    if (host === 'calendar.google.com' || host.endsWith('.googleusercontent.com')) return 'google';
+    if (host.endsWith('.outlook.com') || host.endsWith('.office365.com') || host.endsWith('.outlook.office.com')) return 'microsoft';
+  } catch { /* Alte Verbindung ohne verfügbaren Schlüssel. */ }
+  return row.connection_kind === 'caldav' ? 'caldav' : 'ics';
 }
 
 const feedOf = (r: FeedRow): Feed => ({
@@ -176,6 +192,8 @@ const feedOf = (r: FeedRow): Feed => ({
   fetchedAt: r.fetched_at,
   lastError: r.last_error,
   createdAt: r.created_at,
+  kind: r.connection_kind,
+  provider: providerOf(r),
 });
 
 export const feedsPossible = (): boolean => keyPresent();
@@ -183,7 +201,7 @@ export const feedsPossible = (): boolean => keyPresent();
 export async function listFeeds(pool: Pool, userId: string): Promise<Feed[]> {
   const rows = await queryRows<FeedRow>(
     pool,
-    `SELECT id, name, color, shows_in, fetched_at, last_error, created_at
+    `SELECT id, name, color, shows_in, fetched_at, last_error, created_at, connection_kind, url_sealed
        FROM calendar_sources WHERE user_id = $1 ORDER BY created_at`,
     [userId],
   );
@@ -196,7 +214,7 @@ export type AddFeedError = 'bad_url' | 'too_many' | 'no_key';
 export async function addFeed(
   pool: Pool,
   userId: string,
-  input: { name: string; url: string; color: string | null; showsIn?: string[] | null },
+  input: { name: string; url: string; color: string | null; showsIn?: string[] | null; credentials?: CalDavCredentials },
 ): Promise<Feed | AddFeedError> {
   if (!keyPresent()) return 'no_key';
   const url = normalizeFeedUrl(input.url);
@@ -210,10 +228,11 @@ export async function addFeed(
   const name = input.name.trim() || new URL(url).hostname;
   const row = await queryOne<FeedRow>(
     pool,
-    `INSERT INTO calendar_sources (user_id, name, url_sealed, color, shows_in)
-     VALUES ($1, $2, $3, $4, $5)
-     RETURNING id, name, color, shows_in, fetched_at, last_error, created_at`,
-    [userId, name.slice(0, 120), seal(url), input.color, input.showsIn ?? null],
+    `INSERT INTO calendar_sources (user_id, name, url_sealed, color, shows_in, connection_kind, caldav_credentials_sealed)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)
+     RETURNING id, name, color, shows_in, fetched_at, last_error, created_at, connection_kind, url_sealed`,
+    [userId, name.slice(0, 120), seal(url), input.color, input.showsIn ?? null,
+      input.credentials ? 'caldav' : 'ics', input.credentials ? seal(JSON.stringify(input.credentials)) : null],
   );
   if (row === undefined) throw new Error('INSERT ohne Zeile');
   await requestFetch(pool, row.id, new Date());
@@ -233,7 +252,7 @@ export async function updateFeed(
             color = CASE WHEN $4 THEN $5 ELSE color END,
             shows_in = CASE WHEN $6 THEN $7::uuid[] ELSE shows_in END
       WHERE id = $1 AND user_id = $2
-      RETURNING id, name, color, shows_in, fetched_at, last_error, created_at`,
+      RETURNING id, name, color, shows_in, fetched_at, last_error, created_at, connection_kind, url_sealed`,
     [
       feedId, userId,
       patch.name?.trim() || null,
@@ -400,10 +419,11 @@ export async function fetchFeed(
   feedId: string,
   now: Date,
   doFetch: typeof fetch = fetch,
+  transport: DavTransport = davRequest,
 ): Promise<'ok' | 'unchanged' | 'gone' | 'failed'> {
-  const row = await queryOne<{ url_sealed: string; etag: string | null }>(
+  const row = await queryOne<{ url_sealed: string; etag: string | null; caldav_credentials_sealed: string | null }>(
     pool,
-    'SELECT url_sealed, etag FROM calendar_sources WHERE id = $1',
+    'SELECT url_sealed, etag, caldav_credentials_sealed FROM calendar_sources WHERE id = $1',
     [feedId],
   );
   if (row === undefined) return 'gone';
@@ -419,14 +439,21 @@ export async function fetchFeed(
     return 'failed';
   }
   try {
-    const geholt = await fetchIcs(url, row.etag, doFetch);
+    const from = new Date(now.getTime() - WINDOW_BACK_DAYS * 86_400_000);
+    const to = new Date(now.getTime() + WINDOW_AHEAD_DAYS * 86_400_000);
+    let documents: string[] | undefined;
+    if (row.caldav_credentials_sealed) {
+      const plain = unseal(row.caldav_credentials_sealed);
+      if (!plain) throw new CalDavError('Der gespeicherte Kalenderzugang kann nicht entschlüsselt werden.');
+      documents = await readCalDavCalendar(JSON.parse(plain) as CalDavCredentials, from, to, transport);
+    }
+    const geholt = documents ? { status: 'ok' as const, text: '', etag: null } : await fetchIcs(url, row.etag, doFetch);
     if (geholt.status === 'unchanged') {
       await merke(null);
       return 'unchanged';
     }
-    const from = new Date(now.getTime() - WINDOW_BACK_DAYS * 86_400_000);
-    const to = new Date(now.getTime() + WINDOW_AHEAD_DAYS * 86_400_000);
-    const termine = readIcs(geholt.text, from, to);
+    const termine = (documents ?? [geholt.text]).flatMap((text) => readIcs(text, from, to));
+    if (termine.length > MAX_OCCURRENCES) throw new FeedFetchError('Zu viele Termine im Abrufzeitraum');
     await withTransaction(pool, async (c) => {
       await c.query('DELETE FROM calendar_source_events WHERE feed_id = $1', [feedId]);
       // Der Schlüssel schützt vor Dubletten aus schlecht geformten Kalendern,
@@ -444,7 +471,7 @@ export async function fetchFeed(
     await merke(null, geholt.etag);
     return 'ok';
   } catch (e: unknown) {
-    const text = e instanceof FeedFetchError ? e.message
+    const text = e instanceof FeedFetchError || e instanceof CalDavError ? e.message
       : e instanceof Error && e.name === 'TimeoutError' ? 'Dienst antwortet nicht'
       : e instanceof Error && /parse|ICAL|invalid/i.test(e.message) ? 'kein lesbarer Kalender'
       : 'Abruf fehlgeschlagen';

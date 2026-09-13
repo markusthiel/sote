@@ -32,6 +32,7 @@ import {
   updateFeed,
 } from '../src/calendarSources.js';
 import { migrate } from '../src/migrate.js';
+import type { DavTransport } from '../src/caldav.js';
 
 const URL_ =
   process.env['SOTE_TEST_DATABASE_URL'] ?? 'postgres://sote:sote@127.0.0.1:5433/sote_test';
@@ -60,6 +61,28 @@ before(async () => {
 
 after(async () => {
   await pool.end();
+});
+
+test('Privater CalDAV-Abruf speichert Zugang verschlüsselt, importiert Termine und erhält sie bei Teilausfall', async () => {
+  const credentials = {url:'https://cloud.example/calendars/private/',username:'private-user',password:'private-password'};
+  const feed = await addFeed(pool,userId,{name:'Privater Test',url:credentials.url,color:'blue',credentials});
+  assert.ok(typeof feed === 'object'); assert.equal(feed.kind,'caldav'); assert.equal(feed.provider,'caldav');
+  const status = JSON.stringify(await listFeeds(pool,userId));
+  for (const value of Object.values(credentials)) assert.equal(status.includes(value),false);
+  const content='BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:private-event\r\nDTSTART:20260914T090000Z\r\nDTEND:20260914T100000Z\r\nSUMMARY:Privater Termin\r\nEND:VEVENT\r\nEND:VCALENDAR';
+  const transport: DavTransport = async (_url,auth,method) => {
+    assert.deepEqual(auth,credentials); assert.equal(method,'REPORT');
+    return {status:207,etag:null,body:`<d:multistatus xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav"><d:response><d:href>/event.ics</d:href><d:propstat><d:prop><c:calendar-data><![CDATA[${content}]]></c:calendar-data></d:prop><d:status>HTTP/1.1 200 OK</d:status></d:propstat></d:response></d:multistatus>`};
+  };
+  const never: typeof fetch = async () => { throw new Error('Kein öffentlicher Abruf erwartet'); };
+  assert.equal(await fetchFeed(pool,feed.id,new Date('2026-09-13T10:00:00Z'),never,transport),'ok');
+  const count = async () => (await pool.query('SELECT count(*)::int AS n FROM calendar_source_events WHERE feed_id=$1',[feed.id])).rows[0].n;
+  assert.equal(await count(),1);
+  assert.equal(await fetchFeed(pool,feed.id,new Date('2026-09-13T11:00:00Z'),never,async () => ({status:401,body:'private-password',etag:null})),'failed');
+  assert.equal(await count(),1);
+  assert.equal(await fetchFeed(pool,feed.id,new Date('2026-09-13T12:00:00Z'),never,async () => ({status:207,body:'<multistatus xmlns="DAV:"/>',etag:null})),'ok');
+  assert.equal(await count(),0);
+  await removeFeed(pool,userId,feed.id);
 });
 
 /* ── Ein Kalender, wie Outlook oder Google ihn herausgeben ───────────────── */

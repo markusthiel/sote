@@ -64,7 +64,7 @@ export const davRequest: DavTransport = async (raw, credentials, method, body = 
         // iCloud verlangt beim Schreiben eine Programmkennung; node:https setzt keine.
         'user-agent': 'SOTE/1.0 (CalDAV)',
         authorization: `Basic ${Buffer.from(`${credentials.username}:${credentials.password}`).toString('base64')}`,
-        'content-type': method === 'PROPFIND' ? 'application/xml; charset=utf-8' : 'text/calendar; charset=utf-8',
+        'content-type': ['PROPFIND', 'REPORT'].includes(method) ? 'application/xml; charset=utf-8' : 'text/calendar; charset=utf-8',
         'content-length': Buffer.byteLength(body), ...headers,
       },
     }, (res) => {
@@ -95,7 +95,7 @@ export function davFailure(status: number): CalDavError {
   return new CalDavError(`Der Kalenderdienst antwortet mit HTTP ${status}.`);
 }
 
-export async function checkCalendar(credentials: CalDavCredentials, transport: DavTransport = davRequest): Promise<void> {
+export async function checkCalendar(credentials: CalDavCredentials, transport: DavTransport = davRequest, requireWrite = true): Promise<void> {
   const res = await transport(calendarUrl(credentials.url), credentials, 'PROPFIND',
     '<?xml version="1.0"?><d:propfind xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav"><d:prop><d:resourcetype/><c:supported-calendar-component-set/><d:current-user-privilege-set/></d:prop></d:propfind>', { depth: '0' });
   if (res.status !== 207) throw davFailure(res.status);
@@ -126,7 +126,7 @@ export async function checkCalendar(credentials: CalDavCredentials, transport: D
       }
       if (!calendar) throw new CalDavError('Diese Adresse ist kein CalDAV-Kalenderordner.');
       if (!supported) throw new CalDavError('Dieser Kalender unterstützt keine Termine (VEVENT).');
-      if (!writable) throw new CalDavError('Für diesen Kalender fehlen Schreibrechte.');
+      if (requireWrite && !writable) throw new CalDavError('Für diesen Kalender fehlen Schreibrechte.');
       return;
     }
     throw new CalDavError('Die Antwort enthält den gewählten Kalender nicht.');

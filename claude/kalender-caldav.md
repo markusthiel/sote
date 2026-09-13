@@ -1,14 +1,29 @@
-# CalDAV-Schreibanbindung
+# Kalenderverbindungen: Oberfläche, privates Lesen und Aufgabenübertragung
 
 Stand: 13.09.2026. iCloud-Suche und erster vollständiger Schreibabgleich am echten Konto vom Nutzer bestätigt: sieben Kalenderkopien, zuletzt abgeglichen um 16:44:39 Uhr nach Update auf `5d78301`.
 
 ## Einrichtung
 
-Unter **Kalender einbinden** eine ICS-Lesequelle öffnen und **Aufgaben in diesen Kalender schreiben** ausklappen. Die vollständige HTTPS-CalDAV-Adresse des Kalenderordners (mit abschließendem `/`), Benutzername und App-Kennwort eintragen. Die ICS-Adresse und die CalDAV-Adresse sind unterschiedliche Zugänge; beide müssen auf denselben Kalender zeigen, damit geschriebene Termine wieder eingelesen werden.
+Unter **Kalenderverbindungen → Kalender hinzufügen** den Anbieter wählen. Die Übersicht zeigt je Verbindung Lesestatus, Aufgabenübertragung und sichtbare Arbeitsbereiche. **Einstellungen** öffnet Darstellung und Übertragungsregeln; Zugangsdaten und ausführliche Hinweise sind eingeklappt. Bestehende ICS- und Schreibverbindungen bleiben erhalten.
 
-Arbeitsbereiche, geplante Aufgaben/Fristen/beides und die Zeitzone für ganztägige Aufgaben auswählen. Automatisches Schreiben ausdrücklich einschalten und **Zugang prüfen und speichern** wählen. Leere Zugangsfelder behalten später die verschlüsselt gespeicherten Werte bei. Unterstützt sind direkte CalDAV-Kalenderadressen mit Basic-Authentifizierung über HTTPS sowie die automatische Kalenderermittlung für iCloud; OAuth ist nicht enthalten.
+- **iCloud:** Apple Account und App-Passwort eingeben, Kalender suchen und auswählen. Neue Verbindungen lesen über den privaten CalDAV-Zugang; eine öffentliche Freigabe ist nicht nötig.
+- **Nextcloud / anderer CalDAV-Anbieter:** öffentliche HTTPS-Serveradresse beziehungsweise CalDAV-Adresse, Benutzername und App-Passwort eingeben. Die Suche folgt Principal und Kalender-Heimat, unterstützt direkte Kalenderordner und zeigt auch Kalender mit reinen Leserechten an. Allgemeine Weiterleitungen und Hrefs müssen auf derselben Herkunft bleiben; bei einem Serverwechsel ist dessen endgültige Adresse einzugeben.
+- **Google / Outlook:** Kalender über einen ICS-Abo-Link lesen. Die Oberfläche erklärt die Bezugsquelle. OAuth-Kontoanmeldung und Schreiben bei diesen Anbietern sind noch nicht implementiert.
+- **Kalenderlink:** HTTPS- oder webcal-Abo eines beliebigen unterstützten ICS-Dienstes.
 
-### iCloud
+Nach dem Verbinden unter **Einstellungen → Aufgabenübertragung** die Arbeitsbereiche und geplante Aufgaben/Fristen/beides auswählen. **Aufgaben automatisch übertragen** ausdrücklich einschalten und **Einstellungen speichern** wählen. Ein privater Lesezugang kann ohne erneute Kennworteingabe für das Schreiben übernommen werden; Schreibrechte werden vor dem Speichern geprüft. Bei bestehenden ICS-Abos den Schreibzugang separat einrichten. Beide Zugänge müssen auf denselben Kalender zeigen.
+
+Die allgemeine Suche und der private Abruf sind mit simulierten CalDAV-Antworten und echter isolierter PostgreSQL-Datenbank geprüft. Ein realer Nextcloud-Test steht noch aus. Die bestehende iCloud-Schreibverbindung ist vom Nutzer bestätigt; der neue private REPORT-Leseweg wurde noch nicht an dessen Konto geprüft.
+
+### Privater Abruf
+
+Migration `0044_caldav_sources.sql` ergänzt Verbindungsart und verschlüsselte Zugangsdaten. Bestehende Quellen bleiben ICS-Abos. `caldavCalendars.ts` liest private Kalender per zeitlich begrenztem REPORT und verwendet den vorhandenen ICS-Parser für Zeitzonen, Serien und Ausnahmen. Ein fehlgeschlagener oder unvollständiger Abruf erhält die bisher gespeicherten Termine. Grenzen: ein Monat zurück, zwölf Monate voraus, höchstens 1000 Ressourcen und 2000 Vorkommen; der DAV-Transport begrenzt zusätzlich Antwortgröße und Laufzeit. Es werden nur öffentlich erreichbare HTTPS-Ziele mit Basic-Authentifizierung unterstützt.
+
+Der private Lesezugang und ein eingerichteter Schreibzugang werden getrennt gespeichert. Zugangsfelder unter Aufgabenübertragung ändern den Schreibzugang; eine eigene Bearbeitung des privaten Lesezugangs ist noch offen. Ebenso offen sind OAuth für Google/Microsoft und eine Rückübernahme fremder Kalenderänderungen in SOTE-Aufgaben.
+
+Aktuelle Prüfung: 56 Kalender-, Protokoll-, Transport- und PostgreSQL-Tests sowie 90 Web-Tests bestehen. Die echten React-Komponenten wurden mit einer simulierten API für Suche, Auswahl, Speichern und Aktivierung der Aufgabenübertragung geprüft; mobile Ansicht bei 390 Pixeln ohne horizontales Überlaufen und ohne Browserfehler. Typprüfungen bestehen.
+
+### Hintergrund der bisherigen iCloud-Schreibanbindung
 
 Öffentliche `webcal://…/published/…`-Adressen sind ausschließlich Lesezugänge. Auch ein Wechsel zu `https://` macht daraus keinen Schreibzugang ([Apple: öffentliche Kalender sind schreibgeschützt](https://support.apple.com/en-au/guide/iphone/iph7613c4fb/ios)).
 

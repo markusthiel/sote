@@ -21,6 +21,8 @@ export function CalendarWriter({ source, workspaces, possible, reload }: {
   const [confirmConflict, setConfirmConflict] = useState(false);
   const [notice, setNotice] = useState<string>();
   const [error, setError] = useState<string>();
+  const [provider, setProvider] = useState<'icloud' | 'caldav'>(source.provider === 'icloud' ? 'icloud' : 'caldav');
+  const reusable = source.kind === 'caldav';
   const scopeKey = JSON.stringify(writer?.workspaces ?? []);
   useEffect(() => {
     setSelected(JSON.parse(scopeKey) as string[]);
@@ -34,10 +36,11 @@ export function CalendarWriter({ source, workspaces, possible, reload }: {
     finally { setBusy(false); }
   }
 
-  return <details className="calendar-source-future" open={writer !== undefined && writer !== null ? true : undefined}>
-    <summary>Aufgaben in diesen Kalender schreiben</summary>
-    <p className="muted small">SOTE überträgt offene Aufgaben aus den gewählten Bereichen als Termine: Titel, Zeitpunkt, Dauer, Beschreibung und Link zur Aufgabe. Der Abgleich läuft etwa jede Minute.</p>
-    <p className="muted small">Erledigte oder gelöschte Aufgaben und Einträge, die nicht mehr zur Auswahl passen, werden aus dem Zielkalender entfernt. Fremde Änderungen werden als Konflikt gemeldet. Änderungen im Zielkalender werden nicht nach SOTE zurückgeschrieben.</p>
+  if (!writer && (source.provider === 'google' || source.provider === 'microsoft')) return <div className="calendar-writer"><h3>Dieser Kalender wird als Abo gelesen</h3><p className="muted">Zum Übertragen von Aufgaben ist eine Kontoanmeldung beim Anbieter erforderlich. Diese Anbindung ist noch nicht verfügbar. iCloud, Nextcloud und andere CalDAV-Dienste unterstützen bereits die Aufgabenübertragung.</p></div>;
+  return <div className="calendar-writer">
+    <h3>Welche Aufgaben sollen im Kalender erscheinen?</h3>
+    <p className="muted small">SOTE → Kalender. Offene Aufgaben erscheinen mit Titel, Zeitpunkt, Dauer und Link zur Aufgabe.</p>
+    <details className="calendar-source-future"><summary>So funktioniert der Abgleich</summary><p className="muted small">Erledigte, gelöschte oder nicht mehr ausgewählte Aufgaben werden aus dem Zielkalender entfernt. Fremde Änderungen werden als Konflikt gemeldet. Änderungen im Kalender werden nicht nach SOTE zurückgeschrieben. Der Abgleich läuft etwa jede Minute.</p></details>
     {writer ? <p className="muted small">
       {writer.enabled ? 'Schreiben eingeschaltet' : 'Schreiben pausiert'} · {writer.count} Kalenderkopien
       {writer.syncedAt ? ` · Zuletzt abgeglichen: ${new Date(writer.syncedAt).toLocaleString('de-DE')}` : ' · Noch kein vollständiger Abgleich'}
@@ -63,50 +66,59 @@ export function CalendarWriter({ source, workspaces, possible, reload }: {
       }, enabled ? 'Zugang geprüft und gespeichert. Der Abgleich wurde angefordert.' : 'Zugang geprüft und gespeichert. Das Schreiben ist pausiert.');
     }}>
       <fieldset className="calendar-source-fields" disabled={busy || !possible}>
-        <label htmlFor={`${id}-url`}>CalDAV-Kalenderadresse</label>
-        <input id={`${id}-url`} type="url" className="set-input" required={!writer} autoComplete="off" spellCheck={false}
+        <details className="calendar-access" open={!writer && !reusable ? true : undefined}>
+        <summary>{writer || reusable ? 'Kalenderzugang · gespeichert' : 'Kalenderzugang einrichten'}</summary>
+        {reusable ? <p className="muted small">Der private Zugang dieses Kalenders wird verwendet. Du kannst die Felder leer lassen.</p> : null}
+        <div className="calendar-source-fields">
+        <label htmlFor={`${id}-provider`}>Anbieter</label>
+        <select id={`${id}-provider`} className="set-input" value={provider} onChange={(e) => { setProvider(e.target.value as 'icloud' | 'caldav'); setCalendars([]); }}><option value="icloud">iCloud</option><option value="caldav">Nextcloud / anderer CalDAV-Anbieter</option></select>
+        <label htmlFor={`${id}-url`}>{provider === 'icloud' ? 'Kalenderadresse' : 'Server- oder Kalenderadresse'}</label>
+        <input id={`${id}-url`} type="url" className="set-input" required={!writer && !reusable} autoComplete="off" spellCheck={false}
           placeholder={writer ? 'Gespeichert · leer lassen zum Beibehalten' : 'https://kalender.example/dav/calendars/name/privat/'}
           value={url} onChange={(e) => setUrl(e.target.value)} />
-        <p className="muted small">Die vollständige HTTPS-Adresse des gewünschten Kalenderordners mit abschließendem /. Du findest sie in den CalDAV-Einstellungen deines Anbieters. Bei einer Weiterleitung bitte die endgültige Kalenderadresse eintragen.</p>
-        <p className="muted small">iCloud: Der öffentliche webcal-Leselink funktioniert hier auch mit HTTPS nicht. Trage unten deinen Apple Account und ein App-Kennwort ein und wähle „iCloud-Kalender suchen“. Die Suche ermittelt die Schreibadresse für dich.</p>
+        <p className="muted small">{provider === 'icloud' ? 'Die Kalendersuche ermittelt die private Adresse. Öffentliche webcal-Links erlauben kein Schreiben.' : 'Mit „Kalender suchen“ den gewünschten Kalender ermitteln oder dessen vollständige CalDAV-Adresse eintragen.'}</p>
         <label htmlFor={`${id}-username`}>CalDAV-Benutzername</label>
-        <input id={`${id}-username`} className="set-input" required={!writer} autoComplete="off"
-          placeholder={writer ? 'Gespeichert · leer lassen zum Beibehalten' : 'Bei iCloud: E-Mail-Adresse deines Apple Accounts'} value={username} onChange={(e) => { setUsername(e.target.value); setCalendars([]); }} />
+        <input id={`${id}-username`} className="set-input" required={!writer && !reusable} autoComplete="off"
+          placeholder={writer || reusable ? 'Gespeichert · leer lassen zum Beibehalten' : 'Benutzername beim Anbieter'} value={username} onChange={(e) => { setUsername(e.target.value); setCalendars([]); }} />
         <label htmlFor={`${id}-password`}>App-Kennwort</label>
-        <input id={`${id}-password`} type="password" className="set-input" required={!writer} autoComplete="new-password"
+        <input id={`${id}-password`} type="password" className="set-input" required={!writer && !reusable} autoComplete="new-password"
           placeholder={writer ? 'Gespeichert · leer lassen zum Beibehalten' : ''} value={password} onChange={(e) => { setPassword(e.target.value); setCalendars([]); }} />
-        <p className="muted small">Der Zugang braucht Schreibrechte für diesen Kalender. Adresse und Zugangsdaten werden verschlüsselt gespeichert. Verwende dafür ein eigenes App-Kennwort deines Anbieters.</p>
-        <p className="muted small">Für iCloud unter <a href="https://account.apple.com/" target="_blank" rel="noreferrer">Apple Account</a> → Anmelden und Sicherheit → App-spezifische Passwörter ein Passwort für SOTE erstellen.</p>
-        <button type="button" className="btn quiet small" disabled={!username.trim() || !password.trim()} onClick={() => {
+        {provider === 'icloud' ? <p className="muted small"><a href="https://support.apple.com/de-de/102654" target="_blank" rel="noreferrer">App-Passwort bei Apple erstellen</a></p> : null}
+        <button type="button" className="btn small" disabled={!username.trim() || !password.trim() || (provider === 'caldav' && !url.trim())} onClick={() => {
           setCalendars([]);
           void action(async () => {
-            const found = await api.discoverICloudCalendars(source.id, { username: username.trim(), password: password.trim() });
-            setCalendars(found.calendars); setUrl(''); setPassword(password.trim());
-          }, 'iCloud-Kalender gefunden. Wähle denselben Kalender wie bei deiner Lesequelle und speichere anschließend den Zugang.');
-        }}>iCloud-Kalender suchen</button>
+            const found = await api.discoverCalendars({ provider, url: url.trim(), username: username.trim(), password: password.trim() });
+            const writable = found.calendars.filter((c) => c.writable);
+            if (!writable.length) throw new ApiError(400, 'no_writable_calendars', 'Keine Kalender mit Schreibrechten gefunden.');
+            setCalendars(writable); setUrl(''); setPassword(password.trim());
+          }, 'Kalender gefunden. Wähle denselben Kalender wie bei deiner Leseverbindung.');
+        }}>Kalender suchen</button>
         {calendars.length > 0 ? <>
-          <label htmlFor={`${id}-icloud`}>iCloud-Zielkalender</label>
+          <label htmlFor={`${id}-icloud`}>Zielkalender</label>
           <select id={`${id}-icloud`} className="set-input" required value={calendars.some((calendar) => calendar.url === url) ? url : ''} onChange={(e) => setUrl(e.target.value)}>
             <option value="">Kalender auswählen …</option>
             {calendars.map((calendar) => <option key={calendar.url} value={calendar.url}>{calendar.name}</option>)}
           </select>
         </> : null}
+        </div></details>
         <span id={`${id}-workspaces`}>Aufgaben aus diesen Arbeitsbereichen</span>
-        <div className="calendar-source-choices" role="group" aria-labelledby={`${id}-workspaces`}>
+        <div className="calendar-workspace-grid" role="group" aria-labelledby={`${id}-workspaces`}>
           {workspaces.map((workspace) => <label className="pick" key={workspace.id}>
             <input type="checkbox" checked={selected.includes(workspace.id)} onChange={(e) => {
               setSelected(e.target.checked ? [...selected, workspace.id] : selected.filter((id) => id !== workspace.id));
             }} />{workspace.name}
           </label>)}
         </div>
-        <label htmlFor={`${id}-mode`}>Welche Zeitpunkte?</label>
+        <label htmlFor={`${id}-mode`}>Übertragen werden</label>
         <select id={`${id}-mode`} className="set-input" value={mode} onChange={(e) => setMode(e.target.value as Writer['mode'])}>
           <option value="planned">Geplante Aufgaben</option><option value="due">Fristen</option><option value="both">Plan und Frist als getrennte Termine</option>
         </select>
+        <details className="calendar-source-future"><summary>Weitere Optionen</summary>
         <label htmlFor={`${id}-timezone`}>Zeitzone für ganztägige Aufgaben</label>
         <input id={`${id}-timezone`} className="set-input" required value={timezone} placeholder="Europe/Berlin" onChange={(e) => setTimezone(e.target.value)} />
-        <label className="pick"><input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} />Automatisch in diesen Kalender schreiben</label>
-        <button type="submit" className="btn" disabled={busy || selected.length === 0}>{busy ? 'Prüft …' : 'Zugang prüfen und speichern'}</button>
+        </details>
+        <label className="pick calendar-enable"><input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} />Aufgaben automatisch übertragen</label>
+        <button type="submit" className="btn calendar-primary" disabled={busy || selected.length === 0}>{busy ? 'Prüft …' : 'Einstellungen speichern'}</button>
       </fieldset>
     </form>
     {writer ? <div className="pick calendar-source-actions">
@@ -125,5 +137,5 @@ export function CalendarWriter({ source, workspaces, possible, reload }: {
     </div> : null}
     {notice ? <p className="muted" role="status">{notice}</p> : null}
     {error ? <p className="note-error" role="alert">{error}</p> : null}
-  </details>;
+  </div>;
 }
