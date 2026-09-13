@@ -8,6 +8,8 @@ import { keyPresent, seal, unseal } from './secretbox.js';
 import { effectiveListLevel } from './settings.js';
 import { baseUrl } from './env.js';
 import { rejectedPutError } from './caldavDiagnostics.js';
+import { CloudCalendar } from './cloudCalendars.js';
+import { isCloudProvider, type CloudAccess } from './calendarOAuth.js';
 import { calendarUrl, CalDavError, CalDavConflict, checkCalendar, davFailure, davRequest, eventFingerprint, eventUid, strongEtag,
   type CalDavCredentials, type DavTransport } from './caldav.js';
 
@@ -82,7 +84,7 @@ export function readWriterInput(body: Record<string, unknown>): {
   };
 }
 
-function credentialsOf(row: WriterRow): CalDavCredentials {
+function credentialsOf(row: WriterRow): CalDavCredentials & Partial<CloudAccess> {
   const plain = unseal(row.credentials_sealed);
   if (!plain) throw new CalDavError('Der gespeicherte Schreibzugang kann nicht entschlüsselt werden. Zugang erneut eintragen.');
   return JSON.parse(plain) as CalDavCredentials;
@@ -95,6 +97,17 @@ export async function saveWriter(pool: Pool, userId: string, feedId: string, raw
     await assertSource(db, userId, feedId);
     for (const workspace of input.workspaces) if (await effectiveListLevel(db, userId, workspace) === null) throw new CalDavError('Du kannst nicht alle gewählten Arbeitsbereiche lesen.');
     const old = await queryOne<WriterRow>(db, 'SELECT * FROM calendar_writers WHERE feed_id = $1', [feedId]);
+    const cloudSource = await queryOne<{connection_kind:string;oauth_account_id:string|null;remote_calendar_id:string|null}>(db,
+      'SELECT connection_kind,oauth_account_id,remote_calendar_id FROM calendar_sources WHERE id=$1',[feedId]);
+    if (cloudSource && isCloudProvider(cloudSource.connection_kind) && cloudSource.oauth_account_id && cloudSource.remote_calendar_id) {
+      if (input.url || input.username || input.password) throw new CalDavError('Der Zugang wird über das verbundene Kalenderkonto verwaltet.');
+      const access = {provider:cloudSource.connection_kind,accountId:cloudSource.oauth_account_id,calendarId:cloudSource.remote_calendar_id};
+      await new CloudCalendar(pool,access,fetch,db).check(true);
+      await db.query(`INSERT INTO calendar_writers (feed_id,credentials_sealed,workspaces,mode,timezone,enabled) VALUES ($1,$2,$3,$4,$5,$6)
+        ON CONFLICT (feed_id) DO UPDATE SET credentials_sealed=$2,workspaces=$3,mode=$4,timezone=$5,enabled=$6,last_error=NULL`,
+        [feedId,seal(JSON.stringify({...access,url:'https://calendar.sote.invalid/',username:'',password:''})),input.workspaces,input.mode,input.timezone,input.enabled]);
+      return;
+    }
     const source = !old ? await queryOne<{ caldav_credentials_sealed: string | null }>(db,
       'SELECT caldav_credentials_sealed FROM calendar_sources WHERE id=$1', [feedId]) : undefined;
     const readAccess = source?.caldav_credentials_sealed && unseal(source.caldav_credentials_sealed);
@@ -143,6 +156,12 @@ export async function acceptWriterConflict(pool: Pool, userId: string, feedId: s
     const entry = await queryOne<WrittenEvent>(db, 'SELECT * FROM calendar_write_events WHERE writer_id=$1 AND uid=$2', [writer.id, writer.conflict_uid]);
     if (!entry) throw new CalDavError('Der gemeldete Kalendereintrag ist nicht mehr vorhanden.');
     const credentials = credentialsOf(writer);
+    if (isCloudProvider(credentials.provider) && credentials.accountId && credentials.calendarId) {
+      const tag = await new CloudCalendar(pool,credentials as CloudAccess,fetch,db).accept(entry);
+      await db.query('UPDATE calendar_write_events SET etag=$3,content_hash=NULL,pending_hash=NULL WHERE writer_id=$1 AND uid=$2',[writer.id,entry.uid,tag]);
+      await db.query('UPDATE calendar_writers SET conflict_uid=NULL,last_error=NULL WHERE id=$1',[writer.id]);
+      return;
+    }
     const remote = await transport(`${credentials.url}${entry.uid.split('@')[0]}.ics`, credentials, 'GET');
     if (remote.status !== 404) {
       if (remote.status !== 200) throw davFailure(remote.status);
@@ -233,6 +252,8 @@ export async function syncWriter(pool: Pool, feedId: string, now: Date, transpor
     let currentUid: string | null = null;
     try {
       const credentials = credentialsOf(writer);
+      const cloud = isCloudProvider(credentials.provider) && credentials.accountId && credentials.calendarId
+        ? new CloudCalendar(pool,credentials as CloudAccess,fetch,db) : undefined;
       for (const workspace of writer.workspaces) if (await effectiveListLevel(db, writer.user_id, workspace) === null) throw new CalDavError('Schreiben angehalten: Zugriff auf einen ausgewählten Arbeitsbereich fehlt.');
       const desired = new Map<string, { task: ExportTask; kind: 'plan' | 'due' }>();
       for (const task of await tasksToWrite(db, writer)) {
@@ -264,7 +285,7 @@ export async function syncWriter(pool: Pool, feedId: string, now: Date, transpor
         // Die Absicht vor dem Netzaufruf speichern, um nach einem Abbruch die eigene Kopie zu erkennen.
         await db.query(`INSERT INTO calendar_write_events (writer_id, task_id, kind, uid, pending_hash)
           VALUES ($1,$2,$3,$4,$5) ON CONFLICT (writer_id,task_id,kind) DO UPDATE SET uid=$4, pending_hash=$5`, [writer.id, task.id, kind, entry.uid, hash]);
-        const etag = await putEvent(credentials, entry, body, transport);
+        const etag = cloud ? await cloud.put(entry,body) : await putEvent(credentials, entry, body, transport);
         await db.query(`UPDATE calendar_write_events SET etag=$4, content_hash=$5, pending_hash=NULL
           WHERE writer_id=$1 AND task_id=$2 AND kind=$3`, [writer.id, task.id, kind, etag, hash]);
         operations++;
@@ -273,7 +294,7 @@ export async function syncWriter(pool: Pool, feedId: string, now: Date, transpor
         if (desired.has(`${entry.task_id}:${entry.kind}`)) continue;
         if (full()) { more = true; break; }
         currentUid = entry.uid;
-        await deleteEvent(credentials, entry, transport);
+        if (cloud) await cloud.remove(entry); else await deleteEvent(credentials, entry, transport);
         await db.query('DELETE FROM calendar_write_events WHERE writer_id=$1 AND task_id=$2 AND kind=$3', [writer.id, entry.task_id, entry.kind]);
         operations++;
       }

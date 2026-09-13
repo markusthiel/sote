@@ -7255,6 +7255,9 @@ label.btn {
 .calendar-writer > .calendar-source-form { margin-block-start: var(--sone-space-6); }
 .calendar-access { border: 1px solid var(--border-subtle); border-radius: var(--sone-radius); padding: var(--sone-space-5); margin-block-end: var(--sone-space-5); }
 .calendar-access summary { cursor: pointer; font-size: var(--sone-text-sm); }
+.calendar-access code { overflow-wrap: anywhere; }
+.calendar-connect h2:focus,
+.calendar-connection-title h2:focus { outline: none; }
 .calendar-access > .calendar-source-fields { margin-block-start: var(--sone-space-5); }
 .calendar-workspace-grid > label { padding: var(--sone-space-5); border: 1px solid var(--border-subtle); border-radius: var(--sone-radius); }
 .calendar-enable { margin-block: var(--sone-space-5); padding: var(--sone-space-5); background: var(--surface-chrome); border-radius: var(--sone-radius); }

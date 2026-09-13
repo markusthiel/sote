@@ -44,6 +44,8 @@ import { isPushEndpoint } from './push.js';
 import { keyPresent, seal, unseal } from './secretbox.js';
 import { readCalDavCalendar } from './caldavCalendars.js';
 import { CalDavError, type CalDavCredentials, type DavTransport, davRequest } from './caldav.js';
+import { CloudCalendar } from './cloudCalendars.js';
+import { isCloudProvider } from './calendarOAuth.js';
 
 /** Ein Termin, wie er aus einem fremden Kalender kommt — schon ausgerollt. */
 export interface FeedEvent {
@@ -65,7 +67,7 @@ export interface Feed {
   fetchedAt: Date | null;
   lastError: string | null;
   createdAt: Date;
-  kind: 'ics' | 'caldav';
+  kind: 'ics' | 'caldav' | 'google' | 'microsoft';
   provider: 'icloud' | 'google' | 'microsoft' | 'caldav' | 'ics';
 }
 
@@ -170,11 +172,12 @@ interface FeedRow {
   fetched_at: Date | null;
   last_error: string | null;
   created_at: Date;
-  connection_kind: 'ics' | 'caldav';
+  connection_kind: Feed['kind'];
   url_sealed: string;
 }
 
 function providerOf(row: FeedRow): Feed['provider'] {
+  if (isCloudProvider(row.connection_kind)) return row.connection_kind;
   try {
     const host = new URL(unseal(row.url_sealed) ?? '').hostname;
     if (host.endsWith('.icloud.com')) return 'icloud';
@@ -421,9 +424,9 @@ export async function fetchFeed(
   doFetch: typeof fetch = fetch,
   transport: DavTransport = davRequest,
 ): Promise<'ok' | 'unchanged' | 'gone' | 'failed'> {
-  const row = await queryOne<{ url_sealed: string; etag: string | null; caldav_credentials_sealed: string | null }>(
+  const row = await queryOne<{ url_sealed: string; etag: string | null; caldav_credentials_sealed: string | null; connection_kind: Feed['kind']; oauth_account_id: string | null; remote_calendar_id: string | null }>(
     pool,
-    'SELECT url_sealed, etag, caldav_credentials_sealed FROM calendar_sources WHERE id = $1',
+    'SELECT url_sealed, etag, caldav_credentials_sealed, connection_kind, oauth_account_id, remote_calendar_id FROM calendar_sources WHERE id = $1',
     [feedId],
   );
   if (row === undefined) return 'gone';
@@ -442,17 +445,21 @@ export async function fetchFeed(
     const from = new Date(now.getTime() - WINDOW_BACK_DAYS * 86_400_000);
     const to = new Date(now.getTime() + WINDOW_AHEAD_DAYS * 86_400_000);
     let documents: string[] | undefined;
+    let cloudEvents: FeedEvent[] | undefined;
+    if (isCloudProvider(row.connection_kind) && row.oauth_account_id && row.remote_calendar_id) {
+      cloudEvents = await new CloudCalendar(pool, { provider: row.connection_kind, accountId: row.oauth_account_id, calendarId: row.remote_calendar_id }, doFetch).read(from,to);
+    }
     if (row.caldav_credentials_sealed) {
       const plain = unseal(row.caldav_credentials_sealed);
       if (!plain) throw new CalDavError('Der gespeicherte Kalenderzugang kann nicht entschlüsselt werden.');
       documents = await readCalDavCalendar(JSON.parse(plain) as CalDavCredentials, from, to, transport);
     }
-    const geholt = documents ? { status: 'ok' as const, text: '', etag: null } : await fetchIcs(url, row.etag, doFetch);
+    const geholt = documents || cloudEvents ? { status: 'ok' as const, text: '', etag: null } : await fetchIcs(url, row.etag, doFetch);
     if (geholt.status === 'unchanged') {
       await merke(null);
       return 'unchanged';
     }
-    const termine = (documents ?? [geholt.text]).flatMap((text) => readIcs(text, from, to));
+    const termine = cloudEvents ?? (documents ?? [geholt.text]).flatMap((text) => readIcs(text, from, to));
     if (termine.length > MAX_OCCURRENCES) throw new FeedFetchError('Zu viele Termine im Abrufzeitraum');
     await withTransaction(pool, async (c) => {
       await c.query('DELETE FROM calendar_source_events WHERE feed_id = $1', [feedId]);

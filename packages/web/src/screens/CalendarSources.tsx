@@ -105,7 +105,7 @@ function SourceCard({ source, workspaces, possible, reload, initiallyOpen }: {
   return <section className="calendar-connection" aria-label={source.name}>
     <div className="calendar-connection-heading"><ProviderMark provider={source.provider} /><div className="calendar-connection-title">
       <h2 ref={heading} tabIndex={-1}><span className="calendar-source-dot" style={{ background: colorValue(source.color) ?? 'var(--text-muted)' }} />{source.name}</h2>
-      <p>{providerName(source.provider)} · {source.kind === 'caldav' ? 'Privater Kalenderzugang' : 'Kalenderabo'}</p>
+      <p>{providerName(source.provider)} · {source.kind === 'google'||source.kind==='microsoft'?'Konto verbunden':source.kind === 'caldav' ? 'Privater Kalenderzugang' : 'Kalenderabo'}</p>
     </div><span className="calendar-status" data-state={failed ? 'error' : source.fetchedAt ? 'ready' : 'pending'}>{failed ? 'Aufmerksamkeit nötig' : source.fetchedAt ? 'Verbunden' : 'Erster Abruf läuft'}</span></div>
     <div className="calendar-connection-summary">
       <div><span>TERMINE LESEN</span><strong>{source.fetchedAt ? 'Automatisch aktiv' : 'Wird vorbereitet'}</strong><small>{source.fetchedAt ? `Zuletzt ${new Date(source.fetchedAt).toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' })}` : 'Der erste Abruf läuft im Hintergrund.'}</small></div>
@@ -144,19 +144,21 @@ export function CalendarSources({ data, error, workspaces, reload }: {
   data: SourceData | undefined; error: string | undefined;
   workspaces: readonly Workspace[]; reload: () => Promise<void>;
 }) {
-  const [adding, setAdding] = useState(false);
+  const [adding, setAdding] = useState(()=>new URLSearchParams(window.location.search).has('calendar_account'));
+  const [loginError,setLoginError] = useState(()=>new URLSearchParams(window.location.search).get('calendar_error'));
   const [addedId, setAddedId] = useState<string>();
   return <>
     <div className="main-head"><h1>Kalenderverbindungen</h1></div>
     <div className="calendar-hub">
+      {loginError?<p role="alert" className="note-error">{loginError} <button className="btn quiet small" onClick={()=>{setLoginError(null);window.history.replaceState(null,'',window.location.pathname);}}>Schließen</button></p>:null}
       {error ? <p className="note-error" role="alert">{error} <button className="btn quiet small" onClick={() => void reload()}>Erneut laden</button></p> : null}
       {data === undefined ? <p className="muted" role="status">{error ? 'Kalender sind derzeit nicht verfügbar.' : 'Kalender werden geladen …'}</p> : <>
         <section className="calendar-hub-intro">
           <div><span className="calendar-eyebrow">DEIN TAG, AN EINEM ORT</span><h2>Kalender und Aufgaben zusammenbringen</h2><p>Behalte deine Termine im Blick und übertrage ausgewählte Aufgaben in deinen Kalender.</p></div>
-          <button className="btn calendar-primary" disabled={!data.possible || data.feeds.length >= data.max} onClick={() => setAdding(true)}>+ Kalender hinzufügen</button>
+          <button className="btn calendar-primary" disabled={!data.possible} onClick={() => setAdding(true)}>{data.feeds.length >= data.max?'Kalenderkonten verwalten':'+ Kalender hinzufügen'}</button>
           {!data.possible ? <p className="note-error">Auf diesem Server fehlt <code>SOTE_SHARE_KEY</code>. Die Administration muss ihn einrichten, bevor Kalender eingebunden oder abgerufen werden können.</p> : null}
         </section>
-        {adding && data.possible && data.feeds.length < data.max ? <CalendarConnect onCancel={() => setAdding(false)} onConnected={async (id) => { setAddedId(id); await reload(); setAdding(false); }} /> : null}
+        {adding && data.possible ? <CalendarConnect onCancel={() => {setAdding(false);window.history.replaceState(null,'',window.location.pathname);}} onConnected={async (id) => { setAddedId(id); await reload(); setAdding(false);window.history.replaceState(null,'',window.location.pathname); }} /> : null}
         <div className="calendar-section-heading"><h2>Deine Kalender <span className="muted">{data.feeds.length}</span></h2><span className="muted small">{data.feeds.length} von {data.max} verbunden</span></div>
         {data.feeds.map((source) => <SourceCard key={source.id} source={source} workspaces={workspaces} possible={data.possible} reload={reload} initiallyOpen={addedId === source.id} />)}
         {!data.feeds.length && !adding ? <p className="calendar-empty">Noch kein Kalender verbunden. Wähle „Kalender hinzufügen“, um deinen Anbieter auszuwählen.</p> : null}

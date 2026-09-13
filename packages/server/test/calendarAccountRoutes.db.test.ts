@@ -1,0 +1,30 @@
+import { strict as assert } from 'node:assert';
+import { randomUUID } from 'node:crypto';
+import { test } from 'node:test';
+import type { AddressInfo } from 'node:net';
+import { makePool,queryOne } from '../src/db.js';
+import { migrate } from '../src/migrate.js';
+import { openSession } from '../src/auth.js';
+import { makeServer } from '../src/routes.js';
+import { seal } from '../src/secretbox.js';
+
+test('Kalenderkonten sind über HTTP erreichbar, sitzungsgebunden und gegen fremde Konto-IDs geschützt',async(t)=>{
+  process.env['SOTE_SHARE_KEY']='c'.repeat(64);process.env['SOTE_BASE_URL']='https://sote.example';
+  process.env['SOTE_GOOGLE_CALENDAR_CLIENT_ID']='test-client';process.env['SOTE_GOOGLE_CALENDAR_CLIENT_SECRET']='not-public';
+  const databaseUrl=process.env['SOTE_TEST_DATABASE_URL']??'postgres://sote:sote@127.0.0.1:5433/sote_test';const pool=makePool(databaseUrl);await migrate(pool);
+  const server=makeServer({pool,config:{databaseUrl,port:0,sessionDays:30},now:()=>new Date()});
+  t.after(async()=>{await new Promise<void>(resolve=>server.close(()=>resolve()));await pool.end();});
+  await new Promise<void>(resolve=>server.listen(0,'127.0.0.1',resolve));const base=`http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+  const user=(await queryOne<{id:string}>(pool,"INSERT INTO users(email,display_name) VALUES ($1,'HTTP') RETURNING id",[randomUUID()+'@example.com']))!.id;
+  const owner=(await queryOne<{id:string}>(pool,"INSERT INTO users(email,display_name) VALUES ($1,'Other') RETURNING id",[randomUUID()+'@example.com']))!.id;
+  const account=(await queryOne<{id:string}>(pool,"INSERT INTO calendar_accounts(user_id,provider,subject,label,tokens_sealed) VALUES ($1,'google','subject','Other',$2) RETURNING id",[owner,seal('private tokens')]))!.id;
+  const session=await openSession(pool,user,new Date(),30);const headers={'content-type':'application/json',cookie:`sote_session=${session.token}`};
+  assert.equal((await fetch(base+'/api/calendar-accounts')).status,401);
+  const listing=await fetch(base+'/api/calendar-accounts',{headers});assert.equal(listing.status,200);const data=await listing.json() as {accounts:unknown[];providers:{google:{ready:boolean}}};assert.equal(data.accounts.length,0);assert.equal(data.providers.google.ready,true);
+  assert.ok(!JSON.stringify(data).includes('not-public'));
+  const begin=await fetch(base+'/api/calendar-accounts/google/authorize',{method:'POST',headers,body:'{}'});assert.equal(begin.status,200);
+  const url=new URL((await begin.json() as {url:string}).url);assert.equal(url.hostname,'accounts.google.com');
+  assert.equal((await fetch(base+'/api/calendar-accounts/google/authorize',{method:'POST',headers:{cookie:headers.cookie},body:'{}'})).status,415);
+  const forbidden=await fetch(`${base}/api/calendar-accounts/${account}/calendars`,{headers});assert.equal(forbidden.status,400);assert.ok(!(await forbidden.text()).includes('private tokens'));
+  const callback=await fetch(base+'/api/calendar-accounts/google/callback?state=wrong&code=wrong',{headers,redirect:'manual'});assert.equal(callback.status,303);assert.match(callback.headers.get('location')??'',/^\/kalender\/quellen\?calendar_error=/);assert.equal(callback.headers.get('referrer-policy'),'no-referrer');
+});

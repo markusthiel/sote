@@ -8,7 +8,7 @@ Unter **Kalenderverbindungen → Kalender hinzufügen** den Anbieter wählen. Di
 
 - **iCloud:** Apple Account und App-Passwort eingeben, Kalender suchen und auswählen. Neue Verbindungen lesen über den privaten CalDAV-Zugang; eine öffentliche Freigabe ist nicht nötig.
 - **Nextcloud / anderer CalDAV-Anbieter:** öffentliche HTTPS-Serveradresse beziehungsweise CalDAV-Adresse, Benutzername und App-Passwort eingeben. Die Suche folgt Principal und Kalender-Heimat, unterstützt direkte Kalenderordner und zeigt auch Kalender mit reinen Leserechten an. Allgemeine Weiterleitungen und Hrefs müssen auf derselben Herkunft bleiben; bei einem Serverwechsel ist dessen endgültige Adresse einzugeben.
-- **Google / Outlook:** Kalender über einen ICS-Abo-Link lesen. Die Oberfläche erklärt die Bezugsquelle. OAuth-Kontoanmeldung und Schreiben bei diesen Anbietern sind noch nicht implementiert.
+- **Google / Microsoft 365 / Outlook:** Kontoanmeldung mit Kalenderauswahl, Lesen und Aufgabenübertragung. Die einmalige App-Konfiguration ist in [kalender-oauth.md](kalender-oauth.md) beschrieben. ICS-Abos bleiben als Alternative verfügbar.
 - **Kalenderlink:** HTTPS- oder webcal-Abo eines beliebigen unterstützten ICS-Dienstes.
 
 Nach dem Verbinden unter **Einstellungen → Aufgabenübertragung** die Arbeitsbereiche und geplante Aufgaben/Fristen/beides auswählen. **Aufgaben automatisch übertragen** ausdrücklich einschalten und **Einstellungen speichern** wählen. Ein privater Lesezugang kann ohne erneute Kennworteingabe für das Schreiben übernommen werden; Schreibrechte werden vor dem Speichern geprüft. Bei bestehenden ICS-Abos den Schreibzugang separat einrichten. Beide Zugänge müssen auf denselben Kalender zeigen.
@@ -19,7 +19,7 @@ Die allgemeine Suche und der private Abruf sind mit simulierten CalDAV-Antworten
 
 Migration `0044_caldav_sources.sql` ergänzt Verbindungsart und verschlüsselte Zugangsdaten. Bestehende Quellen bleiben ICS-Abos. `caldavCalendars.ts` liest private Kalender per zeitlich begrenztem REPORT und verwendet den vorhandenen ICS-Parser für Zeitzonen, Serien und Ausnahmen. Ein fehlgeschlagener oder unvollständiger Abruf erhält die bisher gespeicherten Termine. Grenzen: ein Monat zurück, zwölf Monate voraus, höchstens 1000 Ressourcen und 2000 Vorkommen; der DAV-Transport begrenzt zusätzlich Antwortgröße und Laufzeit. Es werden nur öffentlich erreichbare HTTPS-Ziele mit Basic-Authentifizierung unterstützt.
 
-Der private Lesezugang und ein eingerichteter Schreibzugang werden getrennt gespeichert. Zugangsfelder unter Aufgabenübertragung ändern den Schreibzugang; eine eigene Bearbeitung des privaten Lesezugangs ist noch offen. Ebenso offen sind OAuth für Google/Microsoft und eine Rückübernahme fremder Kalenderänderungen in SOTE-Aufgaben.
+Der private CalDAV-Lesezugang und ein eingerichteter Schreibzugang werden getrennt gespeichert. Zugangsfelder unter Aufgabenübertragung ändern den Schreibzugang; eine eigene Bearbeitung des privaten CalDAV-Lesezugangs ist noch offen. Eine Rückübernahme fremder Kalenderänderungen in SOTE-Aufgaben ist ebenfalls nicht enthalten. Google/Microsoft verwenden einen gemeinsamen erneuerbaren Kontozugang für Lesen und Schreiben.
 
 Aktuelle Prüfung: 56 Kalender-, Protokoll-, Transport- und PostgreSQL-Tests sowie 90 Web-Tests bestehen. Die echten React-Komponenten wurden mit einer simulierten API für Suche, Auswahl, Speichern und Aktivierung der Aufgabenübertragung geprüft; mobile Ansicht bei 390 Pixeln ohne horizontales Überlaufen und ohne Browserfehler. Typprüfungen bestehen.
 

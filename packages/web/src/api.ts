@@ -16,7 +16,7 @@ export interface CalendarSource {
   lastError: string | null;
   createdAt: string;
   writing?: CalendarWriter | null;
-  kind?: 'ics' | 'caldav';
+  kind?: 'ics' | 'caldav' | 'google' | 'microsoft';
   provider?: 'icloud' | 'google' | 'microsoft' | 'caldav' | 'ics';
 }
 
@@ -1344,6 +1344,11 @@ export const api = {
    * Grenzen als Augenblicke: der Browser rechnet seine Tage in seiner Zone.
    */
   calendarSources: () => call<{ possible: boolean; max: number; feeds: CalendarSource[] }>('/api/calendar-sources'),
+  calendarAccounts: () => call<{providers:Record<'google'|'microsoft',{ready:boolean;callback:string|null}>;accounts:{id:string;provider:'google'|'microsoft';label:string;lastError:string|null}[]}>('/api/calendar-accounts'),
+  authorizeCalendarAccount: (provider:'google'|'microsoft') => call<{url:string}>(`/api/calendar-accounts/${provider}/authorize`,{method:'POST',body:'{}'}),
+  cloudCalendars: (id:string) => call<{calendars:{id:string;name:string;writable:boolean}[]}>(`/api/calendar-accounts/${id}/calendars`),
+  connectCloudCalendar: (id:string,body:{calendarId:string;name:string}) => call<{id:string}>(`/api/calendar-accounts/${id}/calendars`,{method:'POST',body:JSON.stringify(body)}),
+  removeCalendarAccount: (id:string) => call<{ok:true}>(`/api/calendar-accounts/${id}`,{method:'DELETE'}),
   saveCalendarWriter: (id: string, body: CalendarWriterInput) =>
     call<{ ok: true }>(`/api/calendar-sources/${id}/writer`, { method: 'PUT', body: JSON.stringify(body) }),
   discoverICloudCalendars: (id: string, body: { username: string; password: string }) =>

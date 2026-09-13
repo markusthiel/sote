@@ -23,6 +23,7 @@ export function CalendarWriter({ source, workspaces, possible, reload }: {
   const [error, setError] = useState<string>();
   const [provider, setProvider] = useState<'icloud' | 'caldav'>(source.provider === 'icloud' ? 'icloud' : 'caldav');
   const reusable = source.kind === 'caldav';
+  const cloud = source.kind === 'google'||source.kind==='microsoft';
   const scopeKey = JSON.stringify(writer?.workspaces ?? []);
   useEffect(() => {
     setSelected(JSON.parse(scopeKey) as string[]);
@@ -36,10 +37,11 @@ export function CalendarWriter({ source, workspaces, possible, reload }: {
     finally { setBusy(false); }
   }
 
-  if (!writer && (source.provider === 'google' || source.provider === 'microsoft')) return <div className="calendar-writer"><h3>Dieser Kalender wird als Abo gelesen</h3><p className="muted">Zum Übertragen von Aufgaben ist eine Kontoanmeldung beim Anbieter erforderlich. Diese Anbindung ist noch nicht verfügbar. iCloud, Nextcloud und andere CalDAV-Dienste unterstützen bereits die Aufgabenübertragung.</p></div>;
+  if (!writer && !cloud && (source.provider === 'google' || source.provider === 'microsoft')) return <div className="calendar-writer"><h3>Dieser Kalender wird als Abo gelesen</h3><p className="muted">Verbinde diesen Kalender über „Kalender hinzufügen“ mit deinem Google- oder Microsoft-Konto, um Aufgaben zu übertragen. Das bisherige Abo kannst du anschließend entfernen.</p></div>;
   return <div className="calendar-writer">
     <h3>Welche Aufgaben sollen im Kalender erscheinen?</h3>
     <p className="muted small">SOTE → Kalender. Offene Aufgaben erscheinen mit Titel, Zeitpunkt, Dauer und Link zur Aufgabe.</p>
+    {cloud?<p className="muted small">Zeitpunkte ohne Dauer erscheinen bei Google und Microsoft als einminütiger Termin.</p>:null}
     <details className="calendar-source-future"><summary>So funktioniert der Abgleich</summary><p className="muted small">Erledigte, gelöschte oder nicht mehr ausgewählte Aufgaben werden aus dem Zielkalender entfernt. Fremde Änderungen werden als Konflikt gemeldet. Änderungen im Kalender werden nicht nach SOTE zurückgeschrieben. Der Abgleich läuft etwa jede Minute.</p></details>
     {writer ? <p className="muted small">
       {writer.enabled ? 'Schreiben eingeschaltet' : 'Schreiben pausiert'} · {writer.count} Kalenderkopien
@@ -66,7 +68,7 @@ export function CalendarWriter({ source, workspaces, possible, reload }: {
       }, enabled ? 'Zugang geprüft und gespeichert. Der Abgleich wurde angefordert.' : 'Zugang geprüft und gespeichert. Das Schreiben ist pausiert.');
     }}>
       <fieldset className="calendar-source-fields" disabled={busy || !possible}>
-        <details className="calendar-access" open={!writer && !reusable ? true : undefined}>
+        {cloud?<p className="muted small">Der Zugang deines verbundenen Kontos wird verwendet. Eine erneute Kennworteingabe ist nicht nötig.</p>:<details className="calendar-access" open={!writer && !reusable ? true : undefined}>
         <summary>{writer || reusable ? 'Kalenderzugang · gespeichert' : 'Kalenderzugang einrichten'}</summary>
         {reusable ? <p className="muted small">Der private Zugang dieses Kalenders wird verwendet. Du kannst die Felder leer lassen.</p> : null}
         <div className="calendar-source-fields">
@@ -100,7 +102,7 @@ export function CalendarWriter({ source, workspaces, possible, reload }: {
             {calendars.map((calendar) => <option key={calendar.url} value={calendar.url}>{calendar.name}</option>)}
           </select>
         </> : null}
-        </div></details>
+        </div></details>}
         <span id={`${id}-workspaces`}>Aufgaben aus diesen Arbeitsbereichen</span>
         <div className="calendar-workspace-grid" role="group" aria-labelledby={`${id}-workspaces`}>
           {workspaces.map((workspace) => <label className="pick" key={workspace.id}>

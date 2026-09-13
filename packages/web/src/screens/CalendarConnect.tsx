@@ -1,10 +1,11 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { api, ApiError } from '../api.js';
+import { CloudCalendarConnect } from './CloudCalendarConnect.js';
 
 export const calendarProviders = [
   { id: 'icloud', name: 'iCloud', mark: 'iC', detail: 'Privat verbinden · lesen und schreiben' },
-  { id: 'google', name: 'Google Kalender', mark: 'G', detail: 'Kalender über einen Abo-Link lesen' },
-  { id: 'microsoft', name: 'Outlook', mark: 'M', detail: 'Microsoft-Kalender per Abo-Link lesen' },
+  { id: 'google', name: 'Google Kalender', mark: 'G', detail: 'Mit Google anmelden · lesen und schreiben' },
+  { id: 'microsoft', name: 'Microsoft 365 / Outlook', mark: 'M', detail: 'Mit Microsoft anmelden · lesen und schreiben' },
   { id: 'nextcloud', name: 'Nextcloud', mark: 'N', detail: 'Mit deinem Server verbinden' },
   { id: 'caldav', name: 'Anderer CalDAV-Anbieter', mark: 'C', detail: 'Kalender suchen · lesen und schreiben' },
   { id: 'ics', name: 'Kalenderlink', mark: '↗', detail: 'ICS- oder webcal-Adresse abonnieren' },
@@ -20,7 +21,8 @@ export function CalendarConnect({ onConnected, onCancel }: { onConnected: (id: s
   const id = useId();
   const heading = useRef<HTMLHeadingElement>(null);
   useEffect(() => { heading.current?.focus(); }, []);
-  const [provider, setProvider] = useState<Provider>();
+  const [provider, setProvider] = useState<Provider | undefined>(()=>{const p=new URLSearchParams(window.location.search).get('calendar_provider');return p==='google'||p==='microsoft'?p:undefined;});
+  const [subscription, setSubscription] = useState(false);
   const [server, setServer] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -46,8 +48,8 @@ export function CalendarConnect({ onConnected, onCancel }: { onConnected: (id: s
     {!provider ? <div className="calendar-provider-grid">{calendarProviders.map((p) => <button key={p.id} className="calendar-provider-option" onClick={() => { setProvider(p.id); setError(undefined); }}>
       <ProviderMark provider={p.id} /><span><strong>{p.name}</strong><small>{p.detail}</small></span><span aria-hidden="true">→</span>
     </button>)}</div> : <>
-      <button className="btn quiet small" disabled={busy} onClick={() => { setProvider(undefined); setFound([]); setUrl(''); setName(''); setPassword(''); setError(undefined); }}>← Anderen Anbieter wählen</button>
-      <div className="calendar-connect-body">
+      <button className="btn quiet small" disabled={busy} onClick={() => { setProvider(undefined); setSubscription(false); setFound([]); setUrl(''); setName(''); setPassword(''); setError(undefined); }}>← Anderen Anbieter wählen</button>
+      {(provider==='google'||provider==='microsoft')&&!subscription?<><CloudCalendarConnect key={provider} provider={provider} onConnected={onConnected}/><button className="btn quiet small" onClick={()=>setSubscription(true)}>Kalender über einen Abo-Link verbinden</button></>:<div className="calendar-connect-body">
         <form className="calendar-source-form" onSubmit={(e) => {
           e.preventDefault();
           if (privateAccess && !selected) { void find(); return; }
@@ -84,11 +86,11 @@ export function CalendarConnect({ onConnected, onCancel }: { onConnected: (id: s
           <p>{privateAccess ? 'SOTE liest deine Termine über den geschützten Kalenderzugang. Eine öffentliche Freigabe ist dafür nicht nötig.' : 'Der Abo-Link zeigt deine Termine neben den Aufgaben. Änderungen werden regelmäßig eingelesen.'}</p>
           {provider === 'icloud' ? <p>Verwende ein eigenes <a href="https://support.apple.com/de-de/102654" target="_blank" rel="noreferrer">App-Passwort für SOTE</a>.</p> : null}
           {provider === 'nextcloud' ? <p>Das App-Passwort findest du in den persönlichen Sicherheitseinstellungen deiner Nextcloud.</p> : null}
-          {provider === 'google' ? <><p><a href="https://support.google.com/calendar/answer/37648?hl=de" target="_blank" rel="noreferrer">Google Kalender öffnen</a> → Kalendereinstellungen → Kalender integrieren → Privatadresse im iCal-Format.</p><p>Eine Google-Kontoanmeldung zum Schreiben ist noch nicht verfügbar.</p></> : null}
-          {provider === 'microsoft' ? <><p><a href="https://support.microsoft.com/en-us/office/share-an-outlook-calendar-as-view-only-with-others-353ed2c1-3ec5-449d-8c73-6931a0adab88" target="_blank" rel="noreferrer">Outlook-Kalendereinstellungen</a> → Geteilte Kalender → Kalender veröffentlichen. Den ICS-Link verwenden.</p><p>Eine Microsoft-Kontoanmeldung zum Schreiben ist noch nicht verfügbar.</p></> : null}
+          {provider === 'google' ? <p><a href="https://support.google.com/calendar/answer/37648?hl=de" target="_blank" rel="noreferrer">Anleitung bei Google</a> → Kalendereinstellungen → Kalender integrieren → Privatadresse im iCal-Format.</p> : null}
+          {provider === 'microsoft' ? <p><a href="https://support.microsoft.com/en-us/office/share-an-outlook-calendar-as-view-only-with-others-353ed2c1-3ec5-449d-8c73-6931a0adab88" target="_blank" rel="noreferrer">Anleitung bei Microsoft</a> → Geteilte Kalender → Kalender veröffentlichen. Den ICS-Link verwenden.</p> : null}
           <p className="small">{privateAccess ? 'Zugangsdaten werden verschlüsselt gespeichert.' : 'Wer den Abo-Link kennt, kann die freigegebenen Termine lesen. SOTE speichert ihn verschlüsselt.'}</p>
         </aside>
-      </div>
+      </div>}
     </>}
   </section>;
 }

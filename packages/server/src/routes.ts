@@ -41,6 +41,7 @@ import { Throttle } from './http/throttle.js';
 import { CalDavError, checkCalendar, davRequest } from './caldav.js';
 import { discoverICloudCalendars } from './icloudCalDav.js';
 import { discoverCalDavCalendars, readCalDavCredentials } from './caldavCalendars.js';
+import { calendarAccountRoutes } from './calendarAccountRoutes.js';
 import { acceptWriterConflict, assertSource, disconnectWriter, pauseWriter, requestWrite, saveWriter, withCalendarWriteLock, writerStatus } from './calendarWriters.js';
 import { accounts, deleteAccount, setAdmin } from './accounts.js';
 import { TRASH_DAYS } from './handlers.js';
@@ -1119,6 +1120,8 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
     catch (e) { if (!(e instanceof CalDavError)) throw e; fail(res, 400, 'calendar_discovery', e.message); }
     return;
   }
+
+  if (await calendarAccountRoutes(ctx.pool,userId,token!,req,res,url)) return;
   if (path === '/api/calendar-sources' && method === 'GET') {
     const writers = await writerStatus(ctx.pool, userId);
     json(res, 200, {

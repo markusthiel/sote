@@ -84,6 +84,12 @@ services:
       # Wie der Knopf heißt. Ohne das steht dort „Single-Sign-on", was nichts
       # über den Anbieter sagt.
       SOTE_OIDC_LABEL: ${SOTE_OIDC_LABEL:-Single-Sign-on}
+      # Kalender-Apps: pro Anbieter einmalig registrieren (siehe claude/kalender-oauth.md).
+      SOTE_GOOGLE_CALENDAR_CLIENT_ID: ${SOTE_GOOGLE_CALENDAR_CLIENT_ID:-}
+      SOTE_GOOGLE_CALENDAR_CLIENT_SECRET: ${SOTE_GOOGLE_CALENDAR_CLIENT_SECRET:-}
+      SOTE_MICROSOFT_CALENDAR_CLIENT_ID: ${SOTE_MICROSOFT_CALENDAR_CLIENT_ID:-}
+      SOTE_MICROSOFT_CALENDAR_CLIENT_SECRET: ${SOTE_MICROSOFT_CALENDAR_CLIENT_SECRET:-}
+      SOTE_MICROSOFT_CALENDAR_TENANT: ${SOTE_MICROSOFT_CALENDAR_TENANT:-common}
     volumes:
       # Die Anhänge liegen im Dateisystem und nicht in der Datenbank — ohne
       # diesen Datenträger wäre das Verzeichnis nach jedem Neustart des
