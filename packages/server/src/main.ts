@@ -11,6 +11,7 @@ import { scheduleRecurring } from './handlers.js';
 import { startRunner } from './jobs.js';
 import { startListening } from './nudge.js';
 import { scheduleReminders } from './reminders.js';
+import { scheduleFeeds } from './calendarSources.js';
 import { scheduleFileSweep } from './taskFiles.js';
 import { scheduleTaskReminders } from './taskReminders.js';
 import { migrate } from './migrate.js';
@@ -100,6 +101,16 @@ server.listen(config.port, () => {
       if (!an) console.log('Anhänge aus: SOTE_FILES_DIR fehlt');
     })
     .catch((e: unknown) => console.error('Anhang-Aufräumer:', e));
+  /*
+   * Und der Takt für fremde Kalender — nur mit Schlüssel, denn ohne ihn
+   * lässt sich keine Adresse entsiegeln, und ein Takt, der nichts lesen
+   * kann, ist nur ein Fehler je Stunde im Protokoll.
+   */
+  void scheduleFeeds(pool)
+    .then((an) => {
+      if (!an) console.log('Fremde Kalender aus: SOTE_SHARE_KEY fehlt');
+    })
+    .catch((e: unknown) => console.error('Fremde Kalender:', e));
   startRunner(pool);
   /*
    * Die lauschende Verbindung, außerhalb des Pools.

@@ -8,7 +8,7 @@
 
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 
-import { AVATAR_MAX_BYTES, isAvatarType, describe as describeRecurrence, isListLevel, isZone, readIcon, readTaskCover, readTaskLook, isInlineSafe, NOTE_KINDS, channelDefaults, isNoteKind } from '@sote/core';
+import { AVATAR_MAX_BYTES, colorValue, isAvatarType, describe as describeRecurrence, isListLevel, isZone, readIcon, readTaskCover, readTaskLook, isInlineSafe, NOTE_KINDS, channelDefaults, isNoteKind } from '@sote/core';
 import type { Pool } from 'pg';
 
 import { openSession, signIn, signOut, userOfToken } from './auth.js';
@@ -119,6 +119,16 @@ import {
 import { colorLabel, LabelTrouble, labelsOfWorkspace, removeLabel, renameLabel } from './labels.js';
 import { listViewsOf, setListView, ViewTrouble } from './listViews.js';
 import { childrenOf, counts, list, splitOverdue, type ViewId, span } from './views.js';
+import {
+  addFeed,
+  eventsOf,
+  feedsPossible,
+  listFeeds,
+  MAX_FEEDS,
+  removeFeed,
+  requestFetchOf,
+  updateFeed,
+} from './calendarSources.js';
 
 const COOKIE = 'sote_session';
 
@@ -1069,14 +1079,105 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
       to,
       url.searchParams.get('done') === '1',
     );
+    // Die fremden Termine folgen dem Filter der Schiene (`shows_in`, 0042).
+    const termine = await eventsOf(ctx.pool, userId, from, to, nurDieser);
     json(res, 200, {
       // Mit dem Bereich an JEDER Aufgabe: über Bereiche hinweg ist er der
       // Unterschied zwischen zwei Zeilen.
       tasks: rows.map((r) => ({ ...taskView(r), workspaceId: r.workspace_id })),
       // Die Bereiche kommen MIT, als Karte für die Marke an jeder Zeile.
       workspaces: sichtbar.map((w) => ({ id: w.id, name: w.name, icon: readIcon(w.icon) })),
+      events: termine.map((t) => ({
+        feedId: t.feedId,
+        uid: t.uid,
+        recurrenceId: t.recurrenceId,
+        title: t.title,
+        start: t.start.toISOString(),
+        end: t.end.toISOString(),
+        allDay: t.allDay,
+        location: t.location,
+      })),
     });
     return;
+  }
+
+  /* ── Fremde Kalender: am Konto, nicht am Arbeitsbereich ────────────────
+   *
+   * Migration 0042: ein eingebundener Kalender gehört der Person, und wo er
+   * erscheint, steht an ihm (`showsIn`). Darum vor der Bereichsschranke, wie
+   * `/api/span`. Die Adresse selbst kommt NIE zurück — sie ist ein
+   * Fähigkeitslink, und die Oberfläche braucht nur „gesetzt".
+   */
+  if (path === '/api/calendar-sources' && method === 'GET') {
+    json(res, 200, {
+      possible: feedsPossible(),
+      max: MAX_FEEDS,
+      feeds: await listFeeds(ctx.pool, userId),
+    });
+    return;
+  }
+  if (path === '/api/calendar-sources' && method === 'POST') {
+    const body = (await readJson(req)) as Record<string, unknown>;
+    const url = String(body?.['url'] ?? '');
+    const showsIn = readShowsIn(body?.['showsIn']);
+    if (showsIn === false) {
+      fail(res, 400, 'bad_shows_in', '`showsIn` ist eine Liste von Arbeitsbereichen oder null');
+      return;
+    }
+    const ergebnis = await addFeed(ctx.pool, userId, {
+      name: String(body?.['name'] ?? ''),
+      url,
+      color: colorValue(body?.['color']) === undefined ? null : String(body?.['color']),
+      showsIn,
+    });
+    if (ergebnis === 'no_key') {
+      fail(res, 503, 'no_key', 'dieser Server hat keinen Schlüssel, um Adressen zu versiegeln');
+      return;
+    }
+    if (ergebnis === 'bad_url') {
+      fail(res, 400, 'bad_url', 'eine https- oder webcal-Adresse eines öffentlichen Dienstes');
+      return;
+    }
+    if (ergebnis === 'too_many') {
+      fail(res, 409, 'too_many', `höchstens ${MAX_FEEDS} Kalender`);
+      return;
+    }
+    json(res, 201, ergebnis);
+    return;
+  }
+  const feedPath = /^\/api\/calendar-sources\/([0-9a-f-]{36})(\/refresh)?$/.exec(path);
+  if (feedPath !== null) {
+    const feedId = feedPath[1]!;
+    if (feedPath[2] !== undefined && method === 'POST') {
+      const ok = await requestFetchOf(ctx.pool, userId, feedId, now);
+      if (!ok) fail(res, 404, 'no_feed', 'diesen Kalender gibt es nicht');
+      else json(res, 202, { ok: true });
+      return;
+    }
+    if (feedPath[2] === undefined && method === 'PATCH') {
+      const body = (await readJson(req)) as Record<string, unknown>;
+      const showsIn = 'showsIn' in body ? readShowsIn(body['showsIn']) : undefined;
+      if (showsIn === false) {
+        fail(res, 400, 'bad_shows_in', '`showsIn` ist eine Liste von Arbeitsbereichen oder null');
+        return;
+      }
+      const patch: { name?: string; color?: string | null; showsIn?: string[] | null } = {};
+      if (typeof body['name'] === 'string') patch.name = body['name'];
+      if ('color' in body) {
+        patch.color = colorValue(body['color']) === undefined ? null : String(body['color']);
+      }
+      if (showsIn !== undefined) patch.showsIn = showsIn;
+      const feed = await updateFeed(ctx.pool, userId, feedId, patch);
+      if (feed === null) fail(res, 404, 'no_feed', 'diesen Kalender gibt es nicht');
+      else json(res, 200, feed);
+      return;
+    }
+    if (feedPath[2] === undefined && method === 'DELETE') {
+      const ok = await removeFeed(ctx.pool, userId, feedId);
+      if (!ok) fail(res, 404, 'no_feed', 'diesen Kalender gibt es nicht');
+      else json(res, 200, { ok: true });
+      return;
+    }
   }
 
   /* ── Ab hier braucht alles einen Arbeitsbereich ──────────────────────── */
@@ -2795,4 +2896,21 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
   }
 
   fail(res, 404, 'no_route', `${method} ${path} gibt es nicht`);
+}
+
+/**
+ * `showsIn` aus dem Körper: `null` (überall), eine Liste von Kennungen — oder
+ * `false` für Unsinn. Ob die Kennungen Arbeitsbereiche der Person sind, wird
+ * nicht geprüft: ein fremder Bereich in der Liste zeigt den Kalender dort
+ * nur, wenn die Person ihn je zu sehen bekommt, und das tut sie nicht.
+ */
+function readShowsIn(v: unknown): string[] | null | false {
+  if (v === null || v === undefined) return null;
+  if (!Array.isArray(v) || v.length > 50) return false;
+  const out: string[] = [];
+  for (const x of v) {
+    if (typeof x !== 'string' || !/^[0-9a-f-]{36}$/.test(x)) return false;
+    out.push(x);
+  }
+  return out;
 }

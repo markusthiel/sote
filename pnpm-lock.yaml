@@ -32,6 +32,9 @@ importers:
       '@sote/core':
         specifier: workspace:*
         version: link:../core
+      ical.js:
+        specifier: ^2.2.1
+        version: 2.2.1
       nodemailer:
         specifier: ^10.0.1
         version: 10.0.1

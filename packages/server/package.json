@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@sote/core": "workspace:*",
+    "ical.js": "^2.2.1",
     "nodemailer": "^10.0.1",
     "pg": "^8.13.0",
     "web-push": "^3.6.7"
