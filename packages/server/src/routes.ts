@@ -118,7 +118,7 @@ import {
 } from './board.js';
 import { colorLabel, LabelTrouble, labelsOfWorkspace, removeLabel, renameLabel } from './labels.js';
 import { listViewsOf, setListView, ViewTrouble } from './listViews.js';
-import { childrenOf, counts, list, listAcross, splitOverdue, type ViewId, span } from './views.js';
+import { childrenOf, counts, list, splitOverdue, type ViewId, span } from './views.js';
 
 const COOKIE = 'sote_session';
 
@@ -1015,25 +1015,35 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
   }
 
   /*
-   * ÜBERALL: dieselben Orte, über alle Arbeitsbereiche.
+   * DER KALENDER: alle Aufgaben mit Zeitpunkt zwischen zwei Augenblicken —
+   * über alle Arbeitsbereiche, oder über einen.
    *
-   * GEFRAGT: „Macht es Sinn, noch eine übergeordnete Home-Seite zu bauen …
-   * von der aus man sozusagen in allen Workspaces arbeiten kann?" Bei
-   * mindestens drei Bereichen ja.
+   * HIER OBEN, vor der Bereichsprüfung, aus demselben Grund wie einst
+   * „Überall": der Kalender hat keinen EINEN Arbeitsbereich. Er fragt, in
+   * welchen Bereichen jemand Mitglied ist UND dort eine Listenstufe hat —
+   * dieselbe Prüfung wie hinter der Schranke, nur für mehrere (Audit
+   * 12.09.2026, F01: Mitgliedschaft allein ersetzt keine Stufe). Mit
+   * `?workspace=` wird auf einen Bereich eingegrenzt; ein Bereich, in dem
+   * man nichts sieht, ist dann ein 403 und keine leere Liste.
    *
-   * HIER OBEN, vor der Bereichsprüfung, und das ist der ganze Punkt dieser
-   * Route: sie hat keinen EINEN Arbeitsbereich. Die Prüfung darunter verlangt
-   * `?workspace=` und prüft die Mitgliedschaft; diese Route fragt stattdessen,
-   * in welchen Bereichen jemand Mitglied IST, und nimmt genau die. Damit ist
-   * die Rechteprüfung nicht schwächer, sondern dieselbe — nur für mehrere.
+   * `from` einschliesslich, `to` ausschliesslich, beides Zeitpunkte; höchstens
+   * 62 Tage — ein Monat mit Rand, mehr fragt die Ansicht nie.
    *
-   * Gelöschte Bereiche fallen heraus (`deleted_at IS NULL`), wie in der
-   * Kontoantwort auch: ein Bereich im Papierkorb soll nicht aus einer
-   * Übersicht heraus weiterleben.
+   * „Überall" (Heute und Demnächst über alle Bereiche) ist mit dieser Route
+   * gegangen: der Kalender über alle Bereiche ist die bessere Antwort auf die
+   * Frage, die Überall stellen wollte, und zwei Antworten wären zwei Orte.
    */
-  if (path === '/api/across' && method === 'GET') {
-    const gefragt = url.searchParams.get('view');
-    const view = gefragt === 'upcoming' ? 'upcoming' : 'today';
+  if (path === '/api/span' && method === 'GET') {
+    const from = new Date(url.searchParams.get('from') ?? '');
+    const to = new Date(url.searchParams.get('to') ?? '');
+    if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime()) || to <= from) {
+      fail(res, 400, 'bad_span', '`from` und `to` sind Zeitpunkte, und `to` liegt danach');
+      return;
+    }
+    if (to.getTime() - from.getTime() > 62 * 86_400_000) {
+      fail(res, 400, 'span_too_long', 'höchstens 62 Tage auf einmal');
+      return;
+    }
     const meine = await queryRows<{ id: string; name: string; icon: unknown }>(
       ctx.pool,
       `SELECT w.id, w.name, w.icon FROM workspaces w
@@ -1042,95 +1052,30 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
         ORDER BY w.created_at`,
       [userId],
     );
-    const rows = await listAcross(
+    const nurDieser = url.searchParams.get('workspace');
+    const sichtbar: typeof meine = [];
+    for (const w of meine) {
+      if (nurDieser !== null && w.id !== nurDieser) continue;
+      if ((await effectiveListLevel(ctx.pool, userId, w.id)) !== null) sichtbar.push(w);
+    }
+    if (nurDieser !== null && sichtbar.length === 0) {
+      fail(res, 403, 'no_list_level', 'in diesem Arbeitsbereich siehst du keine Listen');
+      return;
+    }
+    const rows = await span(
       ctx.pool,
-      view,
-      meine.map((w) => w.id),
-      new Date(),
-      url.searchParams.get('tz') ?? undefined,
+      sichtbar.map((w) => w.id),
+      from,
+      to,
+      url.searchParams.get('done') === '1',
     );
     json(res, 200, {
-      view,
-      /*
-       * Mit dem Bereich an JEDER Aufgabe.
-       *
-       * Nur hier und nicht in `taskView` für alle: in einer Liste innerhalb
-       * eines Bereichs wäre es derselbe Wert dreissigmal, und eine Antwort,
-       * die sich selbst wiederholt, wird beim Lesen überflogen. Hier ist er
-       * der Unterschied zwischen zwei Zeilen.
-       */
+      // Mit dem Bereich an JEDER Aufgabe: über Bereiche hinweg ist er der
+      // Unterschied zwischen zwei Zeilen.
       tasks: rows.map((r) => ({ ...taskView(r), workspaceId: r.workspace_id })),
-      /*
-       * Die Bereiche kommen MIT, als Karte für die Marke an jeder Zeile.
-       *
-       * Nicht an jeder Aufgabe der Name: das wäre derselbe Name dreissigmal.
-       * Und nicht aus der Kontoantwort geholt — die Oberfläche soll diese
-       * Ansicht aus EINER Antwort zeichnen können, sonst hängt sie an der
-       * Reihenfolge zweier Abrufe.
-       */
-      workspaces: meine.map((w) => ({ id: w.id, name: w.name, icon: readIcon(w.icon) })),
+      // Die Bereiche kommen MIT, als Karte für die Marke an jeder Zeile.
+      workspaces: sichtbar.map((w) => ({ id: w.id, name: w.name, icon: readIcon(w.icon) })),
     });
-    return;
-  }
-
-  /*
-   * ECHTE BENACHRICHTIGUNGEN — drei Wege, alle OHNE Arbeitsbereich.
-   *
-   * GEWÜNSCHT: „Wenn ich als App installiere, dass es richtige
-   * App-Benachrichtigungen sendet."
-   *
-   * Sie hängen am KONTO und nicht an einem Bereich: ein Gerät gehört einer
-   * Person, und eine Erinnerung an eine Aufgabe kommt aus dem Bereich, in dem
-   * sie liegt — welcher das ist, weiss der Versender und nicht das Gerät.
-   */
-  if (path === '/api/push/key' && method === 'GET') {
-    /* Der öffentliche Schlüssel ist öffentlich: der Browser braucht ihn, um
-       überhaupt ein Abonnement anzulegen. Er wird beim ersten Abruf erzeugt. */
-    json(res, 200, { key: (await pushKeys(ctx.pool)).publicKey });
-    return;
-  }
-
-  if (path === '/api/push' && method === 'POST') {
-    const body = (await readJson(req)) as {
-      endpoint?: unknown;
-      keys?: { p256dh?: unknown; auth?: unknown };
-      says?: unknown;
-    };
-    const endpoint = typeof body?.endpoint === 'string' ? body.endpoint : '';
-    const p256dh = typeof body?.keys?.p256dh === 'string' ? body.keys.p256dh : '';
-    const auth = typeof body?.keys?.auth === 'string' ? body.keys.auth : '';
-    if (endpoint === '' || p256dh === '' || auth === '') {
-      fail(res, 400, 'bad_subscription', 'dieses Abonnement ist unvollständig');
-      return;
-    }
-    if (!isPushEndpoint(endpoint)) {
-      fail(res, 400, 'bad_endpoint', 'das ist keine Adresse eines Push-Dienstes');
-      return;
-    }
-    const geraete = await queryOne<{ n: string }>(
-      ctx.pool,
-      'SELECT count(*)::text AS n FROM push_subscriptions WHERE user_id = $1 AND endpoint <> $2',
-      [userId, endpoint],
-    );
-    if (Number(geraete?.n ?? 0) >= MAX_SUBSCRIPTIONS) {
-      fail(res, 409, 'too_many_devices', `mehr als ${MAX_SUBSCRIPTIONS} Geräte gibt es nicht — melde eines ab`);
-      return;
-    }
-    await subscribePush(ctx.pool, {
-      userId,
-      endpoint,
-      p256dh,
-      auth,
-      ...(typeof body.says === 'string' ? { says: body.says.slice(0, 80) } : {}),
-    });
-    json(res, 200, { ok: true });
-    return;
-  }
-
-  if (path === '/api/push' && method === 'DELETE') {
-    const body = (await readJson(req)) as { endpoint?: unknown };
-    if (typeof body?.endpoint === 'string') await unsubscribePush(ctx.pool, userId, body.endpoint);
-    json(res, 200, { ok: true });
     return;
   }
 
@@ -1236,30 +1181,6 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
         ).map(([id, kinder]) => [id, kinder.map(taskView)]),
       ),
     });
-    return;
-  }
-
-  /*
-   * Der Kalender: alle Aufgaben mit Zeitpunkt zwischen zwei Augenblicken.
-   *
-   * Ein eigener Weg und keine fünfte Sicht in `/api/tasks`: die Sichten
-   * antworten auf „was steht an", der Kalender auf „was liegt in diesem
-   * Fenster" — die Grenzen kommen vom Aufrufer, nicht aus `now`.
-   * Höchstens 62 Tage: ein Monat mit Rand, mehr fragt die Ansicht nie.
-   */
-  if (path === '/api/span' && method === 'GET') {
-    const from = new Date(url.searchParams.get('from') ?? '');
-    const to = new Date(url.searchParams.get('to') ?? '');
-    if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime()) || to <= from) {
-      fail(res, 400, 'bad_span', '`from` und `to` sind Zeitpunkte, und `to` liegt danach');
-      return;
-    }
-    if (to.getTime() - from.getTime() > 62 * 86_400_000) {
-      fail(res, 400, 'span_too_long', 'höchstens 62 Tage auf einmal');
-      return;
-    }
-    const rows = await span(ctx.pool, workspaceId, from, to, url.searchParams.get('done') === '1');
-    json(res, 200, { tasks: rows.map(taskView) });
     return;
   }
 

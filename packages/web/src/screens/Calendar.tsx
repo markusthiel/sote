@@ -5,13 +5,17 @@
  * Monats-, Wochen-, Tagesansicht. Und Tagesansicht und Wochenansicht mit
  * Liste darunter."
  *
- * ## Ein Ort, keine Anzeigeform
+ * ## Ein Hauptpunkt in der Schiene, über alle Arbeitsbereiche
  *
- * Der Kalender steht in der Leiste neben Heute, Demnächst, Irgendwann und
- * Posteingang und zeigt den ganzen Arbeitsbereich. Eine dritte Anzeigeform je
- * Projekt wäre auch möglich gewesen; entschieden wurde der Ort, weil ein
- * Kalender die Frage „was liegt in dieser Woche" beantwortet — und die stellt
- * man selten je Projekt.
+ * Erst stand er in der Leiste eines Arbeitsbereichs. Dann: „Ich dachte, die
+ * Kalenderansicht ist jetzt in der schmalen Leiste als neuer Hauptpunkt,
+ * übergreifend für alle Workspaces mit Filter … als schneller Einstieg." Ja —
+ * „was liegt in meiner Woche" hat keine Bereichsgrenze, wie die Glocke. Der
+ * Bereich ist ein Filter in der linken Spalte (`scope`, `null` = alle); bei
+ * „Alle" trägt jedes Kärtchen die Marke seines Bereichs, und Öffnen wechselt
+ * die Hülle dorthin, während der Kalender bleibt.
+ *
+ * „Überall" (Heute und Demnächst aus allen Bereichen) ist darin aufgegangen.
  *
  * ## Der Zeitpunkt einer Aufgabe ist ihr Plan, sonst ihre Frist
  *
@@ -49,6 +53,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
+import { colorValue } from '@sote/core';
+
 import { api, ApiError, streamUrl, type Project, type Task } from '../api.js';
 import {
   clock,
@@ -81,10 +87,14 @@ function whenOf(t: Task): { at: Date; allDay: boolean } | null {
   return null;
 }
 
+type Eintrag = { task: Task & { workspaceId: string }; at: Date; allDay: boolean };
+
 export function Calendar({
   span,
   date,
-  workspace,
+  scope,
+  createIn,
+  createInName,
   projects,
   now,
   openTask,
@@ -94,35 +104,67 @@ export function Calendar({
 }: {
   span: CalendarSpan;
   date: string;
-  workspace: string | undefined;
+  /** Ein Arbeitsbereich — oder `null` für alle. */
+  scope: string | null;
+  /** Wohin eine per Klick erfasste Aufgabe geht. */
+  createIn: string | undefined;
+  createInName: string;
   projects: readonly Project[];
   now: Date;
   openTask: string | null;
-  onOpenTask: (id: string | null) => void;
+  /** Mit dem Bereich der Aufgabe: über Bereiche hinweg muss die Hülle wissen, wohin. */
+  onOpenTask: (id: string | null, workspaceId?: string) => void;
   /** Eine andere Spanne oder ein anderer Tag — der Ort wechselt, also die Adresse. */
   onGo: (span: CalendarSpan, date: Date) => void;
   onChanged: () => void;
 }) {
   const anker = useMemo(() => parseIsoDate(date) ?? startOfDay(now), [date, now]);
   const fenster = useMemo(() => spanOf(span, anker), [span, anker]);
-  const [tasks, setTasks] = useState<Task[] | undefined>(undefined);
+  const [tasks, setTasks] = useState<(Task & { workspaceId: string })[] | undefined>(undefined);
+  const [bereiche, setBereiche] = useState<
+    { id: string; name: string; icon: { icon?: string; iconColor?: string } | null }[]
+  >([]);
   const [notice, setNotice] = useState<string | undefined>(undefined);
   const [showDone, setShowDone] = useState(false);
 
   const load = useCallback(async () => {
     try {
-      const out = await api.span(fenster.from, fenster.to, workspace, showDone);
+      const out = await api.span(fenster.from, fenster.to, scope, showDone);
       setTasks(out.tasks);
+      setBereiche(out.workspaces);
       setNotice(undefined);
     } catch (e) {
       setNotice(e instanceof ApiError ? e.message : 'Laden ging nicht.');
     }
-  }, [fenster, workspace, showDone]);
+  }, [fenster, scope, showDone]);
 
   useEffect(() => {
     void load();
   }, [load]);
-  useNudge(streamUrl(workspace), 'tasks', () => void load());
+  /*
+   * Die Klingel des Bereichs, in dem man steht — bei „Alle" hört der Kalender
+   * damit auf einen von mehreren. Die anderen kommen beim Fokus und beim
+   * Blättern nach; ein Strom je Bereich wäre eine Verbindung je Bereich.
+   */
+  useNudge(streamUrl(createIn), 'tasks', () => void load());
+
+  const bereich = (id: string) => bereiche.find((b) => b.id === id);
+  /** Die Marke des Bereichs vor einem Kärtchen — nur bei „Alle" und nur ab zwei. */
+  const marke = (id: string) => {
+    if (scope !== null || bereiche.length < 2) return null;
+    const b = bereich(id);
+    if (b === undefined) return null;
+    return (
+      <span
+        className="cal-chip-ws"
+        title={b.name}
+        aria-label={b.name}
+        style={{ background: colorValue(b.icon?.iconColor) ?? 'var(--text-faint)' }}
+      >
+        {(b.name.trim()[0] ?? '?').toUpperCase()}
+      </span>
+    );
+  };
 
   /*
    * Beim Betreten von Woche oder Tag auf den Morgen rollen: ein Raster, das bei
@@ -141,7 +183,7 @@ export function Calendar({
 
   /** Die Aufgaben je Tag, in der Reihenfolge des Servers (Zeit, Priorität). */
   const jeTag = useMemo(() => {
-    const m = new Map<string, { task: Task; at: Date; allDay: boolean }[]>();
+    const m = new Map<string, Eintrag[]>();
     for (const t of tasks ?? []) {
       const w = whenOf(t);
       if (w === null) continue;
@@ -230,7 +272,7 @@ export function Calendar({
         eintrag.planned !== null
           ? { planned: neu.toISOString(), plannedAllDay: w.allDay }
           : { due: neu.toISOString(), dueAllDay: w.allDay };
-      void api.patch(eintrag.id, felder, workspace).then(
+      void api.patch(eintrag.id, felder, eintrag.workspaceId).then(
         () => {
           void load();
           onChanged();
@@ -248,7 +290,7 @@ export function Calendar({
     };
     // `zielUnter` und `load` sind stabil genug; `drag` und `tasks` sind die Eingaben.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [drag, tasks, workspace]);
+  }, [drag, tasks]);
 
   /* ── Erfassen ───────────────────────────────────────────────────────── */
 
@@ -260,13 +302,13 @@ export function Calendar({
     if (entwurf === null || line.trim() === '') return;
     setEntwurfBusy(true);
     try {
-      const out = await api.createTask(line, workspace, undefined, []);
+      const out = await api.createTask(line, createIn, undefined, []);
       const at = new Date(entwurf.day);
       const allDay = entwurf.minutes === null;
       if (!allDay) at.setHours(Math.floor(entwurf.minutes! / 60), entwurf.minutes! % 60, 0, 0);
       // Der Klick sagt, wann — ausdrücklich, nach dem Anlegen. Sonst hätte
       // „Zahnarzt 9 Uhr" zwei Zeiten, und die aus der Zeile gewänne.
-      await api.patch(out.task.id, { planned: at.toISOString(), plannedAllDay: allDay }, workspace);
+      await api.patch(out.task.id, { planned: at.toISOString(), plannedAllDay: allDay }, createIn);
       setEntwurf(null);
       void load();
       onChanged();
@@ -292,7 +334,11 @@ export function Calendar({
       className="cal-draft"
       autoFocus
       disabled={entwurfBusy}
-      placeholder={allDay ? 'Neue Aufgabe an diesem Tag' : `Neue Aufgabe um ${clock(entwurfZeit())}`}
+      placeholder={
+        (allDay ? 'Neue Aufgabe an diesem Tag' : `Neue Aufgabe um ${clock(entwurfZeit())}`) +
+        // Bei „Alle" sagt das Feld, wohin: in den Bereich, in dem man steht.
+        (scope === null && bereiche.length > 1 && createInName !== '' ? ` in ${createInName}` : '')
+      }
       aria-label="Neue Aufgabe"
       onKeyDown={(e) => {
         if (e.key === 'Enter') {
@@ -315,8 +361,8 @@ export function Calendar({
     return d;
   };
 
-  const abhaken = (task: Task) =>
-    void toggleDone(task, workspace).then(
+  const abhaken = (task: Task & { workspaceId: string }) =>
+    void toggleDone(task, task.workspaceId).then(
       () => {
         void load();
         onChanged();
@@ -324,24 +370,22 @@ export function Calendar({
       () => setNotice(task.completed === null ? 'Abhaken ging nicht.' : 'Wieder öffnen ging nicht.'),
     );
 
-  const zeile = (t: Task) => (
+  const zeile = (t: Task & { workspaceId: string }) => (
     <TaskRow
       key={t.id}
       task={t}
       now={now}
-      projectName={nameOf(t.projectId)}
+      // Der Projektname gilt nur im eigenen Bereich; fremde Aufgaben nennen
+      // stattdessen ihren Bereich — das ist, was sie unterscheidet.
+      projectName={t.workspaceId === createIn ? nameOf(t.projectId) : bereich(t.workspaceId)?.name}
       open={openTask === t.id}
-      onOpen={() => onOpenTask(openTask === t.id ? null : t.id)}
+      onOpen={() => onOpenTask(openTask === t.id ? null : t.id, t.workspaceId)}
       onComplete={() => abhaken(t)}
     />
   );
 
   /** Ein Block im Raster oder ein Kärtchen im Monat: klickbar, führt in die Spalte; ziehbar. */
-  const karte = (
-    e: { task: Task; at: Date; allDay: boolean },
-    mitZeit: boolean,
-    art: 'timed' | 'allday' | 'month',
-  ) => (
+  const karte = (e: Eintrag, mitZeit: boolean, art: 'timed' | 'allday' | 'month') => (
     <button
       key={e.task.id}
       type="button"
@@ -353,9 +397,10 @@ export function Calendar({
       onPointerDown={(ev) => beginne(ev, e.task.id, art)}
       onClick={() => {
         if (gezogen.current) return;
-        onOpenTask(openTask === e.task.id ? null : e.task.id);
+        onOpenTask(openTask === e.task.id ? null : e.task.id, e.task.workspaceId);
       }}
     >
+      {marke(e.task.workspaceId)}
       {mitZeit && !e.allDay ? <span className="cal-chip-time">{clock(e.at)}</span> : null}
       <span className="cal-chip-title">{e.task.title}</span>
     </button>

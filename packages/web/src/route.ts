@@ -179,7 +179,8 @@ export function parseRoute(pathname: string, queryString = ''): Route {
       // sehen.
       return { kind: 'settings', section: parts[1] ?? 'profil' };
     case 'workspaces':
-      return { kind: 'workspaces', section: parts[1] ?? 'alle' };
+      // „Überall" ist in den Kalender aufgegangen; ein alter Link landet auf der Liste.
+      return { kind: 'workspaces', section: parts[1] === undefined || parts[1] === 'ueberall' ? 'alle' : parts[1] };
     case 'verwaltung':
       return { kind: 'admin', section: parts[1] ?? 'instanz' };
     default:
@@ -239,6 +240,7 @@ export function modeOfRoute(route: Route): string {
   // mehr: sie haben einen Inhalt, und die Platzhalterseite hat keinen.
   if (route.kind === 'workspaces') return 'workspaces';
   if (route.kind === 'inbox') return 'inbox';
+  if (route.kind === 'calendar') return 'calendar';
   if (route.kind === 'shares') return 'shares';
   if (route.kind === 'notifications') return 'notifications';
   // Die Verwaltung ist KEIN Modus. Sie steht nicht in der Schiene, weil sie

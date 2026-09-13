@@ -95,13 +95,12 @@ export const SETTING_SECTIONS = [
  */
 export const WORKSPACE_SECTIONS = [
   /*
-   * „Überall" steht GANZ OBEN, vor der Aufzählung der Bereiche.
-   *
-   * Wer hierher kommt, will meistens wissen, was offen ist — nicht, welche
-   * Bereiche es gibt. Die Liste der Bereiche ist die Antwort auf „wohin
-   * wechseln", und das ist die seltenere Frage, sobald es drei sind.
+   * „Überall" (Heute und Demnächst aus allen Bereichen) stand hier ganz
+   * oben. Es ist in den Kalender in der Schiene aufgegangen: der zeigt alle
+   * Bereiche mit Filter und beantwortet dieselbe Frage — „was liegt an" —
+   * mit Tagen statt mit zwei Listen. Gemeldet: „die war da noch nicht ganz
+   * korrekt."
    */
-  { id: 'ueberall', label: 'Überall', hint: 'Heute und Demnächst aus allen' },
   { id: 'alle', label: 'Alle Workspaces', hint: 'Übersicht' },
   { id: 'name', label: 'Name und Zeichen', hint: 'Woran man ihn erkennt' },
   { id: 'landen', label: 'Standard-Seite', hint: 'Vorgabe für alle' },

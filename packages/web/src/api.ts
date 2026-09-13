@@ -630,13 +630,6 @@ export const api = {
    * nicht „darf ich hier", sondern „wo bin ich Mitglied", und nimmt genau die
    * Bereiche.
    */
-  across: (view: 'today' | 'upcoming') =>
-    call<{
-      view: string;
-      /** Jede Aufgabe trägt hier ihren Bereich — das ist der Unterschied. */
-      tasks: (Task & { workspaceId: string })[];
-      workspaces: { id: string; name: string; icon?: unknown }[];
-    }>(withZone(`/api/across?view=${view}`)),
   /** Der öffentliche Schlüssel dieser Instanz — für das Abonnement im Browser. */
   pushKey: () => call<{ key: string }>('/api/push/key'),
   pushSubscribe: (abo: {
@@ -1309,11 +1302,14 @@ export const api = {
    * Alle Aufgaben mit Zeitpunkt in einem Fenster — für den Kalender. Die
    * Grenzen als Augenblicke: der Browser rechnet seine Tage in seiner Zone.
    */
-  span: (from: Date, to: Date, workspace?: string, done = false) =>
-    call<{ tasks: Task[] }>(
+  span: (from: Date, to: Date, workspace: string | null, done = false) =>
+    call<{
+      tasks: (Task & { workspaceId: string })[];
+      workspaces: { id: string; name: string; icon: { icon?: string; iconColor?: string } | null }[];
+    }>(
       `/api/span?from=${encodeURIComponent(from.toISOString())}&to=${encodeURIComponent(to.toISOString())}${
         done ? '&done=1' : ''
-      }${workspace === undefined ? '' : `&workspace=${workspace}`}`,
+      }${workspace === null ? '' : `&workspace=${workspace}`}`,
     ),
   detail: (id: string, workspace?: string) =>
     call<Detail>(

@@ -23,12 +23,14 @@
  * SOTEs eigenes: es ist die Marke und nicht Möblierung.
  */
 
-import { BellIcon, SearchIcon, ShareIcon, TrashIcon, WorkspacesIcon } from './components/icons.js';
+import { BellIcon, CalendarIcon, SearchIcon, ShareIcon, TrashIcon, WorkspacesIcon } from './components/icons.js';
 import { SoteMark } from './components/Logo.js';
 
 export type ModeId =
   | 'tasks'
   | 'search'
+  /** Der Kalender über alle Arbeitsbereiche — eine Frage an die Person, nicht an den Bereich. */
+  | 'calendar'
   | 'workspaces'
   /** Die Glocke. Der Posteingang ist keine Schiene, sondern eine Aufgabenansicht. */
   | 'notifications'
@@ -80,6 +82,18 @@ export const MODES: readonly Mode[] = [
     id: 'search',
     label: 'Suchen',
     icon: <SearchIcon size={SIZE} />,
+  },
+  {
+    /*
+     * Der Kalender steht in der Schiene und nicht in der Leiste eines
+     * Arbeitsbereichs: „was liegt in meiner Woche" hat keine Bereichsgrenze,
+     * wie die Glocke. Der Bereich ist ein Filter in der linken Spalte.
+     * Gewünscht: „als neuer Hauptpunkt übergreifend für alle Workspaces mit
+     * Filter … als schneller Einstieg."
+     */
+    id: 'calendar',
+    label: 'Kalender',
+    icon: <CalendarIcon size={SIZE} />,
   },
   {
     id: 'workspaces',

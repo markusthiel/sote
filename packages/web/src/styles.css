@@ -7443,3 +7443,21 @@ label.btn {
   padding: var(--sone-space-1) var(--sone-space-2);
   outline: none;
 }
+
+/* Die Marke des Arbeitsbereichs vor einem Kärtchen — nur, wenn der Kalender
+   alle Bereiche zeigt. Ein Kreis mit dem Anfangsbuchstaben in der Farbe des
+   Zeichens, wie im Wechsler; der volle Name steht im Titel. */
+.cal-chip-ws {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.1rem;
+  height: 1.1rem;
+  border-radius: 999px;
+  color: var(--accent-on);
+  font-family: var(--sote-mono);
+  font-size: var(--sone-text-xs);
+  line-height: 1;
+  align-self: center;
+}

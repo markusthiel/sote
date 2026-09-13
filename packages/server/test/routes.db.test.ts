@@ -1168,3 +1168,16 @@ test('der Kalender holt alle Aufgaben mit Zeitpunkt in einem Fenster — Plan vo
   const zuLang = await call('/api/span?from=2026-01-01T00:00:00Z&to=2026-06-01T00:00:00Z');
   assert.equal(zuLang.status, 400);
 });
+
+test('der Kalender zeigt nur Bereiche, in denen man eine Listenstufe hat', async () => {
+  // Vor der Schranke, also mit eigener Prüfung: Mitgliedschaft allein ersetzt
+  // keine Stufe (F01) — auch nicht über alle Bereiche hinweg.
+  const { cookie } = await mitgliedMit(null);
+  const alle = await als(cookie, '/api/span?from=2026-09-14T00:00:00Z&to=2026-09-21T00:00:00Z');
+  assert.equal(alle.status, 200);
+  const body = (await alle.json()) as { tasks: unknown[]; workspaces: { id: string }[] };
+  assert.equal(body.tasks.length, 0, 'ein Gast sieht keine Aufgabe');
+  assert.ok(!body.workspaces.some((w) => w.id === workspaceId), 'und der Bereich steht nicht in der Karte');
+  const einer = await als(cookie, `/api/span?from=2026-09-14T00:00:00Z&to=2026-09-21T00:00:00Z&workspace=${workspaceId}`);
+  assert.equal(einer.status, 403);
+});

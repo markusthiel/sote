@@ -62,7 +62,6 @@ import {
   SETTING_SECTIONS,
   WORKSPACE_SECTIONS,
 } from './screens/Settings.js';
-import { Everywhere } from './screens/Everywhere.js';
 import { Trash } from './screens/Trash.js';
 
 /**
@@ -149,6 +148,11 @@ export function App() {
    */
   const ungelesen = notes.filter((n) => n.readAt === null).length;
   const [noteView, setNoteView] = useState<NoteView>({ of: 'unread' });
+  /**
+   * Der Bereichsfilter des Kalenders — `null` heisst alle. Zustand und nicht
+   * Adresse, wie der Filter der Glocke: ein Blickwinkel, kein Ort.
+   */
+  const [calScope, setCalScope] = useState<string | null>(null);
   /*
    * Welche Freigaben gezeigt werden.
    *
@@ -619,22 +623,10 @@ export function App() {
                 // Heute aus nichts.
                 markRoute(landing, projects, route)
               : id === 'workspaces'
-                ? /*
-                   * Der Bereich landet auf ÜBERALL und nicht auf der Liste der
-                   * Bereiche.
-                   *
-                   * GEMELDET: „Ich finde den Bereich nicht." Er stand in der
-                   * Abschnittsliste — auf dem Rechner links, auf dem Telefon
-                   * hinter der Leiste, die man erst aufmachen muss. Ein Ort,
-                   * den man nur findet, wenn man ihn schon kennt, ist keiner.
-                   *
-                   * Und es ist auch die richtige Landung: wer auf „Workspaces"
-                   * tippt, will meistens wissen, was offen ist — die Liste der
-                   * Bereiche beantwortet „wohin wechseln", und das ist die
-                   * seltenere Frage, sobald es drei sind. Sie steht einen Tipp
-                   * weiter.
-                   */
-                  { kind: 'workspaces', section: 'ueberall' }
+                ? // Die Liste der Bereiche. „Überall" ist in den Kalender aufgegangen.
+                  { kind: 'workspaces', section: 'alle' }
+                : id === 'calendar'
+                  ? { kind: 'calendar', span: 'week', date: isoDate(now) }
                 : id === 'search'
                   ? /*
                      * Zur SUCHE, nicht auf eine Platzhalterseite.
@@ -729,6 +721,17 @@ export function App() {
                 „Wo" ist stattdessen eine Achse im Menü darunter.
               */}
               <div className="panel-scope">über alle Arbeitsbereiche</div>
+            </>
+          ) : route.kind === 'calendar' ? (
+            <>
+              <div className="sidebar-head">
+                <div className="panel-title">Kalender</div>
+              </div>
+              <div className="panel-scope">
+                {calScope === null
+                  ? 'über alle Arbeitsbereiche'
+                  : (me.workspaces.find((w) => w.id === calScope)?.name ?? '')}
+              </div>
             </>
           ) : SECTION_NAV !== null && route.kind !== 'workspaces' ? (
             <>
@@ -893,6 +896,29 @@ export function App() {
             <NotificationsPanel notes={notes} view={noteView} onPick={setNoteView} />
           ) : null}
 
+          {route.kind === 'calendar' ? (
+            /*
+             * Der Bereichsfilter des Kalenders — dieselbe Form wie das „Wo"
+             * der Glocke. „Alle" zuerst, dann jeder Bereich; bei nur einem
+             * Bereich ist die Wahl keine und das Menü entfällt (ADR-0072).
+             */
+            me.workspaces.length > 1 ? (
+              <div className="panel-menu-group">
+                <div className="sidebar-label">Wo</div>
+                {[{ id: null as string | null, name: 'Alle Arbeitsbereiche' }, ...me.workspaces].map((w) => (
+                  <button
+                    key={w.id ?? 'alle'}
+                    className="panel-menu-item"
+                    aria-current={calScope === w.id ? 'page' : undefined}
+                    onClick={() => setCalScope(w.id)}
+                  >
+                    <span className="panel-menu-label">{w.name}</span>
+                  </button>
+                ))}
+              </div>
+            ) : null
+          ) : null}
+
           {/*
             Die Filter der Suche stehen in der LEISTE: eine Suche einzugrenzen
             ist Navigation innerhalb dieser Suche (SONEs ADR-0069, angewandt und
@@ -925,6 +951,7 @@ export function App() {
 
           {SECTION_NAV !== null ||
         route.kind === 'notifications' ||
+        route.kind === 'calendar' ||
         route.kind === 'shares' ||
         route.kind === 'search' ? null : (
           <>
@@ -974,19 +1001,6 @@ export function App() {
               )}
             </button>
           ))}
-          {/*
-            Der Kalender: ein Ort wie die vier darüber, ohne Zahl — „wie viele
-            Aufgaben liegen im Kalender" ist keine Frage, die jemand stellt.
-            Leuchtet, solange man in irgendeiner seiner drei Spannen ist.
-          */}
-          <button
-            className="panel-menu-item"
-            aria-label="Kalender"
-            aria-current={route.kind === 'calendar' ? 'page' : undefined}
-            onClick={() => go({ kind: 'calendar', span: 'week', date: isoDate(now) })}
-          >
-            <span className="panel-menu-label">Kalender</span>
-          </button>
           </div>
 
           <ProjectTree
@@ -1093,18 +1107,6 @@ export function App() {
           />
         ) : route.kind === 'settings' && route.section === 'kalender' ? (
           <CalendarFeed workspace={workspace} workspaceName={wsName} />
-        ) : route.kind === 'workspaces' && route.section === 'ueberall' ? (
-          <Everywhere
-            /*
-             * Öffnen heißt hier: den Bereich WECHSELN und dort die Aufgabe
-             * aufmachen. Eine Detailspalte über einen fremden Bereich hinweg
-             * wäre die Alternative — und damit müsste jede Route in ihr den
-             * Bereich mitführen, den der Rest der Anwendung aus dem Zustand
-             * nimmt. Zwei Antworten auf „wo bin ich".
-             */
-            onOpen={(ws, taskId) => void openTaskAt(ws, taskId)}
-            onChanged={() => void loadPanel()}
-          />
         ) : route.kind === 'workspaces' && route.section === 'alle' ? (
           <WorkspaceOverview workspaces={me.workspaces} current={workspace} />
         ) : route.kind === 'workspaces' && route.section === 'gruppen' ? (
@@ -1158,11 +1160,27 @@ export function App() {
           <Calendar
             span={route.span}
             date={route.date}
-            workspace={workspace}
+            scope={calScope}
+            /* Wo eine per Klick erfasste Aufgabe hingeht, wenn „Alle" gewählt ist:
+               in den Bereich, in dem man gerade steht. */
+            createIn={calScope ?? workspace}
+            createInName={me.workspaces.find((w) => w.id === (calScope ?? workspace))?.name ?? ''}
             projects={projects}
             now={now}
             openTask={openTask}
-            onOpenTask={setOpenTask}
+            onOpenTask={(id, ws) => {
+              /*
+               * Eine Aufgabe aus einem anderen Bereich öffnen: die Hülle
+               * wechselt den Bereich (die Detailspalte lädt aus ihm), der
+               * Kalender bleibt, wo er ist — sein Fenster hängt nicht am
+               * Bereich, wenn „Alle" gewählt ist.
+               */
+              if (id !== null && ws !== undefined && ws !== workspace) {
+                setWorkspace(ws);
+                localStorage.setItem(LAST_WORKSPACE, ws);
+              }
+              setOpenTask(id);
+            }}
             onGo={(span, tag) => go({ kind: 'calendar', span, date: isoDate(tag) })}
             onChanged={() => void loadPanel()}
           />
@@ -1277,22 +1295,10 @@ export function App() {
                 // Heute aus nichts.
                 markRoute(landing, projects, route)
               : id === 'workspaces'
-                ? /*
-                   * Der Bereich landet auf ÜBERALL und nicht auf der Liste der
-                   * Bereiche.
-                   *
-                   * GEMELDET: „Ich finde den Bereich nicht." Er stand in der
-                   * Abschnittsliste — auf dem Rechner links, auf dem Telefon
-                   * hinter der Leiste, die man erst aufmachen muss. Ein Ort,
-                   * den man nur findet, wenn man ihn schon kennt, ist keiner.
-                   *
-                   * Und es ist auch die richtige Landung: wer auf „Workspaces"
-                   * tippt, will meistens wissen, was offen ist — die Liste der
-                   * Bereiche beantwortet „wohin wechseln", und das ist die
-                   * seltenere Frage, sobald es drei sind. Sie steht einen Tipp
-                   * weiter.
-                   */
-                  { kind: 'workspaces', section: 'ueberall' }
+                ? // Die Liste der Bereiche. „Überall" ist in den Kalender aufgegangen.
+                  { kind: 'workspaces', section: 'alle' }
+                : id === 'calendar'
+                  ? { kind: 'calendar', span: 'week', date: isoDate(now) }
                 : id === 'search'
                   ? /*
                      * Zur SUCHE, nicht auf eine Platzhalterseite.
