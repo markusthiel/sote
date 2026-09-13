@@ -249,7 +249,10 @@ export async function syncWriter(pool: Pool, feedId: string, now: Date, transpor
           currentUid = entry.uid;
           entry = await prepareWrittenEvent(credentials, entry, transport);
         }
-        const body = buildCalDavEvent({ task, kind, uid: entry.uid, timezone: writer.timezone, base: baseUrl() });
+        // iCloud lehnt VEVENT ohne DTEND teils mit PUT 404 ab. Vor dem Fingerprint
+        // normalisieren, damit Quittierung und Wiederholung denselben Inhalt vergleichen.
+        const body = buildCalDavEvent({ task, kind, uid: entry.uid, timezone: writer.timezone, base: baseUrl(),
+          explicitInstantEnd: /^(?:p\d+-)?caldav\.icloud\.com$/.test(new URL(credentials.url).hostname) });
         const hash = eventFingerprint(body);
         if (entry.content_hash === hash && entry.pending_hash === null) continue;
         if (full()) { more = true; break; }

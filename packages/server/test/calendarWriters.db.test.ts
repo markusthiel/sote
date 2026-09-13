@@ -186,3 +186,31 @@ test('Eine abgelehnte Übertragung erscheint nicht als bestätigte Kalenderkopie
   assert.equal(status.count,0); assert.equal(status.syncedAt,null);
   assert.match(status.lastError!,/Termin schreiben \(PUT\).*HTTP 404/);
 });
+
+test('iCloud-Zeitpunkte und Fristen bekommen eine Endzeit und behalten nach verlorener PUT-Antwort ihre Zuordnung', async () => {
+  const f = await fixture(); const task = await f.task();
+  await pool.query("UPDATE tasks SET duration_min=NULL, due_at='2026-09-16T15:00:00Z', due_all_day=false WHERE id=$1", [task]);
+  let interrupt = true;
+  const cloud: DavTransport = async (...args) => {
+    if (args[2] === 'PUT') {
+      const body = args[3] ?? '';
+      if (!body.includes('\r\nDTEND:')) return { status:404, body:'', etag:null };
+      assert.equal(body.match(/\r\nDTEND:(.*)\r\n/)?.[1], body.match(/\r\nDTSTART:(.*)\r\n/)?.[1]);
+    }
+    const response = await f.transport(...args);
+    if (args[2] === 'PUT' && response.status === 201 && interrupt) { interrupt=false; throw new Error('Antwort verloren'); }
+    return response;
+  };
+  await saveWriter(pool,f.user,f.feed,{...f.input,url:'https://p39-caldav.icloud.com/mine/',mode:'both'},cloud);
+  await syncWriter(pool,f.feed,now,cloud);
+  assert.equal(f.objects.size,1);
+  await syncWriter(pool,f.feed,now,cloud);
+  assert.equal(f.objects.size,2);
+  const status = (await writerStatus(pool,f.user))[f.feed]!;
+  assert.equal(status.lastError,null); assert.equal(status.count,2);
+  const puts = f.calls.filter(c=>c.method==='PUT').length;
+  await syncWriter(pool,f.feed,now,cloud);
+  assert.equal(f.calls.filter(c=>c.method==='PUT').length,puts);
+  await pool.query('UPDATE tasks SET completed_at=now() WHERE id=$1',[task]);
+  await syncWriter(pool,f.feed,now,cloud); assert.equal(f.objects.size,0);
+});

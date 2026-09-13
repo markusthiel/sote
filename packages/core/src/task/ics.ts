@@ -196,6 +196,8 @@ export function buildIcs(input: {
 /** Ein einzelnes CalDAV-Objekt. METHOD gehört in Abos, niemals in einen CalDAV-PUT. */
 export function buildCalDavEvent(input: {
   task: IcsTask; kind: 'plan' | 'due'; uid: string; timezone: string; base?: string | undefined;
+  /** iCloud-Kompatibilität: bei Zeitpunkten DTEND=DTSTART statt fehlendem DTEND. */
+  explicitInstantEnd?: boolean;
 }): string {
   const { task, kind } = input;
   let at = kind === 'plan' ? task.planned : task.due;
@@ -208,9 +210,10 @@ export function buildCalDavEvent(input: {
     const n = (type: string) => Number(parts.find((p) => p.type === type)?.value);
     at = new Date(Date.UTC(n('year'), n('month') - 1, n('day')));
   }
+  const duration = kind === 'plan' ? task.duration : null;
   return ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//SOTE//Aufgaben//DE', 'CALSCALE:GREGORIAN',
     ...event({ uid: input.uid, summary: kind === 'due' ? `Frist: ${task.title}` : task.title,
-      at, allDay, duration: kind === 'plan' ? task.duration : null, task, now: task.updatedAt, base: input.base }),
+      at, allDay, duration: duration ?? (input.explicitInstantEnd ? 0 : null), task, now: task.updatedAt, base: input.base }),
     'END:VCALENDAR', ''].map(fold).join('\r\n');
 }
 

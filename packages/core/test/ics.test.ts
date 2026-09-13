@@ -55,6 +55,18 @@ test('CalDAV-Fristen tragen keine Aufgabendauer und Text kann keine ICS-Eigensch
   assert.throws(() => buildCalDavEvent({ task: task(), kind: 'due', uid: 'x', timezone: 'UTC' }));
 });
 
+test('iCloud-Endzeit für Zeitpunkte ist ausdrücklich gleich dem Start, ohne zusätzliche Dauer', () => {
+  const input = { task: task(), kind: 'plan' as const, uid: 'instant', timezone: 'UTC', explicitInstantEnd: true };
+  const output = buildCalDavEvent(input);
+  assert.ok(output.includes('DTSTART:20260908T090000Z\r\nDTEND:20260908T090000Z\r\n'));
+  const due = buildCalDavEvent({ ...input, kind: 'due', task: task({ due: NOW, duration: 90 }) });
+  assert.ok(due.includes('DTSTART:20260907T100000Z\r\nDTEND:20260907T100000Z\r\n'));
+  assert.equal(buildCalDavEvent({ ...input, explicitInstantEnd: false }).includes('DTEND:'), false);
+  assert.ok(buildCalDavEvent({ ...input, task: task({ duration: 90 }) }).includes('DTEND:20260908T103000Z'));
+  const allDay = buildCalDavEvent({ ...input, task: task({ plannedAllDay: true }) });
+  assert.ok(allDay.includes('DTSTART;VALUE=DATE:20260908\r\nDTEND;VALUE=DATE:20260909\r\n'));
+});
+
 test('ein Dokument mit Kopf und Fuß', () => {
   const out = buildIcs({ tasks: [], name: 'SOTE — Haus', now: NOW });
   const l = lines(out);
