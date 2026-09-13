@@ -133,6 +133,7 @@ export function Calendar({
   >([]);
   const [notice, setNotice] = useState<string | undefined>(undefined);
   const [showDone, setShowDone] = useState(false);
+  const hoursScroll = useRef<HTMLDivElement>(null);
 
   const load = useCallback(async () => {
     const version = ++loadVersion.current;
@@ -186,8 +187,11 @@ export function Calendar({
    */
   useEffect(() => {
     if (span === 'month') return;
-    const ziel = document.querySelector<HTMLElement>('.cal-line[data-hour="7"]');
-    ziel?.scrollIntoView({ block: 'start' });
+    const scroll = hoursScroll.current;
+    if (scroll) {
+      const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+      scroll.scrollTop = 7 * HOUR_REM * rem;
+    }
   }, [span, date]);
 
   const nameOf = (id: string | null): string | undefined =>
@@ -495,7 +499,8 @@ export function Calendar({
   const raster = () => {
     const tage = fenster.days;
     return (
-      <div className="cal-grid" data-days={tage.length} style={{ ['--cal-days' as string]: tage.length }}>
+      <div className="cal-schedule" style={{ ['--cal-days' as string]: tage.length }}>
+        <div className="cal-grid cal-fixed-head">
         {/* Kopf: die Tage */}
         <div className="cal-gutter" aria-hidden="true" />
         {tage.map((tag) => (
@@ -511,6 +516,8 @@ export function Calendar({
             <span className="cal-dayhead-num">{tag.getDate()}</span>
           </button>
         ))}
+        </div>
+        <div className="cal-grid cal-fixed-allday" role="region" aria-label="Ganztägige Termine" tabIndex={0}>
         {/* Ganztägiges */}
         <div className="cal-gutter cal-gutter-label" aria-hidden="true">
           ganztägig
@@ -536,6 +543,8 @@ export function Calendar({
             {entwurf !== null && entwurf.minutes === null && sameDay(entwurf.day, tag) ? entwurfFeld(true) : null}
           </div>
         ))}
+        </div>
+        <div ref={hoursScroll} className="cal-grid cal-time-scroll" role="region" aria-label="Stundenkalender" tabIndex={0}>
         {/* Die Stunden */}
         <div className="cal-hours" style={{ height: `${24 * HOUR_REM}rem` }}>
           {Array.from({ length: 24 }, (_, h) => (
@@ -608,13 +617,14 @@ export function Calendar({
             ) : null}
           </div>
         ))}
+        </div>
       </div>
     );
   };
 
   /** Die Liste des Fensters, nach Tagen — unter Woche und Tag. */
   const liste = () => (
-    <div className="cal-list">
+    <div className="cal-list" role="region" aria-label="Aufgabenliste" tabIndex={0}>
       {fenster.days.map((tag) => {
         const eintraege = jeTag.get(isoDate(tag)) ?? [];
         if (eintraege.length === 0 && span === 'week') return null;
@@ -640,10 +650,11 @@ export function Calendar({
   );
 
   const anzahl = tasks?.length ?? 0;
+  const timeCalendar = span !== 'month';
 
   return (
     <>
-      <div className="main-head">
+      <div className="main-head cal-head">
         <h1>{titleOf(span, anker)}</h1>
         <div className="sub">
           {tasks === undefined
@@ -692,10 +703,10 @@ export function Calendar({
           ))}
         </div>
       </div>
-      <div className="body" data-wide="yes" data-dragging={drag?.bewegt ? 'yes' : undefined}>
+      <div className={timeCalendar ? 'body cal-body' : 'body'} data-wide="yes" data-dragging={drag?.bewegt ? 'yes' : undefined}>
         {notice !== undefined ? <p className="note-error">{notice}</p> : null}
         {span === 'month' ? monat() : raster()}
-        {span === 'month' ? null : liste()}
+        {span === 'month' ? null : <section className="cal-list-panel" aria-label="Aufgaben im Zeitraum"><h2>Aufgaben im Zeitraum</h2>{liste()}</section>}
       </div>
     </>
   );

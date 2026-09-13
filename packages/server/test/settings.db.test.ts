@@ -58,6 +58,17 @@ after(async () => {
   await pool.end();
 });
 
+test('Kalender-Standardansicht wird persönlich gespeichert und ungültige Werte ändern sie nicht', async () => {
+  for (const calendarDefault of ['last','day','week','month']) {
+    await patchSettings(pool,'user',userId,{calendarDefault});
+    assert.equal((await effectiveFor(pool,userId,workspaceId)).levels.user.calendarDefault,calendarDefault);
+  }
+  await assert.rejects(()=>patchSettings(pool,'user',userId,{calendarDefault:'year'}),OutOfOrder);
+  assert.equal((await effectiveFor(pool,userId,workspaceId)).levels.user.calendarDefault,'month');
+  await patchSettings(pool,'user',userId,{calendarDefault:null});
+  assert.equal((await effectiveFor(pool,userId,workspaceId)).levels.user.calendarDefault,undefined);
+});
+
 test('ohne jede Einstellung entscheidet das Gerät', async () => {
   const { effective } = await effectiveFor(pool, userId, workspaceId);
   assert.equal(effective.scheme, 'system');

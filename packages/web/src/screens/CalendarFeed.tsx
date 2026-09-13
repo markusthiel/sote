@@ -22,13 +22,19 @@
 import { useCallback, useEffect, useState } from 'react';
 
 import { api, ApiError } from '../api.js';
+import type { CalendarDefault } from '@sote/core';
+import { CalendarPreferences } from '../components/CalendarPreferences.js';
 
 export function CalendarFeed({
   workspace,
   workspaceName,
+  defaultView,
+  onDefaultView,
 }: {
   workspace: string | undefined;
   workspaceName: string;
+  defaultView: CalendarDefault;
+  onDefaultView: (value: CalendarDefault) => void;
 }) {
   const [data, setData] = useState<Awaited<ReturnType<typeof api.calendar>> | undefined>(
     undefined,
@@ -60,7 +66,8 @@ export function CalendarFeed({
     }
   }
 
-  if (data === undefined) return <div className="settings" aria-busy="true" />;
+  const preferences = <CalendarPreferences value={defaultView} workspace={workspace} onSaved={onDefaultView} />;
+  if (data === undefined) return <div className="settings">{preferences}{notice ? <p className="note-error">{notice}</p> : <p className="muted" role="status">Kalenderabonnement wird geladen …</p>}</div>;
 
   /*
    * Die Adresse wird HIER zusammengesetzt und nicht am Server.
@@ -78,10 +85,11 @@ export function CalendarFeed({
 
   return (
     <div className="settings">
+      {preferences}
       {notice === undefined ? null : <p className="note-error">{notice}</p>}
 
       <section className="settings-card">
-        <h2>Kalender</h2>
+        <h2>Kalenderabonnement</h2>
         <p className="muted">
           Die Aufgaben aus <strong>{workspaceName}</strong>, die ein Datum haben,
           als Abonnement für dein Kalenderprogramm. Was eine Dauer hat, wird ein

@@ -7475,10 +7475,24 @@ label.btn {
 
 /* Woche und Tag: Rinne + n Spalten. Zwei Kopfzeilen (Tage, Ganztägiges),
    dann das Raster. */
+.main-calendar { display: flex; flex-direction: column; overflow: hidden; }
+.main-calendar > .main-head { flex: none; }
+.cal-head > .head-views { position: static; flex-wrap: wrap; justify-content: flex-start; margin-block-start: var(--sone-space-5); }
+.cal-body { display: flex; flex: 1; flex-direction: column; min-block-size: 0; overflow: hidden; padding-block-end: var(--sone-space-4); }
+.cal-body > .note-error { flex: none; }
+.cal-schedule { display: flex; flex-direction: column; flex: 3 1 0; min-block-size: 0; }
+.cal-fixed-head { flex: none; }
+.cal-fixed-allday { flex: 0 1 auto; max-block-size: min(8rem, 20vh); min-block-size: var(--sone-space-7); }
+.cal-time-scroll { flex: 1; min-block-size: 0; overscroll-behavior: contain; }
+.cal-list-panel { display: flex; flex-direction: column; flex: 1 1 0; min-block-size: 0; margin-block-start: var(--sone-space-5); border-block-start: 1px solid var(--line); }
+.cal-list-panel > h2 { flex: none; font-size: var(--sone-text-sm); font-weight: 500; margin: 0; padding-block: var(--sone-space-4); }
 .cal-grid {
   display: grid;
   grid-template-columns: 4rem repeat(var(--cal-days, 7), minmax(0, 1fr));
   border-top: 1px solid var(--line);
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  align-content: start;
 }
 
 .cal-gutter {
@@ -7593,8 +7607,10 @@ label.btn {
 }
 
 .cal-list {
-  margin-top: var(--sone-space-5);
   max-width: var(--sote-read);
+  min-block-size: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 /* Ziehen und Erfassen im Kalender. */

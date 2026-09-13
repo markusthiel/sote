@@ -18,6 +18,11 @@ import {
   SCHEMES,
 } from '../src/look/settings.js';
 
+test('Kalender-Standardansicht kennt nur letzte Ansicht, Tag, Woche und Monat', () => {
+  for (const calendarDefault of ['last', 'day', 'week', 'month']) assert.deepEqual(readSettings({ calendarDefault }), { calendarDefault });
+  for (const calendarDefault of ['year', '', true, {}, null]) assert.deepEqual(readSettings({ calendarDefault }), {});
+});
+
 test('die Person schlägt den Arbeitsbereich schlägt die Instanz', () => {
   assert.equal(
     resolveSettings({ scheme: 'dark' }, { scheme: 'light' }, { scheme: 'light' }).scheme,

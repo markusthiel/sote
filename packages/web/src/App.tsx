@@ -12,7 +12,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { colorValue, SIGIL_OF, type Board, type Landing, type ListView, type Look } from '@sote/core';
+import { colorValue, SIGIL_OF, type Board, type CalendarDefault, type Landing, type ListView, type Look } from '@sote/core';
 
 import { streamUrl, api, ApiError, type Me, type Project } from './api.js';
 import { useBoard, useLook, useScheme } from './appearance.js';
@@ -25,6 +25,7 @@ import { TopBar } from './components/TopBar.js';
 import { WorkspaceMenu } from './components/WorkspaceMenu.js';
 import { modeOf, type ModeId } from './modes.js';
 import { isoDate } from './calendar.js';
+import { preferredCalendarSpan, rememberCalendarSpan } from './calendarPreference.js';
 import { modeOfRoute, parseRoute, pathOf, placeOf, viewOf, type Route } from './route.js';
 import { Setup } from './screens/Setup.js';
 import { SignIn } from './screens/SignIn.js';
@@ -155,6 +156,12 @@ export function App() {
    * Adresse, wie der Filter der Glocke: ein Blickwinkel, kein Ort.
    */
   const [calScope, setCalScope] = useState<string | null>(null);
+  const [calendarDefault, setCalendarDefault] = useState<CalendarDefault>('last');
+  useEffect(() => {
+    if (me?.id && route.kind === 'calendar') rememberCalendarSpan(me.id, route.span);
+  }, [me?.id, route]);
+  const calendarStart = () => preferredCalendarSpan(me?.id ?? '', calendarDefault);
+  const timeCalendar = route.kind === 'calendar' && route.span !== 'month';
   const calendarSources = useCalendarSources(me?.id, route.kind);
   const [hiddenCalendars, setHiddenCalendars] = useState<ReadonlySet<string>>(new Set());
   /*
@@ -483,6 +490,7 @@ export function App() {
          * Landeseite zu schicken, macht jeden geteilten Link unbrauchbar.
          */
         setLanding(s.effective.landing);
+        setCalendarDefault(s.levels.user.calendarDefault ?? 'last');
         setWorkspaceListView(s.effective.listView);
         setBoard(s.effective.board);
         if (window.location.pathname === '/') go(landingRoute(s.effective.landing, projects));
@@ -630,7 +638,7 @@ export function App() {
                 ? // Die Liste der Bereiche. „Überall" ist in den Kalender aufgegangen.
                   { kind: 'workspaces', section: 'alle' }
                 : id === 'calendar'
-                  ? { kind: 'calendar', span: 'week', date: isoDate(now) }
+                  ? { kind: 'calendar', span: calendarStart(), date: isoDate(now) }
                 : id === 'search'
                   ? /*
                      * Zur SUCHE, nicht auf eine Platzhalterseite.
@@ -930,7 +938,7 @@ export function App() {
                 <span className="panel-menu-label">Kalender einbinden …</span>
               </button>
               {route.kind === 'calendar-sources' ? <button className="panel-menu-item"
-                onClick={() => go({ kind: 'calendar', span: 'week', date: isoDate(now) })}>
+                onClick={() => go({ kind: 'calendar', span: calendarStart(), date: isoDate(now) })}>
                 <span className="panel-menu-label">Zur Kalenderansicht</span>
               </button> : <>
                 {(calendarSources.data?.feeds.length ?? 0) > 0 ? <div className="sidebar-label">Eingebundene Kalender</div> : null}
@@ -1082,7 +1090,7 @@ export function App() {
         </div>
       </div>
 
-      <main className="main">
+      <main className={timeCalendar ? 'main main-calendar' : 'main'}>
         {/* Die Umschalter sitzen INNERHALB der Seite und nicht in der Leiste,
             die sie ausblenden — sonst verschwindet der Knopf mit ihr. */}
         <TopBar
@@ -1140,7 +1148,7 @@ export function App() {
             onOpenTask={(taskId, ws) => void openTaskAt(ws, taskId)}
           />
         ) : route.kind === 'settings' && route.section === 'kalender' ? (
-          <CalendarFeed workspace={workspace} workspaceName={wsName} />
+          <CalendarFeed workspace={workspace} workspaceName={wsName} defaultView={calendarDefault} onDefaultView={setCalendarDefault} />
         ) : route.kind === 'workspaces' && route.section === 'alle' ? (
           <WorkspaceOverview workspaces={me.workspaces} current={workspace} />
         ) : route.kind === 'workspaces' && route.section === 'gruppen' ? (
@@ -1337,7 +1345,7 @@ export function App() {
                 ? // Die Liste der Bereiche. „Überall" ist in den Kalender aufgegangen.
                   { kind: 'workspaces', section: 'alle' }
                 : id === 'calendar'
-                  ? { kind: 'calendar', span: 'week', date: isoDate(now) }
+                  ? { kind: 'calendar', span: calendarStart(), date: isoDate(now) }
                 : id === 'search'
                   ? /*
                      * Zur SUCHE, nicht auf eine Platzhalterseite.

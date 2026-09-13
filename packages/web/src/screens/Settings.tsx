@@ -81,7 +81,7 @@ export const SETTING_SECTIONS = [
   { id: 'landen', label: 'Wo du landest', hint: 'Beim Anmelden' },
   { id: 'erinnern', label: 'Erinnerungen', hint: 'Post am Morgen' },
   { id: 'melden', label: 'Benachrichtigungen', hint: 'Was wo ankommt' },
-  { id: 'kalender', label: 'Kalender', hint: 'Abonnement für dein Programm' },
+  { id: 'kalender', label: 'Kalender', hint: 'Standardansicht und Abonnement' },
 ] as const;
 
 /**

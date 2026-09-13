@@ -52,12 +52,15 @@ import { isZone } from '../time/zone.js';
  */
 export const SCHEMES = ['system', 'light', 'dark'] as const;
 export type Scheme = (typeof SCHEMES)[number];
+export type CalendarDefault = 'last' | 'day' | 'week' | 'month';
 
 export const isScheme = (value: unknown): value is Scheme =>
   typeof value === 'string' && (SCHEMES as readonly string[]).includes(value);
 
 /** Was auf einer Ebene stehen darf. Alles optional — eine Ebene sagt, was sie sagt. */
 export interface Settings {
+  /** Persönliche Startansicht des Kalenders; ohne Wahl gilt die letzte Ansicht. */
+  readonly calendarDefault?: CalendarDefault;
   /** Hell, dunkel, oder dem Gerät folgen. */
   readonly scheme?: Scheme;
   /**
@@ -128,6 +131,7 @@ export function readSettings(value: unknown): Settings {
   const reminders = readReminders(raw['reminders']);
   const listView = isListView(raw['listView']) ? raw['listView'] : undefined;
   const board = readBoard(raw['board']);
+  const calendarDefault = raw['calendarDefault'];
   return {
     ...(scheme === undefined ? {} : { scheme }),
     ...(zone === undefined ? {} : { zone }),
@@ -136,6 +140,7 @@ export function readSettings(value: unknown): Settings {
     ...(reminders === undefined ? {} : { reminders }),
     ...(listView === undefined ? {} : { listView }),
     ...(board === undefined ? {} : { board }),
+    ...(calendarDefault === 'last' || calendarDefault === 'day' || calendarDefault === 'week' || calendarDefault === 'month' ? { calendarDefault } : {}),
   };
 }
 

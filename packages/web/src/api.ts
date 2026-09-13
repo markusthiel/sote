@@ -225,6 +225,7 @@ export interface Task {
 import type { Board, Landing, ListView, Look, Right } from '@sote/core';
 
 interface Level {
+  calendarDefault?: import('@sote/core').CalendarDefault;
   scheme?: 'system' | 'light' | 'dark';
   zone?: string;
   look?: Look;
