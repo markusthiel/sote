@@ -1,5 +1,6 @@
 /** Einseitige Veröffentlichung von Aufgaben. Nur selbst angelegte Ressourcen werden geändert. */
 import { buildCalDavEvent, type IcsTask } from '@sote/core';
+import { createHash } from 'node:crypto';
 import type { Pool } from 'pg';
 import { queryOne, queryRows, type PoolClient } from './db.js';
 import { enqueue, handle } from './jobs.js';
@@ -27,7 +28,7 @@ const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 export async function writerStatus(pool: Pool, userId: string): Promise<Record<string, CalendarWriter>> {
   const rows = await queryRows<WriterRow & { count: string }>(pool,
     `SELECT w.id, w.feed_id, w.workspaces, w.mode, w.timezone, w.enabled, w.synced_at, w.last_error, w.conflict_uid,
-       (SELECT count(*) FROM calendar_write_events e WHERE e.writer_id = w.id) AS count
+       (SELECT count(*) FROM calendar_write_events e WHERE e.writer_id = w.id AND e.content_hash IS NOT NULL) AS count
        FROM calendar_writers w JOIN calendar_sources f ON f.id = w.feed_id WHERE f.user_id = $1`, [userId]);
   return Object.fromEntries(rows.map((r) => [r.feed_id, {
     enabled: r.enabled, workspaces: r.workspaces, mode: r.mode, timezone: r.timezone,
@@ -154,6 +155,21 @@ function remoteFingerprint(body: string): string {
   try { return eventFingerprint(body); } catch { throw davFailure(412); }
 }
 
+/** Kurze, stabile Kennung: lange UIDs werden von iCloud teils als HTTP 404 abgelehnt. */
+export const calendarEventUid = (writerId: string, taskId: string, kind: 'plan' | 'due'): string =>
+  createHash('sha256').update(JSON.stringify([writerId, taskId, kind])).digest('hex').slice(0, 32);
+
+/** Nur nie bestätigte Altversuche reparieren, und erst nach Nachweis, dass ihre Ressource fehlt. */
+export async function prepareWrittenEvent(credentials: CalDavCredentials, entry: WrittenEvent, transport: DavTransport): Promise<WrittenEvent> {
+  const legacy = `sote-${entry.writer_id}-${entry.task_id}-${entry.kind}@sote`;
+  if (entry.uid !== legacy || entry.etag !== null || entry.content_hash !== null ||
+      !/^(?:p\d+-)?caldav\.icloud\.com$/.test(new URL(credentials.url).hostname)) return entry;
+  const current = await transport(`${credentials.url}${entry.uid.split('@')[0]}.ics`, credentials, 'GET');
+  if (current.status === 200) return entry;
+  if (current.status !== 404) throw davFailure(current.status);
+  return { ...entry, uid: calendarEventUid(entry.writer_id, entry.task_id, entry.kind), pending_hash: null };
+}
+
 /** Bedingte PUTs verhindern verlorene fremde Änderungen. Ein verlorenes Antwortpaket erzeugt kein Duplikat. */
 export async function putEvent(credentials: CalDavCredentials, written: WrittenEvent, ics: string, transport: DavTransport): Promise<string> {
   const url = `${credentials.url}${written.uid.split('@')[0]}.ics`;
@@ -164,7 +180,7 @@ export async function putEvent(credentials: CalDavCredentials, written: WrittenE
     if (current.status !== 200 || !strongEtag(current.etag) || remoteFingerprint(current.body) !== eventFingerprint(ics)) throw davFailure(412);
     return current.etag;
   }
-  if (![200, 201, 204].includes(response.status)) throw davFailure(response.status);
+  if (![200, 201, 204].includes(response.status)) throw new CalDavError(`Termin schreiben (PUT): ${davFailure(response.status).message}`);
   if (!strongEtag(response.etag)) throw new CalDavError('Der Kalenderdienst liefert keinen brauchbaren ETag.');
   return response.etag;
 }
@@ -225,8 +241,13 @@ export async function syncWriter(pool: Pool, feedId: string, now: Date, transpor
       const started = Date.now();
       const full = () => operations >= 20 || Date.now() - started > 80_000;
       for (const [key, { task, kind }] of desired) {
-        const entry = written.get(key) ?? { writer_id: writer.id, task_id: task.id, kind,
-          uid: `sote-${writer.id}-${task.id}-${kind}@sote`, etag: null, content_hash: null, pending_hash: null };
+        let entry = written.get(key) ?? { writer_id: writer.id, task_id: task.id, kind,
+          uid: calendarEventUid(writer.id, task.id, kind), etag: null, content_hash: null, pending_hash: null };
+        if (entry.uid.startsWith('sote-') && entry.etag === null && entry.content_hash === null) {
+          if (full()) { more = true; break; }
+          currentUid = entry.uid;
+          entry = await prepareWrittenEvent(credentials, entry, transport);
+        }
         const body = buildCalDavEvent({ task, kind, uid: entry.uid, timezone: writer.timezone, base: baseUrl() });
         const hash = eventFingerprint(body);
         if (entry.content_hash === hash && entry.pending_hash === null) continue;
@@ -234,7 +255,7 @@ export async function syncWriter(pool: Pool, feedId: string, now: Date, transpor
         currentUid = entry.uid;
         // Die Absicht vor dem Netzaufruf speichern, um nach einem Abbruch die eigene Kopie zu erkennen.
         await db.query(`INSERT INTO calendar_write_events (writer_id, task_id, kind, uid, pending_hash)
-          VALUES ($1,$2,$3,$4,$5) ON CONFLICT (writer_id,task_id,kind) DO UPDATE SET pending_hash=$5`, [writer.id, task.id, kind, entry.uid, hash]);
+          VALUES ($1,$2,$3,$4,$5) ON CONFLICT (writer_id,task_id,kind) DO UPDATE SET uid=$4, pending_hash=$5`, [writer.id, task.id, kind, entry.uid, hash]);
         const etag = await putEvent(credentials, entry, body, transport);
         await db.query(`UPDATE calendar_write_events SET etag=$4, content_hash=$5, pending_hash=NULL
           WHERE writer_id=$1 AND task_id=$2 AND kind=$3`, [writer.id, task.id, kind, etag, hash]);

@@ -44,3 +44,13 @@ Die Lesequelle unterdrückt zurückgelesene eigene Plantermine, wenn dieselbe Au
 Die iCloud-Erweiterung ergänzt sieben Tests für Kalenderermittlung, Rechtefilter, erfolgreiche Eigenschaften, erlaubte und gesperrte Weiterleitungen, ungültiges XML, Anmeldung und öffentliche Leselinks. Zusammen mit den acht CalDAV-Protokolltests bestehen alle 15 Tests. Suche, Auswahl, Übernahme der Schreibadresse und Speichern wurden im Browser mit einer simulierten iCloud-Antwort geprüft; ein echtes Apple-Konto wurde dafür nicht verwendet.
 
 Drei weitere Tests prüfen den 404-Ausweichweg, Fehlermeldungen je Abrufschritt und den unveränderten Schutz von Zugangsdaten. Alle 18 Protokolltests sowie Server-Typprüfung und -Build bestehen.
+
+### HTTP 404 beim ersten Schreiben
+
+Nach erfolgreicher Suche und Einrichtung wurde HTTP 404 beim Schreiben gemeldet. Die bisherigen IDs kombinierten zwei UUIDs und überschritten 80 Zeichen. Ein anderer CalDAV-Client dokumentiert [iCloud-404-Antworten bei langen UIDs](https://github.com/cutzenfriend/cardAndCalSyncer#notes--limitations); das ist eine plausible Ursache, noch kein Nachweis am betroffenen Konto.
+
+Neue Einträge erhalten deshalb eine stabile 32-stellige Kennung aus Verbindung, Aufgabe und Terminart. Bereits bestätigte Einträge behalten ihre ID. Ein alter iCloud-Erstversuch ohne gespeicherten ETag und ohne bestätigten Inhalt wird nur dann auf die kurze ID umgestellt, wenn GET am bisherigen Ressourcenpfad 404 liefert. Eine vorhandene Ressource bleibt unter ihrer alten ID. Die Zuordnung wird vor dem nächsten PUT gespeichert, sodass Wiederholungen keine zusätzlichen Kopien erzeugen.
+
+Die Statusanzeige zählt nur bestätigte Kalenderkopien; eine vorgemerkte, aber abgelehnte Übertragung zählt nicht mehr als Erfolg. PUT-Fehler sind als „Termin schreiben (PUT)“ erkennbar. Nach dem Update genügt **Jetzt abgleichen** an der bestehenden Verbindung.
+
+33 Protokoll- und PostgreSQL-Tests bestehen, einschließlich Reparatur einer alten ID, erneuter Abgleiche, anschließender Erledigung, Schutz bestehender Ressourcen und korrigierter Statuszählung. Server-Typprüfung und -Build bestehen. Die Bestätigung mit dem echten iCloud-Konto steht noch aus.

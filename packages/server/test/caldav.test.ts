@@ -1,7 +1,7 @@
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 import { calendarUrl, checkCalendar, davRequest, eventFingerprint, publicAddress, strongEtag, type DavTransport } from '../src/caldav.js';
-import { deleteEvent, putEvent, readWriterInput } from '../src/calendarWriters.js';
+import { calendarEventUid, deleteEvent, prepareWrittenEvent, putEvent, readWriterInput } from '../src/calendarWriters.js';
 
 const credentials = { url: 'https://calendar.example/dav/mine/', username: 'user', password: 'secret' };
 const ics = 'BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:sote-one@sote\r\nDTSTART:20260914T090000Z\r\nSUMMARY:Test\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n';
@@ -74,4 +74,35 @@ test('Schreibregeln brauchen explizite Bereiche, gültige Zeitzone und boolesche
   const good = {workspaces:['11111111-1111-4111-8111-111111111111'],mode:'planned',timezone:'Europe/Berlin',enabled:true};
   assert.deepEqual(readWriterInput(good), good);
   for (const invalid of [{workspaces:[]},{workspaces:['wrong']},{timezone:'Mars/Base'},{enabled:'yes'},{mode:'everything'},{username:'a:b'}]) assert.throws(() => readWriterInput({...good,...invalid}));
+});
+
+test('Termin-IDs sind kurz, stabil und je Verbindung, Aufgabe und Zeitpunkt verschieden', () => {
+  const uid = calendarEventUid('writer', 'task', 'plan');
+  assert.match(uid, /^[a-f0-9]{32}$/);
+  assert.equal(uid, calendarEventUid('writer','task','plan'));
+  for (const other of [calendarEventUid('other','task','plan'), calendarEventUid('writer','other','plan'), calendarEventUid('writer','task','due')]) assert.notEqual(uid,other);
+});
+
+test('Fehlgeschlagene lange iCloud-ID wird nur bei fehlender alter Ressource ersetzt', async () => {
+  const cloud = {...credentials,url:'https://p39-caldav.icloud.com/123/calendars/home/'};
+  const legacy = {...entry,uid:'sote-writer-task-plan@sote',pending_hash:'pending'};
+  const calls: string[] = [];
+  const absent: DavTransport = async (url,_creds,method) => { assert.equal(method,'GET'); calls.push(url); return {status:404,body:'',etag:null}; };
+  const repaired = await prepareWrittenEvent(cloud,legacy,absent);
+  assert.equal(repaired.uid,calendarEventUid('writer','task','plan'));
+  assert.equal(repaired.pending_hash,null);
+  assert.equal(calls[0],cloud.url+'sote-writer-task-plan.ics');
+  const existing: DavTransport = async () => ({status:200,body:'already written',etag:'"old"'});
+  assert.equal(await prepareWrittenEvent(cloud,legacy,existing),legacy);
+  await assert.rejects(() => prepareWrittenEvent(cloud,legacy,async () => ({status:403,body:'',etag:null})), /erlaubt diesen Zugriff nicht/);
+});
+
+test('Bestätigte Kopien, fremde Anbieter und bereits kurze IDs werden nicht umbenannt', async () => {
+  const cloud = {...credentials,url:'https://p39-caldav.icloud.com/123/calendars/home/'};
+  const legacy = {...entry,uid:'sote-writer-task-plan@sote'};
+  const never: DavTransport = async () => { throw new Error('Kein Netzaufruf erwartet'); };
+  for (const saved of [{...legacy,etag:'"written"'}, {...legacy,content_hash:'written'}, {...legacy,uid:calendarEventUid('writer','task','plan')}]) {
+    assert.equal(await prepareWrittenEvent(cloud,saved,never),saved);
+  }
+  assert.equal(await prepareWrittenEvent(credentials,legacy,never),legacy);
 });

@@ -6,7 +6,7 @@ import { makePool, queryOne, queryRows } from '../src/db.js';
 import { migrate } from '../src/migrate.js';
 import { addFeed, eventsOf } from '../src/calendarSources.js';
 import { acceptWriterConflict, disconnectWriter, pauseWriter, saveWriter, syncWriter, writerStatus } from '../src/calendarWriters.js';
-import type { DavTransport } from '../src/caldav.js';
+import { eventUid, type DavTransport } from '../src/caldav.js';
 
 let pool: Pool;
 const now = new Date('2026-09-14T08:00:00Z');
@@ -154,4 +154,35 @@ test('Große Abgleiche werden fortgesetzt und schreiben unveränderte Einträge 
   await f.sync(); assert.equal(f.objects.size,20); assert.equal((await writerStatus(pool,f.user))[f.feed]!.syncedAt,null);
   await f.sync(); assert.equal(f.objects.size,23); assert.notEqual((await writerStatus(pool,f.user))[f.feed]!.syncedAt,null);
   assert.equal(f.calls.filter(c=>c.method==='PUT').length,23);
+});
+
+test('Fehlgeschlagene iCloud-Erstversuche werden kurz neu geschrieben und erst nach Bestätigung gezählt', async () => {
+  const f = await fixture(); const task = await f.task();
+  const cloudUrl = 'https://p39-caldav.icloud.com/mine/';
+  const cloud: DavTransport = async (...args) => {
+    if (args[2] === 'PUT' && eventUid(args[3] ?? '').length > 64) return {status:404,body:'',etag:null};
+    return f.transport(...args);
+  };
+  await saveWriter(pool,f.user,f.feed,{...f.input,url:cloudUrl},cloud);
+  const writer = (await queryOne<{id:string}>(pool,'SELECT id FROM calendar_writers WHERE feed_id=$1',[f.feed]))!;
+  const oldUid = `sote-${writer.id}-${task}-plan@sote`;
+  await pool.query("INSERT INTO calendar_write_events(writer_id,task_id,kind,uid,pending_hash) VALUES ($1,$2,'plan',$3,'unconfirmed')",[writer.id,task,oldUid]);
+  assert.equal((await writerStatus(pool,f.user))[f.feed]!.count,0);
+  await syncWriter(pool,f.feed,now,cloud);
+  const status = (await writerStatus(pool,f.user))[f.feed]!;
+  assert.equal(status.count,1); assert.equal(status.lastError,null); assert.notEqual(status.syncedAt,null);
+  const saved = (await queryOne<{uid:string}>(pool,'SELECT uid FROM calendar_write_events WHERE writer_id=$1',[writer.id]))!;
+  assert.match(saved.uid,/^[a-f0-9]{32}$/); assert.equal(f.objects.size,1);
+  await syncWriter(pool,f.feed,now,cloud);
+  assert.equal(f.calls.filter(c=>c.method==='PUT').length,1);
+  await pool.query('UPDATE tasks SET completed_at=now() WHERE id=$1',[task]);
+  await syncWriter(pool,f.feed,now,cloud); assert.equal(f.objects.size,0);
+});
+
+test('Eine abgelehnte Übertragung erscheint nicht als bestätigte Kalenderkopie', async () => {
+  const f = await fixture(); await f.task(); await f.save();
+  await syncWriter(pool,f.feed,now,async () => ({status:404,body:'',etag:null}));
+  const status = (await writerStatus(pool,f.user))[f.feed]!;
+  assert.equal(status.count,0); assert.equal(status.syncedAt,null);
+  assert.match(status.lastError!,/Termin schreiben \(PUT\).*HTTP 404/);
 });
