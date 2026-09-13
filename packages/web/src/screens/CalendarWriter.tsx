@@ -11,6 +11,7 @@ export function CalendarWriter({ source, workspaces, possible, reload }: {
   const [url, setUrl] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [calendars, setCalendars] = useState<{ url: string; name: string }[]>([]);
   const [selected, setSelected] = useState<string[]>(writer?.workspaces ?? []);
   const [mode, setMode] = useState<Writer['mode']>(writer?.mode ?? 'planned');
   const [timezone, setTimezone] = useState(writer?.timezone ?? browserZone());
@@ -58,7 +59,7 @@ export function CalendarWriter({ source, workspaces, possible, reload }: {
           ...(url.trim() ? { url: url.trim() } : {}), ...(username.trim() ? { username: username.trim() } : {}),
           ...(password ? { password } : {}), workspaces: selected, mode, timezone: timezone.trim(), enabled,
         });
-        setUrl(''); setUsername(''); setPassword('');
+        setUrl(''); setUsername(''); setPassword(''); setCalendars([]);
       }, enabled ? 'Zugang geprüft und gespeichert. Der Abgleich wurde angefordert.' : 'Zugang geprüft und gespeichert. Das Schreiben ist pausiert.');
     }}>
       <fieldset className="calendar-source-fields" disabled={busy || !possible}>
@@ -67,13 +68,29 @@ export function CalendarWriter({ source, workspaces, possible, reload }: {
           placeholder={writer ? 'Gespeichert · leer lassen zum Beibehalten' : 'https://kalender.example/dav/calendars/name/privat/'}
           value={url} onChange={(e) => setUrl(e.target.value)} />
         <p className="muted small">Die vollständige HTTPS-Adresse des gewünschten Kalenderordners mit abschließendem /. Du findest sie in den CalDAV-Einstellungen deines Anbieters. Bei einer Weiterleitung bitte die endgültige Kalenderadresse eintragen.</p>
+        <p className="muted small">iCloud: Der öffentliche webcal-Leselink funktioniert hier auch mit HTTPS nicht. Trage unten deinen Apple Account und ein App-Kennwort ein und wähle „iCloud-Kalender suchen“. Die Suche ermittelt die Schreibadresse für dich.</p>
         <label htmlFor={`${id}-username`}>CalDAV-Benutzername</label>
         <input id={`${id}-username`} className="set-input" required={!writer} autoComplete="off"
-          placeholder={writer ? 'Gespeichert · leer lassen zum Beibehalten' : ''} value={username} onChange={(e) => setUsername(e.target.value)} />
+          placeholder={writer ? 'Gespeichert · leer lassen zum Beibehalten' : 'Bei iCloud: E-Mail-Adresse deines Apple Accounts'} value={username} onChange={(e) => { setUsername(e.target.value); setCalendars([]); }} />
         <label htmlFor={`${id}-password`}>App-Kennwort</label>
         <input id={`${id}-password`} type="password" className="set-input" required={!writer} autoComplete="new-password"
-          placeholder={writer ? 'Gespeichert · leer lassen zum Beibehalten' : ''} value={password} onChange={(e) => setPassword(e.target.value)} />
+          placeholder={writer ? 'Gespeichert · leer lassen zum Beibehalten' : ''} value={password} onChange={(e) => { setPassword(e.target.value); setCalendars([]); }} />
         <p className="muted small">Der Zugang braucht Schreibrechte für diesen Kalender. Adresse und Zugangsdaten werden verschlüsselt gespeichert. Verwende dafür ein eigenes App-Kennwort deines Anbieters.</p>
+        <p className="muted small">Für iCloud unter <a href="https://account.apple.com/" target="_blank" rel="noreferrer">Apple Account</a> → Anmelden und Sicherheit → App-spezifische Passwörter ein Passwort für SOTE erstellen.</p>
+        <button type="button" className="btn quiet small" disabled={!username.trim() || !password.trim()} onClick={() => {
+          setCalendars([]);
+          void action(async () => {
+            const found = await api.discoverICloudCalendars(source.id, { username: username.trim(), password: password.trim() });
+            setCalendars(found.calendars); setUrl(''); setPassword(password.trim());
+          }, 'iCloud-Kalender gefunden. Wähle denselben Kalender wie bei deiner Lesequelle und speichere anschließend den Zugang.');
+        }}>iCloud-Kalender suchen</button>
+        {calendars.length > 0 ? <>
+          <label htmlFor={`${id}-icloud`}>iCloud-Zielkalender</label>
+          <select id={`${id}-icloud`} className="set-input" required value={calendars.some((calendar) => calendar.url === url) ? url : ''} onChange={(e) => setUrl(e.target.value)}>
+            <option value="">Kalender auswählen …</option>
+            {calendars.map((calendar) => <option key={calendar.url} value={calendar.url}>{calendar.name}</option>)}
+          </select>
+        </> : null}
         <span id={`${id}-workspaces`}>Aufgaben aus diesen Arbeitsbereichen</span>
         <div className="calendar-source-choices" role="group" aria-labelledby={`${id}-workspaces`}>
           {workspaces.map((workspace) => <label className="pick" key={workspace.id}>
@@ -102,7 +119,7 @@ export function CalendarWriter({ source, workspaces, possible, reload }: {
     {confirm ? <div className="pick calendar-source-actions">
       <span>Schreibzugang entfernen? Bereits übertragene Termine bleiben im Zielkalender und werden nicht mehr aktualisiert. Eine neue Verbindung erzeugt neue Kopien.</span>
       <button type="button" className="btn quiet small" disabled={busy} onClick={() => void action(async () => {
-        await api.disconnectCalendarWriter(source.id); setConfirm(false); setPassword(''); setUsername(''); setUrl('');
+        await api.disconnectCalendarWriter(source.id); setConfirm(false); setPassword(''); setUsername(''); setUrl(''); setCalendars([]);
       }, 'Schreibverbindung getrennt.')}>Ja, trennen</button>
       <button type="button" className="btn quiet small" disabled={busy} onClick={() => setConfirm(false)}>Abbrechen</button>
     </div> : null}

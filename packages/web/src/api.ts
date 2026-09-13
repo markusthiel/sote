@@ -1344,6 +1344,8 @@ export const api = {
   calendarSources: () => call<{ possible: boolean; max: number; feeds: CalendarSource[] }>('/api/calendar-sources'),
   saveCalendarWriter: (id: string, body: CalendarWriterInput) =>
     call<{ ok: true }>(`/api/calendar-sources/${id}/writer`, { method: 'PUT', body: JSON.stringify(body) }),
+  discoverICloudCalendars: (id: string, body: { username: string; password: string }) =>
+    call<{ calendars: { url: string; name: string }[] }>(`/api/calendar-sources/${id}/writer/icloud`, { method: 'POST', body: JSON.stringify(body) }),
   syncCalendarWriter: (id: string) =>
     call<{ ok: true }>(`/api/calendar-sources/${id}/writer/sync`, { method: 'POST' }),
   pauseCalendarWriter: (id: string) =>

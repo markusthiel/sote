@@ -39,6 +39,7 @@ import type { Config } from './env.js';
 import { cookie, fail, json, readJson } from './http/respond.js';
 import { Throttle } from './http/throttle.js';
 import { CalDavError } from './caldav.js';
+import { discoverICloudCalendars } from './icloudCalDav.js';
 import { acceptWriterConflict, assertSource, disconnectWriter, pauseWriter, requestWrite, saveWriter, withCalendarWriteLock, writerStatus } from './calendarWriters.js';
 import { accounts, deleteAccount, setAdmin } from './accounts.js';
 import { TRASH_DAYS } from './handlers.js';
@@ -1148,12 +1149,16 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
     json(res, 201, ergebnis);
     return;
   }
-  const writerPath = /^\/api\/calendar-sources\/([0-9a-f-]{36})\/writer(\/sync|\/pause|\/resolve)?$/.exec(path);
+  const writerPath = /^\/api\/calendar-sources\/([0-9a-f-]{36})\/writer(\/sync|\/pause|\/resolve|\/icloud)?$/.exec(path);
   if (writerPath !== null) {
     const feedId = writerPath[1]!;
     try {
       await assertSource(ctx.pool, userId, feedId);
-      if (writerPath[2] === '/sync' && method === 'POST') {
+      if (writerPath[2] === '/icloud' && method === 'POST') {
+        const body: unknown = await readJson(req);
+        if (!body || typeof body !== 'object' || Array.isArray(body)) { fail(res, 400, 'bad_writer', 'Ungültige Zugangsdaten.'); return; }
+        json(res, 200, { calendars: await discoverICloudCalendars(body as Record<string, unknown>) });
+      } else if (writerPath[2] === '/sync' && method === 'POST') {
         const current = (await writerStatus(ctx.pool, userId))[feedId];
         if (!current?.enabled) { fail(res, 409, 'writer_paused', 'Das Schreiben ist nicht eingeschaltet.'); return; }
         await requestWrite(ctx.pool, feedId);

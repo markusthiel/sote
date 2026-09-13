@@ -6,7 +6,15 @@ Stand: 13.09.2026. Implementierung für main; noch nicht mit einem echten Kalend
 
 Unter **Kalender einbinden** eine ICS-Lesequelle öffnen und **Aufgaben in diesen Kalender schreiben** ausklappen. Die vollständige HTTPS-CalDAV-Adresse des Kalenderordners (mit abschließendem `/`), Benutzername und App-Kennwort eintragen. Die ICS-Adresse und die CalDAV-Adresse sind unterschiedliche Zugänge; beide müssen auf denselben Kalender zeigen, damit geschriebene Termine wieder eingelesen werden.
 
-Arbeitsbereiche, geplante Aufgaben/Fristen/beides und die Zeitzone für ganztägige Aufgaben auswählen. Automatisches Schreiben ausdrücklich einschalten und **Zugang prüfen und speichern** wählen. Leere Zugangsfelder behalten später die verschlüsselt gespeicherten Werte bei. Unterstützt sind direkte CalDAV-Kalenderadressen mit Basic-Authentifizierung über HTTPS; OAuth und automatische Kalenderermittlung sind nicht enthalten.
+Arbeitsbereiche, geplante Aufgaben/Fristen/beides und die Zeitzone für ganztägige Aufgaben auswählen. Automatisches Schreiben ausdrücklich einschalten und **Zugang prüfen und speichern** wählen. Leere Zugangsfelder behalten später die verschlüsselt gespeicherten Werte bei. Unterstützt sind direkte CalDAV-Kalenderadressen mit Basic-Authentifizierung über HTTPS sowie die automatische Kalenderermittlung für iCloud; OAuth ist nicht enthalten.
+
+### iCloud
+
+Öffentliche `webcal://…/published/…`-Adressen sind ausschließlich Lesezugänge. Auch ein Wechsel zu `https://` macht daraus keinen Schreibzugang ([Apple: öffentliche Kalender sind schreibgeschützt](https://support.apple.com/en-au/guide/iphone/iph7613c4fb/ios)).
+
+Für die Schreibanbindung die E-Mail-Adresse des Apple Accounts als Benutzername und ein [App-spezifisches Passwort](https://support.apple.com/de-de/102654) eintragen. **iCloud-Kalender suchen** funktioniert ohne vorab eingetragene Kalenderadresse. Anschließend den passenden **iCloud-Zielkalender** auswählen; SOTE übernimmt die private CalDAV-Adresse in das Formular. Suche und Auswahl speichern noch keine Verbindung und schreiben keine Termine. Erst **Zugang prüfen und speichern** übernimmt die Einstellungen.
+
+Die Suche beginnt bei `https://caldav.icloud.com/`, ermittelt Principal und Kalenderordner und fragt deren Kalender ab ([CalDAV-Client-Dokumentation](https://caldav.readthedocs.io/stable/about.html)). Alle Hrefs und Weiterleitungen werden auf HTTPS, Standardport und die Hosts `caldav.icloud.com` beziehungsweise `p<Nummer>-caldav.icloud.com` begrenzt. Es werden keine Zugangsdaten an andere Dienste weitergereicht. Die Anmeldung wird nur für die Suche verwendet; erst das Speichern versiegelt sie in der Datenbank.
 
 ## Verhalten
 
@@ -30,3 +38,5 @@ Die Lesequelle unterdrückt zurückgelesene eigene Plantermine, wenn dieselbe Au
 18 neue CalDAV-Tests bestehen: Protokollprüfung, Zugriffsrechte, verschlüsselte Zugangsdaten, Anlegen/Ändern/Löschen, Konflikte samt Freigabe, Abbrüche nach PUT, Wiederholung, gleichzeitige Aufrufe, Stapelverarbeitung und Vermeidung doppelter Anzeige. Datenbanktests verwenden eine isolierte echte PostgreSQL-Datenbank und einen simulierten DAV-Transport.
 
 242 Core- und 90 Web-Tests bestehen. Einrichtung, Pausieren und Konfliktauflösung wurden zusätzlich mit den echten React-Komponenten und einer simulierten API im Browser geprüft. Im vollständigen Serverlauf scheiterten 14 bestehende Dateianhangtests an Windows-Pfadprüfungen; ein weiterer bestehender Datumstest besteht mit `TZ=UTC` wie in CI. Ein Test mit einem echten Anbieter steht noch aus.
+
+Die iCloud-Erweiterung ergänzt sieben Tests für Kalenderermittlung, Rechtefilter, erfolgreiche Eigenschaften, erlaubte und gesperrte Weiterleitungen, ungültiges XML, Anmeldung und öffentliche Leselinks. Zusammen mit den acht CalDAV-Protokolltests bestehen alle 15 Tests. Suche, Auswahl, Übernahme der Schreibadresse und Speichern wurden im Browser mit einer simulierten iCloud-Antwort geprüft; ein echtes Apple-Konto wurde dafür nicht verwendet.
