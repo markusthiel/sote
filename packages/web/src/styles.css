@@ -7226,7 +7226,8 @@ label.btn {
   line-height: 1.3;
   padding: var(--sone-space-1) var(--sone-space-2);
   text-align: start;
-  cursor: pointer;
+  cursor: grab;
+  touch-action: none;
   overflow: hidden;
 }
 
@@ -7352,6 +7353,7 @@ label.btn {
 .cal-col {
   position: relative;
   border-right: 1px solid var(--line);
+  cursor: cell;
 }
 
 .cal-col[data-today="yes"] {
@@ -7391,4 +7393,53 @@ label.btn {
 .cal-list {
   margin-top: var(--sone-space-5);
   max-width: var(--sote-read);
+}
+
+/* Ziehen und Erfassen im Kalender. */
+.cal-chip[data-dragging="yes"] {
+  opacity: 0.4;
+}
+
+.body[data-dragging="yes"] {
+  user-select: none;
+  cursor: grabbing;
+}
+
+.body[data-dragging="yes"] .cal-chip {
+  cursor: grabbing;
+}
+
+.cal-cell[data-target="yes"],
+.cal-allday[data-target="yes"] {
+  background: var(--accent-quiet);
+}
+
+.cal-ghost {
+  position: absolute;
+  left: 2px;
+  right: 4px;
+  border: 1px dashed var(--accent);
+  border-radius: var(--sote-radius-sm);
+  background: var(--accent-quiet);
+  color: var(--accent-text);
+  font-family: var(--sote-mono);
+  font-size: var(--sone-text-xs);
+  padding: var(--sone-space-1) var(--sone-space-2);
+  pointer-events: none;
+}
+
+.cal-block-draft {
+  z-index: 1;
+}
+
+.cal-draft {
+  width: 100%;
+  border: 1px solid var(--accent);
+  border-radius: var(--sote-radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--sone-text-xs);
+  padding: var(--sone-space-1) var(--sone-space-2);
+  outline: none;
 }

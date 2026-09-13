@@ -26,13 +26,28 @@
  * das Raster nicht um Mitternacht klemmt. Darunter die Liste des Fensters,
  * nach Tagen — dieselbe `TaskRow` wie überall, mit Detailspalte.
  *
- * ## Was hier NICHT ist
+ * ## Ziehen heisst umplanen
  *
- * Kein Ziehen zum Umplanen, keine Erfassung durch Klick auf eine Stunde. Beides
- * kommt, wenn der Kalender sich als Ort bewährt hat; erst muss er stehen.
+ * Ein Block im Raster lässt sich auf eine andere Stunde und einen anderen Tag
+ * ziehen (in Viertelstunden), ein Ganztägiges auf einen anderen Tag, ein
+ * Kärtchen im Monat auf einen anderen Tag — die Uhrzeit bleibt. Umgeplant wird
+ * der Plan, und wenn es keinen gibt, die Frist: das ist der Zeitpunkt, an dem
+ * die Aufgabe im Kalender steht, also der, den man gerade angefasst hat.
+ *
+ * Mit Zeiger-Ereignissen und nicht mit HTML5-Ziehen, wie die Liste (siehe
+ * `useRowDrag`): der Zielort wird aus der Position gerechnet, nicht aus
+ * Ablegezonen — eine Stunde ist keine Zone, sondern eine Höhe.
+ *
+ * ## Klick auf eine leere Stelle heisst erfassen
+ *
+ * Auf eine Stunde: ein Feld genau dort, die Zeit steht schon. Auf einen Tag im
+ * Monat oder in der Ganztags-Zeile: ein Feld für etwas Ganztägiges an dem Tag.
+ * Enter legt an, Esc verwirft. Die Zeile geht durch dieselbe Erfassung wie im
+ * Schnellerfasser (`+projekt`, `#wort`, `@wer`); den Zeitpunkt setzt der Klick
+ * danach ausdrücklich, damit „Zahnarzt 9 Uhr" nicht zwei Zeiten hat.
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { api, ApiError, streamUrl, type Project, type Task } from '../api.js';
 import {
@@ -140,6 +155,166 @@ export function Calendar({
 
   const heute = startOfDay(now);
 
+  /* ── Ziehen ─────────────────────────────────────────────────────────── */
+
+  /**
+   * Was gerade reist: die Aufgabe, ihre Art (Block, Ganztägiges, Kärtchen)
+   * und wohin sie gerade zeigt. `ziel` ist `null`, solange der Zeiger nichts
+   * Brauchbares unter sich hat.
+   */
+  const [drag, setDrag] = useState<{
+    id: string;
+    art: 'timed' | 'allday' | 'month';
+    ziel: { day: Date; minutes: number | null } | null;
+    /** Ab hier zählt es als Ziehen — vorher ist es ein Klick. */
+    bewegt: boolean;
+  } | null>(null);
+  const start = useRef<{ x: number; y: number } | null>(null);
+  /** Ein Klick direkt nach einem Ziehen ist keiner. */
+  const gezogen = useRef(false);
+
+  /** Wohin der Zeiger zeigt: der Tag darunter, und im Raster die Viertelstunde. */
+  const zielUnter = (x: number, y: number): { day: Date; minutes: number | null } | null => {
+    for (const el of document.elementsFromPoint(x, y)) {
+      const tag = (el as HTMLElement).dataset?.['day'];
+      if (tag === undefined) continue;
+      const day = parseIsoDate(tag);
+      if (day === undefined) return null;
+      if ((el as HTMLElement).classList.contains('cal-col')) {
+        const rect = el.getBoundingClientRect();
+        const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+        const stunden = (y - rect.top) / (HOUR_REM * rem);
+        const minutes = Math.max(0, Math.min(24 * 60 - 15, Math.round((stunden * 60) / 15) * 15));
+        return { day, minutes };
+      }
+      return { day, minutes: null };
+    }
+    return null;
+  };
+
+  const beginne = (e: React.PointerEvent, id: string, art: 'timed' | 'allday' | 'month') => {
+    if (e.button !== 0) return;
+    start.current = { x: e.clientX, y: e.clientY };
+    setDrag({ id, art, ziel: null, bewegt: false });
+  };
+
+  useEffect(() => {
+    if (drag === null) return;
+    const move = (e: PointerEvent) => {
+      const s = start.current;
+      if (s === null) return;
+      if (!drag.bewegt && Math.hypot(e.clientX - s.x, e.clientY - s.y) < 5) return;
+      setDrag((d) => (d === null ? null : { ...d, bewegt: true, ziel: zielUnter(e.clientX, e.clientY) }));
+    };
+    const up = () => {
+      const d = drag;
+      setDrag(null);
+      start.current = null;
+      if (d === null || !d.bewegt) return;
+      gezogen.current = true;
+      // Der Klick, der auf das Loslassen folgt, soll nichts öffnen.
+      setTimeout(() => (gezogen.current = false), 0);
+      if (d.ziel === null) return;
+      const eintrag = (tasks ?? []).find((t) => t.id === d.id);
+      const w = eintrag === undefined ? null : whenOf(eintrag);
+      if (eintrag === undefined || w === null) return;
+      // Neuer Zeitpunkt: der Zieltag, und im Raster die Zielzeit — sonst die alte Uhrzeit.
+      const neu = new Date(d.ziel.day);
+      if (d.art === 'timed' && d.ziel.minutes !== null) {
+        neu.setHours(Math.floor(d.ziel.minutes / 60), d.ziel.minutes % 60, 0, 0);
+      } else {
+        neu.setHours(w.at.getHours(), w.at.getMinutes(), 0, 0);
+      }
+      if (neu.getTime() === w.at.getTime()) return;
+      const felder =
+        eintrag.planned !== null
+          ? { planned: neu.toISOString(), plannedAllDay: w.allDay }
+          : { due: neu.toISOString(), dueAllDay: w.allDay };
+      void api.patch(eintrag.id, felder, workspace).then(
+        () => {
+          void load();
+          onChanged();
+        },
+        (err: unknown) => setNotice(err instanceof ApiError ? err.message : 'Umplanen ging nicht.'),
+      );
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+    window.addEventListener('pointercancel', up);
+    return () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      window.removeEventListener('pointercancel', up);
+    };
+    // `zielUnter` und `load` sind stabil genug; `drag` und `tasks` sind die Eingaben.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [drag, tasks, workspace]);
+
+  /* ── Erfassen ───────────────────────────────────────────────────────── */
+
+  /** Wo gerade getippt wird: Tag und Viertelstunde (oder ganztägig). */
+  const [entwurf, setEntwurf] = useState<{ day: Date; minutes: number | null } | null>(null);
+  const [entwurfBusy, setEntwurfBusy] = useState(false);
+
+  const anlegen = async (line: string) => {
+    if (entwurf === null || line.trim() === '') return;
+    setEntwurfBusy(true);
+    try {
+      const out = await api.createTask(line, workspace, undefined, []);
+      const at = new Date(entwurf.day);
+      const allDay = entwurf.minutes === null;
+      if (!allDay) at.setHours(Math.floor(entwurf.minutes! / 60), entwurf.minutes! % 60, 0, 0);
+      // Der Klick sagt, wann — ausdrücklich, nach dem Anlegen. Sonst hätte
+      // „Zahnarzt 9 Uhr" zwei Zeiten, und die aus der Zeile gewänne.
+      await api.patch(out.task.id, { planned: at.toISOString(), plannedAllDay: allDay }, workspace);
+      setEntwurf(null);
+      void load();
+      onChanged();
+    } catch (err) {
+      setNotice(err instanceof ApiError ? err.message : 'Anlegen ging nicht.');
+    } finally {
+      setEntwurfBusy(false);
+    }
+  };
+
+  /** Klick auf eine leere Stelle einer Spalte: die Viertelstunde darunter. */
+  const klickInSpalte = (e: React.MouseEvent<HTMLDivElement>, tag: Date) => {
+    if (gezogen.current || drag !== null) return;
+    if ((e.target as HTMLElement).closest('.cal-chip, .cal-draft') !== null) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+    const minutes = Math.max(0, Math.min(24 * 60 - 15, Math.floor(((e.clientY - rect.top) / (HOUR_REM * rem)) * 4) * 15));
+    setEntwurf({ day: tag, minutes });
+  };
+
+  const entwurfFeld = (allDay: boolean) => (
+    <input
+      className="cal-draft"
+      autoFocus
+      disabled={entwurfBusy}
+      placeholder={allDay ? 'Neue Aufgabe an diesem Tag' : `Neue Aufgabe um ${clock(entwurfZeit())}`}
+      aria-label="Neue Aufgabe"
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          void anlegen(e.currentTarget.value);
+        } else if (e.key === 'Escape') {
+          setEntwurf(null);
+        }
+      }}
+      onBlur={(e) => {
+        // Leer verlassen heisst verwerfen; mit Text bleibt es stehen, bis Enter
+        // oder Esc entscheidet — ein Klick daneben soll nichts wegwerfen.
+        if (e.currentTarget.value.trim() === '') setEntwurf(null);
+      }}
+    />
+  );
+  const entwurfZeit = (): Date => {
+    const d = new Date(entwurf?.day ?? heute);
+    if (entwurf?.minutes != null) d.setHours(Math.floor(entwurf.minutes / 60), entwurf.minutes % 60, 0, 0);
+    return d;
+  };
+
   const abhaken = (task: Task) =>
     void toggleDone(task, workspace).then(
       () => {
@@ -161,16 +336,25 @@ export function Calendar({
     />
   );
 
-  /** Ein Block im Raster oder ein Kärtchen im Monat: klickbar, führt in die Spalte. */
-  const karte = (e: { task: Task; at: Date; allDay: boolean }, mitZeit: boolean) => (
+  /** Ein Block im Raster oder ein Kärtchen im Monat: klickbar, führt in die Spalte; ziehbar. */
+  const karte = (
+    e: { task: Task; at: Date; allDay: boolean },
+    mitZeit: boolean,
+    art: 'timed' | 'allday' | 'month',
+  ) => (
     <button
       key={e.task.id}
       type="button"
       className="cal-chip"
       data-done={e.task.completed !== null ? 'yes' : undefined}
       data-on={openTask === e.task.id ? 'yes' : undefined}
+      data-dragging={drag?.id === e.task.id && drag.bewegt ? 'yes' : undefined}
       title={e.task.title}
-      onClick={() => onOpenTask(openTask === e.task.id ? null : e.task.id)}
+      onPointerDown={(ev) => beginne(ev, e.task.id, art)}
+      onClick={() => {
+        if (gezogen.current) return;
+        onOpenTask(openTask === e.task.id ? null : e.task.id);
+      }}
     >
       {mitZeit && !e.allDay ? <span className="cal-chip-time">{clock(e.at)}</span> : null}
       <span className="cal-chip-title">{e.task.title}</span>
@@ -194,8 +378,15 @@ export function Calendar({
             key={isoDate(tag)}
             className="cal-cell"
             role="gridcell"
+            data-day={isoDate(tag)}
             data-other={fremd ? 'yes' : undefined}
             data-today={sameDay(tag, heute) ? 'yes' : undefined}
+            data-target={drag?.bewegt && drag.ziel !== null && sameDay(drag.ziel.day, tag) ? 'yes' : undefined}
+            onClick={(ev) => {
+              if (gezogen.current || drag !== null) return;
+              if ((ev.target as HTMLElement).closest('button, .cal-draft') !== null) return;
+              setEntwurf({ day: tag, minutes: null });
+            }}
           >
             <button
               type="button"
@@ -205,7 +396,10 @@ export function Calendar({
             >
               {tag.getDate()}
             </button>
-            {sichtbar.map((e) => karte(e, true))}
+            {sichtbar.map((e) => karte(e, true, 'month'))}
+            {entwurf !== null && entwurf.minutes === null && sameDay(entwurf.day, tag) && span === 'month'
+              ? entwurfFeld(true)
+              : null}
             {mehr > 0 ? (
               <button type="button" className="cal-more" onClick={() => onGo('day', tag)}>
                 +{mehr} weitere
@@ -241,8 +435,23 @@ export function Calendar({
           ganztägig
         </div>
         {tage.map((tag) => (
-          <div key={`a-${isoDate(tag)}`} className="cal-allday">
-            {(jeTag.get(isoDate(tag)) ?? []).filter((e) => e.allDay).map((e) => karte(e, false))}
+          <div
+            key={`a-${isoDate(tag)}`}
+            className="cal-allday"
+            data-day={isoDate(tag)}
+            data-target={
+              drag?.bewegt && drag.art !== 'timed' && drag.ziel !== null && sameDay(drag.ziel.day, tag)
+                ? 'yes'
+                : undefined
+            }
+            onClick={(ev) => {
+              if (gezogen.current || drag !== null) return;
+              if ((ev.target as HTMLElement).closest('button, .cal-draft') !== null) return;
+              setEntwurf({ day: tag, minutes: null });
+            }}
+          >
+            {(jeTag.get(isoDate(tag)) ?? []).filter((e) => e.allDay).map((e) => karte(e, false, 'allday'))}
+            {entwurf !== null && entwurf.minutes === null && sameDay(entwurf.day, tag) ? entwurfFeld(true) : null}
           </div>
         ))}
         {/* Die Stunden */}
@@ -257,8 +466,10 @@ export function Calendar({
           <div
             key={`c-${isoDate(tag)}`}
             className="cal-col"
+            data-day={isoDate(tag)}
             data-today={sameDay(tag, heute) ? 'yes' : undefined}
             style={{ height: `${24 * HOUR_REM}rem` }}
+            onClick={(ev) => klickInSpalte(ev, tag)}
           >
             {Array.from({ length: 24 }, (_, h) => (
               <div
@@ -283,10 +494,28 @@ export function Calendar({
                       height: `${(Math.min(dauer, 24 * 60 - minuten) / 60) * HOUR_REM}rem`,
                     }}
                   >
-                    {karte(e, true)}
+                    {karte(e, true, 'timed')}
                   </div>
                 );
               })}
+            {/* Der Schatten des Ziehens: wo der Block landen würde. */}
+            {drag?.bewegt && drag.art === 'timed' && drag.ziel !== null && drag.ziel.minutes !== null && sameDay(drag.ziel.day, tag) ? (
+              <div
+                className="cal-ghost"
+                aria-hidden="true"
+                style={{
+                  top: `${(drag.ziel.minutes / 60) * HOUR_REM}rem`,
+                  height: `${(Math.max((tasks ?? []).find((t) => t.id === drag.id)?.duration ?? DEFAULT_MINUTES, 20) / 60) * HOUR_REM}rem`,
+                }}
+              >
+                {clock(new Date(2000, 0, 1, Math.floor(drag.ziel.minutes / 60), drag.ziel.minutes % 60))}
+              </div>
+            ) : null}
+            {entwurf !== null && entwurf.minutes !== null && sameDay(entwurf.day, tag) ? (
+              <div className="cal-block cal-block-draft" style={{ top: `${(entwurf.minutes / 60) * HOUR_REM}rem` }}>
+                {entwurfFeld(false)}
+              </div>
+            ) : null}
             {sameDay(tag, heute) ? (
               <div
                 className="cal-now"
@@ -379,7 +608,7 @@ export function Calendar({
           ))}
         </div>
       </div>
-      <div className="body" data-wide="yes">
+      <div className="body" data-wide="yes" data-dragging={drag?.bewegt ? 'yes' : undefined}>
         {notice !== undefined ? <p className="note-error">{notice}</p> : null}
         {span === 'month' ? monat() : raster()}
         {span === 'month' ? null : liste()}
