@@ -25,28 +25,30 @@
  * **Zuletzt und abgesetzt** steht das eine, was man nicht durch nochmaliges
  * Drücken zurücknimmt.
  *
- * Arbeitsbereiche, Posteingang und Papierkorb stehen nicht hier: das sind
- * **Orte**, und Orte sind auf der Schiene. Beides wäre ein Gegenstand mit zwei
- * Wegen hinein — der Fehler, über den SONEs Record nachträglich geändert wurde.
+ * Selten benötigte Ziele wie der Papierkorb stehen auf Wunsch im Profil-Menü.
+ * Ihre Metadaten in MODES bestimmen die Platzierung auf allen Geräten.
  */
 
 import { useEffect, useRef, useState } from 'react';
 
 import { SettingsIcon, SignOutIcon, SlidersIcon } from './icons.js';
+import { MODES, type ModeId } from '../modes.js';
 
 export function AccountMenu({
   displayName,
   /**
    * Ein Wort unter dem Gesicht statt des Namens (SONEs ADR-0074).
    *
-   * Die Fußleiste gibt jedem Eintrag ein Sechstel der Telefonbreite, und darin
-   * ist ein Name drei Punkte. Jeder andere Eintrag dort ist beschriftet, und
-   * ein unbeschriftetes Gesicht neben fünf beschrifteten Zeichen liest sich
+   * Die Fußleiste gibt jedem Eintrag denselben Anteil der Telefonbreite, und
+   * darin ist ein Name drei Punkte. Jeder andere Eintrag ist beschriftet, und
+   * ein unbeschriftetes Gesicht neben den beschrifteten Zeichen liest sich
    * als Versehen und nicht als Absicht — also gibt die Leiste „Du" mit, und
    * eine Spalte gibt nichts mit und behält den Namen.
    */
   label,
   email,
+  active,
+  onPick,
   onSettings,
   onAdmin,
   onSignOut,
@@ -54,6 +56,8 @@ export function AccountMenu({
   displayName: string;
   label?: string | undefined;
   email: string;
+  active: ModeId;
+  onPick: (id: ModeId) => void;
   onSettings: () => void;
   /**
    * Die Verwaltung — alles, was fuer jeden auf diesem Server gilt.
@@ -107,6 +111,7 @@ export function AccountMenu({
         className="sidebar-account"
         aria-haspopup="menu"
         aria-expanded={open}
+        aria-current={MODES.some((mode) => mode.account && mode.id === active) ? 'page' : undefined}
         // Nur der Name. Was wartet, wird an der Glocke angesagt, weil es dort
         // liegt — hier auch zu zählen ließe eine Vorleseansage die Zahl an der
         // einen Stelle nennen, die sie nicht öffnen kann (SONEs ADR-0092).
@@ -138,6 +143,14 @@ export function AccountMenu({
             <strong>{displayName}</strong>
             <span>{email}</span>
           </div>
+          {MODES.map((mode) => mode.account ? (
+            <button key={mode.id} type="button" role="menuitem"
+              aria-current={mode.id === active ? 'page' : undefined}
+              onClick={() => { setOpen(false); onPick(mode.id); }}>
+              {mode.icon}
+              {mode.label}
+            </button>
+          ) : null)}
           <button
             type="button"
             role="menuitem"

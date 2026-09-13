@@ -49,7 +49,7 @@ export function IconRail({
         nicht ganz."
       */}
       <div className="rail-nav">
-      {MODES.map((mode) => (
+      {MODES.map((mode) => mode.account ? null : (
         <button
           key={mode.id}
           className={mode.brand === true ? 'rail-item rail-brand' : 'rail-item'}
@@ -81,6 +81,7 @@ export function IconRail({
           öffnet nach rechts statt nach oben. */}
       <div className="rail-account">
         <AccountMenu displayName={displayName} email={email} onSettings={onSettings}
+          active={active} onPick={onPick}
           onAdmin={onAdmin}
           onSignOut={onSignOut} />
       </div>

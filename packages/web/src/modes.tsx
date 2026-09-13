@@ -1,11 +1,9 @@
 /**
  * SOTE — die Modusmenge. **Eine** Liste.
  *
- * SONEs ADR-0072: eine Liste, zwei Zeichnungen. Die Schiene zeichnet sie
- * senkrecht, die Fußleiste quer, und **kein Modus darf aus einer der beiden
- * fallen** — ein Modus, der in einer Zeichnung fehlt, ist ein Modus, den ein
- * Telefon nicht erreicht. Deshalb steht die Liste hier und nicht in einer der
- * beiden Komponenten, und ein Test in `test/modes.test.ts` hält es fest.
+ * Eine Liste für Schiene, Fußleiste und Kontomenü. Selten benötigte Ziele
+ * können im Kontomenü stehen und bleiben dadurch auf jedem Gerät erreichbar.
+ * Die Platzierung und kurze mobile Beschriftung gehören zum Ziel selbst.
  *
  * Das Konto ist **kein** Modus: es ist keine Handlung an einem Ort, sondern
  * gehört zu dir. Es steht abgesetzt und wird von beiden Zeichnungen getrennt
@@ -59,6 +57,9 @@ export interface Mode {
    */
   readonly brand?: boolean;
   readonly label: string;
+  readonly shortLabel?: string;
+  /** Selten benötigtes Ziel im Profil-Menü statt in der Hauptnavigation. */
+  readonly account?: boolean;
   readonly icon: import('react').ReactNode;
 }
 
@@ -81,6 +82,7 @@ export const MODES: readonly Mode[] = [
   {
     id: 'search',
     label: 'Suchen',
+    shortLabel: 'Suche',
     icon: <SearchIcon size={SIZE} />,
   },
   {
@@ -98,6 +100,7 @@ export const MODES: readonly Mode[] = [
   {
     id: 'workspaces',
     label: 'Workspaces',
+    shortLabel: 'Bereiche',
     icon: <WorkspacesIcon size={SIZE} />,
   },
   {
@@ -114,17 +117,20 @@ export const MODES: readonly Mode[] = [
      */
     id: 'notifications',
     label: 'Benachrichtigungen',
+    shortLabel: 'Hinweise',
     icon: <BellIcon size={SIZE} />,
     badge: true,
   },
   {
     id: 'shares',
     label: 'Freigaben',
+    shortLabel: 'Geteilt',
     icon: <ShareIcon size={SIZE} />,
   },
   {
     id: 'trash',
     label: 'Papierkorb',
+    account: true,
     icon: <TrashIcon size={SIZE} />,
   },
 ];

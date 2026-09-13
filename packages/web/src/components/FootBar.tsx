@@ -1,10 +1,8 @@
 /**
  * SOTE — die Fußleiste. Zeichnung zwei von zwei.
  *
- * Dieselbe `MODES`-Liste, quer. ADR-0072 ohne Ausnahme: ein Modus, der in einer
- * Zeichnung fehlt, ist ein Modus, den ein Telefon nicht erreicht. Deshalb
- * zeichnet sie **alle** und kürzt nichts weg — die ausgelieferte SONE-Leiste
- * trägt dieselben sieben Einträge mit vollen Beschriftungen.
+ * Dieselbe `MODES`-Liste, quer und mit kurzen Beschriftungen. Selten benötigte
+ * Ziele stehen über ihre Metadaten im gemeinsamen Kontomenü.
  */
 
 import { MODES, type ModeId } from '../modes.js';
@@ -40,15 +38,17 @@ export function FootBar({
 }) {
   return (
     <nav className="footbar" aria-label="Bereiche">
-      {MODES.map((mode) => (
+      {MODES.map((mode) => mode.account ? null : (
         <button
           key={mode.id}
           className="foot-slot"
+          aria-label={mode.badge && inboxCount > 0 ? `${mode.label} · ${inboxCount} ungelesen` : mode.label}
+          title={mode.label}
           {...(mode.id === active ? { 'aria-current': 'page' as const } : {})}
           onClick={() => onPick(mode.id)}
         >
           {mode.icon}
-          <span className="t">{mode.label}</span>
+          <span className="t" aria-hidden="true">{mode.shortLabel ?? mode.label}</span>
           {/*
             Die Zahl hängt am Modus (`badge`) und nicht an seinem Namen: ein
             `mode.id === '…'` hier wäre eine zweite Liste neben `MODES`, und
@@ -58,7 +58,7 @@ export function FootBar({
             Posteingang. Eine Zahl an einer Glocke sprach von etwas anderem.
           */}
           {mode.badge === true && inboxCount > 0 ? (
-            <span className="badge">{inboxCount}</span>
+            <span className="badge" aria-hidden="true">{inboxCount}</span>
           ) : null}
         </button>
       ))}
@@ -70,6 +70,8 @@ export function FootBar({
           displayName={displayName}
           label="Du"
           email={email}
+          active={active}
+          onPick={onPick}
           onSettings={onSettings}
           onAdmin={onAdmin}
           onSignOut={onSignOut}

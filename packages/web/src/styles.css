@@ -2986,7 +2986,7 @@ body {
     position: fixed;
     inset: auto 0 0 0;
     grid-auto-flow: column;
-    grid-auto-columns: 1fr;
+    grid-auto-columns: minmax(0, 1fr);
     align-items: center;
     height: var(--sote-bar);
     padding-bottom: env(safe-area-inset-bottom);
@@ -3006,10 +3006,8 @@ body {
    * der eine auf, der anders gebaut ist, und zwar als Fehler und nicht als
    * Absicht.
    *
-   * Dieselbe REGEL und keine zweite mit denselben Zahlen: der Wächter hat
-   * meinen ersten Versuch abgelehnt, weil er 3 und 8.5 ein zweites Mal
-   * hinschrieb. Zwei Stellen mit derselben Zahl sind zwei Stellen, die
-   * auseinanderlaufen.
+   * Konto und Ziele teilen Abstand und Beschriftungsstil. Kurze Namen und
+   * gleich breite Spalten halten auch auf kleinen Telefonen Abstand.
    */
   .foot-slot,
   .foot-account .sidebar-account {
@@ -3021,16 +3019,24 @@ body {
     color: var(--text-muted);
     position: relative;
     padding: 6px 0;
+    min-inline-size: 0;
+    min-block-size: var(--sone-tap);
   }
 
-  .foot-slot[aria-current="page"] {
+  .foot-slot[aria-current="page"],
+  .foot-account .sidebar-account[aria-current="page"] {
     color: var(--text);
   }
 
   .foot-slot .t,
   .foot-account .sidebar-account-name {
-    font-family: var(--sote-mono);
-    font-size: 8.5px;
+    font-family: var(--sote-sans);
+    font-size: 0.625rem;
+    line-height: 1.2;
+    max-inline-size: calc(100% - var(--sone-space-1));
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .main-head {
@@ -6718,9 +6724,13 @@ label.btn {
 .foot-account .sidebar-account-name { display: inline; }
 
 .foot-account .sidebar-account {
-  inline-size: auto;
+  inline-size: 100%;
   padding-inline: var(--sone-space-2);
 }
+.foot-account { inline-size: 100%; }
+.foot-account .sidebar-footer { inline-size: 100%; }
+.foot-slot > svg,
+.foot-account .sidebar-avatar { inline-size: 1.375rem; block-size: 1.375rem; flex: none; }
 .foot-account .sidebar-account-menu {
   inset-block-end: calc(100% + var(--sone-space-2));
   inset-inline-start: auto;
