@@ -7158,6 +7158,13 @@ label.btn {
  * Masse in der Skala des Stylesheets; die Stundenhöhe steht im Bauteil
  * (`HOUR_REM`), weil Blockhöhe und Linienabstand dieselbe Zahl brauchen.
  */
+.cal-tooltip { position: fixed; z-index: 100; inline-size: min(23rem, calc(100vw - 24px)); max-block-size: min(30rem, calc(100dvh - 24px)); overflow: auto; box-sizing: border-box; padding: var(--sone-space-6); border: 1px solid var(--border-subtle); border-radius: var(--sone-radius-lg); background: var(--surface-overlay); color: var(--text-primary); box-shadow: var(--sote-shadow-lg); font-family: var(--sote-sans); text-align: start; overflow-wrap: anywhere; }
+.cal-tooltip h3 { margin: 0 0 var(--sone-space-5); font-size: var(--sone-text-md); line-height: 1.45; font-weight: 600; white-space: pre-wrap; }
+.cal-tooltip-source { display: flex; align-items: center; gap: var(--sone-space-4); margin: 0 0 var(--sone-space-4); color: var(--text-muted); font-size: var(--sone-text-xs); }
+.cal-tooltip-source > span { inline-size: var(--sone-space-4); block-size: var(--sone-space-4); border-radius: 50%; flex: none; }
+.cal-tooltip-detail { display: flex; align-items: flex-start; gap: var(--sone-space-4); margin: var(--sone-space-3) 0; font-size: var(--sone-text-sm); }
+.cal-tooltip-detail > svg { flex: none; margin-block-start: var(--sone-space-1); }
+.cal-tooltip-note { margin: var(--sone-space-5) 0 0; padding-block-start: var(--sone-space-5); border-block-start: 1px solid var(--border-subtle); font-size: var(--sone-text-sm); white-space: pre-wrap; }
 
 .head-toggle.wide {
   width: auto;

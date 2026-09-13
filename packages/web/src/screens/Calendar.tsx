@@ -53,7 +53,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { colorValue } from '@sote/core';
+import { colorValue, formatDuration } from '@sote/core';
 
 import { api, ApiError, streamUrl, type CalendarSource, type SpanEvent, type Project, type Task } from '../api.js';
 import { eventKey, eventOnDay, timedEventsOnDay } from '../calendarEvents.js';
@@ -73,6 +73,8 @@ import { longDate } from '../dates.js';
 import { ArrowUturnIcon, CalendarIcon, CheckSquareIcon, ChevronRightIcon, ColumnsIcon, PageIcon, TableIcon } from '../components/icons.js';
 import { TaskRow } from '../components/TaskRow.js';
 import { DoneHiddenIcon } from '../components/viewIcons.js';
+import { useCalendarTooltip } from '../components/CalendarTooltip.js';
+import { calendarTooltipWhen } from '../calendarTooltip.js';
 import { useNudge } from '../hooks/useNudge.js';
 import { toggleDone } from '../tasks/toggleDone.js';
 
@@ -134,6 +136,7 @@ export function Calendar({
   const [notice, setNotice] = useState<string | undefined>(undefined);
   const [showDone, setShowDone] = useState(false);
   const hoursScroll = useRef<HTMLDivElement>(null);
+  const preview = useCalendarTooltip();
 
   const load = useCallback(async () => {
     const version = ++loadVersion.current;
@@ -409,10 +412,16 @@ export function Calendar({
       data-done={e.task.completed !== null ? 'yes' : undefined}
       data-on={openTask === e.task.id ? 'yes' : undefined}
       data-dragging={drag?.id === e.task.id && drag.bewegt ? 'yes' : undefined}
-      title={e.task.title}
-      onPointerDown={(ev) => beginne(ev, e.task.id, art)}
+      {...preview.bind(`${art}:${e.task.id}`, {
+        title:e.task.title, source:bereich(e.task.workspaceId)?.name??'SOTE-Aufgabe',
+        when:calendarTooltipWhen(e.allDay?isoDate(e.at):e.at.toISOString(),!e.allDay&&e.task.duration?new Date(+e.at+e.task.duration*60_000).toISOString():null,e.allDay),
+        ...(e.task.duration?{duration:`${formatDuration(e.task.duration)}${e.allDay?' Aufwand':''}`}:{ }),
+        note:e.task.note, ...(e.task.completed?{status:'Erledigt'}:{}),
+      })}
+      onPointerDown={(ev) => {preview.hide();beginne(ev, e.task.id, art);}}
       onClick={() => {
         if (gezogen.current) return;
+        preview.hide();
         onOpenTask(openTask === e.task.id ? null : e.task.id, e.task.workspaceId);
       }}
     >
@@ -430,7 +439,12 @@ export function Calendar({
     const time = (minutes: number) => `${Math.floor(minutes / 60)}:${String(minutes % 60).padStart(2, '0')}`;
     const label = e.allDay ? 'ganztägig' : `${time(segment.from)}–${time(segment.to)}`;
     return <div key={eventKey(e)} className={layout ? 'cal-event cal-event-timed' : 'cal-event'}
-      title={`${source?.name ?? 'Fremder Kalender'} · ${e.title} · ${label}${e.location ? ` · ${e.location}` : ''}`}
+      tabIndex={0} role="group" aria-label={e.title}
+      {...preview.bind(`${eventKey(e)}:${isoDate(day)}`,{
+        title:e.title,source:source?.name??'Fremder Kalender',when:calendarTooltipWhen(e.start,e.end,e.allDay),location:e.location,
+        color:colorValue(source?.color)??'var(--text-muted)',
+        ...(!e.allDay?{duration:formatDuration(Math.max(1,Math.round((+new Date(e.end)-+new Date(e.start))/60_000)))}:{}),
+      })}
       style={{ ['--eigen' as string]: colorValue(source?.color) ?? 'var(--text-muted)',
         ...(layout ? {
           top: `${segment.from / 60 * HOUR_REM}rem`,
@@ -710,6 +724,7 @@ export function Calendar({
         {span === 'month' ? monat() : raster()}
         {span === 'month' ? null : <section className="cal-list-panel" aria-label="Aufgaben im Zeitraum"><h2>Aufgaben im Zeitraum</h2>{liste()}</section>}
       </div>
+      {preview.tooltip}
     </>
   );
 }
