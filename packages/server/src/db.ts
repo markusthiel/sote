@@ -4,6 +4,17 @@ import { Pool, type PoolClient, type QueryResultRow } from 'pg';
 
 export type { PoolClient };
 
+const transactionClients = new WeakMap<Pool, PoolClient>();
+/** Fachfunktionen in dieselbe äußere Transaktion einbinden, ohne zweiten COMMIT. */
+export async function atomic<T>(pool: Pool, body: (scope: Pool) => Promise<T>): Promise<T> {
+  return withTransaction(pool, async client => {
+    const scope = Object.create(pool) as Pool;
+    scope.query = client.query.bind(client) as Pool['query'];
+    transactionClients.set(scope, client);
+    try { return await body(scope); } finally { transactionClients.delete(scope); }
+  });
+}
+
 export function makePool(databaseUrl: string): Pool {
   return new Pool({ connectionString: databaseUrl, max: 10 });
 }
@@ -38,6 +49,21 @@ export async function withTransaction<T>(
   pool: Pool,
   body: (client: PoolClient) => Promise<T>,
 ): Promise<T> {
+  const nested = transactionClients.get(pool);
+  if (nested) {
+    // Fachfunktionen dürfen ihre Sortierkollision innerhalb der äußeren
+    // Transaktion wiederholen. Ein SAVEPOINT setzt dafür den Fehlerzustand zurück.
+    await nested.query('SAVEPOINT integration_nested');
+    try {
+      const result = await body(nested);
+      await nested.query('RELEASE SAVEPOINT integration_nested');
+      return result;
+    } catch (e) {
+      await nested.query('ROLLBACK TO SAVEPOINT integration_nested');
+      await nested.query('RELEASE SAVEPOINT integration_nested');
+      throw e;
+    }
+  }
   const client = await pool.connect();
   try {
     await client.query('BEGIN');

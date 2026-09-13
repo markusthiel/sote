@@ -42,6 +42,7 @@ import { CalDavError, checkCalendar, davRequest } from './caldav.js';
 import { discoverICloudCalendars } from './icloudCalDav.js';
 import { discoverCalDavCalendars, readCalDavCredentials } from './caldavCalendars.js';
 import { calendarAccountRoutes } from './calendarAccountRoutes.js';
+import { sonePublicRoutes, soneSessionRoutes } from './soneIntegration.js';
 import { acceptWriterConflict, assertSource, disconnectWriter, pauseWriter, requestWrite, saveWriter, withCalendarWriteLock, writerStatus } from './calendarWriters.js';
 import { accounts, deleteAccount, setAdmin } from './accounts.js';
 import { TRASH_DAYS } from './handlers.js';
@@ -543,6 +544,8 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
   const path = url.pathname;
   const method = req.method ?? 'GET';
   const now = ctx.now();
+
+  if (await sonePublicRoutes(ctx.pool,req,res,url)) return;
 
   /*
    * Die Zeitzone der Person, aus der Anfrage.
@@ -1122,6 +1125,7 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
   }
 
   if (await calendarAccountRoutes(ctx.pool,userId,token!,req,res,url)) return;
+  if (await soneSessionRoutes(ctx.pool,userId,req,res,url)) return;
   if (path === '/api/calendar-sources' && method === 'GET') {
     const writers = await writerStatus(ctx.pool, userId);
     json(res, 200, {

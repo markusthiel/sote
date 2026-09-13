@@ -251,6 +251,8 @@ test('die Liste im Trigger kennt JEDE Spalte der Tabelle', async () => {
     'created_by',
     'created_at',
     'updated_at',
+    // Technische Konfliktversion; die fachlich geänderten Felder lösen den Anstoß aus.
+    'integration_revision',
     'completed_by',
     'trashed_by',
     /*

@@ -52,6 +52,7 @@ import { Maintenance } from './screens/Maintenance.js';
 import { People } from './screens/People.js';
 import { Groups } from './screens/Groups.js';
 import { CalendarFeed } from './screens/CalendarFeed.js';
+import { SoneConnections } from './screens/SoneConnections.js';
 import { Labels } from './screens/Labels.js';
 import { Roles } from './screens/Roles.js';
 import { WorkspaceExit } from './screens/WorkspaceExit.js';
@@ -1147,6 +1148,8 @@ export function App() {
             onChanged={reloadNotes}
             onOpenTask={(taskId, ws) => void openTaskAt(ws, taskId)}
           />
+        ) : route.kind === 'settings' && route.section === 'verbindungen' ? (
+          <SoneConnections />
         ) : route.kind === 'settings' && route.section === 'kalender' ? (
           <CalendarFeed workspace={workspace} workspaceName={wsName} defaultView={calendarDefault} onDefaultView={setCalendarDefault} />
         ) : route.kind === 'workspaces' && route.section === 'alle' ? (

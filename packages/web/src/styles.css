@@ -5210,6 +5210,11 @@ select.target { }
 /* `.set-input` trägt nichts Eigenes mehr: die globale Feldregel (SONE) gilt.
    Die Klasse bleibt im Markup, bis die Bildschirme sie ablegen. */
 .set-input { }
+.integration-settings { max-inline-size: 54rem; margin-inline: auto; }
+.integration-settings form { display: grid; gap: var(--sone-space-5); }
+.integration-settings .settings-row { flex-wrap: wrap; text-align: start; }
+.integration-settings .settings-row span { overflow-wrap: anywhere; text-align: start; }
+.calendar-workspace-choice { display: flex; align-items: center; gap: var(--sone-space-4); min-block-size: 2.75rem; }
 
 
 /* Farbwähler und Zurücksetzen in einer Zeile. */

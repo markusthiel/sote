@@ -82,6 +82,7 @@ export const SETTING_SECTIONS = [
   { id: 'erinnern', label: 'Erinnerungen', hint: 'Post am Morgen' },
   { id: 'melden', label: 'Benachrichtigungen', hint: 'Was wo ankommt' },
   { id: 'kalender', label: 'Kalender', hint: 'Standardansicht und Abonnement' },
+  { id: 'verbindungen', label: 'Verbundene Anwendungen', hint: 'SONE und persönliche Freigaben' },
 ] as const;
 
 /**
