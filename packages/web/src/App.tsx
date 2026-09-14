@@ -26,7 +26,7 @@ import { WorkspaceMenu } from './components/WorkspaceMenu.js';
 import { modeOf, type ModeId } from './modes.js';
 import { isoDate } from './calendar.js';
 import { preferredCalendarSpan, rememberCalendarSpan } from './calendarPreference.js';
-import { modeOfRoute, parseRoute, pathOf, placeOf, viewOf, type Route } from './route.js';
+import { listRouteFor, modeOfRoute, parseRoute, pathOf, placeOf, viewOf, type Route } from './route.js';
 import { Setup } from './screens/Setup.js';
 import { SignIn } from './screens/SignIn.js';
 import { TaskList } from './screens/TaskList.js';
@@ -136,7 +136,7 @@ export function App() {
     route.kind === 'upcoming' ||
     route.kind === 'someday' ||
     route.kind === 'inbox' ||
-    route.kind === 'project';
+    route.kind === 'project' || route.kind === 'task';
   /*
    * Die Benachrichtigungen werden EINMAL geholt, für Menü und Bildschirm.
    *
@@ -319,18 +319,18 @@ export function App() {
   const linkedTaskId = route.kind === 'task' ? route.taskId : undefined;
   const linkedUserId = me?.id;
   const [taskLocation, setTaskLocation] = useState<{
-    taskId: string; userId: string; workspaceId?: string; error?: string;
+    taskId: string; userId: string; workspaceId?: string; projectId?: string | null; error?: string;
   }>();
   const [taskLinkRetry, setTaskLinkRetry] = useState(0);
   useEffect(() => {
     if (!linkedTaskId || !linkedUserId) return;
     let active = true;
     setTaskLocation(undefined);
-    void api.taskLocation(linkedTaskId).then(({ workspaceId }) => {
+    void api.taskLocation(linkedTaskId).then(({ workspaceId, projectId }) => {
       if (!active) return;
       setWorkspace(workspaceId);
       localStorage.setItem(LAST_WORKSPACE, workspaceId);
-      setTaskLocation({ taskId: linkedTaskId, userId: linkedUserId, workspaceId });
+      setTaskLocation({ taskId: linkedTaskId, userId: linkedUserId, workspaceId, projectId });
     }).catch((error: unknown) => {
       if (active) setTaskLocation({ taskId: linkedTaskId, userId: linkedUserId,
         error: error instanceof ApiError ? error.message : 'Die Aufgabe konnte nicht geöffnet werden. Bitte erneut versuchen.' });
@@ -339,6 +339,7 @@ export function App() {
   }, [linkedTaskId, linkedUserId, taskLinkRetry]);
   const linkedLocation = taskLocation?.taskId === linkedTaskId && taskLocation?.userId === linkedUserId
     ? taskLocation : undefined;
+  const listRoute = listRouteFor(route, linkedLocation?.projectId);
   /*
    * Die Spalte schließt, wenn der Ort keine Aufgaben mehr zeigt.
    *
@@ -367,13 +368,14 @@ export function App() {
         // Auf der Adresse einer Aufgabe ist Zumachen ein Weggehen — sonst
         // bliebe die Adresse stehen und die Spalte wäre zu, also zwei
         // widersprechende Auskünfte.
+        bringtAufgabe.current = id !== null;
         setOpenTaskState(id === route.taskId ? null : id);
-        go({ kind: 'today' }, true);
+        go(listRoute.kind === 'task' ? { kind: 'inbox' } : listRoute, true);
         return;
       }
       setOpenTaskState(id);
     },
-    [route, go],
+    [route, listRoute, go],
   );
 
   /**
@@ -1056,7 +1058,7 @@ export function App() {
                * hatte eine, diese drei nicht.
                */
               aria-label={n === 0 ? label : `${label}, ${n} offen`}
-              aria-current={route.kind === kind ? 'page' : undefined}
+              aria-current={listRoute.kind === kind ? 'page' : undefined}
               onClick={() => go({ kind })}
             >
               <span className="panel-menu-label">{label}</span>
@@ -1071,7 +1073,7 @@ export function App() {
 
           <ProjectTree
             projects={projects}
-            activeId={route.kind === 'project' ? route.projectId : null}
+            activeId={listRoute.kind === 'project' ? listRoute.projectId : null}
             busy={panelBusy}
             onOpen={(id) => go({ kind: 'project', projectId: id })}
             onCreate={(name, parentId, kind) =>
@@ -1257,9 +1259,11 @@ export function App() {
             onGo={(span, tag) => go({ kind: 'calendar', span, date: isoDate(tag) })}
             onChanged={() => void loadPanel()}
           />
+        ) : linkedTaskId && (linkedLocation?.projectId === undefined || linkedLocation.workspaceId !== workspace) ? (
+          <div className="body"><p role="status">{linkedLocation?.error ? 'Die Aufgabenliste konnte nicht geöffnet werden.' : 'Aufgabenliste wird geöffnet …'}</p></div>
         ) : route.kind !== 'mode' && route.kind !== 'search' ? (
           <TaskList
-            route={route}
+            route={listRoute}
             workspace={workspace}
             projects={projects}
             now={now}
@@ -1274,16 +1278,16 @@ export function App() {
                * ein Wort. Dieselbe Zweiteilung wie in der Tabelle — und sie
                * steht hier, weil nur hier bekannt ist, welche Route offen ist.
                */
-              (route.kind === 'project'
-                ? listViews.projects[route.projectId]
-                : listViews.places[viewOf(route)]) as ListView | undefined
+              (listRoute.kind === 'project'
+                ? listViews.projects[listRoute.projectId]
+                : listViews.places[viewOf(listRoute)]) as ListView | undefined
             }
             workspaceListView={workspaceListView}
             onListView={(display) => {
               const wo =
-                route.kind === 'project'
-                  ? { projectId: route.projectId }
-                  : { place: viewOf(route) };
+                listRoute.kind === 'project'
+                  ? { projectId: listRoute.projectId }
+                  : { place: viewOf(listRoute) };
               /*
                * Sofort im Bild und dann erst geschrieben.
                *
@@ -1300,9 +1304,9 @@ export function App() {
                   else naechste[schluessel] = display;
                   return naechste;
                 };
-                return route.kind === 'project'
-                  ? { ...was, projects: raus(was.projects, route.projectId) }
-                  : { ...was, places: raus(was.places, viewOf(route)) };
+                return listRoute.kind === 'project'
+                  ? { ...was, projects: raus(was.projects, listRoute.projectId) }
+                  : { ...was, places: raus(was.places, viewOf(listRoute)) };
               });
               void api.setListView({ ...wo, display }, workspace).catch(() => undefined);
             }}

@@ -35,9 +35,8 @@ export type Route =
    * zurückgehen führt zurück, ein Neuladen bleibt dort
    * (`claude/suche-als-ort.md`).
    *
-   * Dahinter steht „Heute", weil hinter etwas stehen muss: die Detailspalte
-   * ist eine Spalte und kein Bildschirm. Welche Liste das ist, sagt der Link
-   * nicht — und das ist richtig, denn eine Aufgabe kann in mehreren stehen.
+   * Dahinter steht das Projekt der Aufgabe, ohne Projekt der Posteingang.
+   * Der Server löst diesen Ort auf; die Aufgabenadresse bleibt verlinkbar.
    */
   | { readonly kind: 'task'; readonly taskId: string }
   | { readonly kind: 'mode'; readonly mode: string }
@@ -114,6 +113,12 @@ export function viewOf(route: Route): 'today' | 'upcoming' | 'someday' | 'inbox'
 }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
+/** List behind a task deep link; the URL continues to identify the task. */
+export function listRouteFor(route: Route, projectId: string | null | undefined): Route {
+  if (route.kind !== 'task' || projectId === undefined) return route;
+  return projectId === null ? { kind: 'inbox' } : { kind: 'project', projectId };
+}
 
 export function parseRoute(pathname: string, queryString = ''): Route {
   const parts = pathname.split('/').filter((p) => p !== '');

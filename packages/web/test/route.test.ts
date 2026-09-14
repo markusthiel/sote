@@ -5,11 +5,21 @@ import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 import { neighboursFor, neighboursForStep, reordered } from '../src/reorder.js';
-import { modeOfRoute, parseRoute, pathOf, placeOf, viewOf, type Route } from '../src/route.js';
+import { listRouteFor, modeOfRoute, parseRoute, pathOf, placeOf, viewOf, type Route } from '../src/route.js';
 
 /* ── Die Ansicht ist ein Ort ───────────────────────────────────────────── */
 
 const ID = '7f3a9c21-4b5e-4d8a-9c1f-2e6b8a0d4f57';
+
+test('ein Aufgabenlink zeigt sein Projekt oder den Posteingang und behält seine Adresse', () => {
+  const route: Route = { kind: 'task', taskId: ID };
+  assert.deepEqual(listRouteFor(route, 'project-id'), { kind: 'project', projectId: 'project-id' });
+  assert.deepEqual(listRouteFor(route, null), { kind: 'inbox' });
+  assert.equal(listRouteFor(route, undefined), route, 'ein noch unbekannter Ort bleibt unaufgelöst');
+  assert.equal(pathOf(route), `/a/${ID}`, 'Neuladen und Zurück behalten den Aufgabenlink');
+  const today: Route = { kind: 'today' };
+  assert.equal(listRouteFor(today, 'project-id'), today, 'normale Listen werden nicht umgeleitet');
+});
 
 /** Wie der Browser: Pfad und Abfrageteil getrennt. */
 function roundTrip(route: Route): Route {

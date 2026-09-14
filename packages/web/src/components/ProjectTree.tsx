@@ -202,6 +202,19 @@ export function ProjectTree({
    * Einstellung, und die kommt mit den Einstellungen.
    */
   const [closed, setClosed] = useState<ReadonlySet<string>>(new Set());
+  // A linked project must be visible even inside a previously folded folder.
+  useEffect(() => {
+    const ancestors = new Set<string>();
+    let parent = projects.find(p => p.id === activeId)?.parentId;
+    while (parent && !ancestors.has(parent)) {
+      ancestors.add(parent);
+      parent = projects.find(p => p.id === parent)?.parentId;
+    }
+    setClosed(previous => {
+      if (![...ancestors].some(id => previous.has(id))) return previous;
+      return new Set([...previous].filter(id => !ancestors.has(id)));
+    });
+  }, [activeId, projects]);
   const [find, setFind] = useState('');
 
   /* Der ganze Satz, mit und ohne Suchbegriff — `iconsFor` erklärt, warum die

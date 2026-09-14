@@ -1248,8 +1248,8 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
   // the signed-in person can read, before applying the usual workspace scope.
   const taskLocation = /^\/api\/tasks\/([0-9a-f-]{36})\/location$/.exec(path);
   if (taskLocation && method === 'GET') {
-    const task = await queryOne<{ workspace_id: string }>(ctx.pool,
-      `SELECT t.workspace_id FROM tasks t
+    const task = await queryOne<{ workspace_id: string; project_id: string | null }>(ctx.pool,
+      `SELECT t.workspace_id, t.project_id FROM tasks t
          JOIN workspaces w ON w.id = t.workspace_id AND w.deleted_at IS NULL
          JOIN workspace_members m ON m.workspace_id = w.id AND m.user_id = $2
         WHERE t.id = $1 AND t.trashed_at IS NULL`, [taskLocation[1], userId]);
@@ -1257,7 +1257,7 @@ async function handle(ctx: Ctx, req: IncomingMessage, res: ServerResponse): Prom
       fail(res, 404, 'not_found', 'Diese Aufgabe ist nicht verfügbar oder du hast keinen Zugriff.');
       return;
     }
-    json(res, 200, { workspaceId: task.workspace_id });
+    json(res, 200, { workspaceId: task.workspace_id, projectId: task.project_id });
     return;
   }
 

@@ -289,8 +289,14 @@ test('Aufgabenlinks finden den lesbaren Arbeitsbereich unabhängig vom aktuellen
   for (const suffix of ['', `?workspace=${workspaceId}`]) {
     const found = await call(path + suffix);
     assert.equal(found.status, 200);
-    assert.deepEqual(await found.json(), { workspaceId: ws!.id });
+    assert.deepEqual(await found.json(), { workspaceId: ws!.id, projectId: null });
   }
+  const folder = await queryOne<{ id: string }>(pool,
+    "INSERT INTO projects(workspace_id,name,kind,sort_key) VALUES($1,'Ordner','folder','a0') RETURNING id", [ws!.id]);
+  const project = await queryOne<{ id: string }>(pool,
+    "INSERT INTO projects(workspace_id,parent_id,name,kind,sort_key) VALUES($1,$2,'Projekt der Aufgabe','list','a0') RETURNING id", [ws!.id, folder!.id]);
+  await pool.query('UPDATE tasks SET project_id=$1 WHERE id=$2', [project!.id, task!.id]);
+  assert.deepEqual(await (await call(path)).json(), { workspaceId: ws!.id, projectId: project!.id });
   assert.equal((await call(`/api/tasks/${task!.id}?workspace=${workspaceId}`)).status, 404, 'Detail bleibt auf seinen Bereich begrenzt');
   assert.equal((await call(`/api/tasks/${task!.id}?workspace=${ws!.id}`)).status, 200);
   const unavailable = await call('/api/tasks/00000000-0000-0000-0000-000000000000/location');
