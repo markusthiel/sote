@@ -1383,6 +1383,8 @@ export const api = {
         done ? '&done=1' : ''
       }${workspace === null ? '' : `&workspace=${workspace}`}`,
     ),
+  taskLocation: (id: string) =>
+    call<{ workspaceId: string }>(`/api/tasks/${id}/location`),
   detail: (id: string, workspace?: string) =>
     call<Detail>(
       `/api/tasks/${id}${workspace === undefined ? '' : `?workspace=${workspace}`}`,

@@ -316,6 +316,29 @@ export function App() {
    * über Kalender.
    */
   const openTask = route.kind === 'task' ? route.taskId : openTaskState;
+  const linkedTaskId = route.kind === 'task' ? route.taskId : undefined;
+  const linkedUserId = me?.id;
+  const [taskLocation, setTaskLocation] = useState<{
+    taskId: string; userId: string; workspaceId?: string; error?: string;
+  }>();
+  const [taskLinkRetry, setTaskLinkRetry] = useState(0);
+  useEffect(() => {
+    if (!linkedTaskId || !linkedUserId) return;
+    let active = true;
+    setTaskLocation(undefined);
+    void api.taskLocation(linkedTaskId).then(({ workspaceId }) => {
+      if (!active) return;
+      setWorkspace(workspaceId);
+      localStorage.setItem(LAST_WORKSPACE, workspaceId);
+      setTaskLocation({ taskId: linkedTaskId, userId: linkedUserId, workspaceId });
+    }).catch((error: unknown) => {
+      if (active) setTaskLocation({ taskId: linkedTaskId, userId: linkedUserId,
+        error: error instanceof ApiError ? error.message : 'Die Aufgabe konnte nicht geöffnet werden. Bitte erneut versuchen.' });
+    });
+    return () => { active = false; };
+  }, [linkedTaskId, linkedUserId, taskLinkRetry]);
+  const linkedLocation = taskLocation?.taskId === linkedTaskId && taskLocation?.userId === linkedUserId
+    ? taskLocation : undefined;
   /*
    * Die Spalte schließt, wenn der Ort keine Aufgaben mehr zeigt.
    *
@@ -783,7 +806,7 @@ export function App() {
                * Suche) ist ein Ort, der in jedem Arbeitsbereich existiert, und
                * dort bleibt man.
                */
-              go(route.kind === 'project' ? { kind: 'today' } : route);
+              go(route.kind === 'project' || route.kind === 'task' ? { kind: 'today' } : route);
             }}
             /*
               Angelegt heißt: Liste neu laden UND hineinwechseln. Beides, weil
@@ -1322,7 +1345,15 @@ export function App() {
         )}
       </main>
 
-      {openTask !== null ? (
+      {linkedTaskId && (linkedLocation?.workspaceId === undefined || linkedLocation.workspaceId !== workspace) ? (
+        <aside className="detail" aria-busy={!linkedLocation?.error}>
+          {linkedLocation?.error ? <>
+            <p className="note-error" role="alert">{linkedLocation.error}</p>
+            <button className="btn" type="button" onClick={() => setTaskLinkRetry(value => value + 1)}>Erneut versuchen</button>
+          </> : <p role="status">Aufgabe wird geöffnet …</p>}
+          <button className="btn" type="button" onClick={() => setOpenTask(null)}>Schließen</button>
+        </aside>
+      ) : openTask !== null ? (
         <Detail
           taskId={openTask}
           /* Für „nur meine Erinnerung wegnehmen": der Server prüft es, und die

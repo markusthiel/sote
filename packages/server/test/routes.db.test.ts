@@ -275,6 +275,45 @@ test('eine unbekannte Route sagt, welche es nicht gibt', async () => {
   assert.match(body.error.message, /gibtsnicht/);
 });
 
+test('Aufgabenlinks finden den lesbaren Arbeitsbereich unabhängig vom aktuellen Bereich', async (t) => {
+  const me = await queryOne<{ id: string }>(pool, 'SELECT id FROM users WHERE email=$1', [email]);
+  const ws = await queryOne<{ id: string }>(pool, "INSERT INTO workspaces(name) VALUES('Linkziel') RETURNING id");
+  t.after(async () => { await pool.query('DELETE FROM workspaces WHERE id=$1', [ws!.id]); });
+  const role = await queryOne<{ id: string }>(pool,
+    "INSERT INTO roles(workspace_id,name,list_level) VALUES($1,'reader','viewer') RETURNING id", [ws!.id]);
+  await pool.query('INSERT INTO workspace_members(workspace_id,user_id,role_id) VALUES($1,$2,$3)', [ws!.id, me!.id, role!.id]);
+  const task = await queryOne<{ id: string }>(pool,
+    "INSERT INTO tasks(workspace_id,title,sort_key) VALUES($1,'Verlinkte Aufgabe','a0') RETURNING id", [ws!.id]);
+  const path = `/api/tasks/${task!.id}/location`;
+  assert.equal((await fetch(base + path)).status, 401, 'Sitzung erforderlich');
+  for (const suffix of ['', `?workspace=${workspaceId}`]) {
+    const found = await call(path + suffix);
+    assert.equal(found.status, 200);
+    assert.deepEqual(await found.json(), { workspaceId: ws!.id });
+  }
+  assert.equal((await call(`/api/tasks/${task!.id}?workspace=${workspaceId}`)).status, 404, 'Detail bleibt auf seinen Bereich begrenzt');
+  assert.equal((await call(`/api/tasks/${task!.id}?workspace=${ws!.id}`)).status, 200);
+  const unavailable = await call('/api/tasks/00000000-0000-0000-0000-000000000000/location');
+  assert.equal(unavailable.status, 404);
+  const expectedError = await unavailable.json();
+  const expectHidden = async () => {
+    const result = await call(path);
+    assert.equal(result.status, 404);
+    assert.deepEqual(await result.json(), expectedError, 'keine Auskunft über unzugängliche Aufgaben');
+  };
+  await pool.query('UPDATE roles SET list_level=NULL WHERE id=$1', [role!.id]);
+  await expectHidden();
+  await pool.query("UPDATE roles SET list_level='viewer' WHERE id=$1", [role!.id]);
+  await pool.query('UPDATE tasks SET trashed_at=now() WHERE id=$1', [task!.id]);
+  await expectHidden();
+  await pool.query('UPDATE tasks SET trashed_at=NULL WHERE id=$1', [task!.id]);
+  await pool.query('UPDATE workspaces SET deleted_at=now() WHERE id=$1', [ws!.id]);
+  await expectHidden();
+  await pool.query('UPDATE workspaces SET deleted_at=NULL WHERE id=$1', [ws!.id]);
+  await pool.query('DELETE FROM workspace_members WHERE workspace_id=$1', [ws!.id]);
+  await expectHidden();
+});
+
 test('abmelden macht den Keks wertlos', async () => {
   const out = await call('/api/session', { method: 'DELETE' });
   assert.equal(out.status, 200);
