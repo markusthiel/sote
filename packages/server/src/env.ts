@@ -54,9 +54,40 @@ export interface Config {
  * nicht vorher.
  */
 
+/**
+ * Die Verbindungsadresse, geprüft bevor `pg` sie sieht.
+ *
+ * `pg` meldet eine unlesbare Adresse als „Invalid URL“ — zwei Wörter, keine
+ * Variable, keine Ursache. In SONE stand genau das bei jedem Neustart im
+ * Protokoll eines Containers, der nicht hochkam. Die Ursache war das Kennwort:
+ * compose setzt `POSTGRES_PASSWORD` unkodiert in die Adresse ein, und
+ * `.env.example` empfahl `openssl rand -base64 32`. Base64 enthält `/`, ein `/`
+ * im Benutzerteil beendet den Host, und die Adresse lässt sich nicht mehr
+ * lesen — bei etwa jedem zweiten erzeugten Kennwort.
+ *
+ * Die Vorlage empfiehlt jetzt Hex. Diese Prüfung ist für alle, die schon eine
+ * `.env` haben, und sie nennt den Ausweg.
+ */
+export function databaseUrl(name: string): string {
+  const value = text(name);
+  try {
+    new URL(value);
+  } catch {
+    throw new EnvError(
+      `${name} ist keine gültige Adresse. Im compose-Aufbau entsteht sie aus ` +
+        'POSTGRES_PASSWORD, und ein Kennwort mit /, #, %, ? oder Leerzeichen ' +
+        '(wie `openssl rand -base64` sie erzeugt) zerstört die Adresse. Ein ' +
+        'Kennwort aus `openssl rand -hex 32` verwenden oder die Sonderzeichen ' +
+        'prozentkodieren — und daran denken, dass die Datenbank das Kennwort ' +
+        'behält, mit dem sie zuerst angelegt wurde.',
+    );
+  }
+  return value;
+}
+
 export function loadConfig(): Config {
   return {
-    databaseUrl: text('SOTE_DATABASE_URL'),
+    databaseUrl: databaseUrl('SOTE_DATABASE_URL'),
     port: count('SOTE_PORT', 8080, { min: 1, max: 65535 }),
     sessionDays: count('SOTE_SESSION_DAYS', 30, { min: 1, max: 400 }),
   };

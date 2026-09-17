@@ -62,8 +62,8 @@ for (const f of alleQuellen(join(root, 'packages/server/src'))) {
   for (const m of src.matchAll(/process\.env\[?['"`](SOTE_[A-Z_]+)['"`]\]?/g)) {
     gelesen.add(m[1]);
   }
-  // `text('SOTE_…')` und `count('SOTE_…')` aus `env.ts` zählen auch.
-  for (const m of src.matchAll(/\b(?:text|count)\(\s*['"`](SOTE_[A-Z_]+)['"`]/g)) {
+  // `text('SOTE_…')`, `count('SOTE_…')` und `databaseUrl('SOTE_…')` aus `env.ts` zählen auch.
+  for (const m of src.matchAll(/\b(?:text|count|databaseUrl)\(\s*['"`](SOTE_[A-Z_]+)['"`]/g)) {
     gelesen.add(m[1]);
   }
 }
