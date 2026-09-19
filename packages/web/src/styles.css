@@ -916,6 +916,31 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex]:focus-vi
 }
 
 /*
+ * DIE TAFEL BEKOMMT DIE GANZE HÖHE — und deshalb steht hier eine Spalte.
+ *
+ * GEMELDET mit Bild: „Kann man die Kanban-Fläche so bauen, dass die untere
+ * Scroll-Leiste nicht direkt unter den Kanbans hängt? Das sieht nicht so gut
+ * aus und es macht die Arbeit etwas schwerer."
+ *
+ * Die Tafel war so hoch wie ihre höchste Spalte. Ihre waagerechte Rollleiste
+ * sitzt am unteren Rand DER TAFEL — also klebte sie unter den Karten, mitten
+ * auf dem Bildschirm, und darunter lag eine leere halbe Seite. Eine Rollleiste
+ * an einer Kante, die keine ist: man sucht sie beim zweiten Mal wieder.
+ *
+ * Also reicht die Tafelfläche bis nach unten, und die Leiste geht mit. Die
+ * Spalten bleiben so hoch wie ihr Inhalt — sie sollen nicht leere Kästen bis
+ * zum Fensterrand sein.
+ *
+ * `:has()` und nicht `.main` selbst: die Anordnung gilt für die Tafel und für
+ * nichts sonst. Jede Liste, jeder Ordner, jeder Kalender behält das Verhalten
+ * von vorher, und diese Regel kann sie nicht versehentlich erwischen.
+ */
+.main:has(> .body[data-wide="yes"]) {
+  display: flex;
+  flex-direction: column;
+}
+
+/*
  * `position: relative`, und das Fehlen davon war ein Fehler im Bild.
  *
  * `.head-toggle` ist `absolute` und verankerte sich darum am nächsten
@@ -991,6 +1016,13 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex]:focus-vi
 
 .body[data-wide="yes"] {
   max-width: none;
+  /* Den Rest der Höhe nehmen und an die Tafel weitergeben. `min-block-size: 0`,
+     weil ein Flex-Kind sonst nicht unter seinen Inhalt schrumpft — ohne das
+     wächst die Tafel über den Bildschirm hinaus, statt in ihm zu rollen. */
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-block-size: 0;
 }
 
 .section-label {
@@ -1221,6 +1253,10 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex]:focus-vi
    * Regel griff, die Farbe stimmte.
    */
   padding-inline: var(--sone-space-3);
+  /* Bis nach unten — die Begründung steht am `.main`-Block. Die Karten bleiben
+     oben (`align-items: flex-start`), nur die Fläche reicht weiter. */
+  flex: 1 1 auto;
+  min-block-size: 0;
 }
 
 .board-column {
