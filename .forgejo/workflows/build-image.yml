@@ -53,16 +53,38 @@ jobs:
     # **Postgres wird selbst gestartet, nicht als `services:`.**
     #
     # Die erste Fassung hatte einen `services:`-Block, und die Tests bekamen
-    # `ECONNREFUSED 127.0.0.1:5432`. Der Runner dieser Instanz ist ein
-    # *hostexecutor* — er führt Schritte direkt auf dem Rechner aus und startet
-    # **keine** Service-Container. Docker ist da (deshalb baut der image-Job),
-    # Services sind es nicht. Also mit `docker run`, was auf diesem Runner
-    # tatsächlich funktioniert, statt mit einer Zutat, die eine andere
-    # Runner-Art voraussetzt.
+    # `ECONNREFUSED 127.0.0.1:5432`. Der *hostexecutor* dieser Instanz führt
+    # Schritte direkt auf dem Rechner aus und startet **keine**
+    # Service-Container. Docker ist da (deshalb baut der image-Job), Services
+    # sind es nicht. Also mit `docker run`, was auf beiden Runner-Arten
+    # tatsächlich funktioniert, statt mit einer Zutat, die eine davon
+    # voraussetzt.
     #
     # Port 55432 und nicht 5432: auf demselben Rechner läuft SONE mit seiner
     # eigenen Datenbank, und ein belegter Port wäre ein Fehlschlag, dessen
     # Ursache nirgends steht.
+    #
+    # **UND: es gibt nicht mehr nur einen Runner.**
+    #
+    # Lauf 222 scheiterte mit `ECONNREFUSED 127.0.0.1:55432` — alle 504
+    # Datenbanktests, vom ersten an, während jede andere Prüfung grün war. Der
+    # Grund stand im Kopf des Protokolls: den Auftrag hatte nicht `host-runner`
+    # genommen, sondern `docker5`, und der führt den Job IN einem Container aus
+    # (`catthehacker/ubuntu:act-latest`).
+    #
+    # Damit ist `127.0.0.1` in einem Schritt nicht mehr der Rechner, sondern
+    # der Job-Container. Der Postgres-Container ist sein Geschwister und
+    # veröffentlicht seinen Port auf dem Rechner — also nebenan und nicht hier.
+    # `docker run` und `docker exec` gingen trotzdem, weil der Socket
+    # durchgereicht ist; nur die eine Verbindung, um die es den Tests geht,
+    # gab es nicht.
+    #
+    # Beide Runner tragen dasselbe Label `ubuntu-latest`. Welcher zugreift, ist
+    # also Zufall — und ein Lauf, der von einer Verlosung abhängt, ist kein
+    # Lauf, dem man glaubt. Darum unten: im Container teilt sich Postgres
+    # dessen Netz-Namensraum, auf dem Rechner veröffentlicht er den Port. Die
+    # Tests erreichen ihn in beiden Fällen unter derselben Adresse, und der Job
+    # muss nichts über seinen Runner wissen.
 
     steps:
       - uses: actions/checkout@v4
@@ -76,34 +98,84 @@ jobs:
         run: |
           set -eu
           docker rm -f sote-ci-pg >/dev/null 2>&1 || true
-          docker run -d --name sote-ci-pg \
+
+          # Läuft dieser Schritt auf dem Rechner oder in einem Container? Die
+          # Antwort entscheidet, wie die Tests die Datenbank erreichen — die
+          # Begründung steht oben am Job.
+          if [ -f /.dockerenv ]; then
+            # Zwei Wege zur eigenen Kennung, weil der erste nicht immer stimmt:
+            # der Rechnername IST normalerweise die kurze Container-Kennung,
+            # aber wer den Container mit `--hostname` startet, hat einen
+            # anderen. Dann steht sie noch in den Einhängungen, die Docker
+            # selbst hineinlegt (/etc/hosts und Geschwister liegen unter
+            # `/docker/containers/<kennung>/`).
+            SELBST="$(cat /etc/hostname)"
+            if ! docker inspect "$SELBST" >/dev/null 2>&1; then
+              SELBST="$(sed -n 's#.*/containers/\([0-9a-f]\{64\}\)/.*#\1#p' /proc/self/mountinfo | head -1)"
+            fi
+            if [ -z "$SELBST" ] || ! docker inspect "$SELBST" >/dev/null 2>&1; then
+              echo "Der Job läuft in einem Container, dessen Kennung sich hier nicht ermitteln lässt." >&2
+              echo "Ohne sie lässt sich das Netz nicht teilen — siehe die Erklärung am Job." >&2
+              exit 1
+            fi
+            NETZ="--network container:$SELBST"
+            echo "Im Container ($SELBST) — Postgres teilt dessen Netz."
+          else
+            NETZ="-p 127.0.0.1:55432:55432"
+            echo "Auf dem Rechner — Postgres veröffentlicht 55432."
+          fi
+
+          # Der Port steht IM Postgres und nicht in einer Abbildung: im
+          # geteilten Namensraum gibt es keine Abbildung, die ihn verschieben
+          # könnte. Ein Port, der je nach Fall woanders herkommt, wäre genau
+          # die Sorte Unterschied, die man beim Suchen übersieht.
+          docker run -d --name sote-ci-pg $NETZ \
             -e POSTGRES_USER=sote \
             -e POSTGRES_PASSWORD=sote \
             -e POSTGRES_DB=sote_test \
             -e POSTGRES_INITDB_ARGS="--locale=C --encoding=UTF8" \
-            -p 127.0.0.1:55432:5432 \
-            postgres:16-alpine
+            postgres:16-alpine -p 55432
 
           # Gewartet wird auf `pg_isready` und nicht auf eine Anzahl Sekunden:
           # ein `sleep 10` ist entweder zu kurz und der Lauf scheitert
           # gelegentlich, oder zu lang und jeder Lauf zahlt dafür.
           for i in $(seq 1 40); do
-            if docker exec sote-ci-pg pg_isready -U sote -d sote_test >/dev/null 2>&1; then
+            if docker exec sote-ci-pg pg_isready -U sote -d sote_test -p 55432 >/dev/null 2>&1; then
               echo "Postgres bereit nach $i Versuchen"
               break
             fi
             sleep 1
           done
-          docker exec sote-ci-pg pg_isready -U sote -d sote_test
+          docker exec sote-ci-pg pg_isready -U sote -d sote_test -p 55432
+
+          # UND JETZT VON HIER AUS, über dieselbe Adresse wie die Tests.
+          #
+          # Die alte Prüfung fragte `pg_isready` INNERHALB des
+          # Postgres-Containers. Die antwortet auch dann „bereit", wenn es den
+          # Weg dorthin von hier aus gar nicht gibt — genau so war Lauf 222 an
+          # dieser Stelle grün und an der nächsten 504-mal rot. Eine
+          # Bereitschaftsprüfung, die eine andere Verbindung prüft als die, um
+          # die es geht, ist keine.
+          for i in $(seq 1 20); do
+            if (exec 3<>/dev/tcp/127.0.0.1/55432) 2>/dev/null; then
+              echo "Von hier aus erreichbar nach $i Versuchen"
+              break
+            fi
+            sleep 1
+          done
+          if ! (exec 3<>/dev/tcp/127.0.0.1/55432) 2>/dev/null; then
+            echo "Postgres läuft, ist von diesem Schritt aus aber nicht erreichbar." >&2
+            echo "Genau daran scheiterte Lauf 222 — die Erklärung steht am Job." >&2
+            exit 1
+          fi
 
           # Dieselbe Collation wie im Betrieb, hier nachgewiesen und nicht
           # angenommen: ohne sie sortiert die Testdatenbank die
           # Sortierschlüssel anders als die echte, und der Test, der genau das
           # prüft, wäre grün an der falschen Stelle.
-          docker exec sote-ci-pg psql -U sote -d sote_test -tAc \
+          docker exec sote-ci-pg psql -U sote -d sote_test -p 55432 -tAc \
             "SELECT datcollate FROM pg_database WHERE datname='sote_test'" | grep -qx C
           echo "Collation ist C"
-
       # Ein Befehl, und es ist derselbe, den jemand hier fährt: `pnpm check`.
       #
       # Vorher standen die drei Schritte einzeln hier — und der zweite hieß
