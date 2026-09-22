@@ -210,9 +210,30 @@ export function createEditorState(opts: EditorOptions): EditorState {
       'Shift-Mod-z': yRedo,
     }),
     soneInputRules(),
-    // Before soneKeymap, so Tab moves between cells inside a table instead of
-    // indenting the paragraph in a cell. Outside a table goToNextCell refuses
-    // and the block binding takes over.
+    /*
+     * VOR den Tastenbelegungen, nicht dahinter — und das ist eine Korrektur.
+     *
+     * In SONE steht das `/`-Menü hinter `soneKeymap` mit der Begründung, es
+     * sehe Enter und die Pfeile „zuerst". Das stimmt nicht: ProseMirror fragt
+     * `handleKeyDown` in Plugin-Reihenfolge und hört beim ersten auf, das
+     * wahr zurückgibt — wer HINTEN steht, wird also zuletzt gefragt. Die
+     * Pfeile kamen trotzdem an, weil die Belegung keine hat; Enter nicht, weil
+     * sie eines hat. Folge: ein Eintrag liess sich anklicken, aber mit Enter
+     * wurde stattdessen der Absatz geteilt und das getippte `/aufgabe` blieb
+     * als Text stehen.
+     *
+     * Gemeldet worden ist das nicht als „Enter tut nichts", sondern als „da
+     * steht ein Text hochkant" — der Platzhalter des neuen Blocks. Der zweite
+     * Fehler hat den ersten verdeckt.
+     */
+    slashMenu(opts.localiseSlashItem, opts.offersSlashItem),
+    // Jemanden im Text nennen: dieselbe Stelle, aus demselben Grund. Das Menü
+    // nimmt nur Escape — die Pfeile und Enter gehören der Oberfläche, die die
+    // Liste der Leute führt, von der dieses Paket nichts wissen will.
+    mentionMenu(),
+    // Vor soneKeymap, damit Tab in einer Tabelle zur nächsten Zelle geht statt
+    // den Absatz darin einzurücken. Ausserhalb einer Tabelle lehnt
+    // goToNextCell ab und die Block-Belegung übernimmt.
     keymap(tableKeymap),
     ...soneKeymap(),
     blockIds(opts.generateId ? { generateId: opts.generateId } : {}),
@@ -236,15 +257,6 @@ export function createEditorState(opts: EditorOptions): EditorState {
     ...(opts.uploadImage
       ? [imagePaste({ upload: opts.uploadImage, ...(opts.generateId ? { generateId: opts.generateId } : {}) })]
       : []),
-    // After the keymap, so the menu's handleKeyDown sees Enter and the arrows
-    // first while it is open. ProseMirror asks plugins in order and stops at
-    // the first that handles a key; the other way round, Enter would split the
-    // block instead of picking an item.
-    slashMenu(opts.localiseSlashItem, opts.offersSlashItem),
-    // Naming somebody in the text (ADR-0085). After the slash menu, and it
-    // takes only Escape: the arrows and Enter belong to the interface, which
-    // owns the list of people this package deliberately knows nothing about.
-    mentionMenu(),
     // One filter for every locked block (ADR-0049). Before the application's
     // own plugins, so a supplied plugin cannot dispatch past it.
     blockLock(),

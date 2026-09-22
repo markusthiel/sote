@@ -243,8 +243,13 @@ export function SlashMenu({ view, revision, onPickImage }: SlashMenuProps): Reac
       aria-activedescendant={`slash-item-${menu.items[menu.index]?.id ?? ''}`}
       {...keepsEditorSelection}
     >
-      {groups.map(([group, items]) => (
-        <div className="slash-group" key={group}>
+      {/* Der Schlüssel trägt die Stelle mit: eine Gruppe kann ZWEIMAL
+          vorkommen, weil `groupItems` die gefilterte Reihenfolge behält und
+          nicht umsortiert — „Listen" oben und „Listen" weiter unten sind dann
+          zwei Blöcke mit demselben Namen, und React beschwert sich zu Recht
+          über doppelte Schlüssel. */}
+      {groups.map(([group, items], stelle) => (
+        <div className="slash-group" key={`${group}-${stelle}`}>
           <div className="slash-group-label">{GROUP_LABELS[group]}</div>
           {items.map((item) => {
             flatIndex += 1;
