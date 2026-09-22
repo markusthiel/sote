@@ -30,6 +30,7 @@ import {
   type Task,
 } from '../api.js';
 import { useNudge } from '../hooks/useNudge.js';
+import { NoteEditor } from '../components/NoteEditor.js';
 import { toggleDone } from '../tasks/toggleDone.js';
 import { FieldRow, FreeDate, FreeDuration, FreeLabel } from '../components/FieldRow.js';
 import { TaskSchedule } from '../components/TaskSchedule.js';
@@ -84,7 +85,17 @@ export interface DetailIO {
   addReminder?: (body: { minutes: number } | { at: string }) => Promise<unknown>;
   removeReminder?: (reminderId: string) => Promise<unknown>;
   /** Anhänge. Fehlen beim Gast: eine Datei hängt an einem Konto. */
-  addFile?: (file: File, onProgress?: (anteil: number) => void) => Promise<unknown>;
+  /**
+   * Eine Datei anhängen.
+   *
+   * Gibt die Id zurück und nicht `unknown`: ein Bild, das im Notiztext landet,
+   * muss auf DENSELBEN Anhang zeigen, den der Bilder-Reiter zeigt — sonst wäre
+   * ein Bild im Text eine zweite Ablage neben der ersten.
+   */
+  addFile?: (
+    file: File,
+    onProgress?: (anteil: number) => void,
+  ) => Promise<{ file: { id: string; filename: string } }>;
   removeFile?: (fileId: string) => Promise<unknown>;
   fileHref?: (fileId: string, size?: 'web') => string;
   /** `parentId` ist die Antwort — der Server löst auf eine Ebene auf. */
@@ -371,7 +382,6 @@ export function Detail({
    * Klappzettel eine Liste hat.
    */
   const [projects, setProjects] = useState<Project[]>([]);
-  const noteBox = useRef<HTMLTextAreaElement>(null);
   /*
    * VOR dem frühen `return`, und das ist kein Formalismus.
    *
@@ -517,6 +527,25 @@ export function Detail({
     } finally {
       setHochladen(null);
       setBusy(false);
+    }
+  }
+
+  /**
+   * Die Notiz speichern — ohne Nachladen.
+   *
+   * `save()` lädt hinterher die ganze Aufgabe neu, und das ist für einen Klick
+   * auf ein Datum richtig. Hier wäre es falsch: gespeichert wird beim Tippen,
+   * und eine Antwort, die den Zustand der Spalte austauscht, während jemand
+   * schreibt, ist genau die Sorte Zucken, wegen der Titel und Notiz hier
+   * überhaupt unkontrollierte Felder sind. `onChanged()` bleibt — die Karte
+   * draußen zeigt den Klartext und soll ihn aktuell zeigen.
+   */
+  async function speichereNotiz(note: string, noteDoc: string) {
+    try {
+      await anbindung.patch({ note, noteDoc });
+      onChanged();
+    } catch (e) {
+      setNotice(e instanceof ApiError ? e.message : 'Die Notiz ließ sich nicht speichern.');
     }
   }
 
@@ -1262,30 +1291,34 @@ export function Detail({
         {tab === 'notiz' ? (
             <div className="detail-section">
               <div className="group-label">Notiz</div>
-              {!darfSchreiben ? (
-                // Lesbar bleibt sie: eine Notiz ist Inhalt, und ein Lese-Link soll
-                // Inhalt sehen. Nur das Feld, in das man tippt, fehlt.
-                task.note === '' ? (
-                  <p className="muted small">Keine Notiz.</p>
-                ) : (
-                  <p className="note-read">{task.note}</p>
-                )
-              ) : (
-              <textarea
-                className="note"
-                ref={noteBox}
-                defaultValue={task.note}
-                rows={4}
-                aria-label="Notiz"
-                disabled={busy}
-                placeholder="Was man wissen muss, um das zu tun."
-                onBlur={(e) => {
-                  if (e.target.value !== task.note) {
-                    void save(() => anbindung.patch({ note: e.target.value }));
-                  }
+              {/*
+                Auch ohne Schreibrecht der Editor, nur nicht beschreibbar.
+                Ein `<p>` mit dem Klartext hätte dem Gast Sternchen und
+                Bindestriche gezeigt, wo Fettung und eine Liste gemeint sind —
+                lesbar bleiben heißt lesbar aussehen.
+              */}
+              <NoteEditor
+                taskId={taskId}
+                note={task.note}
+                noteDoc={data.noteDoc}
+                canWrite={darfSchreiben}
+                people={people}
+                images={bilder.map((f) => ({ id: f.id, filename: f.filename }))}
+                {...(anbindung.fileHref !== undefined ? { fileHref: anbindung.fileHref } : {})}
+                {...(anbindung.addFile !== undefined
+                  ? {
+                      uploadImage: async (datei: File) => {
+                        const out = await anbindung.addFile!(datei);
+                        return { fileId: out.file.id, filename: out.file.filename };
+                      },
+                    }
+                  : {})}
+                onFilesChanged={() => {
+                  void load();
+                  onChanged();
                 }}
+                onSave={speichereNotiz}
               />
-              )}
             </div>
         ) : null}
 

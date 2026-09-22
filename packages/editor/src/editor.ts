@@ -1,0 +1,457 @@
+/**
+ * SONE — editor construction.
+ *
+ * Binds a ProseMirror editor to a page's Y.XmlFragment through y-prosemirror.
+ * One editor per page, one fragment per page (ADR-0015), which is what makes
+ * selection across blocks, a single undo stack and drag between blocks work at
+ * all.
+ *
+ * The undo plugin is y-prosemirror's, not prosemirror-history's: in a
+ * collaborative document, undo must revert *this user's* last change rather
+ * than the document's, and prosemirror-history has no notion of authorship.
+ * Using the wrong one means undo occasionally reverts a colleague's edit, which
+ * is the kind of bug that destroys trust in an editor.
+ */
+
+import { BLOCK_ATTRS } from '@sote/core';
+import type { Awareness } from 'y-protocols/awareness';
+import { EditorState, type Plugin } from 'prosemirror-state';
+import { EditorView } from 'prosemirror-view';
+import {
+  prosemirrorToYXmlFragment,
+  redo as yRedo,
+  undo as yUndo,
+  yCursorPlugin,
+  ySyncPlugin,
+  ySyncPluginKey,
+  yUndoPlugin,
+  yXmlFragmentToProsemirrorJSON,
+} from 'y-prosemirror';
+import { keymap } from 'prosemirror-keymap';
+import { XmlElement as YXmlElement } from 'yjs';
+import type * as Y from 'yjs';
+
+import { blockIds, type IdGenerator } from './blockIds.js';
+import { soneInputRules } from './inputRules.js';
+import { soneKeymap } from './keymap.js';
+import { codeCopy } from './codeCopy.js';
+import { foundBlock } from './foundBlock.js';
+import { followLinks } from './links.js';
+import { collapse } from './collapse.js';
+import { listNumbers } from './listNumbers.js';
+import { placeholders } from './placeholders.js';
+import { imagePaste, type ImageUploader } from './imagePaste.js';
+import { markdownPaste } from './markdownPaste.js';
+import { schema } from './schema.js';
+import { blockLock } from './blockLock.js';
+import { editGuard } from './editGuard.js';
+import { mentionMenu } from './mentionMenu.js';
+import { slashMenu, type LocaliseSlashItem, type OffersSlashItem } from './slashMenu.js';
+import { tableKeymap, tablePlugins } from './tables.js';
+
+export interface EditorOptions {
+  /** The page body fragment. See pageContent() in @sone/core. */
+  fragment: Y.XmlFragment;
+  /** Presence, for remote cursors. Omit for a solo editor. */
+  awareness?: Awareness;
+  /**
+   * Whether the document may be edited.
+   *
+   * A function, not a boolean: a role can change while the document is open
+   * (the server sends RoleChanged rather than disconnecting), and ProseMirror
+   * calls this on every state change, so a live read keeps the editor in step
+   * without recreating it.
+   */
+  editable?: () => boolean;
+  /** Injected in tests so ids are deterministic. */
+  generateId?: IdGenerator;
+  /** Node views for atoms that mount their own renderer, e.g. collectionView. */
+  nodeViews?: EditorView['props']['nodeViews'];
+  /**
+   * Plugins the application supplies, appended after this package's own.
+   *
+   * The comment marks need the page's thread list, which this package has no
+   * business knowing how to read — the same reasoning as `localiseSlashItem`
+   * above. After rather than before, so a supplied plugin sees a state the
+   * editor has already set up.
+   */
+  plugins?: Plugin[];
+  /**
+   * How a `/` menu item reads, in the interface's language (ADR-0041).
+   *
+   * Passed in rather than looked up: this package has no business knowing how
+   * the application stores its translations. It is applied before the list is
+   * filtered, because the filter matches the title and the keywords — so a
+   * German interface must filter German ones, or typing "übersch" finds nothing
+   * while the menu shows "Überschrift 1".
+   */
+  localiseSlashItem?: LocaliseSlashItem;
+  /**
+   * Which `/` menu items exist on this instance at all.
+   *
+   * Asked each time the menu is built, so an answer that arrives after the
+   * editor was created — whether a SOTE server is configured, say — takes
+   * effect without a reload.
+   */
+  offersSlashItem?: OffersSlashItem;
+  /**
+   * A change made *here*.
+   *
+   * Not called for changes arriving from Yjs, which includes the initial
+   * population of the document when the editor mounts. Without that
+   * distinction a consumer using this to track unsaved work would mark every
+   * freshly opened page as edited before anyone touched it.
+   */
+  /**
+   * Uploads an image and returns its URL.
+   *
+   * Injected because this package must not know about HTTP endpoints
+   * (ADR-0016). Omitted means pasting an image does nothing, which is the right
+   * behaviour for a read-only surface.
+   */
+  uploadImage?: ImageUploader;
+  onChange?: (state: EditorState) => void;
+  /**
+   * Called after every transaction, not only document changes.
+   *
+   * The slash menu opens, filters and closes without the document changing, so
+   * a renderer watching only `onChange` would never see it.
+   */
+  onStateChange?: (state: EditorState) => void;
+}
+
+/**
+ * The label drawn beside somebody else's caret.
+ *
+ * Receives `awareness.user`, not the whole awareness state — y-prosemirror reads
+ * `aw.user` and passes that, defaulting it to `{}`. My first version read
+ * `displayName` from the argument, which is never there, so every caret said
+ * "Someone" in the library's fallback orange. @sone/client now publishes a
+ * `user` copy alongside its own fields, and this reads what it is actually
+ * given.
+ *
+ * Kept rather than falling back to y-prosemirror's default builder for three
+ * reasons: the fallbacks below are ours to choose, the name is inserted as text
+ * with an explicit guarantee — it is another person's input arriving over the
+ * wire — and the label carries a class the stylesheet can fade.
+ *
+ * ## Why the label fades
+ *
+ * A name beside a caret says "somebody is working here". Left on screen it says
+ * that long after they have stopped, and in a document with two or three people
+ * the labels become part of the furniture — sitting in the middle of a
+ * paragraph, obscuring the text they are meant to annotate.
+ *
+ * The fade is a CSS animation rather than a timer. y-prosemirror rebuilds the
+ * decoration whenever awareness changes, so a moving caret produces a new
+ * element and restarts the animation; a caret that has not moved keeps the same
+ * element, and the animation runs to its end. Movement resets it for free, with
+ * nothing to clear up and no timer to leak.
+ *
+ * Exported so it can be tested on its own: y-prosemirror keeps its options in a
+ * closure, so reaching this through the plugin is not possible.
+ */
+export function presenceCursor(user: Record<string, unknown>): HTMLElement {
+  const name =
+    typeof user['name'] === 'string' && user['name'] !== ''
+      ? user['name']
+      : 'Someone';
+  const color =
+    typeof user['color'] === 'string' && user['color'] !== ''
+      ? user['color']
+      : '#8b8b8b';
+
+  const cursor = document.createElement('span');
+  cursor.classList.add('ProseMirror-yjs-cursor');
+  cursor.setAttribute('style', `border-color: ${color}`);
+
+  const label = document.createElement('div');
+  // Our own class, so the stylesheet targets this rather than y-prosemirror's
+  // internal structure — which would break silently on an upgrade.
+  label.className = 'sone-caret-label';
+  label.setAttribute('style', `background-color: ${color}`);
+  // textContent, not innerHTML: a display name is somebody else's input and it
+  // arrives from another client over the wire.
+  label.textContent = name;
+
+  // The word joiners are y-prosemirror's own: without them the caret widget can
+  // be absorbed into an adjacent text node's selection.
+  cursor.append(
+    document.createTextNode('\u2060'),
+    label,
+    document.createTextNode('\u2060'),
+  );
+  return cursor;
+}
+
+export function createEditorState(opts: EditorOptions): EditorState {
+  const plugins: Plugin[] = [
+    ySyncPlugin(opts.fragment),
+  ];
+
+  if (opts.awareness) {
+    plugins.push(
+      yCursorPlugin(opts.awareness, {
+        // See presenceCursor: it is handed `awareness.user`, which
+        // @sone/client publishes alongside its own presence fields.
+        cursorBuilder: presenceCursor,
+      }),
+    );
+  }
+
+  plugins.push(
+    yUndoPlugin(),
+    // Bound here rather than in soneKeymap, because these are the Yjs-aware
+    // versions and soneKeymap must stay usable without a Yjs document (tests,
+    // and any future non-collaborative surface).
+    keymap({
+      'Mod-z': yUndo,
+      'Mod-y': yRedo,
+      'Shift-Mod-z': yRedo,
+    }),
+    soneInputRules(),
+    // Before soneKeymap, so Tab moves between cells inside a table instead of
+    // indenting the paragraph in a cell. Outside a table goToNextCell refuses
+    // and the block binding takes over.
+    keymap(tableKeymap),
+    ...soneKeymap(),
+    blockIds(opts.generateId ? { generateId: opts.generateId } : {}),
+    listNumbers(),
+    collapse(),
+    placeholders(),
+    codeCopy(),
+    // The block the right sidebar took somebody to, lit for a moment
+    // (ADR-0167). A decoration, because an attribute written onto the element
+    // from outside is reconciled away within a tick.
+    foundBlock(),
+    // Following one (ADR-0157). A plain click in a read-only view, and the
+    // platform's modifier in an editable one — where a plain click has to keep
+    // putting the caret in the word, or a link would be a phrase nobody can
+    // correct.
+    followLinks(),
+    ...tablePlugins(),
+    markdownPaste(),
+    // After markdownPaste: a paste carrying both files and text is an image
+    // paste, and the text is usually the filename.
+    ...(opts.uploadImage
+      ? [imagePaste({ upload: opts.uploadImage, ...(opts.generateId ? { generateId: opts.generateId } : {}) })]
+      : []),
+    // After the keymap, so the menu's handleKeyDown sees Enter and the arrows
+    // first while it is open. ProseMirror asks plugins in order and stops at
+    // the first that handles a key; the other way round, Enter would split the
+    // block instead of picking an item.
+    slashMenu(opts.localiseSlashItem, opts.offersSlashItem),
+    // Naming somebody in the text (ADR-0085). After the slash menu, and it
+    // takes only Escape: the arrows and Enter belong to the interface, which
+    // owns the list of people this package deliberately knows nothing about.
+    mentionMenu(),
+    // One filter for every locked block (ADR-0049). Before the application's
+    // own plugins, so a supplied plugin cannot dispatch past it.
+    blockLock(),
+    /*
+     * And the same question for the whole page, asked where ProseMirror asks
+     * about every change rather than only about the user's own input.
+     *
+     * `editable` below governs typing, pasting and dragging. It does not
+     * govern a command somebody's button dispatches, and the interface is full
+     * of buttons that dispatch — which is how a locked page kept its gutter
+     * menu's delete. See editGuard.ts.
+     */
+    editGuard(() => opts.editable?.() !== false),
+  );
+
+  // Last, so a supplied plugin sees a state this package has already set up —
+  // and so it cannot shadow a key binding the editor depends on.
+  if (opts.plugins) plugins.push(...opts.plugins);
+
+  return EditorState.create({ schema, plugins });
+}
+
+/**
+ * Give an empty page one empty paragraph to type into.
+ *
+ * A fresh Y.XmlFragment is empty, but the ProseMirror schema requires `block+`
+ * — so binding an editor to it yields an invalid document. y-prosemirror does
+ * not seed one for you.
+ *
+ * Only the first client to open a page needs to do this, and doing it in a Yjs
+ * transaction means two clients racing converge on one or two empty
+ * paragraphs rather than a corrupt document. Two is harmless and the second
+ * disappears on the next edit; a missing one prevents typing at all.
+ */
+export function seedEmptyPage(
+  fragment: Y.XmlFragment,
+  generateId: IdGenerator = () => {
+    const c = (globalThis as { crypto?: { randomUUID?: () => string } }).crypto;
+    return c?.randomUUID ? c.randomUUID() : `${Date.now().toString(16)}`;
+  },
+): boolean {
+  if (fragment.length > 0) return false;
+
+  const doc = fragment.doc;
+  const insert = (): void => {
+    const paragraph = new YXmlElement('paragraph');
+    paragraph.setAttribute(BLOCK_ATTRS.id, generateId());
+    fragment.insert(0, [paragraph]);
+  };
+
+  if (doc) doc.transact(insert);
+  else insert();
+  return true;
+}
+
+export function createEditor(
+  mount: HTMLElement,
+  opts: EditorOptions,
+): EditorView {
+  const view = new EditorView(mount, {
+    state: createEditorState(opts),
+    editable: () => opts.editable?.() !== false,
+    ...(opts.nodeViews ? { nodeViews: opts.nodeViews } : {}),
+
+    /**
+     * `this`, not the `view` const.
+     *
+     * ySyncPlugin dispatches a transaction from inside the EditorView
+     * constructor, to populate the document from the Yjs fragment — before the
+     * assignment to `view` below has happened. Referencing `view` there throws
+     * "Cannot access 'view' before initialization", the editor never mounts,
+     * and React unmounts the tree: a white page on every page open.
+     *
+     * ProseMirror binds `this` to the view for this callback, including during
+     * construction, which is the only reference available at that moment.
+     * Verified rather than assumed.
+     */
+    dispatchTransaction(this: EditorView, transaction) {
+      const next = this.state.apply(transaction);
+      this.updateState(next);
+
+      // Transactions produced by the Yjs binding carry its plugin key as meta.
+      // That covers both remote edits and the initial population at mount, and
+      // neither is a change the local user made.
+      const fromYjs = transaction.getMeta(ySyncPluginKey) !== undefined;
+      if (transaction.docChanged && !fromYjs) opts.onChange?.(next);
+
+      opts.onStateChange?.(next);
+    },
+    attributes: {
+      // Spellcheck on, autocorrect off: a notes app contains a lot of
+      // deliberate non-words — identifiers, names, abbreviations — and
+      // autocorrect mangling them is worse than a red squiggle.
+      spellcheck: 'true',
+      autocorrect: 'off',
+      autocapitalize: 'sentences',
+      class: 'sone-editor',
+      role: 'textbox',
+      'aria-multiline': 'true',
+    },
+  });
+
+  return view;
+}
+
+/**
+ * Read a Yjs fragment as ProseMirror JSON, without an editor.
+ *
+ * Used for server-side rendering and for tests that assert on document
+ * structure. Note this does not run the block id plugin, so a fragment written
+ * by something other than the editor may contain blocks without ids.
+ */
+export function fragmentToJSON(fragment: Y.XmlFragment): unknown {
+  return yXmlFragmentToProsemirrorJSON(fragment);
+}
+
+/**
+ * Write a ProseMirror document into a Yjs fragment.
+ *
+ * Used by importers and when seeding a page. Destructive: it replaces the
+ * fragment's contents, so it must not be called on a fragment an editor is
+ * bound to.
+ */
+export function jsonToFragment(
+  doc: Parameters<typeof prosemirrorToYXmlFragment>[0],
+  fragment: Y.XmlFragment,
+): Y.XmlFragment {
+  return prosemirrorToYXmlFragment(doc, fragment);
+}
+
+export { schema } from './schema.js';
+export { readProps, writeProps, BLOCK_TYPE_ORDER } from './schema.js';
+export { blockIds, assignMissingIds, collectBlockIds } from './blockIds.js';
+export { foundBlock, foundBlockId, showFoundBlock } from './foundBlock.js';
+export {
+  blocksInSelection,
+  soneKeymap,
+  toggleBlockType,
+  toggleTodo,
+  insertDivider,
+} from './keymap.js';
+export {
+  blockRangeAt,
+  deleteBlockSubtree,
+  duplicateBlockSubtree,
+  indentBlockSubtree,
+  moveBlockDown,
+  moveBlockUp,
+  outdentBlockSubtree,
+  selectedBlockRange,
+  subtreeSize,
+  type BlockRange,
+} from './blockOps.js';
+export { soneInputRules, INPUT_RULE_HELP } from './inputRules.js';
+export { listNumbers, computeListNumbers } from './listNumbers.js';
+export { placeholders } from './placeholders.js';
+export { codeCopy, codeTextAt } from './codeCopy.js';
+export {
+  collapse,
+  hiddenBlockPositions,
+  hiddenChildCount,
+  toggleCollapsed,
+} from './collapse.js';
+export {
+  TABLE_ACTIONS,
+  buildTable,
+  insertTable,
+  isInTable,
+  tablePlugins,
+  type TableAction,
+  type CreateTableOptions,
+} from './tables.js';
+export {
+  imagePaste,
+  insertImageUpload,
+  type ImageUploader,
+  type UploadedImage,
+} from './imagePaste.js';
+export {
+  looksLikeMarkdown,
+  markdownPaste,
+  markdownToSlice,
+  parseInline,
+  parseMarkdownBlocks,
+} from './markdownPaste.js';
+export {
+  canLink,
+  followLinks,
+  linkAt,
+  normaliseHref,
+  openLink,
+  removeLink,
+  selectLink,
+  setLink,
+  type LinkRange,
+} from './links.js';
+export { isFollowable, isSameOrigin } from './hrefs.js';
+export {
+  SLASH_ITEMS,
+  closeSlashMenu,
+  openSlashMenu,
+  filterSlashItems,
+  runSlashItem,
+  setSlashIndex,
+  slashMenu,
+  slashMenuPluginKey,
+  slashMenuState,
+  type SlashItem,
+  type SlashMenuState,
+} from './slashMenu.js';

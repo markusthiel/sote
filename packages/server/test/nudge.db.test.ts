@@ -262,6 +262,13 @@ test('die Liste im Trigger kennt JEDE Spalte der Tabelle', async () => {
      * ersetzt.
      */
     'note',
+    /*
+     * Und ihr Dokument, aus demselben Grund und noch deutlicher: der Editor
+     * speichert nach zwei Sekunden Ruhe, also mehrmals, während jemand
+     * schreibt. Ein Anstoss je Speichern wäre ein Nachladen der Spalte
+     * mitten im Satz.
+     */
+    'note_doc',
     // Die Herkunft eines geteilten Eintrags: steht in der Detailspalte.
     'origin_url',
     'origin_title',

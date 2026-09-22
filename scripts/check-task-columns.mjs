@@ -41,6 +41,22 @@ const SOURCES = [
   { file: 'packages/server/src/search.ts', name: 'COLUMNS' },
 ];
 
+/**
+ * Spalten, die absichtlich nur an EINER Stelle stehen.
+ *
+ * Die Regel dieses Wächters ist „vier Listen, eine Aufzählung", und sie ist
+ * richtig — für Spalten, die eine Zeile beschreiben. `note_doc` beschreibt
+ * keine Zeile, sondern trägt das ganze Notiz-Dokument, und eine Tafel mit
+ * hundert Karten würde hundert Dokumente übertragen, damit keine davon
+ * angezeigt wird. Der Klartext `note` steht weiter in allen vier Listen; das
+ * ist, was Listen, Suche und Vorschau lesen.
+ *
+ * Eine Ausnahme steht hier NAMENTLICH und mit Begründung, damit sie eine
+ * Entscheidung bleibt und nicht zu einem Loch wird, durch das die nächste
+ * Spalte unbemerkt fällt.
+ */
+const NUR_DETAIL = new Set(['note_doc']);
+
 const problems = [];
 
 /**
@@ -76,7 +92,7 @@ for (const { file, name } of SOURCES) {
     problems.push(`${file}: kein \`const ${name} = \\\`…\\\`\` gefunden`);
     continue;
   }
-  lists.push({ file, columns });
+  lists.push({ file, columns: columns.filter((c) => !NUR_DETAIL.has(c)) });
 }
 
 if (lists.length === SOURCES.length) {
@@ -126,5 +142,6 @@ if (problems.length > 0) {
 }
 
 console.log(
-  `check-task-columns: ${SOURCES.length} Listen, ${lists[0].columns.length} Spalten, einig`,
+  `check-task-columns: ${SOURCES.length} Listen, ${lists[0].columns.length} Spalten, einig` +
+    (NUR_DETAIL.size > 0 ? ` (ausgenommen: ${[...NUR_DETAIL].join(', ')})` : ''),
 );

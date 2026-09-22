@@ -45,6 +45,17 @@ const WEB = new URL('../packages/web/src/', import.meta.url);
  * werden. Ein Wächter, der Richtiges meldet, wird abgeschaltet.
  */
 const CORE = new URL('../packages/core/src/', import.meta.url);
+/*
+ * Und der EDITOR, aus demselben Grund.
+ *
+ * Die Blöcke der Notiz tragen ihren Zustand als `data-block`, `data-indent`,
+ * `data-checked`, `data-collapsed`, `data-tone`, `data-align`, `data-source` —
+ * gesetzt nicht in einem Bauteil, sondern im `toDOM` des Schemas
+ * (`packages/editor/src/schema.ts`). Ohne diesen Ordner meldete der Wächter
+ * sieben lebende Regeln als tot, und das ist die Sorte Meldung, nach der man
+ * einen Wächter abschaltet.
+ */
+const EDITOR = new URL('../packages/editor/src/', import.meta.url);
 
 const css = readFileSync(new URL('styles.css', WEB), 'utf8').replace(
   /\/\*[\s\S]*?\*\//g,
@@ -62,7 +73,7 @@ function dateien(dir) {
   return out;
 }
 
-const markup = [...dateien(WEB), ...dateien(CORE)]
+const markup = [...dateien(WEB), ...dateien(CORE), ...dateien(EDITOR)]
   .map((f) => readFileSync(f, 'utf8'))
   .join('\n');
 

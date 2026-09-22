@@ -43,6 +43,8 @@
  */
 
 import type { ReactElement, SVGProps } from 'react';
+import { CALLOUT_TONE_PATHS } from '@sote/editor';
+import type { CalloutTone } from '@sote/core';
 
 export interface IconProps extends Omit<SVGProps<SVGSVGElement>, 'children'> {
   /** Rendered size in pixels. Defaults to 1em so icons scale with text. */
@@ -876,6 +878,42 @@ export function WorkspacesIcon(props: IconProps): ReactElement {
       <rect x="13.5" y="4.5" width="6" height="6" rx="1.2" />
       <rect x="4.5" y="13.5" width="6" height="6" rx="1.2" />
       <rect x="13.5" y="13.5" width="6" height="6" rx="1.2" />
+    </svg>
+  );
+}
+
+/** Die Notiz nimmt die ganze Spalte. */
+export function MaximiseIcon(props: IconProps): ReactElement {
+  return (
+    <svg {...base(props)}>
+      <path d="M9 4H4v5M15 20h5v-5M4 15v5h5M20 9V4h-5" />
+    </svg>
+  );
+}
+
+/** Und wieder zurück auf mitwachsend. */
+export function MinimiseIcon(props: IconProps): ReactElement {
+  return (
+    <svg {...base(props)}>
+      <path d="M4 9h5V4M20 15h-5v5M9 20v-5H4M15 4v5h5" />
+    </svg>
+  );
+}
+
+/**
+ * Das Zeichen einer Hinweisart.
+ *
+ * Die Pfade liegen im Editor-Paket (`calloutTones.ts`), damit das Zeichen im
+ * Dokument und das Zeichen im Menü dieselbe Quelle haben — in SONE war genau
+ * das der erste Fehler, den zwei getrennte Sätze verursacht haben.
+ */
+export function ToneIcon(props: IconProps & { tone: CalloutTone }): ReactElement {
+  const { tone, ...rest } = props;
+  return (
+    <svg {...base(rest)}>
+      {CALLOUT_TONE_PATHS[tone].map((d) => (
+        <path key={d} d={d} />
+      ))}
     </svg>
   );
 }

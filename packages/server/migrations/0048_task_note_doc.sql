@@ -1,0 +1,11 @@
+-- SOTE 0048 — Die Notiz als Dokument.
+--
+-- `note` bleibt, was es war: der Klartext, den Suche, Kartenvorschau,
+-- Kalender-Tooltip und der ICS-Export lesen. Er wird ab jetzt aus dem Dokument
+-- abgeleitet und nicht mehr von Hand gepflegt.
+--
+-- `note_doc` trägt das Yjs-Dokument des Editors. NULL heißt: eine Notiz aus der
+-- Zeit vor dem Editor, nur Klartext. Sie wandert beim ersten Öffnen im Editor,
+-- nicht in einem Massenlauf über alle Aufgaben — wer eine Aufgabe nie anfasst,
+-- behält sie unverändert.
+ALTER TABLE tasks ADD COLUMN note_doc bytea;

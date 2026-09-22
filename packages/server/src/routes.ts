@@ -191,6 +191,8 @@ export function readPatch(body: Record<string, unknown>): import('./tasks.js').P
   const date = (v: unknown) => (v === null ? null : new Date(String(v)));
   if ('title' in body) out['title'] = String(body['title']);
   if ('note' in body) out['note'] = String(body['note']);
+  /* Das Dokument nur zusammen mit dem Klartext — siehe `Patch.noteDoc`. */
+  if ('noteDoc' in body && 'note' in body) out['noteDoc'] = String(body['noteDoc']);
   if ('planned' in body) out['plannedAt'] = date(body['planned']);
   if ('plannedAllDay' in body) out['plannedAllDay'] = body['plannedAllDay'] === true;
   if ('due' in body) out['dueAt'] = date(body['due']);
@@ -315,6 +317,14 @@ export function detailView(
 ) {
   return {
     task: taskView(d.task),
+    /*
+     * Das Dokument der Notiz, base64 — nur hier, nicht in `taskView`.
+     *
+     * `taskView` bedient auch die Listen, und dort wäre ein Dokument je Zeile
+     * eine Tafel, die ein Vielfaches ihrer selbst überträgt. `null` heißt
+     * „noch kein Dokument"; die Spalte baut dann eines aus dem Klartext.
+     */
+    noteDoc: d.task.note_doc == null ? null : Buffer.from(d.task.note_doc).toString('base64'),
     projectName: d.projectName,
     children: d.children.map(taskView),
     comments: d.comments.map((c) => ({ ...c, createdAt: c.createdAt.toISOString() })),
