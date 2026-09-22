@@ -9,6 +9,7 @@ WORKDIR /app
 RUN corepack enable
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml* tsconfig.base.json ./
 COPY packages/core/package.json packages/core/
+COPY packages/editor/package.json packages/editor/
 COPY packages/server/package.json packages/server/
 COPY packages/web/package.json packages/web/
 # Ohne Fallback: `|| pnpm install` würde ein veraltetes Lockfile stillschweigend
@@ -16,8 +17,10 @@ COPY packages/web/package.json packages/web/
 # gelaufen sind. Scheitert es hier, ist das Lockfile nicht eingecheckt.
 RUN pnpm install --frozen-lockfile
 COPY packages ./packages
-# Reihenfolge: core zuerst, weil Server und Oberfläche daraus lesen.
+# Reihenfolge: core zuerst, weil alle anderen daraus lesen; dann der Editor,
+# weil die Oberfläche ihn einbindet und `dist` dafür dastehen muss.
 RUN pnpm --filter @sote/core build \
+ && pnpm --filter @sote/editor build \
  && pnpm --filter @sote/server build \
  && pnpm --filter @sote/web build
 
@@ -26,13 +29,15 @@ WORKDIR /app
 ENV NODE_ENV=production
 RUN corepack enable
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
-# **Alle drei** package.json, auch die der Oberfläche, obwohl davon nur `dist`
-# gebraucht wird: `--frozen-lockfile` vergleicht das Lockfile mit dem gesamten
+# **Alle vier** package.json, auch die der Oberfläche und des Editors, obwohl
+# von beiden nur Gebautes gebraucht wird (und vom Editor nicht einmal das: die
+# Oberfläche bündelt ihn): `--frozen-lockfile` vergleicht das Lockfile mit dem gesamten
 # Workspace, und ein fehlendes Paket macht daraus einen Fehler „lockfile is not
 # up to date". Der Preis ist, dass React im Laufzeit-Abbild landet, ohne dort
 # gebraucht zu werden — bekannt und in Kauf genommen; `pnpm deploy` wäre die
 # Alternative und ist heikler als der gewonnene Platz.
 COPY packages/core/package.json packages/core/
+COPY packages/editor/package.json packages/editor/
 COPY packages/server/package.json packages/server/
 COPY packages/web/package.json packages/web/
 RUN pnpm install --prod --frozen-lockfile
