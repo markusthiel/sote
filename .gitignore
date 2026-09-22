@@ -3,3 +3,8 @@ dist/
 *.tsbuildinfo
 .env
 .DS_Store
+
+# Prüfprotokolle sind Laufergebnisse, keine Quellen: sie enthalten lokale
+# Pfade und veralten mit jedem Lauf.
+docs/audit/
+*.log

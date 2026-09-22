@@ -1,0 +1,300 @@
+# SOTE — das Abbild bauen und auf der GitHub Container Registry veröffentlichen.
+#
+# Übertragen aus dem Forgejo-Workflow, den dieses Repository vorher hatte. Was dort hart erarbeitet
+# wurde und hier weiterhin gilt, steht weiterhin da. Drei Dinge sind anders, und
+# jedes davon ist eine Vereinfachung:
+#
+#   1. **Kein `container:` am Job.** Unverändert, und aus demselben Grund: ein
+#      eigenes Job-Image nimmt den Docker-Daemon weg, den der Bau braucht.
+#   2. **Kein `REGISTRY_TOKEN` mehr.** Der automatische Token von Forgejo durfte
+#      keine Pakete schreiben; der `GITHUB_TOKEN` darf es, sobald der Job
+#      `permissions: packages: write` trägt. Damit entfällt das Secret, das
+#      vorher jemand anlegen musste, und der ganze Schritt, der sein Fehlen
+#      erklärt hat.
+#   3. **Postgres wieder als `services:`.** Die lange Begründung im Original —
+#      zwei Runner unter demselben Label, einer auf dem Rechner und einer im
+#      Container, und `127.0.0.1` bedeutet je nachdem etwas anderes — war eine
+#      Eigenheit jener Instanz. Die Runner von GitHub führen den Job auf der VM
+#      aus und starten Service-Container zuverlässig. Der `docker run`-Tanz
+#      hätte hier nichts zu lösen und wäre nur eine Erklärung für ein Problem,
+#      das es nicht gibt.
+#
+# Was bleibt, und es ist der Punkt, der SOTE von SONE unterschied: **geprüft
+# wird vor dem Veröffentlichen, nicht danach.** Zuerst in den lokalen Daemon
+# laden, dann hineinsehen, dann pushen. Umgekehrt wäre ein schlechtes Abbild
+# kurz das veröffentlichte — und bei einem Versions-Tag dauerhaft, weil ein
+# solches Tag nicht bewegt wird.
+#
+# Erzeugte Tags:
+#   main            jeder Push auf main. Entwicklungsstand, nicht für Betrieb.
+#   X.Y.Z und X.Y   ein Versions-Tag.
+#   latest          ein Versions-Tag, das keine Vorabversion ist.
+
+name: Build image
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+
+jobs:
+  # Zuerst prüfen, dann bauen.
+  #
+  # Der Bau hing anfangs an keinem Test, und damit hätte jeder Push auf main ein
+  # ungeprüftes Abbild nach `:main` veröffentlicht — also genau in das, was ein
+  # Deployment zieht. Ein Abbild, das niemand befragt hat, ist kein Abbild, das
+  # man deployen sollte.
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      db:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: sote
+          POSTGRES_PASSWORD: sote
+          POSTGRES_DB: sote_test
+          # Dieselbe Collation wie im Betrieb. Ohne sie sortiert die
+          # Testdatenbank die Sortierschlüssel anders als die echte, und der
+          # Test, der genau das prüft, wäre grün an der falschen Stelle.
+          POSTGRES_INITDB_ARGS: "--locale=C --encoding=UTF8"
+        ports:
+          - 5432:5432
+        # Wartet wird auf `pg_isready` und nicht auf eine Anzahl Sekunden: ein
+        # `sleep 10` ist entweder zu kurz und der Lauf scheitert gelegentlich,
+        # oder zu lang und jeder Lauf zahlt dafür.
+        options: >-
+          --health-cmd "pg_isready -U sote -d sote_test"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 30
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile
+
+      - name: Collation nachweisen
+        # Nachgewiesen und nicht angenommen — die Begründung steht oben am
+        # `services`-Block. Zwei Zeilen hier ersparen die Suche nach einem Test,
+        # der aus dem falschen Grund grün ist.
+        env:
+          PGPASSWORD: sote
+        run: |
+          set -eu
+          psql -h 127.0.0.1 -U sote -d sote_test -tAc \
+            "SELECT datcollate FROM pg_database WHERE datname='sote_test'" | grep -qx C
+          echo "Collation ist C"
+
+      # Ein Befehl, und es ist derselbe, den jemand hier fährt: `pnpm check`.
+      #
+      # Vorher standen die drei Schritte einzeln hier — und der zweite hieß
+      # `pnpm -r typecheck`, was in einem frischen Klon **scheitert**:
+      # `@sote/core` zeigt mit `types` auf `dist`, und ohne Bau findet Server
+      # und Oberfläche das Paket nicht. Lokal fiel das nicht auf, weil dist vom
+      # letzten Bau dalag. Die Bauordnung steht jetzt im Skript, nicht in der
+      # CI-Datei, damit es nur eine Liste von Prüfungen gibt.
+      - name: Prüfen
+        env:
+          SOTE_TEST_DATABASE_URL: postgres://sote:sote@127.0.0.1:5432/sote_test
+        run: pnpm check
+
+  image:
+    needs: check
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    # Bewusst kein `container:` — siehe Punkt 1 oben.
+
+    permissions:
+      contents: read
+      # Das ist der Ersatz für das `REGISTRY_TOKEN` aus der Forgejo-Fassung.
+      # Fehlt die Zeile, scheitert der Push mit einem 403 von ghcr.io.
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Volle Geschichte, damit `git describe` das nächste Tag findet.
+          fetch-depth: 0
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Version und Tags bestimmen
+        id: meta
+        run: |
+          set -eu
+          # ghcr.io nimmt keine Großbuchstaben im Repository-Namen an. Eine
+          # Abspaltung unter einem Konto mit Großschreibung scheiterte sonst
+          # erst beim Push, mit einer Meldung, die weder die Ursache noch diese
+          # Zeile nennt.
+          IMAGE="ghcr.io/$(echo "${GITHUB_REPOSITORY}" | tr '[:upper:]' '[:lower:]')"
+
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+            TAGS="${IMAGE}:${VERSION} ${IMAGE}:$(echo "$VERSION" | cut -d. -f1,2)"
+            # `latest` zeigt nie auf eine Vorabversion.
+            case "$VERSION" in
+              *-*) : ;;
+              *) TAGS="$TAGS ${IMAGE}:latest" ;;
+            esac
+          else
+            # Ein Bau von main muss über dem Tag sortieren, dem er folgt. In
+            # SONE ist genau das zweimal schiefgegangen und hat eine laufende
+            # Instanz mit einer leeren Seite angehalten, weil die Versionshürde
+            # den neuen Bau korrekt als Rückschritt gelesen hat.
+            #
+            # SOTE hat noch keine Versionshürde, also kostet ein falscher Wert
+            # hier nichts außer einer irreführenden Beschriftung. Die Regel wird
+            # trotzdem eingehalten: Commits nach einem stabilen Tag gehören zum
+            # nächsten Patch.
+            described="$(git describe --tags --long --always 2>/dev/null || echo '')"
+            described="${described#v}"
+            case "$described" in
+              *-*-g*)
+                sha="${described##*-g}"
+                without_sha="${described%-g$sha}"
+                commits="${without_sha##*-}"
+                base="${without_sha%-$commits}"
+                case "$base" in
+                  *-*)
+                    # Nach einer Vorabversion: dieselbe Basis, mehr Commits.
+                    VERSION="${base}.${commits}.g${sha}"
+                    ;;
+                  *)
+                    # Nach einem stabilen Tag: der nächste Patch, als Vorabversion.
+                    major="$(echo "$base" | cut -d. -f1)"
+                    minor="$(echo "$base" | cut -d. -f2)"
+                    patch="$(echo "$base" | cut -d. -f3)"
+                    VERSION="${major}.${minor}.$((patch + 1))-dev.${commits}.g${sha}"
+                    ;;
+                esac
+                ;;
+              *)
+                VERSION="0.0.0-dev.0.g${described}"
+                ;;
+            esac
+            TAGS="${IMAGE}:main"
+          fi
+
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tags=$TAGS" >> "$GITHUB_OUTPUT"
+          {
+            echo 'tags_multiline<<EOF'
+            for t in $TAGS; do echo "$t"; done
+            echo 'EOF'
+          } >> "$GITHUB_OUTPUT"
+          echo "Baue $VERSION als: $TAGS"
+
+      - name: Bauen
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          # In den lokalen Daemon geladen, nicht gepusht: erst hineinsehen,
+          # dann veröffentlichen.
+          push: false
+          load: true
+          tags: ${{ steps.meta.outputs.tags_multiline }}
+          # Die Forgejo-Fassung baute ohne Schichten-Cache, weil `type=gha` den
+          # Cache-Dienst von GitHub Actions braucht und jene Instanz keinen hat.
+          # Hier gibt es ihn.
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Abbild prüfen, bevor es veröffentlicht wird
+        run: |
+          set -eu
+          FIRST="$(echo '${{ steps.meta.outputs.tags }}' | awk '{print $1}')"
+
+          # Ein Abbild, das baut, ist kein Abbild, das läuft. Geprüft wird, was
+          # tatsächlich fehlen kann: der Einstiegspunkt des Servers, die gebaute
+          # Oberfläche, die Migrationen.
+          echo "Inhalt:"
+          docker run --rm --entrypoint /bin/sh "$FIRST" -c '
+            set -e
+            for f in packages/server/dist/main.js \
+                     packages/core/dist/index.js \
+                     packages/web/dist/index.html \
+                     packages/server/migrations/0001_init.sql; do
+              if [ -e "$f" ]; then echo "  ok      $f"; else echo "  FEHLT   $f"; exit 1; fi
+            done
+            printf "  node %s\n" "$(node --version)"
+          '
+
+          # Und nicht als root.
+          #
+          # Gemessen wird, als wer der Prozess ENDET, und nicht, was das Abbild
+          # erklaert. Der Einstiegspunkt beginnt bewusst als root, richtet die
+          # Rechte am Datenverzeichnis und uebergibt per su-exec an uid 1000.
+          # Weil er das Kommando aus CMD durchreicht, laeuft `id -u` durch
+          # denselben Weg wie der Server - die Antwort ist damit die Kennung,
+          # unter der auch der Server laufen wuerde.
+          #
+          # Ein Aufruf mit `--entrypoint /bin/sh` wuerde die Uebergabe
+          # ueberspringen und root messen: das Gegenteil dessen, was zu
+          # beweisen ist.
+          echo
+          echo "Rechte:"
+          uid="$(docker run --rm "$FIRST" id -u 2>/dev/null | tail -1)"
+          if [ "$uid" != "1000" ]; then
+            echo "  erwartet war uid 1000, gemessen: ${uid:-nichts}" >&2
+            exit 1
+          fi
+          echo "  der Server laeuft als uid $uid"
+
+          # Der Healthcheck aus compose fragt /api/health. Ohne Datenbank kommt
+          # der Server nicht bis dorthin — geprüft wird darum nur, dass er ohne
+          # SOTE_DATABASE_URL mit einer benennbaren Meldung abbricht und nicht
+          # stumm hängt.
+          echo
+          echo "Start ohne Datenbank:"
+          out="$(docker run --rm "$FIRST" 2>&1 || true)"
+          echo "$out" | sed 's/^/  /' | head -5
+          if ! echo "$out" | grep -q 'SOTE_DATABASE_URL'; then
+            echo "  erwartet war eine Meldung über SOTE_DATABASE_URL" >&2
+            exit 1
+          fi
+
+      - name: An der Registry anmelden
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Die Wiederholungen stammen aus der Forgejo-Fassung, wo Registry, Forge
+      # und Runner dieselbe Maschine waren und ein 503 unter Last einen fertigen
+      # Bau weggeworfen hätte. ghcr.io ist ein eigener Dienst, aber das Abbild
+      # ist an dieser Stelle gebaut und geprüft — es zweimal zu pushen ist
+      # harmlos, und die Schleife kostet nichts, wenn sie nicht gebraucht wird.
+      - name: Pushen
+        run: |
+          set -eu
+          for tag in ${{ steps.meta.outputs.tags }}; do
+            pushed=""
+            for attempt in 1 2 3; do
+              echo "pushe $tag (Versuch $attempt)"
+              if docker push "$tag"; then
+                pushed="ja"
+                break
+              fi
+              echo "Push gescheitert, neuer in $((attempt * 15))s" >&2
+              sleep $((attempt * 15))
+            done
+            if [ -z "$pushed" ]; then
+              echo "$tag nach drei Versuchen nicht gepusht." >&2
+              exit 1
+            fi
+          done
+          echo
+          echo "Veröffentlicht: ${{ steps.meta.outputs.tags }}"
+          echo
+          echo "Ein von Actions gepushtes Paket ist zunächst privat. Scheitert"
+          echo "das Ziehen mit einem Anmeldefehler, einmalig umstellen:"
+          echo "  Repository -> Packages -> sote -> Package settings ->"
+          echo "  Change visibility."
