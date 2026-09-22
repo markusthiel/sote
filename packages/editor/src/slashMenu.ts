@@ -547,12 +547,24 @@ export function runSlashItem(view: EditorView, item: SlashItem): boolean {
   if (item.action.kind === 'insert') {
     const node = item.action.build();
     if (!node) return false;
+    const bei = hasContent ? block.pos + block.node.nodeSize : block.pos;
     if (hasContent) {
       // After the block, leaving the writing alone.
-      tr.insert(block.pos + block.node.nodeSize, node);
+      tr.insert(bei, node);
     } else {
-      tr.replaceWith(block.pos, block.pos + block.node.nodeSize, node);
+      tr.replaceWith(bei, block.pos + block.node.nodeSize, node);
     }
+    /*
+     * Und die Schreibmarke dorthin, wo man weiterschreibt.
+     *
+     * Ohne das blieb sie stehen, wo sie war: eine frisch eingefügte Tabelle
+     * stand da, und das Getippte landete in der Zelle, in der die Marke zufällig
+     * gelandet war — beim Ausprobieren unten rechts. `TextSelection.near` sucht
+     * die nächste Textstelle ab der Position im neuen Block; bei einer Tabelle
+     * ist das die erste Zelle, bei einem Trenner (ein Atom ohne Inhalt) die
+     * Zeile dahinter.
+     */
+    tr.setSelection(TextSelection.near(tr.doc.resolve(Math.min(bei + 1, tr.doc.content.size))));
     view.dispatch(tr.scrollIntoView());
     view.focus();
     return true;

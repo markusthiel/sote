@@ -365,6 +365,23 @@
   --sone-shadow-lg: 0 8px 28px rgb(0 0 0 / 18%), 0 1px 2px rgb(0 0 0 / 10%);
   --sone-shadow-floating: var(--sone-shadow-md);
 
+
+  /* ── Die Notiz: Masse und Farbtoene der Hinweiskaesten (aus SONE) ──── */
+  --sote-text-indent: 1.4em;
+  --sote-marker: 15px;
+  --sote-tone-note: var(--text-muted);
+  --sote-tone-info: #2563eb;
+  --sote-tone-tip: #0d9488;
+  --sote-tone-warning: #d97706;
+  --sote-tone-error: #dc2626;
+  --sote-tone-alarm: #9f1239;
+  --sote-tone-exclaim: #ea580c;
+  --sote-tone-question: #7c3aed;
+  --sote-tone-success: #16a34a;
+  --sote-tone-memo: #6a675f;
+  --sote-tone-example: #64748b;
+  --sote-tone-quote: #92400e;
+
 }
 
 
@@ -447,6 +464,21 @@
   --sote-shadow-sm: 0 1px 2px rgb(0 0 0 / 40%);
   --sote-shadow-md: 0 1px 2px rgb(0 0 0 / 40%), 0 4px 12px rgb(0 0 0 / 50%);
   --sote-shadow-lg: 0 2px 4px rgb(0 0 0 / 50%), 0 12px 32px rgb(0 0 0 / 60%);
+
+  /* Die Farbtoene der Hinweiskaesten, heller gegen die dunkle Flaeche. */
+  --sote-tone-note: var(--text-muted);
+  --sote-tone-info: #60a5fa;
+  --sote-tone-tip: #2dd4bf;
+  --sote-tone-warning: #fbbf24;
+  --sote-tone-error: #f87171;
+  --sote-tone-alarm: #fb7185;
+  --sote-tone-exclaim: #fb923c;
+  --sote-tone-question: #a78bfa;
+  --sote-tone-success: #4ade80;
+  --sote-tone-memo: #a3a094;
+  --sote-tone-example: #94a3b8;
+  --sote-tone-quote: #d4a373;
+
 }
 
 *,
@@ -7753,19 +7785,20 @@ label.btn {
    DIE NOTIZ ALS EDITOR
    ══════════════════════════════════════════════════════════════════════════
 
-   Eigene Regeln und nicht SONEs Abschnitt übernommen. Dort hängen die Blöcke
-   an einem Thema je Arbeitsbereich (rund vierzig `--sone-theme-*`), und das
-   ist ein Teilsystem, das SOTE nicht hat und für ein Feld in einer 340 px
-   schmalen Spalte auch nicht braucht. Was hier steht, spricht SOTEs eigene
-   Namen — `--text-primary`, `--border-subtle`, `--surface-hover` — und sieht
-   deshalb aus wie der Rest von SOTE und nicht wie ein Fremdkörper mit SONEs
-   Farben darin.
+   Die Blockregeln sind SONEs, übersetzt auf SOTEs Namen — nicht neu erfunden.
+   Der erste Wurf war eigenhändig und hat zwei Dinge falsch gemacht, die man in
+   fünf Minuten am Bildschirm gesehen hätte und die kein Test sieht: der
+   Platzhalter stand hochkant (ein `float` ohne Breite bricht nach jedem
+   Buchstaben um), und das Kästchen einer Aufgabe wurde als `::before` gemalt,
+   während der Editor dafür einen echten Knopf einhängt — der dann ungestaltet
+   als Kringel mitten im Text saß.
 
-   Die Blöcke kommen als `[data-block=…]` aus dem Schema; die Einrückung als
-   `data-indent`. Beides ist SONEs Form und bleibt es, damit ein Dokument, das
-   hier geschrieben wird, dort lesbar ist. */
+   Die Lehre: SONEs Regeln sind an Fällen gewachsen, die man beim Nachbauen
+   nicht kennt. Was hier eigenständig bleibt, ist nur, was es in SONE nicht gibt
+   (die Werkzeugleiste, der Bildwähler, die Vollhöhe) — und die Farbwerte, die
+   aus SOTEs Tokens kommen. */
 
-.note-editor { display: flex; flex-direction: column; gap: var(--sone-space-2); min-height: 0; }
+.note-editor { display: flex; flex-direction: column; gap: var(--sone-space-4); min-height: 0; }
 
 /* Die ganze Spalte nehmen (der Knopf oben rechts).
    `min-height: 0` an beiden: sonst wächst ein Flex-Kind über seinen Anteil
@@ -7806,14 +7839,23 @@ label.btn {
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 
-/* ── Die Schreibfläche ──────────────────────────────────────────────────── */
+/* ── Die Schreibfläche ───────────────────────────────────────────────────── */
 
 .note-surface { min-height: 0; }
 
 .ProseMirror {
+  /* `white-space: pre-wrap` ist Pflicht und keine Verschönerung: ohne sie
+     warnt ProseMirror beim Start, und Zeilenumbrüche im Code-Block fallen
+     zusammen. */
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  /* Platz für Listenzeichen, Kästchen und Klappen — sie sitzen AUSSERHALB der
+     Textspalte, damit sie den Text beim Erscheinen nicht verschieben. */
+  padding-inline-start: var(--sote-text-indent);
   /* Deutlich höher als die vier Zeilen von vorher, und sie wächst mit. */
   min-height: 12rem;
-  padding: var(--sone-space-3);
+  padding-block: var(--sone-space-5);
+  padding-inline-end: var(--sone-space-5);
   border: 1px solid var(--border-subtle);
   border-radius: var(--sote-radius-md);
   background: var(--surface-raised);
@@ -7823,133 +7865,249 @@ label.btn {
   outline: none;
 }
 .ProseMirror:focus-within { border-color: var(--accent-line); }
-.ProseMirror[contenteditable='false'] { background: transparent; border-color: transparent; padding-inline: 0; }
+/* Ohne Schreibrecht ist es kein Feld mehr, sondern Text auf der Seite. */
+.ProseMirror[contenteditable='false'] {
+  background: transparent; border-color: transparent;
+  padding-inline-end: 0; min-height: 0;
+}
 
-.ProseMirror [data-block] { margin-block: 2px; }
-.ProseMirror [data-indent='1'] { margin-inline-start: 1.5rem; }
-.ProseMirror [data-indent='2'] { margin-inline-start: 3rem; }
-.ProseMirror [data-indent='3'] { margin-inline-start: 4.5rem; }
-.ProseMirror [data-indent='4'] { margin-inline-start: 6rem; }
+/* `position: relative` an JEDEM Block: Zeichen, Kästchen, Klappe und
+   Platzhalter werden absolut dagegen gesetzt. Fehlt es, sitzen sie an der
+   Schreibfläche statt an ihrer Zeile — das war der Kringel im Text. */
+.ProseMirror [data-block] { position: relative; margin-block: 2px; }
+.ProseMirror p[data-block] { margin-block: 0.35em; }
+
+.ProseMirror [data-indent='1'] { margin-inline-start: 1.75rem; }
+.ProseMirror [data-indent='2'] { margin-inline-start: 3.5rem; }
+.ProseMirror [data-indent='3'] { margin-inline-start: 5.25rem; }
+.ProseMirror [data-indent='4'] { margin-inline-start: 7rem; }
+.ProseMirror [data-indent='5'] { margin-inline-start: 8.75rem; }
+.ProseMirror [data-indent='6'] { margin-inline-start: 10.5rem; }
+.ProseMirror [data-indent='7'] { margin-inline-start: 12.25rem; }
+.ProseMirror [data-indent='8'] { margin-inline-start: 14rem; }
+
+.ProseMirror [data-align='start'] { text-align: start; }
 .ProseMirror [data-align='center'] { text-align: center; }
 .ProseMirror [data-align='end'] { text-align: end; }
 
-.ProseMirror h1, .ProseMirror h2, .ProseMirror h3 {
-  font-weight: var(--sote-heading-weight, 600); line-height: 1.25;
-  margin-block: var(--sone-space-3) var(--sone-space-1);
+/* Überschriften: dünner gesetzt als SONEs, weil die Spalte schmal ist — eine
+   1,6-rem-Zeile in 340 px bricht nach zwei Wörtern um. */
+.ProseMirror h1[data-block] {
+  font-size: 1.35rem; font-weight: 600; line-height: 1.25;
+  margin-block: var(--sone-space-6) var(--sone-space-2);
 }
-.ProseMirror h1 { font-size: 1.35rem; }
-.ProseMirror h2 { font-size: 1.15rem; }
-.ProseMirror h3 { font-size: 1rem; }
+.ProseMirror h2[data-block] {
+  font-size: 1.15rem; font-weight: 600; line-height: 1.3;
+  margin-block: var(--sone-space-5) var(--sone-space-2);
+}
+.ProseMirror h3[data-block] {
+  font-size: 1rem; font-weight: 650; line-height: 1.35;
+  margin-block: var(--sone-space-5) var(--sone-space-1);
+}
 
-/* Listen sind flache Blöcke mit gezeichnetem Zeichen, nicht <ul>/<ol>: so
-   lässt sich eine Zeile einrücken, ausrücken und verschieben, ohne dass eine
-   Liste zerfällt. SONEs Form, bewusst übernommen. */
+/* ── Listen ───────────────────────────────────────────────────────────────
+   Die Zeichen werden GEMALT und kommen nicht von <ul>: die Zeilen sind flache
+   Geschwister, und eine echte Liste müsste aus den Einrückungen erst wieder
+   zusammengesetzt werden. */
 .ProseMirror [data-block='bulletList'],
 .ProseMirror [data-block='numberedList'],
-.ProseMirror [data-block='todo'] { position: relative; padding-inline-start: 1.4rem; }
+.ProseMirror [data-block='todo'] { padding-inline-start: 1.4em; }
+
 .ProseMirror [data-block='bulletList']::before {
-  content: '•'; position: absolute; inset-inline-start: 0.35rem; color: var(--text-muted);
+  content: '•'; position: absolute; inset-inline-start: 0; color: var(--text-muted);
 }
+/* Das Zeichen wechselt mit der Tiefe, wie in einer gedruckten Gliederung. */
+.ProseMirror [data-block='bulletList'][data-indent='1']::before { content: '◦'; }
+.ProseMirror [data-block='bulletList'][data-indent='2']::before { content: '▪'; }
+
+/* `data-number` kommt aus dem listNumbers-Plugin: ein CSS-Zähler kann „fang
+   wieder bei eins an, wenn der Vorgänger flacher war" auf flachen Geschwistern
+   nicht ausdrücken. */
 .ProseMirror [data-block='numberedList']::before {
   content: attr(data-number) '.'; position: absolute; inset-inline-start: 0;
   color: var(--text-muted); font-variant-numeric: tabular-nums;
 }
-.ProseMirror [data-block='todo']::before {
-  content: ''; position: absolute; inset-inline-start: 0.1rem; top: 0.35em;
-  width: 0.85em; height: 0.85em; border: 1.5px solid var(--line-strong);
-  border-radius: var(--sote-radius-sm);
-}
-.ProseMirror [data-block='todo'][data-checked='true'] { color: var(--text-muted); }
-.ProseMirror [data-block='todo'][data-checked='true']::before {
-  background: var(--accent-base); border-color: var(--accent-base);
-}
-.ProseMirror [data-block='toggle'] { position: relative; padding-inline-start: 1.4rem; }
-.ProseMirror [data-block='toggle']::before {
-  content: '▸'; position: absolute; inset-inline-start: 0.3rem; color: var(--text-muted);
-}
-.ProseMirror [data-block='toggle'][data-collapsed='false']::before { content: '▾'; }
 
-.ProseMirror blockquote {
-  margin: var(--sone-space-2) 0; padding-inline-start: var(--sone-space-3);
+/* Das Kästchen ist ein echter KNOPF, keine `::before`-Zeichnung: ein
+   Pseudo-Element lässt sich nicht anklicken, und dann wäre Abhaken nur über
+   die Tastatur möglich. Der Editor hängt ihn als Widget ein — er steht nicht
+   im Dokument und nicht in einer Kopie. */
+.ProseMirror .sone-todo-marker {
+  position: absolute; inset-inline-start: 0;
+  /* An der Versalhöhe der ersten Zeile ausgerichtet, nicht am Block: so steht
+     es neben dem Text statt über einer umbrechenden Aufgabe zu schweben. */
+  inset-block-start: 0.22em;
+  inline-size: var(--sote-marker); block-size: var(--sote-marker);
+  /* Beides, und ausdrücklich: `min-height` schlägt `height`, und ohne das
+     zieht ein globales Knopf-Mindestmaß den Kasten zu einem hohen Rechteck,
+     das seine eigene Zeile überdeckt. */
+  min-block-size: 0; min-inline-size: 0;
+  padding: 0; flex: none;
+  border: 1.5px solid var(--line-strong); border-radius: var(--sote-radius-sm);
+  background: transparent; cursor: pointer;
+}
+.ProseMirror .sone-todo-marker:hover { border-color: var(--text-muted); }
+.ProseMirror .sone-todo-marker[data-checked='true'] {
+  border-color: var(--accent-base); background: var(--accent-base);
+}
+/* Der Haken ist gezeichnet und kein Zeichen: so sitzt er bei jeder Textgröße
+   richtig, statt mit den Maßen der Schrift zu wandern. */
+.ProseMirror .sone-todo-marker[data-checked='true']::after {
+  content: ''; position: absolute; inset-block-start: 1px; inset-inline-start: 4px;
+  inline-size: 4px; block-size: 8px;
+  border: solid var(--accent-base-on); border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+.ProseMirror [data-block='todo'][data-checked='true'] {
+  color: var(--text-muted); text-decoration: line-through;
+}
+
+/* ── Klappen ─────────────────────────────────────────────────────────────── */
+.ProseMirror [data-block='toggle'] { padding-inline-start: 1.4em; }
+.ProseMirror [data-block='toggle'][data-count-digits='1'] { padding-inline-start: 2.6em; }
+.ProseMirror [data-block='toggle'][data-count-digits='2'] { padding-inline-start: 3.1em; }
+.ProseMirror [data-block='toggle'][data-count-digits='3'] { padding-inline-start: 3.7em; }
+
+.ProseMirror .sone-toggle-marker {
+  position: absolute; inset-inline-start: 0; inset-block-start: 0.1em;
+  inline-size: 1em; block-size: 1.2em;
+  min-block-size: 0; min-inline-size: 0; padding: 0; flex: none;
+  border: 0; background: transparent; color: var(--text-muted); cursor: pointer;
+}
+.ProseMirror .sone-toggle-marker::before {
+  content: '▸'; display: block; line-height: 1.2;
+  transition: transform 120ms ease;
+}
+.ProseMirror .sone-toggle-marker[data-collapsed='false']::before { transform: rotate(90deg); }
+.ProseMirror .sone-toggle-marker:hover { color: var(--text-primary); }
+/* Wie viel zugeklappt ist — sonst ist eine geschlossene Klappe eine Zeile, der
+   man nicht ansieht, ob etwas darin steht. */
+.ProseMirror .sone-toggle-count {
+  position: absolute; inset-inline-start: 1.1em; inset-block-start: 0.15em;
+  color: var(--text-faint); font-size: var(--sone-text-xs);
+  font-variant-numeric: tabular-nums; user-select: none;
+}
+.ProseMirror .sone-collapsed-hidden { display: none; }
+
+/* ── Zitat, Hinweis, Code ────────────────────────────────────────────────── */
+.ProseMirror blockquote[data-block] {
+  margin-block: var(--sone-space-4); padding-inline-start: var(--sone-space-5);
   border-inline-start: 2px solid var(--line-strong); color: var(--text-muted);
 }
-.ProseMirror blockquote[data-source]::after {
+.ProseMirror blockquote[data-block][data-source]:not(.sone-has-placeholder)::after {
   content: '— ' attr(data-source); display: block;
-  margin-top: var(--sone-space-2); font-size: var(--sone-text-xs);
+  margin-top: var(--sone-space-2); font-size: var(--sone-text-xs); color: var(--text-faint);
 }
 
-.ProseMirror pre {
-  margin: var(--sone-space-2) 0; padding: var(--sone-space-2);
+.ProseMirror aside[data-block] {
+  position: relative;
+  margin-block: var(--sone-space-4);
+  padding: var(--sone-space-4);
+  /* Platz für das Zeichen, damit eine lange Zeile nicht darunter läuft. */
+  padding-inline-end: var(--sone-space-7);
+  border-radius: var(--sote-radius-sm);
+  background: var(--surface-sunken);
+}
+.ProseMirror aside[data-block][data-tone] {
+  /* Der Vorgabewert steht NICHT hier, sondern als Rückfall in der Benutzung:
+     `aside[data-block][data-tone]` ist spezifischer als `[data-tone='warning']`
+     und würde jede Art überstimmen — dann ist jeder Kasten grau. Genau dieser
+     Fehler ist in SONE schon einmal passiert (ADR-0188) und hier ein zweites
+     Mal, weil ich die Begründung gelesen und die Regel trotzdem neu gebaut
+     habe. */
+  background: color-mix(in srgb, var(--callout-tone, var(--sote-tone-note)) 10%, transparent);
+}
+.ProseMirror aside[data-block][data-tone='alarm'] {
+  background: color-mix(in srgb, var(--callout-tone, var(--sote-tone-alarm)) 16%, transparent);
+  border-inline-start: 3px solid var(--callout-tone, var(--sote-tone-alarm));
+}
+.ProseMirror [data-tone='info'] { --callout-tone: var(--sote-tone-info); }
+.ProseMirror [data-tone='tip'] { --callout-tone: var(--sote-tone-tip); }
+.ProseMirror [data-tone='warning'] { --callout-tone: var(--sote-tone-warning); }
+.ProseMirror [data-tone='error'] { --callout-tone: var(--sote-tone-error); }
+.ProseMirror [data-tone='alarm'] { --callout-tone: var(--sote-tone-alarm); }
+.ProseMirror [data-tone='exclaim'] { --callout-tone: var(--sote-tone-exclaim); }
+.ProseMirror [data-tone='question'] { --callout-tone: var(--sote-tone-question); }
+.ProseMirror [data-tone='success'] { --callout-tone: var(--sote-tone-success); }
+.ProseMirror [data-tone='memo'] { --callout-tone: var(--sote-tone-memo); }
+.ProseMirror [data-tone='example'] { --callout-tone: var(--sote-tone-example); }
+.ProseMirror [data-tone='quote'] { --callout-tone: var(--sote-tone-quote); }
+.ProseMirror aside[data-block] .callout-body { min-inline-size: 0; }
+.ProseMirror aside[data-block] .callout-mark {
+  position: absolute; inset-block-start: var(--sone-space-4);
+  inset-inline-end: var(--sone-space-4);
+  inline-size: 16px; block-size: 16px;
+  color: var(--callout-tone, var(--text-muted));
+  opacity: 0.8; pointer-events: none; user-select: none;
+}
+.ProseMirror aside[data-block] .callout-mark svg {
+  inline-size: 100%; block-size: 100%; display: block;
+}
+
+.ProseMirror pre[data-block] {
+  margin-block: var(--sone-space-4); padding: var(--sone-space-4);
   background: var(--surface-sunken); border-radius: var(--sote-radius-sm);
   font-family: var(--sote-mono); font-size: var(--sone-text-xs);
   white-space: pre-wrap; overflow-wrap: anywhere;
 }
+.ProseMirror [data-block='code'] { position: relative; }
+.ProseMirror .sone-code-copy {
+  position: absolute; inset-block-start: var(--sone-space-2);
+  inset-inline-end: var(--sone-space-2);
+  padding: var(--sone-space-1) var(--sone-space-3);
+  border: 1px solid var(--border-subtle); border-radius: var(--sote-radius-sm);
+  background: var(--surface-raised); color: var(--text-muted);
+  font-size: var(--sone-text-xs); cursor: pointer;
+  opacity: 0; transition: opacity 120ms ease;
+}
+.ProseMirror [data-block='code']:hover .sone-code-copy,
+.ProseMirror .sone-code-copy:focus-visible { opacity: 1; }
+.ProseMirror .sone-code-copy[data-state='done'] { color: var(--accent-text); opacity: 1; }
+@media (hover: none) { .ProseMirror .sone-code-copy { opacity: 0.8; } }
 
-.ProseMirror [data-block='divider'] { margin-block: var(--sone-space-3); }
+.ProseMirror [data-block='divider'] { margin-block: var(--sone-space-6); }
 .ProseMirror [data-block='divider'] hr {
   border: 0; border-top: 1px solid var(--border-subtle); margin: 0;
 }
 
-.ProseMirror [data-block='image'] { margin-block: var(--sone-space-2); }
+/* ── Bilder ──────────────────────────────────────────────────────────────── */
+.ProseMirror [data-block='image'] { margin-block: var(--sone-space-4); }
 .ProseMirror [data-block='image'] img {
-  max-width: 100%; height: auto; border-radius: var(--sote-radius-sm);
+  max-width: 100%; height: auto; border-radius: var(--sote-radius-sm); display: block;
 }
 /* Ein Bild, das noch hochlädt oder gescheitert ist, wird gezeigt und nicht
    verschwiegen: ein Block, der als nichts erscheint, sieht aus wie verlorener
    Inhalt. */
 .ProseMirror [data-block='image'][data-state] {
-  padding: var(--sone-space-2); border: 1px dashed var(--border-subtle);
+  padding: var(--sone-space-4); border: 1px dashed var(--border-subtle);
   border-radius: var(--sote-radius-sm); color: var(--text-muted);
   font-size: var(--sone-text-xs);
 }
-.ProseMirror [data-block='image'][data-state='failed'] { border-color: var(--sote-palette-red, #d64545); }
+.ProseMirror [data-block='image'][data-state='failed'] { border-color: var(--sote-tone-error); }
 
-/* ── Hinweiskästen ─────────────────────────────────────────────────────────
-   Zwölf Arten, ein Farbton je Art, Hintergrund als 10-%-Mischung daraus. Die
-   Werte stehen hier und nicht im Thema, weil SOTE kein Thema je Arbeitsbereich
-   hat — die Entscheidung dahinter ist SONEs ADR-0188. */
-.ProseMirror aside[data-block='callout'] {
-  --callout-tone: var(--text-muted);
-  display: flex; gap: var(--sone-space-2); align-items: flex-start;
-  margin-block: var(--sone-space-2); padding: var(--sone-space-2);
-  border-radius: var(--sote-radius-sm);
-  background: color-mix(in srgb, var(--callout-tone) 10%, transparent);
-}
-.ProseMirror aside[data-block='callout'] .callout-body { flex: 1 1 auto; min-width: 0; }
-.ProseMirror aside[data-block='callout'] .callout-mark { color: var(--callout-tone); flex: 0 0 auto; }
-.ProseMirror [data-tone='info'] { --callout-tone: var(--sote-palette-blue, #2d6ca2); }
-.ProseMirror [data-tone='tip'] { --callout-tone: var(--sote-palette-green, #2f7d4a); }
-.ProseMirror [data-tone='warning'] { --callout-tone: var(--sote-palette-orange, #b45f06); }
-.ProseMirror [data-tone='error'],
-.ProseMirror [data-tone='alarm'] { --callout-tone: var(--sote-palette-red, #d64545); }
-.ProseMirror [data-tone='exclaim'] { --callout-tone: var(--sote-palette-yellow, #a07800); }
-.ProseMirror [data-tone='question'] { --callout-tone: var(--sote-palette-purple, #6b4fa1); }
-.ProseMirror [data-tone='success'] { --callout-tone: var(--sote-palette-green, #2f7d4a); }
-.ProseMirror [data-tone='memo'],
-.ProseMirror [data-tone='example'],
-.ProseMirror [data-tone='quote'] { --callout-tone: var(--text-muted); }
-.ProseMirror [data-tone='alarm'] {
-  background: color-mix(in srgb, var(--callout-tone) 16%, transparent);
-  border-inline-start: 3px solid var(--callout-tone);
-}
-
-/* ── Tabellen ──────────────────────────────────────────────────────────────
+/* ── Tabellen ─────────────────────────────────────────────────────────────
    In einer schmalen Spalte scrollt die Tabelle seitwärts, statt die Spalte
    aufzudrücken. Wer viel Tabelle hat, nimmt die volle Höhe. */
-.ProseMirror .tableWrapper { overflow-x: auto; margin-block: var(--sone-space-2); }
+.ProseMirror .tableWrapper { overflow-x: auto; margin-block: var(--sone-space-4); }
 .ProseMirror table { border-collapse: collapse; width: max-content; min-width: 100%; }
-.ProseMirror th, .ProseMirror td {
-  border: 1px solid var(--border-subtle); padding: var(--sone-space-2) var(--sone-space-3);
-  vertical-align: top; min-width: 5rem;
+.ProseMirror table td, .ProseMirror table th {
+  border: 1px solid var(--border-subtle);
+  padding: var(--sone-space-2) var(--sone-space-3);
+  vertical-align: top; min-width: 5rem; position: relative;
 }
-.ProseMirror th { background: var(--surface-sunken); font-weight: 600; text-align: start; }
-.ProseMirror .selectedCell { background: color-mix(in srgb, var(--accent-base) 14%, transparent); }
+.ProseMirror table th { background: var(--surface-sunken); font-weight: 600; text-align: start; }
+.ProseMirror table p { margin-block: 2px; }
+.ProseMirror .selectedCell::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: color-mix(in srgb, var(--accent-base) 14%, transparent);
+}
 .ProseMirror .column-resize-handle {
   position: absolute; inset-block: 0; inset-inline-end: -2px; width: 4px;
   background: var(--accent-base); pointer-events: none;
 }
+.ProseMirror.resize-cursor { cursor: col-resize; }
 
-/* ── Inline ────────────────────────────────────────────────────────────── */
+/* ── Inline ──────────────────────────────────────────────────────────────── */
 .ProseMirror a { color: var(--accent-text); text-decoration: underline; text-underline-offset: 2px; }
 .ProseMirror code { font-family: var(--sote-mono); font-size: 0.92em; }
 .ProseMirror .mention {
@@ -7957,13 +8115,45 @@ label.btn {
   background: color-mix(in srgb, var(--accent-base) 14%, transparent);
   color: var(--accent-text); white-space: nowrap;
 }
-/* Der Platzhaltertext im leeren Absatz. */
-.ProseMirror [data-placeholder]::before {
-  content: attr(data-placeholder); color: var(--text-faint);
-  pointer-events: none; float: inline-start; height: 0;
+.ProseMirror [data-color='grey'] { color: var(--text-muted); }
+.ProseMirror [data-color='red'] { color: var(--sote-palette-red); }
+.ProseMirror [data-color='orange'] { color: var(--sote-palette-orange); }
+.ProseMirror [data-color='yellow'] { color: var(--sote-palette-yellow); }
+.ProseMirror [data-color='green'] { color: var(--sote-palette-green); }
+.ProseMirror [data-color='blue'] { color: var(--sote-palette-blue); }
+.ProseMirror [data-color='purple'] { color: var(--sote-palette-purple); }
+.ProseMirror [data-color='pink'] { color: var(--sote-palette-pink); }
+.ProseMirror-selectednode { outline: 2px solid var(--accent-base); outline-offset: 2px; }
+
+/* ── Platzhalter ──────────────────────────────────────────────────────────
+   Der leere Block mit der Schreibmarke sagt, was er ist — nur dieser eine.
+   ABSOLUT gesetzt, nicht schwebend: ein `float` ohne Breite bricht nach jedem
+   Buchstaben um, und dann steht „Zu tun" hochkant in der Zeile. */
+.ProseMirror .sone-has-placeholder::after {
+  content: attr(data-placeholder);
+  position: absolute; inset-inline-start: 0; inset-block-start: 0;
+  color: var(--text-muted); opacity: 0.6;
+  pointer-events: none;
+  /* Weder auswählbar noch kopierbar: es ist kein Inhalt. */
+  user-select: none;
+}
+/* Blöcke mit gemaltem Zeichen rücken ihren Platzhalter dahinter — sonst sitzt
+   er auf dem Punkt und die Schreibmarke auf ihm. */
+.ProseMirror [data-block='bulletList'].sone-has-placeholder::after,
+.ProseMirror [data-block='numberedList'].sone-has-placeholder::after,
+.ProseMirror [data-block='todo'].sone-has-placeholder::after,
+.ProseMirror [data-block='toggle'].sone-has-placeholder::after { inset-inline-start: 1.4em; }
+.ProseMirror aside[data-block].sone-has-placeholder::after {
+  inset-inline-start: var(--sone-space-4); inset-block-start: var(--sone-space-4);
+}
+.ProseMirror blockquote[data-block].sone-has-placeholder::after {
+  inset-inline-start: var(--sone-space-5);
+}
+.ProseMirror pre[data-block].sone-has-placeholder::after {
+  inset-inline-start: var(--sone-space-4); inset-block-start: var(--sone-space-4);
 }
 
-/* ── Das `/`-Menü und die Erwähnungsliste ──────────────────────────────── */
+/* ── Das `/`-Menü und die Erwähnungsliste ────────────────────────────────── */
 .slash-menu {
   position: fixed; z-index: 60; width: 288px; max-height: 320px; overflow-y: auto;
   padding: var(--sone-space-1); border: 1px solid var(--border-subtle);
@@ -7973,12 +8163,14 @@ label.btn {
 .mention-menu { width: 260px; max-height: 280px; }
 .slash-group + .slash-group { margin-top: var(--sone-space-1); }
 .slash-group-label {
-  padding: var(--sone-space-2) var(--sone-space-4); font-size: var(--sone-text-xs); color: var(--text-faint);
+  padding: var(--sone-space-2) var(--sone-space-4);
+  font-size: var(--sone-text-xs); color: var(--text-faint);
   text-transform: uppercase; letter-spacing: 0.06em;
 }
 .slash-item {
-  display: flex; align-items: center; gap: var(--sone-space-2); width: 100%;
-  padding: var(--sone-space-3) var(--sone-space-4); border: 0; border-radius: var(--sote-radius-sm);
+  display: flex; align-items: center; gap: var(--sone-space-4); width: 100%;
+  padding: var(--sone-space-3) var(--sone-space-4); border: 0;
+  border-radius: var(--sote-radius-sm);
   background: transparent; color: var(--text-primary); text-align: start; cursor: pointer;
 }
 .slash-item[data-selected='true'], .slash-item[aria-selected='true'] { background: var(--surface-hover); }
@@ -7989,21 +8181,18 @@ label.btn {
   font-size: var(--sone-text-xs); color: var(--text-muted);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.slash-empty { margin: 0; padding: var(--sone-space-4); font-size: var(--sone-text-xs); color: var(--text-muted); }
+.slash-empty {
+  margin: 0; padding: var(--sone-space-4);
+  font-size: var(--sone-text-xs); color: var(--text-muted);
+}
 
 /* Die Vollhöhe reicht durch zwei Ebenen: der Reiterinhalt scrollt sonst als
    Ganzes, und die Notiz nähme darin doch nur die Höhe ihres Textes ein.
    `:has()`, damit nur dieser eine Fall betroffen ist — die anderen Reiter
    sollen weiter von oben nach unten wachsen. */
 .detail-body:has(.note-editor[data-full='true']) {
-  display: flex;
-  flex-direction: column;
-  overflow-y: hidden;
+  display: flex; flex-direction: column; overflow-y: hidden;
 }
-
 .detail-section:has(> .note-editor[data-full='true']) {
-  display: flex;
-  flex-direction: column;
-  flex: 1 1 auto;
-  min-block-size: 0;
+  display: flex; flex-direction: column; flex: 1 1 auto; min-block-size: 0;
 }
