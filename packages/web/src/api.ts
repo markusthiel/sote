@@ -327,6 +327,14 @@ export interface Comment {
 
 export interface Detail {
   task: Task;
+  /**
+   * Das Dokument der Notiz, base64 — `null`, solange es noch keines gibt.
+   *
+   * Nur hier und nicht an `Task`: `Task` steht auch in jeder Liste, und ein
+   * Dokument je Zeile wäre eine Tafel, die ein Vielfaches ihrer selbst überträgt.
+   * Der Klartext in `task.note` bleibt, was Suche, Karte und Kalender lesen.
+   */
+  noteDoc: string | null;
   projectName: string | null;
   children: Task[];
   comments: Comment[];

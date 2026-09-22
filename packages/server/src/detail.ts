@@ -67,7 +67,7 @@ export interface Detail {
 }
 
 const COLUMNS = `
-  id, workspace_id, project_id, parent_id, title, note,
+  id, workspace_id, project_id, parent_id, title, note, note_doc,
   planned_at, planned_all_day, due_at, due_all_day, priority,
   completed_at, recur_rrule, recur_dtstart, recur_after_n,
   recur_after_unit, duration_min, column_id, cover, look, sort_key,

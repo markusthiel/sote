@@ -7748,3 +7748,262 @@ label.btn {
   line-height: 1;
   align-self: center;
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   DIE NOTIZ ALS EDITOR
+   ══════════════════════════════════════════════════════════════════════════
+
+   Eigene Regeln und nicht SONEs Abschnitt übernommen. Dort hängen die Blöcke
+   an einem Thema je Arbeitsbereich (rund vierzig `--sone-theme-*`), und das
+   ist ein Teilsystem, das SOTE nicht hat und für ein Feld in einer 340 px
+   schmalen Spalte auch nicht braucht. Was hier steht, spricht SOTEs eigene
+   Namen — `--text-primary`, `--border-subtle`, `--surface-hover` — und sieht
+   deshalb aus wie der Rest von SOTE und nicht wie ein Fremdkörper mit SONEs
+   Farben darin.
+
+   Die Blöcke kommen als `[data-block=…]` aus dem Schema; die Einrückung als
+   `data-indent`. Beides ist SONEs Form und bleibt es, damit ein Dokument, das
+   hier geschrieben wird, dort lesbar ist. */
+
+.note-editor { display: flex; flex-direction: column; gap: var(--sone-space-2); min-height: 0; }
+
+/* Die ganze Spalte nehmen (der Knopf oben rechts).
+   `min-height: 0` an beiden: sonst wächst ein Flex-Kind über seinen Anteil
+   hinaus und die Spalte scrollt zweimal. */
+.note-editor[data-full='true'] { flex: 1 1 auto; }
+.note-editor[data-full='true'] .note-surface { flex: 1 1 auto; overflow: auto; }
+.note-editor[data-full='true'] .ProseMirror { height: 100%; }
+
+.note-tools { display: flex; gap: var(--sone-space-2); flex-wrap: wrap; }
+
+.note-tool {
+  display: inline-flex; align-items: center; gap: var(--sone-space-3);
+  padding: var(--sone-space-2) var(--sone-space-4); border-radius: var(--sote-radius-sm);
+  border: 1px solid var(--border-subtle); background: transparent;
+  color: var(--text-muted); font-size: var(--sone-text-xs); cursor: pointer;
+}
+.note-tool:hover:not(:disabled) { background: var(--surface-hover); color: var(--text-primary); }
+.note-tool:disabled { opacity: 0.5; cursor: default; }
+.note-tool[aria-pressed='true'] { color: var(--accent-text); border-color: var(--accent-line); }
+
+/* Die schon angehängten Bilder, aus denen „Bild einfügen" wählt. */
+.note-images {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+  gap: var(--sone-space-2); padding: var(--sone-space-2);
+  border: 1px solid var(--border-subtle); border-radius: var(--sote-radius-md);
+  background: var(--surface-sunken);
+}
+.note-image-choice {
+  display: flex; flex-direction: column; gap: var(--sone-space-2); padding: 0;
+  border: 0; background: transparent; cursor: pointer; text-align: start;
+}
+.note-image-choice img {
+  width: 100%; aspect-ratio: 4 / 3; object-fit: cover;
+  border-radius: var(--sote-radius-sm); border: 1px solid var(--border-subtle);
+}
+.note-image-choice span {
+  font-size: var(--sone-text-xs); color: var(--text-muted);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* ── Die Schreibfläche ──────────────────────────────────────────────────── */
+
+.note-surface { min-height: 0; }
+
+.ProseMirror {
+  /* Deutlich höher als die vier Zeilen von vorher, und sie wächst mit. */
+  min-height: 12rem;
+  padding: var(--sone-space-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--sote-radius-md);
+  background: var(--surface-raised);
+  color: var(--text-primary);
+  font-size: var(--sone-text-sm);
+  line-height: 1.55;
+  outline: none;
+}
+.ProseMirror:focus-within { border-color: var(--accent-line); }
+.ProseMirror[contenteditable='false'] { background: transparent; border-color: transparent; padding-inline: 0; }
+
+.ProseMirror [data-block] { margin-block: 2px; }
+.ProseMirror [data-indent='1'] { margin-inline-start: 1.5rem; }
+.ProseMirror [data-indent='2'] { margin-inline-start: 3rem; }
+.ProseMirror [data-indent='3'] { margin-inline-start: 4.5rem; }
+.ProseMirror [data-indent='4'] { margin-inline-start: 6rem; }
+.ProseMirror [data-align='center'] { text-align: center; }
+.ProseMirror [data-align='end'] { text-align: end; }
+
+.ProseMirror h1, .ProseMirror h2, .ProseMirror h3 {
+  font-weight: var(--sote-heading-weight, 600); line-height: 1.25;
+  margin-block: var(--sone-space-3) var(--sone-space-1);
+}
+.ProseMirror h1 { font-size: 1.35rem; }
+.ProseMirror h2 { font-size: 1.15rem; }
+.ProseMirror h3 { font-size: 1rem; }
+
+/* Listen sind flache Blöcke mit gezeichnetem Zeichen, nicht <ul>/<ol>: so
+   lässt sich eine Zeile einrücken, ausrücken und verschieben, ohne dass eine
+   Liste zerfällt. SONEs Form, bewusst übernommen. */
+.ProseMirror [data-block='bulletList'],
+.ProseMirror [data-block='numberedList'],
+.ProseMirror [data-block='todo'] { position: relative; padding-inline-start: 1.4rem; }
+.ProseMirror [data-block='bulletList']::before {
+  content: '•'; position: absolute; inset-inline-start: 0.35rem; color: var(--text-muted);
+}
+.ProseMirror [data-block='numberedList']::before {
+  content: attr(data-number) '.'; position: absolute; inset-inline-start: 0;
+  color: var(--text-muted); font-variant-numeric: tabular-nums;
+}
+.ProseMirror [data-block='todo']::before {
+  content: ''; position: absolute; inset-inline-start: 0.1rem; top: 0.35em;
+  width: 0.85em; height: 0.85em; border: 1.5px solid var(--line-strong);
+  border-radius: var(--sote-radius-sm);
+}
+.ProseMirror [data-block='todo'][data-checked='true'] { color: var(--text-muted); }
+.ProseMirror [data-block='todo'][data-checked='true']::before {
+  background: var(--accent-base); border-color: var(--accent-base);
+}
+.ProseMirror [data-block='toggle'] { position: relative; padding-inline-start: 1.4rem; }
+.ProseMirror [data-block='toggle']::before {
+  content: '▸'; position: absolute; inset-inline-start: 0.3rem; color: var(--text-muted);
+}
+.ProseMirror [data-block='toggle'][data-collapsed='false']::before { content: '▾'; }
+
+.ProseMirror blockquote {
+  margin: var(--sone-space-2) 0; padding-inline-start: var(--sone-space-3);
+  border-inline-start: 2px solid var(--line-strong); color: var(--text-muted);
+}
+.ProseMirror blockquote[data-source]::after {
+  content: '— ' attr(data-source); display: block;
+  margin-top: var(--sone-space-2); font-size: var(--sone-text-xs);
+}
+
+.ProseMirror pre {
+  margin: var(--sone-space-2) 0; padding: var(--sone-space-2);
+  background: var(--surface-sunken); border-radius: var(--sote-radius-sm);
+  font-family: var(--sote-mono); font-size: var(--sone-text-xs);
+  white-space: pre-wrap; overflow-wrap: anywhere;
+}
+
+.ProseMirror [data-block='divider'] { margin-block: var(--sone-space-3); }
+.ProseMirror [data-block='divider'] hr {
+  border: 0; border-top: 1px solid var(--border-subtle); margin: 0;
+}
+
+.ProseMirror [data-block='image'] { margin-block: var(--sone-space-2); }
+.ProseMirror [data-block='image'] img {
+  max-width: 100%; height: auto; border-radius: var(--sote-radius-sm);
+}
+/* Ein Bild, das noch hochlädt oder gescheitert ist, wird gezeigt und nicht
+   verschwiegen: ein Block, der als nichts erscheint, sieht aus wie verlorener
+   Inhalt. */
+.ProseMirror [data-block='image'][data-state] {
+  padding: var(--sone-space-2); border: 1px dashed var(--border-subtle);
+  border-radius: var(--sote-radius-sm); color: var(--text-muted);
+  font-size: var(--sone-text-xs);
+}
+.ProseMirror [data-block='image'][data-state='failed'] { border-color: var(--sote-palette-red, #d64545); }
+
+/* ── Hinweiskästen ─────────────────────────────────────────────────────────
+   Zwölf Arten, ein Farbton je Art, Hintergrund als 10-%-Mischung daraus. Die
+   Werte stehen hier und nicht im Thema, weil SOTE kein Thema je Arbeitsbereich
+   hat — die Entscheidung dahinter ist SONEs ADR-0188. */
+.ProseMirror aside[data-block='callout'] {
+  --callout-tone: var(--text-muted);
+  display: flex; gap: var(--sone-space-2); align-items: flex-start;
+  margin-block: var(--sone-space-2); padding: var(--sone-space-2);
+  border-radius: var(--sote-radius-sm);
+  background: color-mix(in srgb, var(--callout-tone) 10%, transparent);
+}
+.ProseMirror aside[data-block='callout'] .callout-body { flex: 1 1 auto; min-width: 0; }
+.ProseMirror aside[data-block='callout'] .callout-mark { color: var(--callout-tone); flex: 0 0 auto; }
+.ProseMirror [data-tone='info'] { --callout-tone: var(--sote-palette-blue, #2d6ca2); }
+.ProseMirror [data-tone='tip'] { --callout-tone: var(--sote-palette-green, #2f7d4a); }
+.ProseMirror [data-tone='warning'] { --callout-tone: var(--sote-palette-orange, #b45f06); }
+.ProseMirror [data-tone='error'],
+.ProseMirror [data-tone='alarm'] { --callout-tone: var(--sote-palette-red, #d64545); }
+.ProseMirror [data-tone='exclaim'] { --callout-tone: var(--sote-palette-yellow, #a07800); }
+.ProseMirror [data-tone='question'] { --callout-tone: var(--sote-palette-purple, #6b4fa1); }
+.ProseMirror [data-tone='success'] { --callout-tone: var(--sote-palette-green, #2f7d4a); }
+.ProseMirror [data-tone='memo'],
+.ProseMirror [data-tone='example'],
+.ProseMirror [data-tone='quote'] { --callout-tone: var(--text-muted); }
+.ProseMirror [data-tone='alarm'] {
+  background: color-mix(in srgb, var(--callout-tone) 16%, transparent);
+  border-inline-start: 3px solid var(--callout-tone);
+}
+
+/* ── Tabellen ──────────────────────────────────────────────────────────────
+   In einer schmalen Spalte scrollt die Tabelle seitwärts, statt die Spalte
+   aufzudrücken. Wer viel Tabelle hat, nimmt die volle Höhe. */
+.ProseMirror .tableWrapper { overflow-x: auto; margin-block: var(--sone-space-2); }
+.ProseMirror table { border-collapse: collapse; width: max-content; min-width: 100%; }
+.ProseMirror th, .ProseMirror td {
+  border: 1px solid var(--border-subtle); padding: var(--sone-space-2) var(--sone-space-3);
+  vertical-align: top; min-width: 5rem;
+}
+.ProseMirror th { background: var(--surface-sunken); font-weight: 600; text-align: start; }
+.ProseMirror .selectedCell { background: color-mix(in srgb, var(--accent-base) 14%, transparent); }
+.ProseMirror .column-resize-handle {
+  position: absolute; inset-block: 0; inset-inline-end: -2px; width: 4px;
+  background: var(--accent-base); pointer-events: none;
+}
+
+/* ── Inline ────────────────────────────────────────────────────────────── */
+.ProseMirror a { color: var(--accent-text); text-decoration: underline; text-underline-offset: 2px; }
+.ProseMirror code { font-family: var(--sote-mono); font-size: 0.92em; }
+.ProseMirror .mention {
+  padding: 0 var(--sone-space-2); border-radius: var(--sote-radius-sm);
+  background: color-mix(in srgb, var(--accent-base) 14%, transparent);
+  color: var(--accent-text); white-space: nowrap;
+}
+/* Der Platzhaltertext im leeren Absatz. */
+.ProseMirror [data-placeholder]::before {
+  content: attr(data-placeholder); color: var(--text-faint);
+  pointer-events: none; float: inline-start; height: 0;
+}
+
+/* ── Das `/`-Menü und die Erwähnungsliste ──────────────────────────────── */
+.slash-menu {
+  position: fixed; z-index: 60; width: 288px; max-height: 320px; overflow-y: auto;
+  padding: var(--sone-space-1); border: 1px solid var(--border-subtle);
+  border-radius: var(--sote-radius-md); background: var(--surface-overlay);
+  box-shadow: var(--sote-shadow-lg);
+}
+.mention-menu { width: 260px; max-height: 280px; }
+.slash-group + .slash-group { margin-top: var(--sone-space-1); }
+.slash-group-label {
+  padding: var(--sone-space-2) var(--sone-space-4); font-size: var(--sone-text-xs); color: var(--text-faint);
+  text-transform: uppercase; letter-spacing: 0.06em;
+}
+.slash-item {
+  display: flex; align-items: center; gap: var(--sone-space-2); width: 100%;
+  padding: var(--sone-space-3) var(--sone-space-4); border: 0; border-radius: var(--sote-radius-sm);
+  background: transparent; color: var(--text-primary); text-align: start; cursor: pointer;
+}
+.slash-item[data-selected='true'], .slash-item[aria-selected='true'] { background: var(--surface-hover); }
+.slash-mark { display: inline-flex; width: 1.1rem; justify-content: center; color: var(--text-muted); }
+.slash-text { display: flex; flex-direction: column; min-width: 0; }
+.slash-title { font-size: var(--sone-text-sm); }
+.slash-hint {
+  font-size: var(--sone-text-xs); color: var(--text-muted);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.slash-empty { margin: 0; padding: var(--sone-space-4); font-size: var(--sone-text-xs); color: var(--text-muted); }
+
+/* Die Vollhöhe reicht durch zwei Ebenen: der Reiterinhalt scrollt sonst als
+   Ganzes, und die Notiz nähme darin doch nur die Höhe ihres Textes ein.
+   `:has()`, damit nur dieser eine Fall betroffen ist — die anderen Reiter
+   sollen weiter von oben nach unten wachsen. */
+.detail-body:has(.note-editor[data-full='true']) {
+  display: flex;
+  flex-direction: column;
+  overflow-y: hidden;
+}
+
+.detail-section:has(> .note-editor[data-full='true']) {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-block-size: 0;
+}

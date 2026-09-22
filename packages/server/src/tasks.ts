@@ -34,6 +34,14 @@ export interface TaskRow {
   parent_id: string | null;
   title: string;
   note: string;
+  /**
+   * Das Yjs-Dokument der Notiz — `null` bei einer Notiz aus der Zeit davor.
+   *
+   * Nur die Einzelansicht liest es; in den Listen steht es nicht in der
+   * Spaltenliste, weil ein Dokument je Zeile eine Tafel mit hundert Karten
+   * unbrauchbar machen würde.
+   */
+  note_doc?: Buffer | null;
   planned_at: Date | null;
   planned_all_day: boolean;
   due_at: Date | null;
@@ -642,11 +650,11 @@ export async function complete(
     const next = await queryOne<TaskRow>(
       client,
       `INSERT INTO tasks (
-         workspace_id, project_id, parent_id, title, note,
+         workspace_id, project_id, parent_id, title, note, note_doc,
          planned_at, planned_all_day, due_at, due_all_day, priority,
          recur_rrule, recur_dtstart, recur_after_n, recur_after_unit,
          duration_min, sort_key, created_by)
-       SELECT workspace_id, project_id, parent_id, title, note,
+       SELECT workspace_id, project_id, parent_id, title, note, note_doc,
               $2::timestamptz, planned_all_day,
               CASE WHEN due_at IS NULL THEN NULL
                    ELSE $2::timestamptz + (due_at - COALESCE(planned_at, created_at))
@@ -1009,6 +1017,15 @@ async function setLabels(
 export interface Patch {
   readonly title?: string;
   readonly note?: string;
+  /**
+   * Das Dokument der Notiz, base64.
+   *
+   * Kommt immer zusammen mit `note`: das Dokument ist die Wahrheit, der
+   * Klartext sein Schatten. Sie getrennt schreiben zu können hieße, zwei
+   * Antworten auf dieselbe Frage speichern zu können, und eine davon wäre
+   * irgendwann falsch.
+   */
+  readonly noteDoc?: string;
   readonly plannedAt?: Date | null;
   readonly plannedAllDay?: boolean;
   readonly dueAt?: Date | null;
@@ -1093,6 +1110,7 @@ export async function patch(
     set('title', title);
   }
   if (fields.note !== undefined) set('note', fields.note);
+  if (fields.noteDoc !== undefined) set('note_doc', Buffer.from(fields.noteDoc, 'base64'));
   if (fields.plannedAt !== undefined) set('planned_at', fields.plannedAt);
   if (fields.plannedAllDay !== undefined) set('planned_all_day', fields.plannedAllDay);
   if (fields.dueAt !== undefined) set('due_at', fields.dueAt);

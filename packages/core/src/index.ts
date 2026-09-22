@@ -25,3 +25,5 @@ export * from './look/board.js';
 export * from './look/reminders.js';
 export * from './look/themeFile.js';
 export * from './task/rights.js';
+export * from './doc/docSchema.js';
+export * from './doc/props.js';
