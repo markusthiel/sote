@@ -10,12 +10,16 @@
  * Wahl.
  *
  * Die dritte Zeile tintet mit `--accent` und damit mit dem Workspace-Ton
- * (ADR-0023). Vier Zeilen in **jeder** Größe der Oberfläche.
+ * (ADR-0023). Vier Zeilen in **jeder** Größe, in der Oberfläche wie in den
+ * Dateien.
  *
- * Bei 16 px trägt der Abstand im Vierzeiler nicht mehr, also ist das Favicon
- * dreibalkig mit eigenem Raster — Punkt 13, Abstand 11, Linien 56 / 40 / 24.
- * Das steht in `public/favicon.svg`: eine Datei, die der Browser holt, ist
- * keine Komponente.
+ * Das Favicon und die installierten Icons sind dasselbe Signet, vier Zeilen,
+ * auf papierfarbenem Grund — erzeugt von `tools/icons.py`, das die Zahlen unten
+ * aus dieser Datei liest. Es war einmal dreizeilig mit eigenem Raster, für die
+ * Lesbarkeit bei 16 px, und genau dort war das am teuersten: im Tab und auf dem
+ * Startbildschirm sieht man nur das kleine Bild, und das war dann nicht die
+ * Marke. Wenn sich die Zahlen unten ändern, wird neu erzeugt, nicht
+ * nachgezeichnet.
  */
 
 export const MARK_ROWS: readonly (readonly [x: number, y: number])[] = [
