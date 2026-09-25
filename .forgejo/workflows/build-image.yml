@@ -1,0 +1,442 @@
+# SOTE — das Abbild bauen und veröffentlichen.
+#
+# Hin und zurück, 22.–25.09.2026. Die Veröffentlichung auf GitHub hat diese
+# Datei nach `.github/workflows/` geschoben, das Abbild nach ghcr.io gerichtet
+# und den Postgres-Teil auf `services:` umgestellt — mit der Begründung, der
+# Runner führe den Job auf der VM aus. Das gilt auf GitHub. Auf dieser Instanz
+# tragen zwei Runner dasselbe Label, und auf dem einen läuft der Job im
+# Container; genau das hatte SOTE im September schon einmal gefunden und mit
+# dem `docker run`-Teil weiter unten gelöst. Seit dem Umzug war jeder Lauf rot.
+#
+# Also zurück: diese Datei, dieser Postgres-Teil, die eigene Registry. GitHub
+# behält den Quelltext über den Push-Spiegel und baut nichts. Das Gegenstück in
+# SONE ist dort als ADR-0199 aufgeschrieben; hier steht es in diesem Kopf,
+# weil SOTE kein ADR-Verzeichnis führt.
+#
+# Nach dem Vorbild von SONEs `.github/workflows/build-image.yml`, und drei
+# Dinge daraus sind dort als hart erarbeitet dokumentiert. Sie stehen hier
+# nicht, weil sie klug klingen, sondern weil jedes davon einen Lauf gekostet
+# hat:
+#
+#   1. **Kein `container:` am Job.** Das Standard-Image des Runners hat einen
+#      Docker-Daemon; ein eigenes Container-Image nimmt ihn weg. Die Meldung
+#      lautet dann ehrlich „no daemon reachable", und die Ursache ist die eigene
+#      Konfiguration und nicht der Runner.
+#   2. **Die `docker/*`-Actions lösen auf dieser Instanz auf.** Der Spiegel
+#      trägt sie.
+#   3. **Der automatische Actions-Token darf keine Pakete schreiben.** Ein Push
+#      scheitert mit „401 reqPackageAccess". Es braucht ein Repository-Secret
+#      `REGISTRY_TOKEN` mit `write:package`, und bewusst ohne Rückfall auf den
+#      automatischen Token: ein Rückfall auf etwas, das nicht schreiben kann,
+#      macht aus einem fehlenden Secret einen verwirrenden Rechtefehler.
+#
+# Erzeugte Tags:
+#   main            jeder Push auf main. Entwicklungsstand, nicht für Betrieb.
+#   X.Y.Z und X.Y   ein Versions-Tag.
+#   latest          ein Versions-Tag, das keine Vorabversion ist.
+#
+# Ein veröffentlichtes Versions-Tag wird nicht bewegt; `latest` und `main` sind
+# die beiden beweglichen Zeiger.
+#
+# Und der Punkt, der SOTE von SONE unterscheidet: **geprüft wird vor dem
+# Veröffentlichen, nicht danach.** Zuerst in den lokalen Daemon laden, dann
+# hineinsehen, dann pushen. Umgekehrt wäre ein schlechtes Abbild kurz das
+# veröffentlichte — und bei einem Versions-Tag dauerhaft, weil ein solches Tag
+# nicht bewegt wird.
+
+name: Build image
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+
+jobs:
+  # Zuerst prüfen, dann bauen.
+  #
+  # Der Bau hing anfangs an keinem Test, und damit hätte jeder Push auf main ein
+  # ungeprüftes Abbild nach `:main` veröffentlicht — also genau in das, was ein
+  # Deployment zieht. Ein Abbild, das niemand befragt hat, ist kein Abbild, das
+  # man deployen sollte.
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    # **Postgres wird selbst gestartet, nicht als `services:`.**
+    #
+    # Die erste Fassung hatte einen `services:`-Block, und die Tests bekamen
+    # `ECONNREFUSED 127.0.0.1:5432`. Der *hostexecutor* dieser Instanz führt
+    # Schritte direkt auf dem Rechner aus und startet **keine**
+    # Service-Container. Docker ist da (deshalb baut der image-Job), Services
+    # sind es nicht. Also mit `docker run`, was auf beiden Runner-Arten
+    # tatsächlich funktioniert, statt mit einer Zutat, die eine davon
+    # voraussetzt.
+    #
+    # Port 55432 und nicht 5432: auf demselben Rechner läuft SONE mit seiner
+    # eigenen Datenbank, und ein belegter Port wäre ein Fehlschlag, dessen
+    # Ursache nirgends steht.
+    #
+    # **UND: es gibt nicht mehr nur einen Runner.**
+    #
+    # Lauf 222 scheiterte mit `ECONNREFUSED 127.0.0.1:55432` — alle 504
+    # Datenbanktests, vom ersten an, während jede andere Prüfung grün war. Der
+    # Grund stand im Kopf des Protokolls: den Auftrag hatte nicht `host-runner`
+    # genommen, sondern `docker5`, und der führt den Job IN einem Container aus
+    # (`catthehacker/ubuntu:act-latest`).
+    #
+    # Damit ist `127.0.0.1` in einem Schritt nicht mehr der Rechner, sondern
+    # der Job-Container. Der Postgres-Container ist sein Geschwister und
+    # veröffentlicht seinen Port auf dem Rechner — also nebenan und nicht hier.
+    # `docker run` und `docker exec` gingen trotzdem, weil der Socket
+    # durchgereicht ist; nur die eine Verbindung, um die es den Tests geht,
+    # gab es nicht.
+    #
+    # Beide Runner tragen dasselbe Label `ubuntu-latest`. Welcher zugreift, ist
+    # also Zufall — und ein Lauf, der von einer Verlosung abhängt, ist kein
+    # Lauf, dem man glaubt. Darum unten: im Container teilt sich Postgres
+    # dessen Netz-Namensraum, auf dem Rechner veröffentlicht er den Port. Die
+    # Tests erreichen ihn in beiden Fällen unter derselben Adresse, und der Job
+    # muss nichts über seinen Runner wissen.
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile
+
+      - name: Postgres starten
+        run: |
+          set -eu
+          docker rm -f sote-ci-pg >/dev/null 2>&1 || true
+
+          # Läuft dieser Schritt auf dem Rechner oder in einem Container? Die
+          # Antwort entscheidet, wie die Tests die Datenbank erreichen — die
+          # Begründung steht oben am Job.
+          if [ -f /.dockerenv ]; then
+            # Zwei Wege zur eigenen Kennung, weil der erste nicht immer stimmt:
+            # der Rechnername IST normalerweise die kurze Container-Kennung,
+            # aber wer den Container mit `--hostname` startet, hat einen
+            # anderen. Dann steht sie noch in den Einhängungen, die Docker
+            # selbst hineinlegt (/etc/hosts und Geschwister liegen unter
+            # `/docker/containers/<kennung>/`).
+            SELBST="$(cat /etc/hostname)"
+            if ! docker inspect "$SELBST" >/dev/null 2>&1; then
+              SELBST="$(sed -n 's#.*/containers/\([0-9a-f]\{64\}\)/.*#\1#p' /proc/self/mountinfo | head -1)"
+            fi
+            if [ -z "$SELBST" ] || ! docker inspect "$SELBST" >/dev/null 2>&1; then
+              echo "Der Job läuft in einem Container, dessen Kennung sich hier nicht ermitteln lässt." >&2
+              echo "Ohne sie lässt sich das Netz nicht teilen — siehe die Erklärung am Job." >&2
+              exit 1
+            fi
+            NETZ="--network container:$SELBST"
+            echo "Im Container ($SELBST) — Postgres teilt dessen Netz."
+          else
+            NETZ="-p 127.0.0.1:55432:55432"
+            echo "Auf dem Rechner — Postgres veröffentlicht 55432."
+          fi
+
+          # Der Port steht IM Postgres und nicht in einer Abbildung: im
+          # geteilten Namensraum gibt es keine Abbildung, die ihn verschieben
+          # könnte. Ein Port, der je nach Fall woanders herkommt, wäre genau
+          # die Sorte Unterschied, die man beim Suchen übersieht.
+          docker run -d --name sote-ci-pg $NETZ \
+            -e POSTGRES_USER=sote \
+            -e POSTGRES_PASSWORD=sote \
+            -e POSTGRES_DB=sote_test \
+            -e POSTGRES_INITDB_ARGS="--locale=C --encoding=UTF8" \
+            postgres:16-alpine -p 55432
+
+          # Gewartet wird auf `pg_isready` und nicht auf eine Anzahl Sekunden:
+          # ein `sleep 10` ist entweder zu kurz und der Lauf scheitert
+          # gelegentlich, oder zu lang und jeder Lauf zahlt dafür.
+          for i in $(seq 1 40); do
+            if docker exec sote-ci-pg pg_isready -U sote -d sote_test -p 55432 >/dev/null 2>&1; then
+              echo "Postgres bereit nach $i Versuchen"
+              break
+            fi
+            sleep 1
+          done
+          docker exec sote-ci-pg pg_isready -U sote -d sote_test -p 55432
+
+          # UND JETZT VON HIER AUS, über dieselbe Adresse wie die Tests.
+          #
+          # Die alte Prüfung fragte `pg_isready` INNERHALB des
+          # Postgres-Containers. Die antwortet auch dann „bereit", wenn es den
+          # Weg dorthin von hier aus gar nicht gibt — genau so war Lauf 222 an
+          # dieser Stelle grün und an der nächsten 504-mal rot. Eine
+          # Bereitschaftsprüfung, die eine andere Verbindung prüft als die, um
+          # die es geht, ist keine.
+          for i in $(seq 1 20); do
+            if (exec 3<>/dev/tcp/127.0.0.1/55432) 2>/dev/null; then
+              echo "Von hier aus erreichbar nach $i Versuchen"
+              break
+            fi
+            sleep 1
+          done
+          if ! (exec 3<>/dev/tcp/127.0.0.1/55432) 2>/dev/null; then
+            echo "Postgres läuft, ist von diesem Schritt aus aber nicht erreichbar." >&2
+            echo "Genau daran scheiterte Lauf 222 — die Erklärung steht am Job." >&2
+            exit 1
+          fi
+
+          # Dieselbe Collation wie im Betrieb, hier nachgewiesen und nicht
+          # angenommen: ohne sie sortiert die Testdatenbank die
+          # Sortierschlüssel anders als die echte, und der Test, der genau das
+          # prüft, wäre grün an der falschen Stelle.
+          docker exec sote-ci-pg psql -U sote -d sote_test -p 55432 -tAc \
+            "SELECT datcollate FROM pg_database WHERE datname='sote_test'" | grep -qx C
+          echo "Collation ist C"
+      # Ein Befehl, und es ist derselbe, den jemand hier fährt: `pnpm check`.
+      #
+      # Vorher standen die drei Schritte einzeln hier — und der zweite hieß
+      # `pnpm -r typecheck`, was in einem frischen Klon **scheitert**:
+      # `@sote/core` zeigt mit `types` auf `dist`, und ohne Bau findet Server
+      # und Oberfläche das Paket nicht. Lokal fiel das nicht auf, weil dist vom
+      # letzten Bau dalag. Die Bauordnung steht jetzt im Skript, nicht in der
+      # CI-Datei, damit es nur eine Liste von Prüfungen gibt.
+      - name: Prüfen
+        env:
+          SOTE_TEST_DATABASE_URL: postgres://sote:sote@127.0.0.1:55432/sote_test
+        run: pnpm check
+
+      - name: Postgres wegräumen
+        # Auch bei einem Fehlschlag: ein Container, der stehen bleibt, hält den
+        # Port belegt und lässt den nächsten Lauf an einer ganz anderen Stelle
+        # scheitern.
+        if: always()
+        run: docker rm -f sote-ci-pg || true
+
+  image:
+    needs: check
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    # Bewusst kein `container:` — siehe Punkt 1 oben.
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Volle Geschichte, damit `git describe` das nächste Tag findet.
+          fetch-depth: 0
+
+      - name: Registry-Token verlangen
+        env:
+          REGISTRY_TOKEN: ${{ secrets.REGISTRY_TOKEN }}
+        run: |
+          set -eu
+          if [ -z "${REGISTRY_TOKEN}" ]; then
+            cat <<'MSG' >&2
+          REGISTRY_TOKEN ist nicht gesetzt.
+
+          Der automatische Actions-Token kann keine Pakete schreiben; ein Push
+          scheitert mit "401 reqPackageAccess". Also: in Forgejo einen Token mit
+          den Bereichen write:package und read:package anlegen und als
+          Repository-Secret REGISTRY_TOKEN hinterlegen.
+
+          Sonst ist nichts blockiert. Dieser Stand ist auch ohne Abbild
+          deploybar:
+
+            docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
+          MSG
+            exit 1
+          fi
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Version und Tags bestimmen
+        id: meta
+        run: |
+          set -eu
+          IMAGE="forgejo.thiel.tools/${GITHUB_REPOSITORY}"
+
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+            TAGS="${IMAGE}:${VERSION} ${IMAGE}:$(echo "$VERSION" | cut -d. -f1,2)"
+            # `latest` zeigt nie auf eine Vorabversion.
+            case "$VERSION" in
+              *-*) : ;;
+              *) TAGS="$TAGS ${IMAGE}:latest" ;;
+            esac
+          else
+            # Ein Bau von main muss über dem Tag sortieren, dem er folgt. In
+            # SONE ist genau das zweimal schiefgegangen und hat eine laufende
+            # Instanz mit einer leeren Seite angehalten, weil die Versionshürde
+            # den neuen Bau korrekt als Rückschritt gelesen hat.
+            #
+            # SOTE hat noch keine Versionshürde, also kostet ein falscher Wert
+            # hier nichts außer einer irreführenden Beschriftung. Die Regel wird
+            # trotzdem eingehalten: Commits nach einem stabilen Tag gehören zum
+            # nächsten Patch.
+            described="$(git describe --tags --long --always 2>/dev/null || echo '')"
+            described="${described#v}"
+            case "$described" in
+              *-*-g*)
+                sha="${described##*-g}"
+                without_sha="${described%-g$sha}"
+                commits="${without_sha##*-}"
+                base="${without_sha%-$commits}"
+                case "$base" in
+                  *-*)
+                    # Nach einer Vorabversion: dieselbe Basis, mehr Commits.
+                    VERSION="${base}.${commits}.g${sha}"
+                    ;;
+                  *)
+                    # Nach einem stabilen Tag: der nächste Patch, als Vorabversion.
+                    major="$(echo "$base" | cut -d. -f1)"
+                    minor="$(echo "$base" | cut -d. -f2)"
+                    patch="$(echo "$base" | cut -d. -f3)"
+                    VERSION="${major}.${minor}.$((patch + 1))-dev.${commits}.g${sha}"
+                    ;;
+                esac
+                ;;
+              *)
+                VERSION="0.0.0-dev.0.g${described}"
+                ;;
+            esac
+            TAGS="${IMAGE}:main"
+          fi
+
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tags=$TAGS" >> "$GITHUB_OUTPUT"
+          {
+            echo 'tags_multiline<<EOF'
+            for t in $TAGS; do echo "$t"; done
+            echo 'EOF'
+          } >> "$GITHUB_OUTPUT"
+          echo "Baue $VERSION als: $TAGS"
+
+      - name: Platz vor dem Bauen
+        # Berichtet, weil „der Bau fühlt sich langsam an" keine Zahl ist und die
+        # erste Frage lautet, ob der Runner volläuft.
+        run: |
+          set -eu
+          df -h / | tail -1
+          docker system df || true
+
+      - name: Bauen
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          # In den lokalen Daemon geladen, nicht gepusht: erst hineinsehen,
+          # dann veröffentlichen.
+          push: false
+          load: true
+          tags: ${{ steps.meta.outputs.tags_multiline }}
+          # Kein Cache-Backend: `type=gha` braucht den Cache-Dienst von GitHub
+          # Actions, den eine Forgejo-Instanz nicht zwingend hat, und ein Cache,
+          # der nicht auflöst, lässt den Bau scheitern.
+
+      - name: Abbild prüfen, bevor es veröffentlicht wird
+        run: |
+          set -eu
+          FIRST="$(echo '${{ steps.meta.outputs.tags }}' | awk '{print $1}')"
+
+          # Ein Abbild, das baut, ist kein Abbild, das läuft. Geprüft wird, was
+          # tatsächlich fehlen kann: der Einstiegspunkt des Servers, die gebaute
+          # Oberfläche, die Migrationen.
+          echo "Inhalt:"
+          docker run --rm --entrypoint /bin/sh "$FIRST" -c '
+            set -e
+            for f in packages/server/dist/main.js \
+                     packages/core/dist/index.js \
+                     packages/web/dist/index.html \
+                     packages/server/migrations/0001_init.sql; do
+              if [ -e "$f" ]; then echo "  ok      $f"; else echo "  FEHLT   $f"; exit 1; fi
+            done
+            printf "  node %s\n" "$(node --version)"
+          '
+
+          # Und nicht als root.
+          #
+          # Gemessen wird, als wer der Prozess ENDET, und nicht, was das Abbild
+          # erklaert. Der Einstiegspunkt beginnt bewusst als root, richtet die
+          # Rechte am Datenverzeichnis und uebergibt per su-exec an uid 1000.
+          # Weil er das Kommando aus CMD durchreicht, laeuft `id -u` durch
+          # denselben Weg wie der Server - die Antwort ist damit die Kennung,
+          # unter der auch der Server laufen wuerde.
+          #
+          # Ein Aufruf mit `--entrypoint /bin/sh` wuerde die Uebergabe
+          # ueberspringen und root messen: das Gegenteil dessen, was zu
+          # beweisen ist.
+          echo
+          echo "Rechte:"
+          uid="$(docker run --rm "$FIRST" id -u 2>/dev/null | tail -1)"
+          if [ "$uid" != "1000" ]; then
+            echo "  erwartet war uid 1000, gemessen: ${uid:-nichts}" >&2
+            exit 1
+          fi
+          echo "  der Server laeuft als uid $uid"
+
+          # Der Healthcheck aus compose fragt /api/health. Ohne Datenbank kommt
+          # der Server nicht bis dorthin — geprüft wird darum nur, dass er ohne
+          # SOTE_DATABASE_URL mit einer benennbaren Meldung abbricht und nicht
+          # stumm hängt.
+          echo
+          echo "Start ohne Datenbank:"
+          out="$(docker run --rm "$FIRST" 2>&1 || true)"
+          echo "$out" | sed 's/^/  /' | head -5
+          if ! echo "$out" | grep -q 'SOTE_DATABASE_URL'; then
+            echo "  erwartet war eine Meldung über SOTE_DATABASE_URL" >&2
+            exit 1
+          fi
+
+      # Anmelden und pushen, mit Wiederholungen: Registry, Forge und Runner sind
+      # dieselbe Maschine. Wird die Forge kurz unwohl — sie antwortet unter Last
+      # mit 503 —, ist die Registry es im selben Moment, und ein Bau von zwei
+      # Minuten wäre für einen Schluckauf von fünf Sekunden weggeworfen. Das ist
+      # die eine Stelle, an der Wiederholen klar richtig ist: das Abbild ist
+      # gebaut und geprüft, und es zweimal zu pushen ist harmlos.
+      - name: An der Registry anmelden
+        env:
+          REGISTRY_TOKEN: ${{ secrets.REGISTRY_TOKEN }}
+        run: |
+          set -eu
+          registry=forgejo.thiel.tools
+
+          # Vorher berichtet, damit das Protokoll „Registry ist unten" von
+          # „diese Zugangsdaten sind falsch" unterscheidet. 401 ist hier die
+          # gesunde Antwort: der Endpunkt existiert und will Anmeldung.
+          code=$(curl -s -o /dev/null -m 20 -w '%{http_code}' "https://$registry/v2/" || echo "keine-antwort")
+          echo "Registry /v2/ antwortete: $code (401 ist erwartet und gesund)"
+
+          for attempt in 1 2 3 4 5; do
+            if printf '%s' "$REGISTRY_TOKEN" \
+                 | docker login "$registry" --username thiel --password-stdin; then
+              echo "angemeldet im Versuch $attempt"
+              exit 0
+            fi
+            echo "Versuch $attempt gescheitert, neuer in $((attempt * 10))s" >&2
+            sleep $((attempt * 10))
+          done
+
+          echo "Anmeldung an $registry nach fünf Versuchen gescheitert." >&2
+          echo "Meldete die Probe oben 5xx, war die Forge unwohl und nicht der" >&2
+          echo "Token falsch — dann diesen Workflow erneut starten." >&2
+          echo "Meldete sie 401 und die Anmeldung scheitert trotzdem, braucht" >&2
+          echo "REGISTRY_TOKEN die Bereiche write:package und read:package." >&2
+          exit 1
+
+      - name: Pushen
+        run: |
+          set -eu
+          for tag in ${{ steps.meta.outputs.tags }}; do
+            pushed=""
+            for attempt in 1 2 3; do
+              echo "pushe $tag (Versuch $attempt)"
+              if docker push "$tag"; then
+                pushed="ja"
+                break
+              fi
+              echo "Push gescheitert, neuer in $((attempt * 15))s" >&2
+              sleep $((attempt * 15))
+            done
+            if [ -z "$pushed" ]; then
+              echo "$tag nach drei Versuchen nicht gepusht." >&2
+              exit 1
+            fi
+          done
+          echo
+          echo "Veröffentlicht: ${{ steps.meta.outputs.tags }}"
