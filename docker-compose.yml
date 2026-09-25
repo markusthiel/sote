@@ -28,7 +28,7 @@ services:
     #
     # Aus dem Quellstand bauen statt ziehen:
     #   docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
-    image: ${SOTE_IMAGE:-ghcr.io/markusthiel/sote:main}
+    image: ${SOTE_IMAGE:-forgejo.thiel.tools/thiel/sote:main}
     restart: unless-stopped
     depends_on:
       db:

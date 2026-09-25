@@ -45,7 +45,7 @@ cp .env.example .env      # POSTGRES_PASSWORD ausfüllen
 docker compose up -d
 ```
 
-Das zieht `ghcr.io/markusthiel/sote:main`. **Solange der Bau-Workflow
+Das zieht `forgejo.thiel.tools/thiel/sote:main`. **Solange der Bau-Workflow
 nicht einmal gelaufen ist, gibt es dieses Abbild nicht** — dann aus dem
 Quellstand bauen:
 
