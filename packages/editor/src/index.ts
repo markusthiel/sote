@@ -18,6 +18,7 @@ export * from './keymap.js';
 export * from './blockOps.js';
 export * from './commands.js';
 export * from './links.js';
+export * from './autoLink.js';
 export * from './imagePaste.js';
 export * from './tables.js';
 export * from './collapse.js';
