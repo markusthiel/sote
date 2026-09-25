@@ -36,6 +36,7 @@ import { soneInputRules } from './inputRules.js';
 import { soneKeymap } from './keymap.js';
 import { codeCopy } from './codeCopy.js';
 import { foundBlock } from './foundBlock.js';
+import { autoLink } from './autoLink.js';
 import { followLinks } from './links.js';
 import { collapse } from './collapse.js';
 import { listNumbers } from './listNumbers.js';
@@ -251,6 +252,10 @@ export function createEditorState(opts: EditorOptions): EditorState {
     // correct.
     followLinks(),
     ...tablePlugins(),
+    // Eine getippte oder eingefügte Adresse wird von selbst ein Link
+    // (SONE ADR-0198, inklusive der Korrektur von 0.14.10). Vor markdownPaste,
+    // das nur Text mit Struktur ansieht — eine nackte Adresse hat keine.
+    autoLink(),
     markdownPaste(),
     // After markdownPaste: a paste carrying both files and text is an image
     // paste, and the text is usually the filename.
