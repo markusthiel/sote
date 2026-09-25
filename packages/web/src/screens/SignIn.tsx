@@ -3,7 +3,7 @@
 import { useState } from 'react';
 
 import { api, ApiError } from '../api.js';
-import { SoteMark } from '../components/Logo.js';
+import { SoteLockup } from '../components/Logo.js';
 
 export function SignIn({
   onDone,
@@ -42,9 +42,10 @@ export function SignIn({
   return (
     <div className="signin">
       <div className="signin-card">
-        <SoteMark size={40} />
-        <h1>SOTE</h1>
-        <p className="claim">Aufgaben verwalten. Auf deinem Server.</p>
+        <div className="signin-marke">
+          <SoteLockup size={32} />
+          <p className="claim">Aufgaben verwalten. Auf deinem Server.</p>
+        </div>
 
         <label className="field">
           <span>E-Mail</span>

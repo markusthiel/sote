@@ -57,3 +57,23 @@ export function SoteMark({ size = 24 }: { size?: number }) {
     </svg>
   );
 }
+
+/**
+ * Signet und Wortmarke nebeneinander — das waagerechte Lockup.
+ *
+ * Gesetzt in der Hausschrift mit der Laufweite des Markenpakets, nicht als
+ * Pfade gezeichnet: in der Anwendung ist die Schrift eine der beiden, die
+ * ausgeliefert werden, also ist Setzen dieselbe Wortmarke und keine zweite
+ * Zeichnung. Dieselbe Bauform wie SONEs `SoneLockup` (ADR-0202) — die beiden
+ * Anmeldeseiten sollen aussehen, als kaemen sie aus einem Haus.
+ */
+export function SoteLockup({ size = 32 }: { size?: number }) {
+  return (
+    <span className="sote-lockup">
+      <SoteMark size={size} />
+      <span className="sote-wortmarke" style={{ fontSize: `${Math.round(size * 0.72)}px` }}>
+        SOTE
+      </span>
+    </span>
+  );
+}
