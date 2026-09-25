@@ -2894,15 +2894,34 @@ body {
   gap: var(--sone-space-5);
 }
 
-/* Die Überschrift der Karte: dieselbe Schrift wie ein Abschnittstitel in den
-   Einstellungen (1.6rem, 300, −0.02em) — eine Anwendung mit zwei
-   Überschriftgrößen für dieselbe Ebene hat zwei Handschriften. Die Abstände
-   macht die Karte mit ihrer Lücke; Ränder am h1 wären ein zweiter Abstand. */
-.signin-card h1 {
-  font-weight: 300;
-  font-size: 1.6rem;
-  letter-spacing: -0.02em;
-  margin: 0;
+/* Die Marke über der Anmeldekarte (SONE ADR-0202).
+ *
+ * Signet und Wortmarke als eine Einheit, darunter der Claim — und zwar enger
+ * beieinander, als die Karte sonst trennt: die drei sind ein Block und nicht
+ * drei Zeilen. Die Abstände macht dieser Block; Ränder an den Teilen wären ein
+ * zweiter Abstand, der sich mit dem ersten addiert.
+ *
+ * Die Wortmarke stand hier vorher als h1 in 300 — der Schrift eines
+ * Abschnittstitels. Das ist die Schrift für Überschriften und nicht die der
+ * Marke: die ist 600 mit +7,5 % Laufweite, und nur so steht neben SONEs
+ * Anmeldeseite dieselbe Handschrift.
+ */
+.signin-marke {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sone-space-2);
+}
+.sote-lockup {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.278em;
+  font-size: inherit;
+}
+.sote-wortmarke {
+  font-weight: 600;
+  letter-spacing: 0.075em;
+  line-height: 1;
+  color: var(--text-primary);
 }
 
 .signin-card .claim {
